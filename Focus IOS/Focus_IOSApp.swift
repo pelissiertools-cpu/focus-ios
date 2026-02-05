@@ -6,16 +6,20 @@
 //
 
 import SwiftUI
-import CoreData
 
 @main
 struct Focus_IOSApp: App {
-    let persistenceController = PersistenceController.shared
+    @StateObject private var authService = AuthService()
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
-                .environment(\.managedObjectContext, persistenceController.container.viewContext)
+            if authService.isAuthenticated {
+                MainTabView()
+                    .environmentObject(authService)
+            } else {
+                SignInView()
+                    .environmentObject(authService)
+            }
         }
     }
 }

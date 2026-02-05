@@ -19,8 +19,8 @@ class TaskRepository {
     /// Helper struct for task updates
     private struct TaskUpdate: Encodable {
         let isCompleted: Bool
-        let completedDate: TimeInterval?
-        let modifiedDate: TimeInterval
+        let completedDate: Date?
+        let modifiedDate: Date
 
         enum CodingKeys: String, CodingKey {
             case isCompleted = "is_completed"
@@ -102,8 +102,8 @@ class TaskRepository {
     func completeTask(id: UUID) async throws {
         let update = TaskUpdate(
             isCompleted: true,
-            completedDate: Date().timeIntervalSince1970,
-            modifiedDate: Date().timeIntervalSince1970
+            completedDate: Date(),
+            modifiedDate: Date()
         )
 
         try await supabase
@@ -118,7 +118,7 @@ class TaskRepository {
         let update = TaskUpdate(
             isCompleted: false,
             completedDate: nil,
-            modifiedDate: Date().timeIntervalSince1970
+            modifiedDate: Date()
         )
 
         try await supabase

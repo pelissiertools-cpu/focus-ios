@@ -35,6 +35,7 @@ struct LibraryTabView: View {
                         TasksListView()
                     }
                 }
+                .frame(maxHeight: .infinity)
             }
             .navigationTitle("Library")
         }

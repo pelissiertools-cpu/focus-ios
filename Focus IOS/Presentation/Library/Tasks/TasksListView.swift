@@ -80,7 +80,13 @@ struct TasksListView: View {
         List {
             ForEach(viewModel.tasks) { task in
                 TaskRow(task: task, viewModel: viewModel)
-                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                    .contextMenu {
+                        Button {
+                            viewModel.selectedTaskForEdit = task
+                        } label: {
+                            Label("Edit", systemImage: "pencil")
+                        }
+
                         Button(role: .destructive) {
                             Task {
                                 await viewModel.deleteTask(task)
@@ -89,13 +95,14 @@ struct TasksListView: View {
                             Label("Delete", systemImage: "trash")
                         }
                     }
-                    .swipeActions(edge: .leading) {
-                        Button {
-                            viewModel.selectedTaskForEdit = task
+                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                        Button(role: .destructive) {
+                            Task {
+                                await viewModel.deleteTask(task)
+                            }
                         } label: {
-                            Label("Edit", systemImage: "pencil")
+                            Label("Delete", systemImage: "trash")
                         }
-                        .tint(.blue)
                     }
             }
         }

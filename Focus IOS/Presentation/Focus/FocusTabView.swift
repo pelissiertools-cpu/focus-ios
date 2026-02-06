@@ -33,14 +33,28 @@ struct FocusTabView: View {
                     }
                 }
 
-                // Date Picker
-                DatePicker("Date", selection: $viewModel.selectedDate, displayedComponents: .date)
-                    .padding(.horizontal)
-                    .onChange(of: viewModel.selectedDate) { _ in
-                        Task {
-                            await viewModel.fetchCommitments()
-                        }
+                // Date Selection based on timeframe
+                Group {
+                    switch viewModel.selectedTimeframe {
+                    case .daily:
+                        DatePicker("Date", selection: $viewModel.selectedDate, displayedComponents: .date)
+                            .padding(.horizontal)
+                    case .weekly:
+                        WeekPicker(selectedDate: $viewModel.selectedDate)
+                            .padding(.horizontal)
+                    case .monthly:
+                        MonthPicker(selectedDate: $viewModel.selectedDate)
+                            .padding(.horizontal)
+                    case .yearly:
+                        YearPicker(selectedDate: $viewModel.selectedDate)
+                            .padding(.horizontal)
                     }
+                }
+                .onChange(of: viewModel.selectedDate) { _ in
+                    Task {
+                        await viewModel.fetchCommitments()
+                    }
+                }
 
                 // Content
                 if viewModel.isLoading {

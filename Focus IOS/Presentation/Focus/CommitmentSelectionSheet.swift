@@ -57,7 +57,16 @@ struct CommitmentSelectionSheet: View {
                 }
 
                 SwiftUI.Section("Commitment Date") {
-                    DatePicker("Date", selection: $selectedDate, displayedComponents: .date)
+                    switch selectedTimeframe {
+                    case .daily:
+                        DatePicker("Date", selection: $selectedDate, displayedComponents: .date)
+                    case .weekly:
+                        WeekPicker(selectedDate: $selectedDate)
+                    case .monthly:
+                        MonthPicker(selectedDate: $selectedDate)
+                    case .yearly:
+                        YearPicker(selectedDate: $selectedDate)
+                    }
                 }
 
                 SwiftUI.Section {

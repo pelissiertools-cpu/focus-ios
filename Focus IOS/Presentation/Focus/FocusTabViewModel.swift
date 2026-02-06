@@ -74,12 +74,37 @@ class FocusTabViewModel: ObservableObject {
         }
     }
 
+    /// Check if commitment date matches selected timeframe and date
+    private func isSameTimeframe(_ commitmentDate: Date, timeframe: Timeframe, selectedDate: Date) -> Bool {
+        let calendar = Calendar.current
+        switch timeframe {
+        case .daily:
+            return calendar.isDate(commitmentDate, inSameDayAs: selectedDate)
+        case .weekly:
+            let commitmentWeek = calendar.component(.weekOfYear, from: commitmentDate)
+            let selectedWeek = calendar.component(.weekOfYear, from: selectedDate)
+            let commitmentYear = calendar.component(.year, from: commitmentDate)
+            let selectedYear = calendar.component(.year, from: selectedDate)
+            return commitmentWeek == selectedWeek && commitmentYear == selectedYear
+        case .monthly:
+            let commitmentMonth = calendar.component(.month, from: commitmentDate)
+            let selectedMonth = calendar.component(.month, from: selectedDate)
+            let commitmentYear = calendar.component(.year, from: commitmentDate)
+            let selectedYear = calendar.component(.year, from: selectedDate)
+            return commitmentMonth == selectedMonth && commitmentYear == selectedYear
+        case .yearly:
+            let commitmentYear = calendar.component(.year, from: commitmentDate)
+            let selectedYear = calendar.component(.year, from: selectedDate)
+            return commitmentYear == selectedYear
+        }
+    }
+
     /// Check if can add more tasks to section
     func canAddTask(to section: Section) -> Bool {
         let currentCount = commitments.filter {
             $0.section == section &&
             $0.timeframe == selectedTimeframe &&
-            Calendar.current.isDate($0.commitmentDate, inSameDayAs: selectedDate)
+            isSameTimeframe($0.commitmentDate, timeframe: selectedTimeframe, selectedDate: selectedDate)
         }.count
 
         let maxTasks = section.maxTasks(for: selectedTimeframe)
@@ -91,7 +116,7 @@ class FocusTabViewModel: ObservableObject {
         commitments.filter {
             $0.section == section &&
             $0.timeframe == selectedTimeframe &&
-            Calendar.current.isDate($0.commitmentDate, inSameDayAs: selectedDate)
+            isSameTimeframe($0.commitmentDate, timeframe: selectedTimeframe, selectedDate: selectedDate)
         }.count
     }
 

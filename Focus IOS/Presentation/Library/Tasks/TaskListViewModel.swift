@@ -15,7 +15,7 @@ class TaskListViewModel: ObservableObject {
     @Published var isLoading = false
     @Published var errorMessage: String?
     @Published var showingAddTask = false
-    @Published var selectedTaskForEdit: FocusTask?
+    @Published var selectedTaskForDetails: FocusTask?
 
     private let repository: TaskRepository
     private let authService: AuthService

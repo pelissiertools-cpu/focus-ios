@@ -23,17 +23,18 @@ struct LibraryTabView: View {
                 .padding()
 
                 // Content based on selection
-                TabView(selection: $selectedTab) {
-                    TasksListView()
-                        .tag(0)
-
-                    ProjectsListView()
-                        .tag(1)
-
-                    ListsView()
-                        .tag(2)
+                Group {
+                    switch selectedTab {
+                    case 0:
+                        TasksListView()
+                    case 1:
+                        ProjectsListView()
+                    case 2:
+                        ListsView()
+                    default:
+                        TasksListView()
+                    }
                 }
-                .tabViewStyle(.page(indexDisplayMode: .never))
             }
             .navigationTitle("Library")
         }

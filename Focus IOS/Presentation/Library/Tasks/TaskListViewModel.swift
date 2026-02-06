@@ -15,6 +15,7 @@ class TaskListViewModel: ObservableObject {
     @Published var isLoading = false
     @Published var errorMessage: String?
     @Published var showingAddTask = false
+    @Published var selectedTaskForEdit: FocusTask?
 
     private let repository: TaskRepository
     private let authService: AuthService
@@ -82,6 +83,40 @@ class TaskListViewModel: ObservableObject {
                 } else {
                     tasks[index].completedDate = nil
                 }
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    /// Delete a task
+    func deleteTask(_ task: FocusTask) async {
+        do {
+            try await repository.deleteTask(id: task.id)
+            tasks.removeAll { $0.id == task.id }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    /// Update task title
+    func updateTask(_ task: FocusTask, newTitle: String) async {
+        guard !newTitle.trimmingCharacters(in: .whitespaces).isEmpty else {
+            errorMessage = "Task title cannot be empty"
+            return
+        }
+
+        do {
+            var updatedTask = task
+            updatedTask.title = newTitle
+            updatedTask.modifiedDate = Date()
+
+            try await repository.updateTask(updatedTask)
+
+            // Update local state
+            if let index = tasks.firstIndex(where: { $0.id == task.id }) {
+                tasks[index].title = newTitle
+                tasks[index].modifiedDate = Date()
             }
         } catch {
             errorMessage = error.localizedDescription

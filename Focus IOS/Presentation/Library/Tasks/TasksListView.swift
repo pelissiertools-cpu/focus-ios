@@ -39,6 +39,9 @@ struct TasksListView: View {
         .sheet(isPresented: $viewModel.showingAddTask) {
             AddTaskSheet(viewModel: viewModel)
         }
+        .sheet(item: $viewModel.selectedTaskForEdit) { task in
+            EditTaskSheet(task: task, viewModel: viewModel)
+        }
         .alert("Error", isPresented: .constant(viewModel.errorMessage != nil)) {
             Button("OK") {
                 viewModel.errorMessage = nil
@@ -77,6 +80,23 @@ struct TasksListView: View {
         List {
             ForEach(viewModel.tasks) { task in
                 TaskRow(task: task, viewModel: viewModel)
+                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                        Button(role: .destructive) {
+                            Task {
+                                await viewModel.deleteTask(task)
+                            }
+                        } label: {
+                            Label("Delete", systemImage: "trash")
+                        }
+                    }
+                    .swipeActions(edge: .leading) {
+                        Button {
+                            viewModel.selectedTaskForEdit = task
+                        } label: {
+                            Label("Edit", systemImage: "pencil")
+                        }
+                        .tint(.blue)
+                    }
             }
         }
         .listStyle(.plain)
@@ -148,6 +168,54 @@ struct AddTaskSheet: View {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("Cancel") {
                         viewModel.showingAddTask = false
+                    }
+                }
+            }
+            .onAppear {
+                isFocused = true
+            }
+        }
+    }
+}
+
+struct EditTaskSheet: View {
+    let task: FocusTask
+    @ObservedObject var viewModel: TaskListViewModel
+    @State private var taskTitle: String
+    @FocusState private var isFocused: Bool
+
+    init(task: FocusTask, viewModel: TaskListViewModel) {
+        self.task = task
+        self.viewModel = viewModel
+        _taskTitle = State(initialValue: task.title)
+    }
+
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 20) {
+                TextField("Task title", text: $taskTitle)
+                    .textFieldStyle(.roundedBorder)
+                    .focused($isFocused)
+                    .padding()
+
+                Button("Save Changes") {
+                    Task {
+                        await viewModel.updateTask(task, newTitle: taskTitle)
+                        viewModel.selectedTaskForEdit = nil
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(taskTitle.trimmingCharacters(in: .whitespaces).isEmpty)
+
+                Spacer()
+            }
+            .padding()
+            .navigationTitle("Edit Task")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") {
+                        viewModel.selectedTaskForEdit = nil
                     }
                 }
             }

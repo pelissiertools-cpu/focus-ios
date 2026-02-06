@@ -9,6 +9,7 @@ import SwiftUI
 
 struct MainTabView: View {
     @EnvironmentObject var authService: AuthService
+    @StateObject private var focusViewModel = FocusTabViewModel(authService: AuthService())
 
     var body: some View {
         TabView {
@@ -16,11 +17,13 @@ struct MainTabView: View {
                 .tabItem {
                     Label("Library", systemImage: "books.vertical")
                 }
+                .environmentObject(focusViewModel)
 
             FocusTabView()
                 .tabItem {
                     Label("Focus", systemImage: "target")
                 }
+                .environmentObject(focusViewModel)
         }
     }
 }

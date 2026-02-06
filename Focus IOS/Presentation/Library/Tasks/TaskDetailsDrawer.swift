@@ -10,7 +10,9 @@ import SwiftUI
 struct TaskDetailsDrawer: View {
     let task: FocusTask
     @ObservedObject var viewModel: TaskListViewModel
+    @EnvironmentObject var focusViewModel: FocusTabViewModel
     @State private var taskTitle: String
+    @State private var showingCommitmentSheet = false
     @FocusState private var isFocused: Bool
     @Environment(\.dismiss) private var dismiss
 
@@ -41,9 +43,9 @@ struct TaskDetailsDrawer: View {
 
                 // Actions SwiftUI.Section
                 SwiftUI.Section {
-                    // Commit to Focus (Placeholder)
+                    // Commit to Focus
                     Button {
-                        // TODO: Implement commit to Focus
+                        showingCommitmentSheet = true
                     } label: {
                         Label("Commit to Focus", systemImage: "arrow.right.circle")
                     }
@@ -71,6 +73,9 @@ struct TaskDetailsDrawer: View {
             }
             .onAppear {
                 isFocused = true
+            }
+            .sheet(isPresented: $showingCommitmentSheet) {
+                CommitmentSelectionSheet(task: task, focusViewModel: focusViewModel)
             }
         }
     }

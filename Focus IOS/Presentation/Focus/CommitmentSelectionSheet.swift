@@ -15,6 +15,7 @@ struct CommitmentSelectionSheet: View {
     @State private var selectedTimeframe: Timeframe = .daily
     @State private var selectedSection: Section = .focus
     @State private var selectedDate: Date = Date()
+    @State private var currentTaskCount = 0
     @State private var showError = false
     @State private var errorMessage = ""
 
@@ -45,12 +46,11 @@ struct CommitmentSelectionSheet: View {
 
                     // Show task limits
                     if let maxTasks = selectedSection.maxTasks(for: selectedTimeframe) {
-                        let currentCount = focusViewModel.taskCount(for: selectedSection, timeframe: selectedTimeframe, date: selectedDate)
                         HStack {
                             Text("Task Limit:")
                             Spacer()
-                            Text("\(currentCount)/\(maxTasks)")
-                                .foregroundColor(currentCount >= maxTasks ? .red : .secondary)
+                            Text("\(currentTaskCount)/\(maxTasks)")
+                                .foregroundColor(currentTaskCount >= maxTasks ? .red : .secondary)
                         }
                         .font(.caption)
                     }
@@ -92,6 +92,18 @@ struct CommitmentSelectionSheet: View {
             } message: {
                 Text(errorMessage)
             }
+            .onAppear {
+                updateTaskCount()
+            }
+            .onChange(of: selectedTimeframe) { _ in
+                updateTaskCount()
+            }
+            .onChange(of: selectedSection) { _ in
+                updateTaskCount()
+            }
+            .onChange(of: selectedDate) { _ in
+                updateTaskCount()
+            }
         }
     }
 
@@ -126,5 +138,13 @@ struct CommitmentSelectionSheet: View {
             errorMessage = error.localizedDescription
             showError = true
         }
+    }
+
+    private func updateTaskCount() {
+        currentTaskCount = focusViewModel.taskCount(
+            for: selectedSection,
+            timeframe: selectedTimeframe,
+            date: selectedDate
+        )
     }
 }

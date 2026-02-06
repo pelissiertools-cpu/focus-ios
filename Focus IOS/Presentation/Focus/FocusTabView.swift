@@ -104,7 +104,14 @@ struct SectionView: View {
     @ObservedObject var viewModel: FocusTabViewModel
 
     var sectionCommitments: [Commitment] {
-        viewModel.commitments.filter { $0.section == section }
+        viewModel.commitments.filter { commitment in
+            commitment.section == section &&
+            viewModel.isSameTimeframe(
+                commitment.commitmentDate,
+                timeframe: viewModel.selectedTimeframe,
+                selectedDate: viewModel.selectedDate
+            )
+        }
     }
 
     var body: some View {

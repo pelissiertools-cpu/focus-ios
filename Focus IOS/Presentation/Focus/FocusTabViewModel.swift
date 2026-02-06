@@ -75,7 +75,7 @@ class FocusTabViewModel: ObservableObject {
     }
 
     /// Check if commitment date matches selected timeframe and date
-    private func isSameTimeframe(_ commitmentDate: Date, timeframe: Timeframe, selectedDate: Date) -> Bool {
+    func isSameTimeframe(_ commitmentDate: Date, timeframe: Timeframe, selectedDate: Date) -> Bool {
         var calendar = Calendar.current
 
         switch timeframe {

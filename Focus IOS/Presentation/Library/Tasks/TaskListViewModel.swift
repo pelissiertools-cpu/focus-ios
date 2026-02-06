@@ -20,7 +20,7 @@ class TaskListViewModel: ObservableObject {
     private let repository: TaskRepository
     private let authService: AuthService
 
-    nonisolated init(repository: TaskRepository = TaskRepository(), authService: AuthService) {
+    init(repository: TaskRepository = TaskRepository(), authService: AuthService) {
         self.repository = repository
         self.authService = authService
     }

@@ -11,7 +11,7 @@ import Supabase
 /// Singleton manager for Supabase client
 /// Provides a single shared instance throughout the app
 class SupabaseClientManager {
-    nonisolated(unsafe) static let shared = SupabaseClientManager()
+    static let shared = SupabaseClientManager()
 
     let client: SupabaseClient
 

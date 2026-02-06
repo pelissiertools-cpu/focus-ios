@@ -45,7 +45,7 @@ struct CommitmentSelectionSheet: View {
 
                     // Show task limits
                     if let maxTasks = selectedSection.maxTasks(for: selectedTimeframe) {
-                        let currentCount = focusViewModel.taskCount(for: selectedSection)
+                        let currentCount = focusViewModel.taskCount(for: selectedSection, timeframe: selectedTimeframe, date: selectedDate)
                         HStack {
                             Text("Task Limit:")
                             Spacer()
@@ -96,7 +96,7 @@ struct CommitmentSelectionSheet: View {
     }
 
     private func canCommit() -> Bool {
-        focusViewModel.canAddTask(to: selectedSection)
+        focusViewModel.canAddTask(to: selectedSection, timeframe: selectedTimeframe, date: selectedDate)
     }
 
     private func commitTask() async {

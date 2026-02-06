@@ -76,15 +76,17 @@ class FocusTabViewModel: ObservableObject {
 
     /// Check if commitment date matches selected timeframe and date
     private func isSameTimeframe(_ commitmentDate: Date, timeframe: Timeframe, selectedDate: Date) -> Bool {
-        let calendar = Calendar.current
+        var calendar = Calendar.current
+
         switch timeframe {
         case .daily:
             return calendar.isDate(commitmentDate, inSameDayAs: selectedDate)
         case .weekly:
+            calendar.firstWeekday = 1 // Sunday
             let commitmentWeek = calendar.component(.weekOfYear, from: commitmentDate)
             let selectedWeek = calendar.component(.weekOfYear, from: selectedDate)
-            let commitmentYear = calendar.component(.year, from: commitmentDate)
-            let selectedYear = calendar.component(.year, from: selectedDate)
+            let commitmentYear = calendar.component(.yearForWeekOfYear, from: commitmentDate)
+            let selectedYear = calendar.component(.yearForWeekOfYear, from: selectedDate)
             return commitmentWeek == selectedWeek && commitmentYear == selectedYear
         case .monthly:
             let commitmentMonth = calendar.component(.month, from: commitmentDate)
@@ -100,23 +102,29 @@ class FocusTabViewModel: ObservableObject {
     }
 
     /// Check if can add more tasks to section
-    func canAddTask(to section: Section) -> Bool {
+    func canAddTask(to section: Section, timeframe: Timeframe? = nil, date: Date? = nil) -> Bool {
+        let checkTimeframe = timeframe ?? selectedTimeframe
+        let checkDate = date ?? selectedDate
+
         let currentCount = commitments.filter {
             $0.section == section &&
-            $0.timeframe == selectedTimeframe &&
-            isSameTimeframe($0.commitmentDate, timeframe: selectedTimeframe, selectedDate: selectedDate)
+            $0.timeframe == checkTimeframe &&
+            isSameTimeframe($0.commitmentDate, timeframe: checkTimeframe, selectedDate: checkDate)
         }.count
 
-        let maxTasks = section.maxTasks(for: selectedTimeframe)
+        let maxTasks = section.maxTasks(for: checkTimeframe)
         return maxTasks == nil || currentCount < maxTasks!
     }
 
     /// Get current task count for section
-    func taskCount(for section: Section) -> Int {
-        commitments.filter {
+    func taskCount(for section: Section, timeframe: Timeframe? = nil, date: Date? = nil) -> Int {
+        let checkTimeframe = timeframe ?? selectedTimeframe
+        let checkDate = date ?? selectedDate
+
+        return commitments.filter {
             $0.section == section &&
-            $0.timeframe == selectedTimeframe &&
-            isSameTimeframe($0.commitmentDate, timeframe: selectedTimeframe, selectedDate: selectedDate)
+            $0.timeframe == checkTimeframe &&
+            isSameTimeframe($0.commitmentDate, timeframe: checkTimeframe, selectedDate: checkDate)
         }.count
     }
 

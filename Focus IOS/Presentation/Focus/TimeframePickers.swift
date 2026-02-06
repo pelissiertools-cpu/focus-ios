@@ -11,10 +11,16 @@ import SwiftUI
 struct WeekPicker: View {
     @Binding var selectedDate: Date
 
+    private var calendar: Calendar {
+        var cal = Calendar.current
+        cal.firstWeekday = 1 // Sunday
+        return cal
+    }
+
     var body: some View {
         HStack {
             Button {
-                selectedDate = Calendar.current.date(byAdding: .weekOfYear, value: -1, to: selectedDate) ?? selectedDate
+                selectedDate = calendar.date(byAdding: .weekOfYear, value: -1, to: selectedDate) ?? selectedDate
             } label: {
                 Image(systemName: "chevron.left")
             }
@@ -27,7 +33,7 @@ struct WeekPicker: View {
             Spacer()
 
             Button {
-                selectedDate = Calendar.current.date(byAdding: .weekOfYear, value: 1, to: selectedDate) ?? selectedDate
+                selectedDate = calendar.date(byAdding: .weekOfYear, value: 1, to: selectedDate) ?? selectedDate
             } label: {
                 Image(systemName: "chevron.right")
             }
@@ -38,9 +44,10 @@ struct WeekPicker: View {
     }
 
     private var weekText: String {
-        let calendar = Calendar.current
+        var calendar = Calendar.current
+        calendar.firstWeekday = 1 // Sunday
+
         let weekOfYear = calendar.component(.weekOfYear, from: selectedDate)
-        let year = calendar.component(.year, from: selectedDate)
 
         // Get start and end of week
         guard let weekStart = calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: selectedDate)),
@@ -50,7 +57,7 @@ struct WeekPicker: View {
 
         let formatter = DateFormatter()
         formatter.dateFormat = "MMM d"
-        return "Week \(weekOfYear), \(year): \(formatter.string(from: weekStart)) - \(formatter.string(from: weekEnd))"
+        return "Week \(weekOfYear): \(formatter.string(from: weekStart)) - \(formatter.string(from: weekEnd))"
     }
 }
 

@@ -370,26 +370,63 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
         }
     }
 
-    /// Toggle subtask completion
+    /// Toggle subtask completion - auto-completes parent when all done
     func toggleSubtaskCompletion(_ subtask: FocusTask, parentId: UUID) async {
-        let newIsCompleted = !subtask.isCompleted
-        let newCompletedDate: Date? = newIsCompleted ? Date() : nil
-
         do {
             if subtask.isCompleted {
                 try await taskRepository.uncompleteTask(id: subtask.id)
             } else {
                 try await taskRepository.completeTask(id: subtask.id)
             }
-            // Update local state
+
+            // Update local subtask state
             if var subtasks = subtasksMap[parentId],
                let index = subtasks.firstIndex(where: { $0.id == subtask.id }) {
-                subtasks[index].isCompleted = newIsCompleted
-                subtasks[index].completedDate = newCompletedDate
+                subtasks[index].isCompleted.toggle()
+                if subtasks[index].isCompleted {
+                    subtasks[index].completedDate = Date()
+                } else {
+                    subtasks[index].completedDate = nil
+                }
                 subtasksMap[parentId] = subtasks
+
+                // Notify other views about subtask change
+                postTaskCompletionNotification(
+                    taskId: subtask.id,
+                    isCompleted: subtasks[index].isCompleted,
+                    completedDate: subtasks[index].completedDate
+                )
+
+                // Check if ALL subtasks are now complete - auto-complete parent
+                let allComplete = subtasks.allSatisfy { $0.isCompleted }
+                if allComplete && !subtasks.isEmpty {
+                    if var parentTask = tasksMap[parentId], !parentTask.isCompleted {
+                        parentTask.previousCompletionState = subtasks.map { $0.isCompleted }
+                        try await taskRepository.completeTask(id: parentId)
+                        parentTask.isCompleted = true
+                        parentTask.completedDate = Date()
+                        tasksMap[parentId] = parentTask
+                        postTaskCompletionNotification(
+                            taskId: parentId,
+                            isCompleted: true,
+                            completedDate: parentTask.completedDate
+                        )
+                    }
+                } else if !allComplete {
+                    // If not all complete and parent is completed, uncomplete parent
+                    if var parentTask = tasksMap[parentId], parentTask.isCompleted {
+                        try await taskRepository.uncompleteTask(id: parentId)
+                        parentTask.isCompleted = false
+                        parentTask.completedDate = nil
+                        tasksMap[parentId] = parentTask
+                        postTaskCompletionNotification(
+                            taskId: parentId,
+                            isCompleted: false,
+                            completedDate: nil
+                        )
+                    }
+                }
             }
-            // Notify other views
-            postTaskCompletionNotification(taskId: subtask.id, isCompleted: newIsCompleted, completedDate: newCompletedDate)
         } catch {
             errorMessage = error.localizedDescription
         }

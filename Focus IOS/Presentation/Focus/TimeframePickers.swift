@@ -24,6 +24,7 @@ struct WeekPicker: View {
             } label: {
                 Image(systemName: "chevron.left")
             }
+            .buttonStyle(.borderless)
 
             Spacer()
 
@@ -37,6 +38,7 @@ struct WeekPicker: View {
             } label: {
                 Image(systemName: "chevron.right")
             }
+            .buttonStyle(.borderless)
         }
         .padding()
         .background(Color(.secondarySystemBackground))
@@ -72,6 +74,7 @@ struct MonthPicker: View {
             } label: {
                 Image(systemName: "chevron.left")
             }
+            .buttonStyle(.borderless)
 
             Spacer()
 
@@ -85,6 +88,7 @@ struct MonthPicker: View {
             } label: {
                 Image(systemName: "chevron.right")
             }
+            .buttonStyle(.borderless)
         }
         .padding()
         .background(Color(.secondarySystemBackground))
@@ -109,6 +113,7 @@ struct YearPicker: View {
             } label: {
                 Image(systemName: "chevron.left")
             }
+            .buttonStyle(.borderless)
 
             Spacer()
 
@@ -122,6 +127,7 @@ struct YearPicker: View {
             } label: {
                 Image(systemName: "chevron.right")
             }
+            .buttonStyle(.borderless)
         }
         .padding()
         .background(Color(.secondarySystemBackground))

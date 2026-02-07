@@ -27,16 +27,6 @@ struct CommitmentSelectionSheet: View {
                         .font(.headline)
                 }
 
-                SwiftUI.Section("Timeframe") {
-                    Picker("Timeframe", selection: $selectedTimeframe) {
-                        Text("Daily").tag(Timeframe.daily)
-                        Text("Weekly").tag(Timeframe.weekly)
-                        Text("Monthly").tag(Timeframe.monthly)
-                        Text("Yearly").tag(Timeframe.yearly)
-                    }
-                    .pickerStyle(.segmented)
-                }
-
                 SwiftUI.Section("Section") {
                     Picker("Section", selection: $selectedSection) {
                         Text("Focus").tag(Section.focus)
@@ -56,17 +46,11 @@ struct CommitmentSelectionSheet: View {
                     }
                 }
 
-                SwiftUI.Section("Commitment Date") {
-                    switch selectedTimeframe {
-                    case .daily:
-                        DatePicker("Date", selection: $selectedDate, displayedComponents: .date)
-                    case .weekly:
-                        WeekPicker(selectedDate: $selectedDate)
-                    case .monthly:
-                        MonthPicker(selectedDate: $selectedDate)
-                    case .yearly:
-                        YearPicker(selectedDate: $selectedDate)
-                    }
+                SwiftUI.Section("Select Date") {
+                    UnifiedCalendarPicker(
+                        selectedDate: $selectedDate,
+                        selectedTimeframe: $selectedTimeframe
+                    )
                 }
 
                 SwiftUI.Section {

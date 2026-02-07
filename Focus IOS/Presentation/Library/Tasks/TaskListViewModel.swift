@@ -10,7 +10,7 @@ import Combine
 import Auth
 
 @MainActor
-class TaskListViewModel: ObservableObject {
+class TaskListViewModel: ObservableObject, TaskEditingViewModel {
     @Published var tasks: [FocusTask] = []
     @Published var isLoading = false
     @Published var errorMessage: String?
@@ -105,6 +105,19 @@ class TaskListViewModel: ObservableObject {
     func getSubtasks(for taskId: UUID) -> [FocusTask] {
         let subtasks = subtasksMap[taskId] ?? []
         return subtasks.sorted { !$0.isCompleted && $1.isCompleted }
+    }
+
+    /// Find a task by ID (searches both tasks and subtasks)
+    func findTask(byId id: UUID) -> FocusTask? {
+        if let task = tasks.first(where: { $0.id == id }) {
+            return task
+        }
+        for subtasks in subtasksMap.values {
+            if let subtask = subtasks.first(where: { $0.id == id }) {
+                return subtask
+            }
+        }
+        return nil
     }
 
     /// Check if task has subtasks loaded

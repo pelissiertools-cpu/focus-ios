@@ -94,6 +94,11 @@ struct FocusTabView: View {
                     Text(error)
                 }
             }
+            .sheet(item: $viewModel.selectedTaskForDetails) { task in
+                let commitment = viewModel.commitments.first { $0.taskId == task.id }
+                TaskDetailsDrawer(task: task, viewModel: viewModel, commitment: commitment)
+                    .environmentObject(viewModel)
+            }
         }
     }
 }
@@ -195,6 +200,9 @@ struct CommitmentRow: View {
                         }
                     }
                 }
+                .onLongPressGesture {
+                    viewModel.selectedTaskForDetails = task
+                }
 
                 // Completion button (right side for thumb access)
                 Button {
@@ -211,15 +219,6 @@ struct CommitmentRow: View {
             .padding(.vertical, 8)
             .padding(.horizontal)
             .background(Color(.systemBackground))
-            .contextMenu {
-                Button(role: .destructive) {
-                    Task {
-                        await viewModel.removeCommitment(commitment)
-                    }
-                } label: {
-                    Label("Remove from Focus", systemImage: "minus.circle")
-                }
-            }
 
             // Subtasks (shown when expanded)
             if isExpanded && hasSubtasks {
@@ -262,6 +261,10 @@ struct FocusSubtaskRow: View {
             .buttonStyle(.plain)
         }
         .padding(.vertical, 6)
+        .contentShape(Rectangle())
+        .onLongPressGesture {
+            viewModel.selectedTaskForDetails = subtask
+        }
     }
 }
 

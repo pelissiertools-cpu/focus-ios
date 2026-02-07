@@ -7,9 +7,10 @@
 
 import Foundation
 import Combine
+import Auth
 
 @MainActor
-class FocusTabViewModel: ObservableObject {
+class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
     @Published var commitments: [Commitment] = []
     @Published var tasksMap: [UUID: FocusTask] = [:]  // taskId -> task
     @Published var subtasksMap: [UUID: [FocusTask]] = [:]  // parentTaskId -> subtasks
@@ -18,6 +19,7 @@ class FocusTabViewModel: ObservableObject {
     @Published var selectedDate: Date = Date()
     @Published var isLoading = false
     @Published var errorMessage: String?
+    @Published var selectedTaskForDetails: FocusTask?
 
     private let commitmentRepository: CommitmentRepository
     private let taskRepository: TaskRepository
@@ -144,6 +146,118 @@ class FocusTabViewModel: ObservableObject {
     func getSubtasks(for taskId: UUID) -> [FocusTask] {
         let subtasks = subtasksMap[taskId] ?? []
         return subtasks.sorted { !$0.isCompleted && $1.isCompleted }
+    }
+
+    /// Find a task by ID (searches both tasksMap and subtasksMap)
+    func findTask(byId id: UUID) -> FocusTask? {
+        if let task = tasksMap[id] {
+            return task
+        }
+        for subtasks in subtasksMap.values {
+            if let subtask = subtasks.first(where: { $0.id == id }) {
+                return subtask
+            }
+        }
+        return nil
+    }
+
+    /// Update a task's title
+    func updateTask(_ task: FocusTask, newTitle: String) async {
+        guard !newTitle.trimmingCharacters(in: .whitespaces).isEmpty else {
+            errorMessage = "Task title cannot be empty"
+            return
+        }
+
+        do {
+            var updatedTask = task
+            updatedTask.title = newTitle
+            updatedTask.modifiedDate = Date()
+
+            try await taskRepository.updateTask(updatedTask)
+
+            // Update local state - check both tasksMap and subtasksMap
+            if tasksMap[task.id] != nil {
+                tasksMap[task.id]?.title = newTitle
+                tasksMap[task.id]?.modifiedDate = Date()
+            }
+
+            // Also check subtasks if this is a subtask
+            if let parentId = task.parentTaskId,
+               var subtasks = subtasksMap[parentId],
+               let index = subtasks.firstIndex(where: { $0.id == task.id }) {
+                subtasks[index].title = newTitle
+                subtasks[index].modifiedDate = Date()
+                subtasksMap[parentId] = subtasks
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    /// Delete a task (removes from Focus and deletes from database)
+    func deleteTask(_ task: FocusTask) async {
+        do {
+            // Remove any commitments for this task
+            let taskCommitments = commitments.filter { $0.taskId == task.id }
+            for commitment in taskCommitments {
+                try await commitmentRepository.deleteCommitment(id: commitment.id)
+                commitments.removeAll { $0.id == commitment.id }
+            }
+
+            // Delete the task from database
+            try await taskRepository.deleteTask(id: task.id)
+
+            // Remove from local state
+            tasksMap.removeValue(forKey: task.id)
+            subtasksMap.removeValue(forKey: task.id)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    /// Delete a subtask
+    func deleteSubtask(_ subtask: FocusTask, parentId: UUID) async {
+        do {
+            try await taskRepository.deleteTask(id: subtask.id)
+
+            // Update local state
+            if var subtasks = subtasksMap[parentId] {
+                subtasks.removeAll { $0.id == subtask.id }
+                subtasksMap[parentId] = subtasks
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    /// Create a new subtask
+    func createSubtask(title: String, parentId: UUID) async {
+        guard let userId = authService.currentUser?.id else {
+            errorMessage = "No authenticated user"
+            return
+        }
+
+        guard !title.trimmingCharacters(in: .whitespaces).isEmpty else {
+            return
+        }
+
+        do {
+            let newSubtask = try await taskRepository.createSubtask(
+                title: title,
+                parentTaskId: parentId,
+                userId: userId
+            )
+
+            // Update local state
+            if var subtasks = subtasksMap[parentId] {
+                subtasks.append(newSubtask)
+                subtasksMap[parentId] = subtasks
+            } else {
+                subtasksMap[parentId] = [newSubtask]
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
     }
 
     /// Check if commitment date matches selected timeframe and date

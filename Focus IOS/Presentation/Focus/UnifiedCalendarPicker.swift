@@ -664,8 +664,7 @@ struct YearlyCalendarView: View {
     ]
 
     private var years: [Int] {
-        let currentYear = calendar.component(.year, from: Date())
-        return Array((currentYear - 5)...(currentYear + 20))
+        Array(2026...2032)
     }
 
     var body: some View {
@@ -715,7 +714,7 @@ struct YearButton: View {
         Button {
             toggleSelection()
         } label: {
-            Text("\(year)")
+            Text(String(year))
                 .font(.title3)
                 .fontWeight(.medium)
                 .foregroundColor(isSelected ? .white : .primary)

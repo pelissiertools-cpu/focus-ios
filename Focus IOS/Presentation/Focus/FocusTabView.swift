@@ -137,9 +137,11 @@ struct SectionView: View {
                     .foregroundColor(.secondary)
                     .padding()
             } else {
-                ForEach(sectionCommitments) { commitment in
-                    if let task = viewModel.tasksMap[commitment.taskId] {
-                        CommitmentRow(commitment: commitment, task: task, viewModel: viewModel)
+                VStack(spacing: 0) {
+                    ForEach(sectionCommitments) { commitment in
+                        if let task = viewModel.tasksMap[commitment.taskId] {
+                            CommitmentRow(commitment: commitment, task: task, viewModel: viewModel)
+                        }
                     }
                 }
             }
@@ -154,7 +156,6 @@ struct CommitmentRow: View {
     let commitment: Commitment
     let task: FocusTask
     @ObservedObject var viewModel: FocusTabViewModel
-    @State private var isExpanded = false
 
     private var subtasks: [FocusTask] {
         viewModel.getSubtasks(for: task.id)
@@ -164,94 +165,103 @@ struct CommitmentRow: View {
         !subtasks.isEmpty
     }
 
+    private var isExpanded: Bool {
+        viewModel.isExpanded(task.id)
+    }
+
     var body: some View {
         VStack(spacing: 0) {
-            // Main task row
-            HStack {
+            // Main task row - matching ExpandableTaskRow style
+            HStack(spacing: 12) {
                 VStack(alignment: .leading, spacing: 4) {
-                    HStack(spacing: 6) {
-                        Text(task.title)
-                            .font(.body)
-                            .strikethrough(task.isCompleted)
-                            .foregroundColor(task.isCompleted ? .secondary : .primary)
+                    Text(task.title)
+                        .strikethrough(task.isCompleted)
+                        .foregroundColor(task.isCompleted ? .secondary : .primary)
 
-                        // Show subtask count indicator
-                        if hasSubtasks {
-                            let completedCount = subtasks.filter { $0.isCompleted }.count
-                            Text("(\(completedCount)/\(subtasks.count))")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
+                    // Subtask count indicator
+                    if hasSubtasks {
+                        let completedCount = subtasks.filter { $0.isCompleted }.count
+                        Text("\(completedCount)/\(subtasks.count) subtasks")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
                     }
-
-                    Text(commitment.timeframe.displayName)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .contentShape(Rectangle())
                 .onTapGesture {
                     if hasSubtasks {
                         withAnimation(.easeInOut(duration: 0.2)) {
-                            isExpanded.toggle()
+                            viewModel.toggleExpanded(task.id)
                         }
                     }
                 }
 
-                // Expand/collapse indicator for tasks with subtasks
-                if hasSubtasks {
-                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                // Completion button (right side for thumb access)
+                Button {
+                    Task {
+                        await viewModel.toggleTaskCompletion(task)
+                    }
+                } label: {
+                    Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
+                        .font(.title3)
+                        .foregroundColor(task.isCompleted ? .green : .gray)
                 }
-
-                // Remove button
+                .buttonStyle(.plain)
+            }
+            .padding(.vertical, 8)
+            .padding(.horizontal)
+            .background(Color(.systemBackground))
+            .contextMenu {
                 Button(role: .destructive) {
                     Task {
                         await viewModel.removeCommitment(commitment)
                     }
                 } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .foregroundColor(.red)
+                    Label("Remove from Focus", systemImage: "minus.circle")
                 }
-                .buttonStyle(.plain)
             }
-            .padding()
-            .background(Color(.systemBackground))
 
             // Subtasks (shown when expanded)
             if isExpanded && hasSubtasks {
                 VStack(spacing: 0) {
                     ForEach(subtasks) { subtask in
-                        SubtaskCommitmentRow(subtask: subtask)
+                        FocusSubtaskRow(subtask: subtask, parentId: task.id, viewModel: viewModel)
                     }
                 }
-                .padding(.leading, 24)
+                .padding(.leading, 32)
                 .background(Color(.systemBackground))
             }
         }
-        .cornerRadius(8)
     }
 }
 
-struct SubtaskCommitmentRow: View {
+struct FocusSubtaskRow: View {
     let subtask: FocusTask
+    let parentId: UUID
+    @ObservedObject var viewModel: FocusTabViewModel
 
     var body: some View {
-        HStack {
-            Image(systemName: subtask.isCompleted ? "checkmark.circle.fill" : "circle")
-                .font(.subheadline)
-                .foregroundColor(subtask.isCompleted ? .green : .gray)
-
+        HStack(spacing: 12) {
             Text(subtask.title)
                 .font(.subheadline)
                 .strikethrough(subtask.isCompleted)
                 .foregroundColor(subtask.isCompleted ? .secondary : .primary)
 
             Spacer()
+
+            // Checkbox on right for thumb access
+            Button {
+                Task {
+                    await viewModel.toggleSubtaskCompletion(subtask, parentId: parentId)
+                }
+            } label: {
+                Image(systemName: subtask.isCompleted ? "checkmark.circle.fill" : "circle")
+                    .font(.subheadline)
+                    .foregroundColor(subtask.isCompleted ? .green : .gray)
+            }
+            .buttonStyle(.plain)
         }
         .padding(.vertical, 6)
-        .padding(.horizontal)
     }
 }
 

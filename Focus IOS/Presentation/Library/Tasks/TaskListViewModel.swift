@@ -24,10 +24,62 @@ class TaskListViewModel: ObservableObject {
 
     private let repository: TaskRepository
     private let authService: AuthService
+    private var cancellables = Set<AnyCancellable>()
 
     init(repository: TaskRepository = TaskRepository(), authService: AuthService) {
         self.repository = repository
         self.authService = authService
+        setupNotificationObserver()
+    }
+
+    private func setupNotificationObserver() {
+        NotificationCenter.default.publisher(for: .taskCompletionChanged)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] notification in
+                self?.handleTaskCompletionNotification(notification)
+            }
+            .store(in: &cancellables)
+    }
+
+    private func handleTaskCompletionNotification(_ notification: Notification) {
+        guard let userInfo = notification.userInfo,
+              let taskId = userInfo[TaskNotificationKeys.taskId] as? UUID,
+              let isCompleted = userInfo[TaskNotificationKeys.isCompleted] as? Bool,
+              let source = userInfo[TaskNotificationKeys.source] as? String,
+              source == TaskNotificationSource.focus.rawValue else {
+            return
+        }
+
+        let completedDate = userInfo[TaskNotificationKeys.completedDate] as? Date
+
+        // Update tasks array if this task exists
+        if let index = tasks.firstIndex(where: { $0.id == taskId }) {
+            tasks[index].isCompleted = isCompleted
+            tasks[index].completedDate = completedDate
+        }
+
+        // Update subtasksMap if this task is a subtask
+        for (parentId, var subtasks) in subtasksMap {
+            if let index = subtasks.firstIndex(where: { $0.id == taskId }) {
+                subtasks[index].isCompleted = isCompleted
+                subtasks[index].completedDate = completedDate
+                subtasksMap[parentId] = subtasks
+                break
+            }
+        }
+    }
+
+    private func postTaskCompletionNotification(taskId: UUID, isCompleted: Bool, completedDate: Date?) {
+        NotificationCenter.default.post(
+            name: .taskCompletionChanged,
+            object: nil,
+            userInfo: [
+                TaskNotificationKeys.taskId: taskId,
+                TaskNotificationKeys.isCompleted: isCompleted,
+                TaskNotificationKeys.completedDate: completedDate as Any,
+                TaskNotificationKeys.source: TaskNotificationSource.library.rawValue
+            ]
+        )
     }
 
     // MARK: - Subtask Expansion
@@ -168,6 +220,12 @@ class TaskListViewModel: ObservableObject {
                 } else {
                     tasks[index].completedDate = nil
                 }
+                // Notify other views
+                postTaskCompletionNotification(
+                    taskId: task.id,
+                    isCompleted: tasks[index].isCompleted,
+                    completedDate: tasks[index].completedDate
+                )
             }
         } catch {
             errorMessage = error.localizedDescription
@@ -194,6 +252,13 @@ class TaskListViewModel: ObservableObject {
                 }
                 subtasksMap[parentId] = subtasks
 
+                // Notify other views about subtask change
+                postTaskCompletionNotification(
+                    taskId: subtask.id,
+                    isCompleted: subtasks[index].isCompleted,
+                    completedDate: subtasks[index].completedDate
+                )
+
                 // Check if ALL subtasks are now complete - auto-complete parent
                 let allComplete = subtasks.allSatisfy { $0.isCompleted }
                 if allComplete && !subtasks.isEmpty {
@@ -204,6 +269,12 @@ class TaskListViewModel: ObservableObject {
                         try await repository.completeTask(id: parentId)
                         tasks[parentIndex].isCompleted = true
                         tasks[parentIndex].completedDate = Date()
+                        // Notify other views about parent auto-complete
+                        postTaskCompletionNotification(
+                            taskId: parentId,
+                            isCompleted: true,
+                            completedDate: tasks[parentIndex].completedDate
+                        )
                     }
                 } else if !allComplete {
                     // If not all complete and parent is completed, uncomplete parent
@@ -213,6 +284,12 @@ class TaskListViewModel: ObservableObject {
                         try await repository.uncompleteTask(id: parentId)
                         tasks[parentIndex].isCompleted = false
                         tasks[parentIndex].completedDate = nil
+                        // Notify other views about parent uncomplete
+                        postTaskCompletionNotification(
+                            taskId: parentId,
+                            isCompleted: false,
+                            completedDate: nil
+                        )
                     }
                 }
             }

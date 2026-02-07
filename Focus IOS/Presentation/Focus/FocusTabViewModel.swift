@@ -12,6 +12,7 @@ import Combine
 class FocusTabViewModel: ObservableObject {
     @Published var commitments: [Commitment] = []
     @Published var tasksMap: [UUID: FocusTask] = [:]  // taskId -> task
+    @Published var subtasksMap: [UUID: [FocusTask]] = [:]  // parentTaskId -> subtasks
     @Published var selectedTimeframe: Timeframe = .daily
     @Published var selectedDate: Date = Date()
     @Published var isLoading = false
@@ -62,16 +63,33 @@ class FocusTabViewModel: ObservableObject {
     /// Fetch task details for all commitments
     private func fetchTasksForCommitments() async {
         let taskIds = Set(commitments.map { $0.taskId })
-        for taskId in taskIds {
-            do {
-                let tasks = try await taskRepository.fetchTasks()
-                if let task = tasks.first(where: { $0.id == taskId }) {
+
+        do {
+            // Fetch all tasks once instead of per-commitment
+            let allTasks = try await taskRepository.fetchTasks()
+
+            for taskId in taskIds {
+                if let task = allTasks.first(where: { $0.id == taskId }) {
                     tasksMap[taskId] = task
+
+                    // Fetch subtasks for parent tasks (tasks without parentTaskId)
+                    if task.parentTaskId == nil {
+                        let subtasks = try await taskRepository.fetchSubtasks(parentId: taskId)
+                        if !subtasks.isEmpty {
+                            subtasksMap[taskId] = subtasks
+                        }
+                    }
                 }
-            } catch {
-                print("Error fetching task \(taskId): \(error)")
             }
+        } catch {
+            print("Error fetching tasks: \(error)")
         }
+    }
+
+    /// Get subtasks for a task (sorted: uncompleted first)
+    func getSubtasks(for taskId: UUID) -> [FocusTask] {
+        let subtasks = subtasksMap[taskId] ?? []
+        return subtasks.sorted { !$0.isCompleted && $1.isCompleted }
     }
 
     /// Check if commitment date matches selected timeframe and date

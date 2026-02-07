@@ -154,34 +154,104 @@ struct CommitmentRow: View {
     let commitment: Commitment
     let task: FocusTask
     @ObservedObject var viewModel: FocusTabViewModel
+    @State private var isExpanded = false
+
+    private var subtasks: [FocusTask] {
+        viewModel.getSubtasks(for: task.id)
+    }
+
+    private var hasSubtasks: Bool {
+        !subtasks.isEmpty
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // Main task row
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 6) {
+                        Text(task.title)
+                            .font(.body)
+                            .strikethrough(task.isCompleted)
+                            .foregroundColor(task.isCompleted ? .secondary : .primary)
+
+                        // Show subtask count indicator
+                        if hasSubtasks {
+                            let completedCount = subtasks.filter { $0.isCompleted }.count
+                            Text("(\(completedCount)/\(subtasks.count))")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+
+                    Text(commitment.timeframe.displayName)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    if hasSubtasks {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            isExpanded.toggle()
+                        }
+                    }
+                }
+
+                // Expand/collapse indicator for tasks with subtasks
+                if hasSubtasks {
+                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+
+                // Remove button
+                Button(role: .destructive) {
+                    Task {
+                        await viewModel.removeCommitment(commitment)
+                    }
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundColor(.red)
+                }
+                .buttonStyle(.plain)
+            }
+            .padding()
+            .background(Color(.systemBackground))
+
+            // Subtasks (shown when expanded)
+            if isExpanded && hasSubtasks {
+                VStack(spacing: 0) {
+                    ForEach(subtasks) { subtask in
+                        SubtaskCommitmentRow(subtask: subtask)
+                    }
+                }
+                .padding(.leading, 24)
+                .background(Color(.systemBackground))
+            }
+        }
+        .cornerRadius(8)
+    }
+}
+
+struct SubtaskCommitmentRow: View {
+    let subtask: FocusTask
 
     var body: some View {
         HStack {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(task.title)
-                    .font(.body)
+            Image(systemName: subtask.isCompleted ? "checkmark.circle.fill" : "circle")
+                .font(.subheadline)
+                .foregroundColor(subtask.isCompleted ? .green : .gray)
 
-                Text(commitment.timeframe.displayName)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
+            Text(subtask.title)
+                .font(.subheadline)
+                .strikethrough(subtask.isCompleted)
+                .foregroundColor(subtask.isCompleted ? .secondary : .primary)
 
             Spacer()
-
-            // Remove button
-            Button(role: .destructive) {
-                Task {
-                    await viewModel.removeCommitment(commitment)
-                }
-            } label: {
-                Image(systemName: "xmark.circle.fill")
-                    .foregroundColor(.red)
-            }
-            .buttonStyle(.plain)
         }
-        .padding()
-        .background(Color(.systemBackground))
-        .cornerRadius(8)
+        .padding(.vertical, 6)
+        .padding(.horizontal)
     }
 }
 

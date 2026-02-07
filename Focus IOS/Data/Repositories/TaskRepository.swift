@@ -127,4 +127,69 @@ class TaskRepository {
             .eq("id", value: id.uuidString)
             .execute()
     }
+
+    // MARK: - Subtask Operations
+
+    /// Create a subtask under a parent task
+    func createSubtask(title: String, parentTaskId: UUID, userId: UUID) async throws -> FocusTask {
+        let existingSubtasks = try await fetchSubtasks(parentId: parentTaskId)
+        let nextSortOrder = (existingSubtasks.map { $0.sortOrder }.max() ?? -1) + 1
+
+        let subtask = FocusTask(
+            userId: userId,
+            title: title,
+            type: .task,
+            isCompleted: false,
+            sortOrder: nextSortOrder,
+            parentTaskId: parentTaskId
+        )
+
+        return try await createTask(subtask)
+    }
+
+    /// Complete all subtasks of a parent task
+    func completeSubtasks(parentId: UUID) async throws {
+        let update = TaskUpdate(
+            isCompleted: true,
+            completedDate: Date(),
+            modifiedDate: Date()
+        )
+
+        try await supabase
+            .from("tasks")
+            .update(update)
+            .eq("parent_task_id", value: parentId.uuidString)
+            .execute()
+    }
+
+    /// Uncomplete all subtasks of a parent task
+    func uncompleteSubtasks(parentId: UUID) async throws {
+        let update = TaskUpdate(
+            isCompleted: false,
+            completedDate: nil,
+            modifiedDate: Date()
+        )
+
+        try await supabase
+            .from("tasks")
+            .update(update)
+            .eq("parent_task_id", value: parentId.uuidString)
+            .execute()
+    }
+
+    /// Restore subtasks to specific completion states
+    func restoreSubtaskStates(parentId: UUID, completionStates: [Bool]) async throws {
+        let subtasks = try await fetchSubtasks(parentId: parentId)
+
+        for (index, subtask) in subtasks.enumerated() where index < completionStates.count {
+            let shouldBeCompleted = completionStates[index]
+            if subtask.isCompleted != shouldBeCompleted {
+                if shouldBeCompleted {
+                    try await completeTask(id: subtask.id)
+                } else {
+                    try await uncompleteTask(id: subtask.id)
+                }
+            }
+        }
+    }
 }

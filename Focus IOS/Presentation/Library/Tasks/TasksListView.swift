@@ -79,31 +79,63 @@ struct TasksListView: View {
     private var taskList: some View {
         List {
             ForEach(viewModel.tasks) { task in
-                TaskRow(task: task, viewModel: viewModel)
-                    .onLongPressGesture {
-                        viewModel.selectedTaskForDetails = task
+                VStack(spacing: 0) {
+                    ExpandableTaskRow(task: task, viewModel: viewModel)
+
+                    if viewModel.isExpanded(task.id) {
+                        SubtasksList(parentTask: task, viewModel: viewModel)
+                        InlineAddSubtaskRow(parentId: task.id, viewModel: viewModel)
                     }
-                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                        Button(role: .destructive) {
-                            Task {
-                                await viewModel.deleteTask(task)
-                            }
-                        } label: {
-                            Label("Delete", systemImage: "trash")
+                }
+                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                    Button(role: .destructive) {
+                        Task {
+                            await viewModel.deleteTask(task)
                         }
+                    } label: {
+                        Label("Delete", systemImage: "trash")
                     }
+                }
             }
         }
         .listStyle(.plain)
     }
 }
 
-struct TaskRow: View {
+// MARK: - Expandable Task Row
+
+struct ExpandableTaskRow: View {
     let task: FocusTask
     @ObservedObject var viewModel: TaskListViewModel
 
     var body: some View {
         HStack(spacing: 12) {
+            // Task content - tap to expand/collapse
+            VStack(alignment: .leading, spacing: 4) {
+                Text(task.title)
+                    .strikethrough(task.isCompleted)
+                    .foregroundColor(task.isCompleted ? .secondary : .primary)
+
+                // Subtask count indicator
+                if let subtasks = viewModel.subtasksMap[task.id], !subtasks.isEmpty {
+                    let completedCount = subtasks.filter { $0.isCompleted }.count
+                    Text("\(completedCount)/\(subtasks.count) subtasks")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
+            .onTapGesture {
+                Task {
+                    await viewModel.toggleExpanded(task.id)
+                }
+            }
+            .onLongPressGesture {
+                viewModel.selectedTaskForDetails = task
+            }
+
+            // Completion button (right side for thumb access)
             Button {
                 Task {
                     await viewModel.toggleCompletion(task)
@@ -114,23 +146,140 @@ struct TaskRow: View {
                     .foregroundColor(task.isCompleted ? .green : .gray)
             }
             .buttonStyle(.plain)
+        }
+        .padding(.vertical, 8)
+    }
+}
 
-            VStack(alignment: .leading, spacing: 4) {
-                Text(task.title)
-                    .strikethrough(task.isCompleted)
-                    .foregroundColor(task.isCompleted ? .secondary : .primary)
+// MARK: - Subtasks List
 
-                if let completedDate = task.completedDate, task.isCompleted {
-                    Text("Completed \(completedDate.formatted(date: .abbreviated, time: .shortened))")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+struct SubtasksList: View {
+    let parentTask: FocusTask
+    @ObservedObject var viewModel: TaskListViewModel
+
+    var body: some View {
+        VStack(spacing: 0) {
+            if viewModel.isLoadingSubtasks.contains(parentTask.id) {
+                HStack {
+                    Spacer()
+                    ProgressView()
+                        .scaleEffect(0.8)
+                    Spacer()
+                }
+                .padding(.vertical, 8)
+            } else {
+                ForEach(viewModel.getSubtasks(for: parentTask.id)) { subtask in
+                    SubtaskRow(subtask: subtask, parentId: parentTask.id, viewModel: viewModel)
                 }
             }
+        }
+        .padding(.leading, 32)
+    }
+}
+
+// MARK: - Subtask Row
+
+struct SubtaskRow: View {
+    let subtask: FocusTask
+    let parentId: UUID
+    @ObservedObject var viewModel: TaskListViewModel
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Text(subtask.title)
+                .font(.subheadline)
+                .strikethrough(subtask.isCompleted)
+                .foregroundColor(subtask.isCompleted ? .secondary : .primary)
 
             Spacer()
+
+            // Checkbox on right for thumb access
+            Button {
+                Task {
+                    await viewModel.toggleSubtaskCompletion(subtask, parentId: parentId)
+                }
+            } label: {
+                Image(systemName: subtask.isCompleted ? "checkmark.circle.fill" : "circle")
+                    .font(.subheadline)
+                    .foregroundColor(subtask.isCompleted ? .green : .gray)
+            }
+            .buttonStyle(.plain)
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 6)
         .contentShape(Rectangle())
+        .onLongPressGesture {
+            viewModel.selectedTaskForDetails = subtask
+        }
+        .swipeActions(edge: .trailing) {
+            Button(role: .destructive) {
+                Task {
+                    await viewModel.deleteSubtask(subtask, parentId: parentId)
+                }
+            } label: {
+                Label("Delete", systemImage: "trash")
+            }
+        }
+    }
+}
+
+// MARK: - Inline Add Subtask Row
+
+struct InlineAddSubtaskRow: View {
+    let parentId: UUID
+    @ObservedObject var viewModel: TaskListViewModel
+    @State private var newSubtaskTitle = ""
+    @State private var isEditing = false
+    @FocusState private var isFocused: Bool
+
+    var body: some View {
+        HStack(spacing: 12) {
+            if isEditing {
+                TextField("Subtask title", text: $newSubtaskTitle)
+                    .font(.subheadline)
+                    .focused($isFocused)
+                    .onSubmit {
+                        submitSubtask()
+                    }
+
+                Spacer()
+
+                Image(systemName: "circle")
+                    .font(.subheadline)
+                    .foregroundColor(.gray.opacity(0.5))
+            } else {
+                Button {
+                    isEditing = true
+                    isFocused = true
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "plus")
+                            .font(.subheadline)
+                        Text("Add")
+                            .font(.subheadline)
+                    }
+                    .foregroundColor(.secondary)
+                }
+                .buttonStyle(.plain)
+
+                Spacer()
+            }
+        }
+        .padding(.vertical, 6)
+        .padding(.leading, 32)
+    }
+
+    private func submitSubtask() {
+        let title = newSubtaskTitle.trimmingCharacters(in: .whitespaces)
+        guard !title.isEmpty else {
+            isEditing = false
+            return
+        }
+
+        Task {
+            await viewModel.createSubtask(title: title, parentId: parentId)
+            newSubtaskTitle = ""
+            // Keep editing mode open for adding more subtasks
+        }
     }
 }
 

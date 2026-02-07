@@ -18,6 +18,11 @@ struct CommitmentSelectionSheet: View {
     @State private var currentTaskCount = 0
     @State private var showError = false
     @State private var errorMessage = ""
+    @State private var subtaskCount = 0
+
+    private var isParentTask: Bool {
+        task.parentTaskId == nil && subtaskCount > 0
+    }
 
     var body: some View {
         NavigationView {
@@ -25,6 +30,13 @@ struct CommitmentSelectionSheet: View {
                 SwiftUI.Section("Task") {
                     Text(task.title)
                         .font(.headline)
+
+                    // Show subtask info for parent tasks
+                    if isParentTask {
+                        Text("Includes \(subtaskCount) subtask\(subtaskCount == 1 ? "" : "s")")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
                 }
 
                 SwiftUI.Section("Section") {
@@ -78,6 +90,7 @@ struct CommitmentSelectionSheet: View {
             }
             .onAppear {
                 updateTaskCount()
+                fetchSubtaskCount()
             }
             .onChange(of: selectedTimeframe) { _ in
                 updateTaskCount()
@@ -96,13 +109,11 @@ struct CommitmentSelectionSheet: View {
     }
 
     private func commitTask() async {
-        guard canCommit() else {
-            errorMessage = "Cannot add more tasks to \(selectedSection.rawValue) section. Limit reached."
-            showError = true
-            return
-        }
-
         do {
+            let commitmentRepository = CommitmentRepository()
+
+            // Create ONE commitment for the task (parent with nested subtasks OR standalone subtask)
+            // Subtasks are NOT committed separately - they are displayed nested under the parent
             let commitment = Commitment(
                 userId: task.userId,
                 taskId: task.id,
@@ -111,8 +122,7 @@ struct CommitmentSelectionSheet: View {
                 commitmentDate: selectedDate,
                 sortOrder: 0
             )
-
-            _ = try await CommitmentRepository().createCommitment(commitment)
+            _ = try await commitmentRepository.createCommitment(commitment)
 
             // Refresh focus view
             await focusViewModel.fetchCommitments()
@@ -130,5 +140,18 @@ struct CommitmentSelectionSheet: View {
             timeframe: selectedTimeframe,
             date: selectedDate
         )
+    }
+
+    private func fetchSubtaskCount() {
+        Task {
+            do {
+                let subtasks = try await TaskRepository().fetchSubtasks(parentId: task.id)
+                await MainActor.run {
+                    subtaskCount = subtasks.count
+                }
+            } catch {
+                // Silently fail - just won't show subtask count
+            }
+        }
     }
 }

@@ -16,6 +16,19 @@ struct TaskDetailsDrawer: View {
     @FocusState private var isFocused: Bool
     @Environment(\.dismiss) private var dismiss
 
+    private var isSubtask: Bool {
+        task.parentTaskId != nil
+    }
+
+    private var parentTask: FocusTask? {
+        guard let parentId = task.parentTaskId else { return nil }
+        return viewModel.tasks.first { $0.id == parentId }
+    }
+
+    private var subtasks: [FocusTask] {
+        viewModel.subtasksMap[task.id] ?? []
+    }
+
     init(task: FocusTask, viewModel: TaskListViewModel) {
         self.task = task
         self.viewModel = viewModel
@@ -25,7 +38,7 @@ struct TaskDetailsDrawer: View {
     var body: some View {
         NavigationView {
             List {
-                // Edit Title SwiftUI.Section
+                // Edit Title Section
                 SwiftUI.Section("Title") {
                     TextField("Task title", text: $taskTitle)
                         .focused($isFocused)
@@ -34,16 +47,28 @@ struct TaskDetailsDrawer: View {
                         }
                 }
 
-                // Subtasks SwiftUI.Section (Placeholder)
-                SwiftUI.Section("Subtasks") {
-                    Text("Coming soon")
-                        .foregroundColor(.secondary)
-                        .font(.subheadline)
+                // Info Section - shows parent or subtask count
+                if isSubtask {
+                    SwiftUI.Section("Parent Task") {
+                        if let parent = parentTask {
+                            Label(parent.title, systemImage: "arrow.up.circle")
+                                .foregroundColor(.secondary)
+                        } else {
+                            Label("Subtask", systemImage: "arrow.up.circle")
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                } else if !subtasks.isEmpty {
+                    SwiftUI.Section("Subtasks") {
+                        let completedCount = subtasks.filter { $0.isCompleted }.count
+                        Label("\(completedCount)/\(subtasks.count) completed", systemImage: "checklist")
+                            .foregroundColor(.secondary)
+                    }
                 }
 
-                // Actions SwiftUI.Section
+                // Actions Section
                 SwiftUI.Section {
-                    // Commit to Focus
+                    // Commit to Focus (only for parent tasks and subtasks)
                     Button {
                         showingCommitmentSheet = true
                     } label: {
@@ -53,15 +78,19 @@ struct TaskDetailsDrawer: View {
                     // Delete
                     Button(role: .destructive) {
                         Task {
-                            await viewModel.deleteTask(task)
+                            if isSubtask, let parentId = task.parentTaskId {
+                                await viewModel.deleteSubtask(task, parentId: parentId)
+                            } else {
+                                await viewModel.deleteTask(task)
+                            }
                             dismiss()
                         }
                     } label: {
-                        Label("Delete Task", systemImage: "trash")
+                        Label(isSubtask ? "Delete Subtask" : "Delete Task", systemImage: "trash")
                     }
                 }
             }
-            .navigationTitle("Task Details")
+            .navigationTitle(isSubtask ? "Subtask Details" : "Task Details")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {

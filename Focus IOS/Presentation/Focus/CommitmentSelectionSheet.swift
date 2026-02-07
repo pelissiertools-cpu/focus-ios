@@ -14,14 +14,24 @@ struct CommitmentSelectionSheet: View {
 
     @State private var selectedTimeframe: Timeframe = .daily
     @State private var selectedSection: Section = .focus
-    @State private var selectedDate: Date = Date()
-    @State private var currentTaskCount = 0
     @State private var showError = false
     @State private var errorMessage = ""
     @State private var subtaskCount = 0
+    @State private var isSaving = false
+
+    // Track selected dates (toggled by tapping)
+    @State private var selectedDates: Set<Date> = []
+    // Track original commitments to know what to add/remove
+    @State private var originalCommitments: [Commitment] = []
 
     private var isParentTask: Bool {
         task.parentTaskId == nil && subtaskCount > 0
+    }
+
+    private var hasChanges: Bool {
+        let originalDates = Set(originalCommitments.map { normalizeDate($0.commitmentDate) })
+        let currentDates = Set(selectedDates.map { normalizeDate($0) })
+        return originalDates != currentDates
     }
 
     var body: some View {
@@ -31,7 +41,6 @@ struct CommitmentSelectionSheet: View {
                     Text(task.title)
                         .font(.headline)
 
-                    // Show subtask info for parent tasks
                     if isParentTask {
                         Text("Includes \(subtaskCount) subtask\(subtaskCount == 1 ? "" : "s")")
                             .font(.caption)
@@ -45,33 +54,13 @@ struct CommitmentSelectionSheet: View {
                         Text("Extra").tag(Section.extra)
                     }
                     .pickerStyle(.segmented)
-
-                    // Show task limits
-                    if let maxTasks = selectedSection.maxTasks(for: selectedTimeframe) {
-                        HStack {
-                            Text("Task Limit:")
-                            Spacer()
-                            Text("\(currentTaskCount)/\(maxTasks)")
-                                .foregroundColor(currentTaskCount >= maxTasks ? .red : .secondary)
-                        }
-                        .font(.caption)
-                    }
                 }
 
-                SwiftUI.Section("Select Date") {
+                SwiftUI.Section("Select Dates") {
                     UnifiedCalendarPicker(
-                        selectedDate: $selectedDate,
+                        selectedDates: $selectedDates,
                         selectedTimeframe: $selectedTimeframe
                     )
-                }
-
-                SwiftUI.Section {
-                    Button("Commit to Focus") {
-                        Task {
-                            await commitTask()
-                        }
-                    }
-                    .disabled(!canCommit())
                 }
             }
             .navigationTitle("Commit Task")
@@ -82,6 +71,15 @@ struct CommitmentSelectionSheet: View {
                         dismiss()
                     }
                 }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Save") {
+                        Task {
+                            await saveChanges()
+                        }
+                    }
+                    .disabled(!hasChanges || isSaving)
+                    .fontWeight(.semibold)
+                }
             }
             .alert("Error", isPresented: $showError) {
                 Button("OK") {}
@@ -89,40 +87,53 @@ struct CommitmentSelectionSheet: View {
                 Text(errorMessage)
             }
             .onAppear {
-                updateTaskCount()
                 fetchSubtaskCount()
+                fetchTaskCommitments()
             }
             .onChange(of: selectedTimeframe) { _ in
-                updateTaskCount()
-            }
-            .onChange(of: selectedSection) { _ in
-                updateTaskCount()
-            }
-            .onChange(of: selectedDate) { _ in
-                updateTaskCount()
+                fetchTaskCommitments()
             }
         }
     }
 
-    private func canCommit() -> Bool {
-        focusViewModel.canAddTask(to: selectedSection, timeframe: selectedTimeframe, date: selectedDate)
+    private func normalizeDate(_ date: Date) -> Date {
+        Calendar.current.startOfDay(for: date)
     }
 
-    private func commitTask() async {
+    private func saveChanges() async {
+        isSaving = true
+
         do {
             let commitmentRepository = CommitmentRepository()
 
-            // Create ONE commitment for the task (parent with nested subtasks OR standalone subtask)
-            // Subtasks are NOT committed separately - they are displayed nested under the parent
-            let commitment = Commitment(
-                userId: task.userId,
-                taskId: task.id,
-                timeframe: selectedTimeframe,
-                section: selectedSection,
-                commitmentDate: selectedDate,
-                sortOrder: 0
-            )
-            _ = try await commitmentRepository.createCommitment(commitment)
+            let originalDates = Set(originalCommitments.map { normalizeDate($0.commitmentDate) })
+            let currentDates = Set(selectedDates.map { normalizeDate($0) })
+
+            // Find dates to add (in current but not in original)
+            let datesToAdd = currentDates.subtracting(originalDates)
+
+            // Find dates to remove (in original but not in current)
+            let datesToRemove = originalDates.subtracting(currentDates)
+
+            // Delete removed commitments
+            for date in datesToRemove {
+                if let commitment = originalCommitments.first(where: { normalizeDate($0.commitmentDate) == date }) {
+                    try await commitmentRepository.deleteCommitment(id: commitment.id)
+                }
+            }
+
+            // Create new commitments
+            for date in datesToAdd {
+                let commitment = Commitment(
+                    userId: task.userId,
+                    taskId: task.id,
+                    timeframe: selectedTimeframe,
+                    section: selectedSection,
+                    commitmentDate: date,
+                    sortOrder: 0
+                )
+                _ = try await commitmentRepository.createCommitment(commitment)
+            }
 
             // Refresh focus view
             await focusViewModel.fetchCommitments()
@@ -132,14 +143,8 @@ struct CommitmentSelectionSheet: View {
             errorMessage = error.localizedDescription
             showError = true
         }
-    }
 
-    private func updateTaskCount() {
-        currentTaskCount = focusViewModel.taskCount(
-            for: selectedSection,
-            timeframe: selectedTimeframe,
-            date: selectedDate
-        )
+        isSaving = false
     }
 
     private func fetchSubtaskCount() {
@@ -150,7 +155,26 @@ struct CommitmentSelectionSheet: View {
                     subtaskCount = subtasks.count
                 }
             } catch {
-                // Silently fail - just won't show subtask count
+                // Silently fail
+            }
+        }
+    }
+
+    private func fetchTaskCommitments() {
+        Task {
+            do {
+                let commitmentRepository = CommitmentRepository()
+                let commitments = try await commitmentRepository.fetchCommitments(forTask: task.id)
+
+                // Filter by current timeframe
+                let filtered = commitments.filter { $0.timeframe == selectedTimeframe }
+
+                await MainActor.run {
+                    originalCommitments = filtered
+                    selectedDates = Set(filtered.map { $0.commitmentDate })
+                }
+            } catch {
+                // Silently fail
             }
         }
     }

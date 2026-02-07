@@ -9,7 +9,7 @@ import SwiftUI
 
 /// Unified calendar picker that adapts based on selected timeframe
 struct UnifiedCalendarPicker: View {
-    @Binding var selectedDate: Date
+    @Binding var selectedDates: Set<Date>
     @Binding var selectedTimeframe: Timeframe
 
     var body: some View {
@@ -26,13 +26,13 @@ struct UnifiedCalendarPicker: View {
             // Adaptive Calendar View
             switch selectedTimeframe {
             case .daily:
-                DailyCalendarView(selectedDate: $selectedDate)
+                DailyCalendarView(selectedDates: $selectedDates)
             case .weekly:
-                WeeklyCalendarView(selectedDate: $selectedDate)
+                WeeklyCalendarView(selectedDates: $selectedDates)
             case .monthly:
-                MonthlyCalendarView(selectedDate: $selectedDate)
+                MonthlyCalendarView(selectedDates: $selectedDates)
             case .yearly:
-                YearlyCalendarView(selectedDate: $selectedDate)
+                YearlyCalendarView(selectedDates: $selectedDates)
             }
         }
     }
@@ -40,14 +40,178 @@ struct UnifiedCalendarPicker: View {
 
 // MARK: - Daily Calendar View
 
-/// Daily calendar: Full month calendar using graphical date picker
+/// Daily calendar: Custom grid with toggle selection
 struct DailyCalendarView: View {
-    @Binding var selectedDate: Date
+    @Binding var selectedDates: Set<Date>
+    @State private var displayMonth: Date = Date()
+
+    private var calendar: Calendar {
+        var cal = Calendar.current
+        cal.firstWeekday = 1 // Sunday
+        return cal
+    }
+
+    private let weekdaySymbols = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+
+    private let columns = Array(repeating: GridItem(.flexible(), spacing: 0), count: 7)
 
     var body: some View {
-        DatePicker("", selection: $selectedDate, displayedComponents: .date)
-            .datePickerStyle(.graphical)
-            .labelsHidden()
+        VStack(spacing: 0) {
+            // Month header with navigation
+            HStack {
+                Button {
+                    displayMonth = calendar.date(byAdding: .month, value: -1, to: displayMonth) ?? displayMonth
+                } label: {
+                    Image(systemName: "chevron.left")
+                        .foregroundColor(.blue)
+                }
+                .buttonStyle(.borderless)
+
+                Spacer()
+
+                Text(monthYearText)
+                    .font(.headline)
+                    .foregroundColor(.primary)
+
+                Spacer()
+
+                Button {
+                    displayMonth = calendar.date(byAdding: .month, value: 1, to: displayMonth) ?? displayMonth
+                } label: {
+                    Image(systemName: "chevron.right")
+                        .foregroundColor(.blue)
+                }
+                .buttonStyle(.borderless)
+            }
+            .padding(.horizontal)
+            .padding(.vertical, 8)
+
+            Divider()
+                .padding(.bottom, 8)
+
+            // Weekday headers
+            LazyVGrid(columns: columns, spacing: 0) {
+                ForEach(weekdaySymbols, id: \.self) { symbol in
+                    Text(symbol)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 4)
+                }
+            }
+            .padding(.horizontal)
+
+            // Calendar grid
+            LazyVGrid(columns: columns, spacing: 4) {
+                ForEach(daysInMonth, id: \.self) { day in
+                    if let day = day {
+                        DayCell(
+                            date: day,
+                            selectedDates: $selectedDates,
+                            isToday: calendar.isDateInToday(day),
+                            calendar: calendar
+                        )
+                    } else {
+                        Color.clear
+                            .frame(height: 36)
+                    }
+                }
+            }
+            .padding(.horizontal)
+        }
+    }
+
+    private var monthYearText: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMMM yyyy"
+        return formatter.string(from: displayMonth)
+    }
+
+    private var daysInMonth: [Date?] {
+        var days: [Date?] = []
+
+        guard let monthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: displayMonth)),
+              let monthRange = calendar.range(of: .day, in: .month, for: displayMonth) else {
+            return days
+        }
+
+        // Add empty cells for days before the first of the month
+        let firstWeekday = calendar.component(.weekday, from: monthStart)
+        let emptyDays = firstWeekday - 1
+        for _ in 0..<emptyDays {
+            days.append(nil)
+        }
+
+        // Add all days in the month
+        for day in monthRange {
+            if let date = calendar.date(byAdding: .day, value: day - 1, to: monthStart) {
+                days.append(date)
+            }
+        }
+
+        return days
+    }
+}
+
+/// Individual day cell in the calendar
+struct DayCell: View {
+    let date: Date
+    @Binding var selectedDates: Set<Date>
+    let isToday: Bool
+    let calendar: Calendar
+
+    private var normalizedDate: Date {
+        calendar.startOfDay(for: date)
+    }
+
+    private var isSelected: Bool {
+        selectedDates.contains { calendar.isDate($0, inSameDayAs: date) }
+    }
+
+    private var dayNumber: String {
+        let day = calendar.component(.day, from: date)
+        return "\(day)"
+    }
+
+    private var backgroundColor: Color {
+        if isSelected {
+            return .blue
+        } else if isToday {
+            return Color.gray.opacity(0.3)
+        } else {
+            return .clear
+        }
+    }
+
+    private var textColor: Color {
+        if isSelected {
+            return .white
+        } else {
+            return .primary
+        }
+    }
+
+    var body: some View {
+        Button {
+            toggleSelection()
+        } label: {
+            Text(dayNumber)
+                .font(.body)
+                .fontWeight(isToday ? .bold : .regular)
+                .foregroundColor(textColor)
+                .frame(width: 36, height: 36)
+                .background(backgroundColor)
+                .clipShape(Circle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func toggleSelection() {
+        if let existingDate = selectedDates.first(where: { calendar.isDate($0, inSameDayAs: date) }) {
+            selectedDates.remove(existingDate)
+        } else {
+            selectedDates.insert(normalizedDate)
+        }
     }
 }
 
@@ -55,7 +219,7 @@ struct DailyCalendarView: View {
 
 /// Weekly calendar: Month header with list of week pills
 struct WeeklyCalendarView: View {
-    @Binding var selectedDate: Date
+    @Binding var selectedDates: Set<Date>
     @State private var displayMonth: Date = Date()
     @State private var showingMonthPicker = false
 
@@ -110,7 +274,7 @@ struct WeeklyCalendarView: View {
                     ForEach(weeksInDisplayMonth, id: \.self) { weekStart in
                         WeekPillView(
                             weekStart: weekStart,
-                            selectedDate: $selectedDate,
+                            selectedDates: $selectedDates,
                             calendar: calendar
                         )
                     }
@@ -191,14 +355,26 @@ struct MonthYearPickerSheet: View {
 /// Individual week pill row
 struct WeekPillView: View {
     let weekStart: Date
-    @Binding var selectedDate: Date
+    @Binding var selectedDates: Set<Date>
     let calendar: Calendar
 
     private var isSelected: Bool {
-        guard let selectedWeekStart = calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: selectedDate)) else {
-            return false
+        selectedDates.contains { date in
+            let dateWeek = calendar.component(.weekOfYear, from: date)
+            let dateYear = calendar.component(.yearForWeekOfYear, from: date)
+            let weekStartWeek = calendar.component(.weekOfYear, from: weekStart)
+            let weekStartYear = calendar.component(.yearForWeekOfYear, from: weekStart)
+            return dateWeek == weekStartWeek && dateYear == weekStartYear
         }
-        return calendar.isDate(weekStart, equalTo: selectedWeekStart, toGranularity: .weekOfYear)
+    }
+
+    private var isCurrentWeek: Bool {
+        let today = Date()
+        let todayWeek = calendar.component(.weekOfYear, from: today)
+        let todayYear = calendar.component(.yearForWeekOfYear, from: today)
+        let weekStartWeek = calendar.component(.weekOfYear, from: weekStart)
+        let weekStartYear = calendar.component(.yearForWeekOfYear, from: weekStart)
+        return todayWeek == weekStartWeek && todayYear == weekStartYear
     }
 
     private var weekNumber: Int {
@@ -219,9 +395,19 @@ struct WeekPillView: View {
         return "\(startText) - \(endText)"
     }
 
+    private var badgeColor: Color {
+        if isSelected {
+            return .blue
+        } else if isCurrentWeek {
+            return Color.gray.opacity(0.4)
+        } else {
+            return Color.gray.opacity(0.2)
+        }
+    }
+
     var body: some View {
         Button {
-            selectedDate = weekStart
+            toggleSelection()
         } label: {
             HStack(spacing: 12) {
                 // Week badge
@@ -230,7 +416,7 @@ struct WeekPillView: View {
                     .fontWeight(.medium)
                     .foregroundColor(isSelected ? .white : .primary)
                     .frame(width: 44, height: 44)
-                    .background(isSelected ? Color.purple : Color.gray.opacity(0.2))
+                    .background(badgeColor)
                     .clipShape(Circle())
 
                 // Date range
@@ -245,10 +431,24 @@ struct WeekPillView: View {
             .cornerRadius(12)
             .overlay(
                 RoundedRectangle(cornerRadius: 12)
-                    .stroke(isSelected ? Color.purple : Color.clear, lineWidth: 2)
+                    .stroke(isSelected ? Color.blue : Color.clear, lineWidth: 2)
             )
         }
         .buttonStyle(.plain)
+    }
+
+    private func toggleSelection() {
+        if let existingDate = selectedDates.first(where: { date in
+            let dateWeek = calendar.component(.weekOfYear, from: date)
+            let dateYear = calendar.component(.yearForWeekOfYear, from: date)
+            let weekStartWeek = calendar.component(.weekOfYear, from: weekStart)
+            let weekStartYear = calendar.component(.yearForWeekOfYear, from: weekStart)
+            return dateWeek == weekStartWeek && dateYear == weekStartYear
+        }) {
+            selectedDates.remove(existingDate)
+        } else {
+            selectedDates.insert(weekStart)
+        }
     }
 }
 
@@ -256,7 +456,7 @@ struct WeekPillView: View {
 
 /// Monthly calendar: Year header with 4x3 grid of months
 struct MonthlyCalendarView: View {
-    @Binding var selectedDate: Date
+    @Binding var selectedDates: Set<Date>
     @State private var displayYear: Date = Date()
     @State private var showingYearPicker = false
 
@@ -320,7 +520,7 @@ struct MonthlyCalendarView: View {
                             monthIndex: monthIndex,
                             monthName: monthNames[monthIndex],
                             displayYear: displayYear,
-                            selectedDate: $selectedDate,
+                            selectedDates: $selectedDates,
                             calendar: calendar
                         )
                     }
@@ -374,28 +574,41 @@ struct MonthButton: View {
     let monthIndex: Int
     let monthName: String
     let displayYear: Date
-    @Binding var selectedDate: Date
+    @Binding var selectedDates: Set<Date>
     let calendar: Calendar
 
-    private var isSelected: Bool {
-        let selectedMonth = calendar.component(.month, from: selectedDate)
-        let selectedYear = calendar.component(.year, from: selectedDate)
-        let displayYear = calendar.component(.year, from: self.displayYear)
+    private var displayYearValue: Int {
+        calendar.component(.year, from: displayYear)
+    }
 
-        return selectedMonth == monthIndex + 1 && selectedYear == displayYear
+    private var isSelected: Bool {
+        selectedDates.contains { date in
+            let dateMonth = calendar.component(.month, from: date)
+            let dateYear = calendar.component(.year, from: date)
+            return dateMonth == monthIndex + 1 && dateYear == displayYearValue
+        }
+    }
+
+    private var isCurrentMonth: Bool {
+        let today = Date()
+        let currentMonth = calendar.component(.month, from: today)
+        let currentYear = calendar.component(.year, from: today)
+        return currentMonth == monthIndex + 1 && currentYear == displayYearValue
+    }
+
+    private var backgroundColor: Color {
+        if isSelected {
+            return .blue
+        } else if isCurrentMonth {
+            return Color.gray.opacity(0.3)
+        } else {
+            return Color(.secondarySystemBackground)
+        }
     }
 
     var body: some View {
         Button {
-            let year = calendar.component(.year, from: displayYear)
-            var components = DateComponents()
-            components.year = year
-            components.month = monthIndex + 1
-            components.day = 1
-
-            if let newDate = calendar.date(from: components) {
-                selectedDate = newDate
-            }
+            toggleSelection()
         } label: {
             Text(monthName)
                 .font(.body)
@@ -403,14 +616,34 @@ struct MonthButton: View {
                 .foregroundColor(isSelected ? .white : .primary)
                 .frame(maxWidth: .infinity)
                 .frame(height: 50)
-                .background(isSelected ? Color.purple : Color(.secondarySystemBackground))
+                .background(backgroundColor)
                 .cornerRadius(12)
                 .overlay(
                     RoundedRectangle(cornerRadius: 12)
-                        .stroke(isSelected ? Color.purple : Color.clear, lineWidth: 2)
+                        .stroke(isSelected ? Color.blue : Color.clear, lineWidth: 2)
                 )
         }
         .buttonStyle(.plain)
+    }
+
+    private func toggleSelection() {
+        let year = displayYearValue
+        var components = DateComponents()
+        components.year = year
+        components.month = monthIndex + 1
+        components.day = 1
+
+        guard let monthDate = calendar.date(from: components) else { return }
+
+        if let existingDate = selectedDates.first(where: { date in
+            let dateMonth = calendar.component(.month, from: date)
+            let dateYear = calendar.component(.year, from: date)
+            return dateMonth == monthIndex + 1 && dateYear == year
+        }) {
+            selectedDates.remove(existingDate)
+        } else {
+            selectedDates.insert(monthDate)
+        }
     }
 }
 
@@ -418,7 +651,7 @@ struct MonthButton: View {
 
 /// Yearly calendar: Scrollable grid of years
 struct YearlyCalendarView: View {
-    @Binding var selectedDate: Date
+    @Binding var selectedDates: Set<Date>
 
     private var calendar: Calendar {
         Calendar.current
@@ -441,7 +674,7 @@ struct YearlyCalendarView: View {
                 ForEach(years, id: \.self) { year in
                     YearButton(
                         year: year,
-                        selectedDate: $selectedDate,
+                        selectedDates: $selectedDates,
                         calendar: calendar
                     )
                 }
@@ -455,24 +688,32 @@ struct YearlyCalendarView: View {
 /// Individual year button
 struct YearButton: View {
     let year: Int
-    @Binding var selectedDate: Date
+    @Binding var selectedDates: Set<Date>
     let calendar: Calendar
 
     private var isSelected: Bool {
-        let selectedYear = calendar.component(.year, from: selectedDate)
-        return selectedYear == year
+        selectedDates.contains { date in
+            calendar.component(.year, from: date) == year
+        }
+    }
+
+    private var isCurrentYear: Bool {
+        calendar.component(.year, from: Date()) == year
+    }
+
+    private var backgroundColor: Color {
+        if isSelected {
+            return .blue
+        } else if isCurrentYear {
+            return Color.gray.opacity(0.3)
+        } else {
+            return Color(.secondarySystemBackground)
+        }
     }
 
     var body: some View {
         Button {
-            var components = DateComponents()
-            components.year = year
-            components.month = 1
-            components.day = 1
-
-            if let newDate = calendar.date(from: components) {
-                selectedDate = newDate
-            }
+            toggleSelection()
         } label: {
             Text("\(year)")
                 .font(.title3)
@@ -480,13 +721,30 @@ struct YearButton: View {
                 .foregroundColor(isSelected ? .white : .primary)
                 .frame(maxWidth: .infinity)
                 .frame(height: 60)
-                .background(isSelected ? Color.purple : Color(.secondarySystemBackground))
+                .background(backgroundColor)
                 .cornerRadius(12)
                 .overlay(
                     RoundedRectangle(cornerRadius: 12)
-                        .stroke(isSelected ? Color.purple : Color.clear, lineWidth: 2)
+                        .stroke(isSelected ? Color.blue : Color.clear, lineWidth: 2)
                 )
         }
         .buttonStyle(.plain)
+    }
+
+    private func toggleSelection() {
+        var components = DateComponents()
+        components.year = year
+        components.month = 1
+        components.day = 1
+
+        guard let yearDate = calendar.date(from: components) else { return }
+
+        if let existingDate = selectedDates.first(where: { date in
+            calendar.component(.year, from: date) == year
+        }) {
+            selectedDates.remove(existingDate)
+        } else {
+            selectedDates.insert(yearDate)
+        }
     }
 }

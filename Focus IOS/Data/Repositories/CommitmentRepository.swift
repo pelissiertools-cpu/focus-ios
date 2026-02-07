@@ -85,4 +85,16 @@ class CommitmentRepository {
             .eq("task_id", value: taskId.uuidString)
             .execute()
     }
+
+    /// Fetch all commitments for a specific timeframe (all dates)
+    func fetchAllCommitments(timeframe: Timeframe) async throws -> [Commitment] {
+        let commitments: [Commitment] = try await supabase
+            .from("commitments")
+            .select()
+            .eq("timeframe", value: timeframe.rawValue)
+            .execute()
+            .value
+
+        return commitments
+    }
 }

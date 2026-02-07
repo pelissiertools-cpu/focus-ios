@@ -23,11 +23,15 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel {
     @Published var isLoadingSubtasks: Set<UUID> = []
 
     private let repository: TaskRepository
+    private let commitmentRepository: CommitmentRepository
     private let authService: AuthService
     private var cancellables = Set<AnyCancellable>()
 
-    init(repository: TaskRepository = TaskRepository(), authService: AuthService) {
+    init(repository: TaskRepository = TaskRepository(),
+         commitmentRepository: CommitmentRepository = CommitmentRepository(),
+         authService: AuthService) {
         self.repository = repository
+        self.commitmentRepository = commitmentRepository
         self.authService = authService
         setupNotificationObserver()
     }
@@ -311,9 +315,13 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel {
         }
     }
 
-    /// Delete a task
+    /// Delete a task (hard delete from Library - also cleans up all commitments)
     func deleteTask(_ task: FocusTask) async {
         do {
+            // Clean up all commitments for this task first
+            try await commitmentRepository.deleteCommitments(forTask: task.id)
+
+            // Delete the task
             try await repository.deleteTask(id: task.id)
             tasks.removeAll { $0.id == task.id }
         } catch {

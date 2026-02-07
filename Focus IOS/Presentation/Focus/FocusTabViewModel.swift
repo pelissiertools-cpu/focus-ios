@@ -202,17 +202,22 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
         }
     }
 
-    /// Delete a task (removes from Focus and deletes from database)
+    /// Delete a task - only hard-deletes if task originated in Focus (not Library)
     func deleteTask(_ task: FocusTask) async {
+        // For Library-origin tasks, use removeCommitment() instead
+        // This method should only hard-delete Focus-origin tasks
+        guard !task.isInLibrary else {
+            return
+        }
+
         do {
-            // Remove any commitments for this task
+            // Remove all commitments for this task (with cascade)
             let taskCommitments = commitments.filter { $0.taskId == task.id }
             for commitment in taskCommitments {
-                try await commitmentRepository.deleteCommitment(id: commitment.id)
-                commitments.removeAll { $0.id == commitment.id }
+                try await deleteCommitmentWithDescendants(commitment)
             }
 
-            // Delete the task from database
+            // Hard-delete the task (Focus-origin only)
             try await taskRepository.deleteTask(id: task.id)
 
             // Remove from local state
@@ -322,11 +327,28 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
         }.count
     }
 
-    /// Remove commitment
+    /// Recursively delete a commitment and all its descendants (cascade down)
+    private func deleteCommitmentWithDescendants(_ commitment: Commitment) async throws {
+        // First, recursively delete all children
+        let children = childCommitmentsMap[commitment.id] ?? []
+        for child in children {
+            try await deleteCommitmentWithDescendants(child)
+        }
+
+        // Clean up local state for this commitment's children
+        childCommitmentsMap.removeValue(forKey: commitment.id)
+
+        // Delete this commitment from database
+        try await commitmentRepository.deleteCommitment(id: commitment.id)
+
+        // Remove from local state
+        commitments.removeAll { $0.id == commitment.id }
+    }
+
+    /// Remove commitment (cascades down to children, NOT up to parents)
     func removeCommitment(_ commitment: Commitment) async {
         do {
-            try await commitmentRepository.deleteCommitment(id: commitment.id)
-            commitments.removeAll { $0.id == commitment.id }
+            try await deleteCommitmentWithDescendants(commitment)
         } catch {
             errorMessage = error.localizedDescription
         }

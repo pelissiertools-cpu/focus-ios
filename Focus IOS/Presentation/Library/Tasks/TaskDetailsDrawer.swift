@@ -106,7 +106,7 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                         }
                     }
 
-                    // Remove from Focus (only shown when committed)
+                    // Remove from Focus (only shown when committed - cascades to child commitments)
                     if let commitment = commitment {
                         Button(role: .destructive) {
                             Task {
@@ -131,19 +131,44 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                         }
                     }
 
-                    // Delete
-                    Button(role: .destructive) {
-                        Task {
-                            if isSubtask, let parentId = task.parentTaskId {
-                                await viewModel.deleteSubtask(task, parentId: parentId)
-                            } else {
-                                await viewModel.deleteTask(task)
+                    // Delete - only show for:
+                    // 1. Subtasks (always deletable)
+                    // 2. Tasks in Library view (no commitment)
+                    // 3. Focus-origin tasks (not from Library)
+                    // Do NOT show for Library-origin tasks when viewing in Focus (use Remove from Focus instead)
+                    if isSubtask {
+                        Button(role: .destructive) {
+                            Task {
+                                if let parentId = task.parentTaskId {
+                                    await viewModel.deleteSubtask(task, parentId: parentId)
+                                }
+                                dismiss()
                             }
-                            dismiss()
+                        } label: {
+                            Label("Delete Subtask", systemImage: "trash")
                         }
-                    } label: {
-                        Label(isSubtask ? "Delete Subtask" : "Delete Task", systemImage: "trash")
+                    } else if commitment == nil {
+                        // Library view - can delete task
+                        Button(role: .destructive) {
+                            Task {
+                                await viewModel.deleteTask(task)
+                                dismiss()
+                            }
+                        } label: {
+                            Label("Delete Task", systemImage: "trash")
+                        }
+                    } else if !task.isInLibrary {
+                        // Focus-origin task - can delete
+                        Button(role: .destructive) {
+                            Task {
+                                await viewModel.deleteTask(task)
+                                dismiss()
+                            }
+                        } label: {
+                            Label("Delete Task", systemImage: "trash")
+                        }
                     }
+                    // Note: Library-origin tasks in Focus view only see "Remove from Focus"
                 }
             }
             .navigationTitle(isSubtask ? "Subtask Details" : "Task Details")

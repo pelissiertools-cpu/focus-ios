@@ -99,6 +99,16 @@ struct FocusTabView: View {
                 TaskDetailsDrawer(task: task, viewModel: viewModel, commitment: commitment)
                     .environmentObject(viewModel)
             }
+            .sheet(isPresented: $viewModel.showBreakdownSheet) {
+                if let commitment = viewModel.selectedCommitmentForBreakdown,
+                   let task = viewModel.tasksMap[commitment.taskId] {
+                    BreakdownSheet(
+                        commitment: commitment,
+                        task: task,
+                        viewModel: viewModel
+                    )
+                }
+            }
         }
     }
 }
@@ -174,10 +184,26 @@ struct CommitmentRow: View {
         viewModel.isExpanded(task.id)
     }
 
+    private var childCount: Int {
+        viewModel.childCount(for: commitment.id)
+    }
+
+    /// Can break down if: not daily, and not already a child commitment
+    private var canBreakdown: Bool {
+        commitment.canBreakdown && !commitment.isChildCommitment
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             // Main task row - matching ExpandableTaskRow style
             HStack(spacing: 12) {
+                // Child commitment indicator (indentation)
+                if commitment.isChildCommitment {
+                    Image(systemName: "arrow.turn.down.right")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+
                 VStack(alignment: .leading, spacing: 4) {
                     Text(task.title)
                         .strikethrough(task.isCompleted)
@@ -189,6 +215,13 @@ struct CommitmentRow: View {
                         Text("\(completedCount)/\(subtasks.count) subtasks")
                             .font(.caption)
                             .foregroundColor(.secondary)
+                    }
+
+                    // Child commitment count indicator
+                    if childCount > 0 {
+                        Text("\(childCount) broken down")
+                            .font(.caption)
+                            .foregroundColor(.blue)
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -202,6 +235,19 @@ struct CommitmentRow: View {
                 }
                 .onLongPressGesture {
                     viewModel.selectedTaskForDetails = task
+                }
+
+                // Breakdown button (for non-daily, non-child commitments)
+                if canBreakdown {
+                    Button {
+                        viewModel.selectedCommitmentForBreakdown = commitment
+                        viewModel.showBreakdownSheet = true
+                    } label: {
+                        Image(systemName: "arrow.down.forward.circle")
+                            .font(.title3)
+                            .foregroundColor(.blue)
+                    }
+                    .buttonStyle(.plain)
                 }
 
                 // Completion button (right side for thumb access)
@@ -218,7 +264,9 @@ struct CommitmentRow: View {
             }
             .padding(.vertical, 8)
             .padding(.horizontal)
-            .background(Color(.systemBackground))
+            .background(commitment.isChildCommitment
+                ? Color(.tertiarySystemBackground)
+                : Color(.systemBackground))
 
             // Subtasks (shown when expanded)
             if isExpanded && hasSubtasks {

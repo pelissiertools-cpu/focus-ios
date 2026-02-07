@@ -150,6 +150,19 @@ CREATE POLICY "Users can delete their own commitments"
   USING (auth.uid() = user_id);
 
 -- ==============================================
+-- TRICKLE-DOWN COMMITMENT SUPPORT
+-- Parent-child relationship for breaking down commitments
+-- ==============================================
+
+-- Add parent_commitment_id column for hierarchical commitments
+-- This enables Year → Month → Week → Day breakdown
+ALTER TABLE commitments
+ADD COLUMN IF NOT EXISTS parent_commitment_id UUID REFERENCES commitments(id) ON DELETE CASCADE;
+
+-- Index for efficient parent-child lookups
+CREATE INDEX IF NOT EXISTS idx_commitments_parent_id ON commitments(parent_commitment_id);
+
+-- ==============================================
 -- VERIFICATION QUERIES
 -- Run these after migration to verify setup
 -- ==============================================
@@ -162,3 +175,6 @@ CREATE POLICY "Users can delete their own commitments"
 
 -- Check policies
 -- SELECT tablename, policyname FROM pg_policies WHERE schemaname = 'public' AND tablename IN ('tasks', 'categories', 'commitments');
+
+-- Check parent_commitment_id column exists
+-- SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'commitments' AND column_name = 'parent_commitment_id';

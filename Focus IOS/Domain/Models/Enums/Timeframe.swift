@@ -22,4 +22,34 @@ enum Timeframe: String, Codable, CaseIterable {
         case .yearly: return "Yearly"
         }
     }
+
+    /// The next lower timeframe for trickle-down breakdown
+    var childTimeframe: Timeframe? {
+        switch self {
+        case .yearly: return .monthly
+        case .monthly: return .weekly
+        case .weekly: return .daily
+        case .daily: return nil
+        }
+    }
+
+    /// The parent timeframe (inverse of childTimeframe)
+    var parentTimeframe: Timeframe? {
+        switch self {
+        case .daily: return .weekly
+        case .weekly: return .monthly
+        case .monthly: return .yearly
+        case .yearly: return nil
+        }
+    }
+
+    /// All timeframes this can break down to (not just the immediate child)
+    var availableBreakdownTimeframes: [Timeframe] {
+        switch self {
+        case .yearly: return [.monthly, .weekly, .daily]
+        case .monthly: return [.weekly, .daily]
+        case .weekly: return [.daily]
+        case .daily: return []
+        }
+    }
 }

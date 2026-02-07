@@ -97,4 +97,75 @@ class CommitmentRepository {
 
         return commitments
     }
+
+    // MARK: - Trickle-Down (Child Commitment) Methods
+
+    /// Fetch child commitments for a parent commitment
+    func fetchChildCommitments(parentId: UUID) async throws -> [Commitment] {
+        let commitments: [Commitment] = try await supabase
+            .from("commitments")
+            .select()
+            .eq("parent_commitment_id", value: parentId.uuidString)
+            .order("commitment_date", ascending: true)
+            .execute()
+            .value
+
+        return commitments
+    }
+
+    /// Create a child commitment (trickle-down from parent)
+    func createChildCommitment(
+        parentCommitment: Commitment,
+        childDate: Date,
+        targetTimeframe: Timeframe
+    ) async throws -> Commitment {
+        // Verify target timeframe is valid for breakdown
+        guard parentCommitment.timeframe.availableBreakdownTimeframes.contains(targetTimeframe) else {
+            throw CommitmentError.cannotBreakdown
+        }
+
+        let childCommitment = Commitment(
+            userId: parentCommitment.userId,
+            taskId: parentCommitment.taskId,
+            timeframe: targetTimeframe,
+            section: parentCommitment.section,
+            commitmentDate: childDate,
+            sortOrder: 0,
+            parentCommitmentId: parentCommitment.id
+        )
+
+        let created: Commitment = try await supabase
+            .from("commitments")
+            .insert(childCommitment)
+            .select()
+            .single()
+            .execute()
+            .value
+
+        return created
+    }
+
+    /// Count child commitments for a parent
+    func countChildCommitments(parentId: UUID) async throws -> Int {
+        let commitments: [Commitment] = try await supabase
+            .from("commitments")
+            .select()
+            .eq("parent_commitment_id", value: parentId.uuidString)
+            .execute()
+            .value
+
+        return commitments.count
+    }
+}
+
+/// Errors for commitment operations
+enum CommitmentError: LocalizedError {
+    case cannotBreakdown
+
+    var errorDescription: String? {
+        switch self {
+        case .cannotBreakdown:
+            return "This commitment cannot be broken down further."
+        }
+    }
 }

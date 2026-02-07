@@ -19,6 +19,9 @@ struct Commitment: Codable, Identifiable {
     var sortOrder: Int
     let createdDate: Date
 
+    /// Parent commitment ID for trickle-down hierarchy (Year → Month → Week → Day)
+    var parentCommitmentId: UUID?
+
     // Coding keys to match Supabase snake_case
     enum CodingKeys: String, CodingKey {
         case id
@@ -29,6 +32,7 @@ struct Commitment: Codable, Identifiable {
         case commitmentDate = "commitment_date"
         case sortOrder = "sort_order"
         case createdDate = "created_date"
+        case parentCommitmentId = "parent_commitment_id"
     }
 
     /// Initializer for creating new commitments
@@ -40,7 +44,8 @@ struct Commitment: Codable, Identifiable {
         section: Section,
         commitmentDate: Date,
         sortOrder: Int = 0,
-        createdDate: Date = Date()
+        createdDate: Date = Date(),
+        parentCommitmentId: UUID? = nil
     ) {
         self.id = id
         self.userId = userId
@@ -50,5 +55,21 @@ struct Commitment: Codable, Identifiable {
         self.commitmentDate = commitmentDate
         self.sortOrder = sortOrder
         self.createdDate = createdDate
+        self.parentCommitmentId = parentCommitmentId
+    }
+
+    /// Whether this commitment is a child (broken down from a parent)
+    var isChildCommitment: Bool {
+        parentCommitmentId != nil
+    }
+
+    /// Whether this commitment can be broken down further (daily cannot)
+    var canBreakdown: Bool {
+        timeframe != .daily
+    }
+
+    /// The child timeframe for breakdown
+    var childTimeframe: Timeframe? {
+        timeframe.childTimeframe
     }
 }

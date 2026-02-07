@@ -21,6 +21,11 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
     @Published var errorMessage: String?
     @Published var selectedTaskForDetails: FocusTask?
 
+    // Trickle-down state
+    @Published var childCommitmentsMap: [UUID: [Commitment]] = [:]  // parentId -> children
+    @Published var showBreakdownSheet = false
+    @Published var selectedCommitmentForBreakdown: Commitment?
+
     private let commitmentRepository: CommitmentRepository
     private let taskRepository: TaskRepository
     private let authService: AuthService
@@ -108,6 +113,9 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
 
             // Fetch associated tasks
             await fetchTasksForCommitments()
+
+            // Fetch child commitments for trickle-down display
+            await fetchChildCommitments()
 
             isLoading = false
         } catch {
@@ -385,5 +393,179 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+
+    // MARK: - Trickle-Down (Breakdown) Methods
+
+    /// Fetch child commitments for all current commitments that can be broken down
+    func fetchChildCommitments() async {
+        for commitment in commitments where commitment.canBreakdown {
+            do {
+                let children = try await commitmentRepository.fetchChildCommitments(
+                    parentId: commitment.id
+                )
+                childCommitmentsMap[commitment.id] = children
+            } catch {
+                print("Error fetching children for \(commitment.id): \(error)")
+            }
+        }
+    }
+
+    /// Get child commitments for a parent
+    func getChildCommitments(for parentId: UUID) -> [Commitment] {
+        childCommitmentsMap[parentId] ?? []
+    }
+
+    /// Get child count for a commitment
+    func childCount(for commitmentId: UUID) -> Int {
+        childCommitmentsMap[commitmentId]?.count ?? 0
+    }
+
+    /// Break down a commitment to a specific date and timeframe
+    func breakdownCommitment(_ commitment: Commitment, toDate date: Date, targetTimeframe: Timeframe) async {
+        do {
+            let child = try await commitmentRepository.createChildCommitment(
+                parentCommitment: commitment,
+                childDate: date,
+                targetTimeframe: targetTimeframe
+            )
+
+            // Update local state
+            if var children = childCommitmentsMap[commitment.id] {
+                children.append(child)
+                childCommitmentsMap[commitment.id] = children
+            } else {
+                childCommitmentsMap[commitment.id] = [child]
+            }
+
+            // Add to commitments list so it appears when viewing child timeframe
+            commitments.append(child)
+
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    /// Calculate available slots for any target timeframe breakdown
+    func availableSlotsForBreakdown(_ commitment: Commitment, targetTimeframe: Timeframe) -> [Date] {
+        guard commitment.timeframe.availableBreakdownTimeframes.contains(targetTimeframe) else {
+            return []
+        }
+
+        let calendar = Calendar.current
+        var slots: [Date] = []
+
+        // Generate slots based on target timeframe within the commitment's date range
+        switch targetTimeframe {
+        case .monthly:
+            // Generate all 12 months of the commitment's year
+            let year = calendar.component(.year, from: commitment.commitmentDate)
+            for month in 1...12 {
+                var components = DateComponents()
+                components.year = year
+                components.month = month
+                components.day = 1
+                if let date = calendar.date(from: components) {
+                    slots.append(date)
+                }
+            }
+
+        case .weekly:
+            // Generate weeks based on parent timeframe scope
+            switch commitment.timeframe {
+            case .yearly:
+                // All weeks in the year
+                let year = calendar.component(.year, from: commitment.commitmentDate)
+                var components = DateComponents()
+                components.year = year
+                components.month = 1
+                components.day = 1
+                guard let yearStart = calendar.date(from: components) else { return [] }
+
+                var currentDate = yearStart
+                var seenWeeks: Set<Int> = []
+                while calendar.component(.year, from: currentDate) == year {
+                    let weekOfYear = calendar.component(.weekOfYear, from: currentDate)
+                    if !seenWeeks.contains(weekOfYear) {
+                        seenWeeks.insert(weekOfYear)
+                        if let weekStart = calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: currentDate)) {
+                            slots.append(weekStart)
+                        }
+                    }
+                    guard let nextDate = calendar.date(byAdding: .day, value: 7, to: currentDate) else { break }
+                    currentDate = nextDate
+                }
+
+            case .monthly:
+                // All weeks in the month
+                guard let monthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: commitment.commitmentDate)),
+                      let monthRange = calendar.range(of: .day, in: .month, for: commitment.commitmentDate) else {
+                    return []
+                }
+
+                var seenWeeks: Set<Int> = []
+                for day in monthRange {
+                    if let date = calendar.date(byAdding: .day, value: day - 1, to: monthStart) {
+                        let weekOfYear = calendar.component(.weekOfYear, from: date)
+                        if !seenWeeks.contains(weekOfYear) {
+                            seenWeeks.insert(weekOfYear)
+                            if let weekStart = calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: date)) {
+                                slots.append(weekStart)
+                            }
+                        }
+                    }
+                }
+
+            default:
+                break
+            }
+
+        case .daily:
+            // Generate days based on parent timeframe scope
+            switch commitment.timeframe {
+            case .yearly:
+                // All days in the year (too many - use calendar picker navigation instead)
+                // Return empty and let the calendar picker handle display
+                return []
+
+            case .monthly:
+                // All days in the month
+                guard let monthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: commitment.commitmentDate)),
+                      let monthRange = calendar.range(of: .day, in: .month, for: commitment.commitmentDate) else {
+                    return []
+                }
+
+                for day in monthRange {
+                    if let date = calendar.date(byAdding: .day, value: day - 1, to: monthStart) {
+                        slots.append(date)
+                    }
+                }
+
+            case .weekly:
+                // All 7 days of the week
+                guard let weekStart = calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: commitment.commitmentDate)) else {
+                    return []
+                }
+                for dayOffset in 0..<7 {
+                    if let date = calendar.date(byAdding: .day, value: dayOffset, to: weekStart) {
+                        slots.append(date)
+                    }
+                }
+
+            default:
+                break
+            }
+
+        case .yearly:
+            // Cannot break down to yearly
+            return []
+        }
+
+        // Filter out already-used slots for this target timeframe
+        let existingChildren = getChildCommitments(for: commitment.id)
+            .filter { $0.timeframe == targetTimeframe }
+        let existingDates = Set(existingChildren.map { calendar.startOfDay(for: $0.commitmentDate) })
+
+        return slots.filter { !existingDates.contains(calendar.startOfDay(for: $0)) }
     }
 }

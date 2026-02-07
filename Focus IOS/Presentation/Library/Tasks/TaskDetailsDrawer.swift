@@ -118,6 +118,19 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                         }
                     }
 
+                    // Break Down (only for non-daily commitments that are not children)
+                    if let commitment = commitment,
+                       commitment.canBreakdown && !commitment.isChildCommitment,
+                       let childTimeframe = commitment.childTimeframe {
+                        Button {
+                            focusViewModel.selectedCommitmentForBreakdown = commitment
+                            focusViewModel.showBreakdownSheet = true
+                            dismiss()
+                        } label: {
+                            Label("Break Down to \(childTimeframe.displayName)", systemImage: "arrow.down.forward.circle")
+                        }
+                    }
+
                     // Delete
                     Button(role: .destructive) {
                         Task {

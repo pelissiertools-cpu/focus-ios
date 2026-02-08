@@ -23,8 +23,13 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
 
     // Trickle-down state
     @Published var childCommitmentsMap: [UUID: [Commitment]] = [:]  // parentId -> children
-    @Published var showBreakdownSheet = false
-    @Published var selectedCommitmentForBreakdown: Commitment?
+    @Published var showCommitSheet = false
+    @Published var selectedCommitmentForCommit: Commitment?
+
+    // Subtask commit state (for committing subtasks that don't have their own commitment)
+    @Published var selectedSubtaskForCommit: FocusTask?
+    @Published var selectedParentCommitmentForSubtaskCommit: Commitment?
+    @Published var showSubtaskCommitSheet = false
 
     private let commitmentRepository: CommitmentRepository
     private let taskRepository: TaskRepository
@@ -136,12 +141,11 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
                 if let task = allTasks.first(where: { $0.id == taskId }) {
                     tasksMap[taskId] = task
 
-                    // Fetch subtasks for parent tasks (tasks without parentTaskId)
-                    if task.parentTaskId == nil {
-                        let subtasks = try await taskRepository.fetchSubtasks(parentId: taskId)
-                        if !subtasks.isEmpty {
-                            subtasksMap[taskId] = subtasks
-                        }
+                    // Fetch subtasks for any task that has a commitment in this view
+                    // This includes subtasks that have been broken down and now act as parents
+                    let subtasks = try await taskRepository.fetchSubtasks(parentId: taskId)
+                    if !subtasks.isEmpty {
+                        subtasksMap[taskId] = subtasks
                     }
                 }
             }
@@ -243,7 +247,7 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
         }
     }
 
-    /// Create a new subtask
+    /// Create a new subtask (protocol conformance)
     func createSubtask(title: String, parentId: UUID) async {
         guard let userId = authService.currentUser?.id else {
             errorMessage = "No authenticated user"
@@ -268,6 +272,60 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
             } else {
                 subtasksMap[parentId] = [newSubtask]
             }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    /// Create a new subtask with a commitment at the parent's timeframe (Focus view use case)
+    func createSubtask(title: String, parentId: UUID, parentCommitment: Commitment) async {
+        guard let userId = authService.currentUser?.id else {
+            errorMessage = "No authenticated user"
+            return
+        }
+
+        guard !title.trimmingCharacters(in: .whitespaces).isEmpty else {
+            return
+        }
+
+        do {
+            let newSubtask = try await taskRepository.createSubtask(
+                title: title,
+                parentTaskId: parentId,
+                userId: userId
+            )
+
+            // Update local state
+            if var subtasks = subtasksMap[parentId] {
+                subtasks.append(newSubtask)
+                subtasksMap[parentId] = subtasks
+            } else {
+                subtasksMap[parentId] = [newSubtask]
+            }
+
+            // Create a commitment for this subtask at the parent's timeframe
+            let subtaskCommitment = Commitment(
+                userId: userId,
+                taskId: newSubtask.id,
+                timeframe: parentCommitment.timeframe,
+                section: parentCommitment.section,
+                commitmentDate: parentCommitment.commitmentDate,
+                sortOrder: 0,
+                parentCommitmentId: parentCommitment.id
+            )
+            let created = try await commitmentRepository.createCommitment(subtaskCommitment)
+            commitments.append(created)
+
+            // Track as child of parent commitment
+            if var children = childCommitmentsMap[parentCommitment.id] {
+                children.append(created)
+                childCommitmentsMap[parentCommitment.id] = children
+            } else {
+                childCommitmentsMap[parentCommitment.id] = [created]
+            }
+
+            // Add subtask to tasksMap so it can be displayed independently
+            tasksMap[newSubtask.id] = newSubtask
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -392,7 +450,7 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
         }
     }
 
-    /// Toggle subtask completion - auto-completes parent when all done
+    /// Toggle subtask completion - auto-completes parent when all same-timeframe subtasks done
     func toggleSubtaskCompletion(_ subtask: FocusTask, parentId: UUID) async {
         do {
             if subtask.isCompleted {
@@ -419,9 +477,10 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
                     completedDate: subtasks[index].completedDate
                 )
 
-                // Check if ALL subtasks are now complete - auto-complete parent
-                let allComplete = subtasks.allSatisfy { $0.isCompleted }
-                if allComplete && !subtasks.isEmpty {
+                // Check auto-completion using same-timeframe logic
+                let shouldAutoComplete = checkShouldAutoCompleteParent(parentId: parentId, subtasks: subtasks)
+
+                if shouldAutoComplete {
                     if var parentTask = tasksMap[parentId], !parentTask.isCompleted {
                         parentTask.previousCompletionState = subtasks.map { $0.isCompleted }
                         try await taskRepository.completeTask(id: parentId)
@@ -434,8 +493,8 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
                             completedDate: parentTask.completedDate
                         )
                     }
-                } else if !allComplete {
-                    // If not all complete and parent is completed, uncomplete parent
+                } else {
+                    // If not all relevant subtasks complete and parent is completed, uncomplete parent
                     if var parentTask = tasksMap[parentId], parentTask.isCompleted {
                         try await taskRepository.uncompleteTask(id: parentId)
                         parentTask.isCompleted = false
@@ -454,19 +513,61 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
         }
     }
 
-    // MARK: - Trickle-Down (Breakdown) Methods
+    /// Check if parent should auto-complete based on same-timeframe subtasks only
+    /// Rule: Only count subtasks that are at the same timeframe level as the parent
+    /// Subtasks broken down to lower timeframes don't count toward origin completion
+    private func checkShouldAutoCompleteParent(parentId: UUID, subtasks: [FocusTask]) -> Bool {
+        guard !subtasks.isEmpty else { return false }
 
-    /// Fetch child commitments for all current commitments that can be broken down
+        // Get parent's commitment at the current timeframe
+        let parentCommitment = commitments.first {
+            $0.taskId == parentId && $0.timeframe == selectedTimeframe
+        }
+
+        // Filter subtasks that count toward auto-completion:
+        // 1. Subtasks with NO commitment (followers), OR
+        // 2. Subtasks with commitment at SAME timeframe as parent
+        let relevantSubtasks = subtasks.filter { subtask in
+            let subtaskCommitment = commitments.first { $0.taskId == subtask.id }
+
+            if subtaskCommitment == nil {
+                return true  // Follower subtask - counts toward parent completion
+            }
+
+            // Only count if same timeframe as parent
+            return subtaskCommitment?.timeframe == parentCommitment?.timeframe
+        }
+
+        // If no relevant subtasks, don't auto-complete
+        guard !relevantSubtasks.isEmpty else { return false }
+
+        // Auto-complete if all relevant subtasks are complete
+        return relevantSubtasks.allSatisfy { $0.isCompleted }
+    }
+
+    // MARK: - Commit Methods (Trickle-Down)
+
+    /// Fetch child commitments for all current commitments recursively
     func fetchChildCommitments() async {
         for commitment in commitments where commitment.canBreakdown {
-            do {
-                let children = try await commitmentRepository.fetchChildCommitments(
-                    parentId: commitment.id
-                )
-                childCommitmentsMap[commitment.id] = children
-            } catch {
-                print("Error fetching children for \(commitment.id): \(error)")
+            await fetchChildrenRecursively(for: commitment)
+        }
+    }
+
+    /// Recursively fetch children and grandchildren
+    private func fetchChildrenRecursively(for commitment: Commitment) async {
+        do {
+            let children = try await commitmentRepository.fetchChildCommitments(
+                parentId: commitment.id
+            )
+            childCommitmentsMap[commitment.id] = children
+
+            // Recursively fetch grandchildren for children that can break down
+            for child in children where child.canBreakdown {
+                await fetchChildrenRecursively(for: child)
             }
+        } catch {
+            print("Error fetching children for \(commitment.id): \(error)")
         }
     }
 
@@ -480,8 +581,8 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
         childCommitmentsMap[commitmentId]?.count ?? 0
     }
 
-    /// Break down a commitment to a specific date and timeframe
-    func breakdownCommitment(_ commitment: Commitment, toDate date: Date, targetTimeframe: Timeframe) async {
+    /// Commit a task to a specific date and timeframe
+    func commitToTimeframe(_ commitment: Commitment, toDate date: Date, targetTimeframe: Timeframe) async {
         do {
             let child = try await commitmentRepository.createChildCommitment(
                 parentCommitment: commitment,
@@ -505,8 +606,44 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
         }
     }
 
-    /// Calculate available slots for any target timeframe breakdown
-    func availableSlotsForBreakdown(_ commitment: Commitment, targetTimeframe: Timeframe) -> [Date] {
+    /// Commit a subtask to a target timeframe (creates commitment for subtask that doesn't have one)
+    func commitSubtask(_ subtask: FocusTask, parentCommitment: Commitment, toDate: Date, targetTimeframe: Timeframe) async {
+        guard let userId = authService.currentUser?.id else {
+            errorMessage = "No authenticated user"
+            return
+        }
+
+        do {
+            // Create commitment for the subtask at target timeframe
+            let subtaskCommitment = Commitment(
+                userId: userId,
+                taskId: subtask.id,
+                timeframe: targetTimeframe,
+                section: parentCommitment.section,
+                commitmentDate: toDate,
+                sortOrder: 0,
+                parentCommitmentId: parentCommitment.id
+            )
+            let created = try await commitmentRepository.createCommitment(subtaskCommitment)
+
+            // Update local state
+            commitments.append(created)
+            tasksMap[subtask.id] = subtask
+
+            // Track as child of parent commitment
+            if var children = childCommitmentsMap[parentCommitment.id] {
+                children.append(created)
+                childCommitmentsMap[parentCommitment.id] = children
+            } else {
+                childCommitmentsMap[parentCommitment.id] = [created]
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    /// Calculate available slots for committing to any target timeframe
+    func availableSlotsForCommit(_ commitment: Commitment, targetTimeframe: Timeframe) -> [Date] {
         guard commitment.timeframe.availableBreakdownTimeframes.contains(targetTimeframe) else {
             return []
         }

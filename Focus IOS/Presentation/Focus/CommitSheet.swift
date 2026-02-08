@@ -7,8 +7,8 @@
 
 import SwiftUI
 
-/// Sheet for breaking down a commitment into any lower timeframe
-struct BreakdownSheet: View {
+/// Sheet for committing a task to a lower timeframe
+struct CommitSheet: View {
     let commitment: Commitment
     let task: FocusTask
     @ObservedObject var viewModel: FocusTabViewModel
@@ -48,7 +48,7 @@ struct BreakdownSheet: View {
                     HStack {
                         Image(systemName: "arrow.down.forward.circle")
                             .foregroundColor(.blue)
-                        Text("Break down \(commitment.timeframe.displayName) commitment")
+                        Text("Commit to lower timeframe")
                             .font(.subheadline)
                             .foregroundColor(.secondary)
                     }
@@ -63,7 +63,7 @@ struct BreakdownSheet: View {
                     HStack {
                         Image(systemName: "checkmark.circle.fill")
                             .foregroundColor(.green)
-                        Text("\(existingChildrenForTimeframe.count) already broken down to \(selectedTargetTimeframe.displayName.lowercased())")
+                        Text("\(existingChildrenForTimeframe.count) already committed to \(selectedTargetTimeframe.displayName.lowercased())")
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
@@ -83,7 +83,7 @@ struct BreakdownSheet: View {
 
                 Spacer()
             }
-            .navigationTitle("Break Down")
+            .navigationTitle("Commit")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
@@ -94,7 +94,7 @@ struct BreakdownSheet: View {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Add") {
                         Task {
-                            await addSelectedBreakdowns()
+                            await addSelectedCommitments()
                         }
                     }
                     .disabled(selectedDates.isEmpty || isSaving)
@@ -108,11 +108,11 @@ struct BreakdownSheet: View {
         }
     }
 
-    private func addSelectedBreakdowns() async {
+    private func addSelectedCommitments() async {
         isSaving = true
 
         for date in selectedDates.sorted() {
-            await viewModel.breakdownCommitment(commitment, toDate: date, targetTimeframe: selectedTargetTimeframe)
+            await viewModel.commitToTimeframe(commitment, toDate: date, targetTimeframe: selectedTargetTimeframe)
         }
 
         isSaving = false
@@ -764,8 +764,153 @@ struct BreakdownMonthButton: View {
     }
 }
 
+// MARK: - Subtask Commit Sheet
+
+/// Sheet for committing a subtask to a lower timeframe
+/// Creates a commitment for the subtask at the target timeframe
+struct SubtaskCommitSheet: View {
+    let subtask: FocusTask
+    let parentCommitment: Commitment
+    @ObservedObject var viewModel: FocusTabViewModel
+    @Environment(\.dismiss) var dismiss
+
+    @State private var selectedTargetTimeframe: Timeframe
+    @State private var selectedDates: Set<Date> = []
+    @State private var isSaving = false
+
+    /// Available timeframes for breakdown (all lower than parent's current)
+    private var availableTimeframes: [Timeframe] {
+        parentCommitment.timeframe.availableBreakdownTimeframes
+    }
+
+    init(subtask: FocusTask, parentCommitment: Commitment, viewModel: FocusTabViewModel) {
+        self.subtask = subtask
+        self.parentCommitment = parentCommitment
+        self.viewModel = viewModel
+        // Default to first available timeframe
+        _selectedTargetTimeframe = State(initialValue: parentCommitment.timeframe.availableBreakdownTimeframes.first ?? .daily)
+    }
+
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 0) {
+                // Header info
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(subtask.title)
+                        .font(.headline)
+
+                    HStack {
+                        Image(systemName: "arrow.down.forward.circle")
+                            .foregroundColor(.blue)
+                        Text("Commit subtask to lower timeframe")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding()
+
+                Divider()
+
+                // Calendar picker with timeframe selector
+                SubtaskCommitCalendarPicker(
+                    selectedDates: $selectedDates,
+                    selectedTimeframe: $selectedTargetTimeframe,
+                    availableTimeframes: availableTimeframes,
+                    parentCommitment: parentCommitment
+                )
+                .padding(.top, 8)
+
+                Spacer()
+            }
+            .navigationTitle("Commit Subtask")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Add") {
+                        Task {
+                            await addSelectedCommitments()
+                        }
+                    }
+                    .disabled(selectedDates.isEmpty || isSaving)
+                    .fontWeight(.semibold)
+                }
+            }
+            .onChange(of: selectedTargetTimeframe) { _ in
+                // Clear selections when timeframe changes
+                selectedDates.removeAll()
+            }
+        }
+    }
+
+    private func addSelectedCommitments() async {
+        isSaving = true
+
+        for date in selectedDates.sorted() {
+            await viewModel.commitSubtask(subtask, parentCommitment: parentCommitment, toDate: date, targetTimeframe: selectedTargetTimeframe)
+        }
+
+        isSaving = false
+        dismiss()
+    }
+}
+
+/// Calendar picker for subtask commit - uses parent commitment's date range
+struct SubtaskCommitCalendarPicker: View {
+    @Binding var selectedDates: Set<Date>
+    @Binding var selectedTimeframe: Timeframe
+    let availableTimeframes: [Timeframe]
+    let parentCommitment: Commitment
+
+    var body: some View {
+        VStack(spacing: 16) {
+            // Timeframe picker (only show if multiple options)
+            if availableTimeframes.count > 1 {
+                Picker("Timeframe", selection: $selectedTimeframe) {
+                    ForEach(availableTimeframes, id: \.self) { tf in
+                        Text(tf.displayName).tag(tf)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .padding(.horizontal)
+            }
+
+            // Calendar view based on selected timeframe
+            // Uses parent commitment as the scoping reference
+            switch selectedTimeframe {
+            case .daily:
+                BreakdownDailyCalendarView(
+                    selectedDates: $selectedDates,
+                    excludedDates: [],  // No existing children for new subtask
+                    commitment: parentCommitment
+                )
+            case .weekly:
+                BreakdownWeeklyCalendarView(
+                    selectedDates: $selectedDates,
+                    excludedDates: [],
+                    commitment: parentCommitment
+                )
+            case .monthly:
+                BreakdownMonthlyCalendarView(
+                    selectedDates: $selectedDates,
+                    excludedDates: [],
+                    commitment: parentCommitment
+                )
+            case .yearly:
+                // Should not happen - yearly is never a breakdown target
+                EmptyView()
+            }
+        }
+    }
+}
+
 #Preview {
-    BreakdownSheet(
+    CommitSheet(
         commitment: Commitment(
             userId: UUID(),
             taskId: UUID(),

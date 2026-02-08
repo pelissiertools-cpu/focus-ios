@@ -118,16 +118,36 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                         }
                     }
 
-                    // Break Down (only for non-daily commitments that are not children)
+                    // Commit to lower timeframe (for non-daily commitments)
                     if let commitment = commitment,
-                       commitment.canBreakdown && !commitment.isChildCommitment,
+                       commitment.canBreakdown,
                        let childTimeframe = commitment.childTimeframe {
                         Button {
-                            focusViewModel.selectedCommitmentForBreakdown = commitment
-                            focusViewModel.showBreakdownSheet = true
+                            focusViewModel.selectedCommitmentForCommit = commitment
+                            focusViewModel.showCommitSheet = true
                             dismiss()
                         } label: {
-                            Label("Break Down to \(childTimeframe.displayName)", systemImage: "arrow.down.forward.circle")
+                            Label("Commit to \(childTimeframe.displayName)", systemImage: "arrow.down.forward.circle")
+                        }
+                    }
+
+                    // Commit Subtask to lower timeframe (for subtasks without their own commitment)
+                    if isSubtask && commitment == nil {
+                        // Find parent's commitment at current timeframe
+                        if let parentId = task.parentTaskId,
+                           let parentCommitment = focusViewModel.commitments.first(where: {
+                               $0.taskId == parentId &&
+                               focusViewModel.isSameTimeframe($0.commitmentDate, timeframe: focusViewModel.selectedTimeframe, selectedDate: focusViewModel.selectedDate)
+                           }),
+                           parentCommitment.timeframe != .daily {
+                            Button {
+                                focusViewModel.selectedSubtaskForCommit = task
+                                focusViewModel.selectedParentCommitmentForSubtaskCommit = parentCommitment
+                                focusViewModel.showSubtaskCommitSheet = true
+                                dismiss()
+                            } label: {
+                                Label("Commit to \(parentCommitment.childTimeframe?.displayName ?? "...")", systemImage: "arrow.down.forward.circle")
+                            }
                         }
                     }
 
@@ -202,7 +222,13 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
         let title = newSubtaskTitle
         newSubtaskTitle = ""
         Task {
-            await viewModel.createSubtask(title: title, parentId: task.id)
+            // In Focus view context (when we have a commitment), pass the commitment
+            // so the new subtask gets its own commitment at the same timeframe
+            if let commitment = commitment {
+                await focusViewModel.createSubtask(title: title, parentId: task.id, parentCommitment: commitment)
+            } else {
+                await viewModel.createSubtask(title: title, parentId: task.id)
+            }
         }
     }
 

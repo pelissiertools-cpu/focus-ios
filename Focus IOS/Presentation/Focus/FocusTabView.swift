@@ -99,12 +99,22 @@ struct FocusTabView: View {
                 TaskDetailsDrawer(task: task, viewModel: viewModel, commitment: commitment)
                     .environmentObject(viewModel)
             }
-            .sheet(isPresented: $viewModel.showBreakdownSheet) {
-                if let commitment = viewModel.selectedCommitmentForBreakdown,
+            .sheet(isPresented: $viewModel.showCommitSheet) {
+                if let commitment = viewModel.selectedCommitmentForCommit,
                    let task = viewModel.tasksMap[commitment.taskId] {
-                    BreakdownSheet(
+                    CommitSheet(
                         commitment: commitment,
                         task: task,
+                        viewModel: viewModel
+                    )
+                }
+            }
+            .sheet(isPresented: $viewModel.showSubtaskCommitSheet) {
+                if let subtask = viewModel.selectedSubtaskForCommit,
+                   let parentCommitment = viewModel.selectedParentCommitmentForSubtaskCommit {
+                    SubtaskCommitSheet(
+                        subtask: subtask,
+                        parentCommitment: parentCommitment,
                         viewModel: viewModel
                     )
                 }
@@ -188,9 +198,9 @@ struct CommitmentRow: View {
         viewModel.childCount(for: commitment.id)
     }
 
-    /// Can break down if: not daily, and not already a child commitment
+    /// Can break down if: not daily (child commitments can also break down)
     private var canBreakdown: Bool {
-        commitment.canBreakdown && !commitment.isChildCommitment
+        commitment.canBreakdown
     }
 
     var body: some View {
@@ -237,11 +247,11 @@ struct CommitmentRow: View {
                     viewModel.selectedTaskForDetails = task
                 }
 
-                // Breakdown button (for non-daily, non-child commitments)
+                // Commit button (for non-daily commitments)
                 if canBreakdown {
                     Button {
-                        viewModel.selectedCommitmentForBreakdown = commitment
-                        viewModel.showBreakdownSheet = true
+                        viewModel.selectedCommitmentForCommit = commitment
+                        viewModel.showCommitSheet = true
                     } label: {
                         Image(systemName: "arrow.down.forward.circle")
                             .font(.title3)
@@ -272,7 +282,7 @@ struct CommitmentRow: View {
             if isExpanded && hasSubtasks {
                 VStack(spacing: 0) {
                     ForEach(subtasks) { subtask in
-                        FocusSubtaskRow(subtask: subtask, parentId: task.id, viewModel: viewModel)
+                        FocusSubtaskRow(subtask: subtask, parentId: task.id, parentCommitment: commitment, viewModel: viewModel)
                     }
                 }
                 .padding(.leading, 32)
@@ -285,7 +295,18 @@ struct CommitmentRow: View {
 struct FocusSubtaskRow: View {
     let subtask: FocusTask
     let parentId: UUID
+    let parentCommitment: Commitment
     @ObservedObject var viewModel: FocusTabViewModel
+
+    /// Check if this subtask already has its own commitment
+    private var hasOwnCommitment: Bool {
+        viewModel.commitments.contains { $0.taskId == subtask.id }
+    }
+
+    /// Can break down if parent's timeframe is not daily and subtask doesn't have own commitment yet
+    private var canBreakdown: Bool {
+        parentCommitment.timeframe != .daily && !hasOwnCommitment
+    }
 
     var body: some View {
         HStack(spacing: 12) {
@@ -295,6 +316,20 @@ struct FocusSubtaskRow: View {
                 .foregroundColor(subtask.isCompleted ? .secondary : .primary)
 
             Spacer()
+
+            // Commit button for subtasks that can be committed to lower timeframes
+            if canBreakdown {
+                Button {
+                    viewModel.selectedSubtaskForCommit = subtask
+                    viewModel.selectedParentCommitmentForSubtaskCommit = parentCommitment
+                    viewModel.showSubtaskCommitSheet = true
+                } label: {
+                    Image(systemName: "arrow.down.forward.circle")
+                        .font(.subheadline)
+                        .foregroundColor(.blue)
+                }
+                .buttonStyle(.plain)
+            }
 
             // Checkbox on right for thumb access
             Button {

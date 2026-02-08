@@ -516,6 +516,117 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
         }
     }
 
+    // MARK: - Drag Reorder Methods
+
+    /// Get uncompleted commitments for a section, sorted by sortOrder, filtered to current timeframe/date
+    func uncompletedCommitmentsForSection(_ section: Section) -> [Commitment] {
+        commitments
+            .filter { commitment in
+                commitment.section == section &&
+                isSameTimeframe(commitment.commitmentDate, timeframe: selectedTimeframe, selectedDate: selectedDate) &&
+                !(tasksMap[commitment.taskId]?.isCompleted ?? false)
+            }
+            .sorted { $0.sortOrder < $1.sortOrder }
+    }
+
+    /// Get completed commitments for a section, filtered to current timeframe/date
+    func completedCommitmentsForSection(_ section: Section) -> [Commitment] {
+        commitments
+            .filter { commitment in
+                commitment.section == section &&
+                isSameTimeframe(commitment.commitmentDate, timeframe: selectedTimeframe, selectedDate: selectedDate) &&
+                (tasksMap[commitment.taskId]?.isCompleted ?? false)
+            }
+    }
+
+    /// Reorder a commitment within the same section
+    func reorderCommitment(droppedId: UUID, targetId: UUID) {
+        // Find both commitments
+        guard let dropped = commitments.first(where: { $0.id == droppedId }),
+              let target = commitments.first(where: { $0.id == targetId }),
+              dropped.section == target.section else { return }
+
+        var sectionCommitments = uncompletedCommitmentsForSection(dropped.section)
+
+        guard let fromIndex = sectionCommitments.firstIndex(where: { $0.id == droppedId }),
+              let toIndex = sectionCommitments.firstIndex(where: { $0.id == targetId }),
+              fromIndex != toIndex else { return }
+
+        let moved = sectionCommitments.remove(at: fromIndex)
+        sectionCommitments.insert(moved, at: toIndex)
+
+        // Reassign sort orders in the main commitments array
+        for (index, commitment) in sectionCommitments.enumerated() {
+            if let mainIndex = commitments.firstIndex(where: { $0.id == commitment.id }) {
+                commitments[mainIndex].sortOrder = index
+            }
+        }
+
+        // Persist in background
+        let updates = sectionCommitments.enumerated().map { (index, c) in
+            (id: c.id, sortOrder: index)
+        }
+        Task {
+            await persistCommitmentSortOrders(updates)
+        }
+    }
+
+    /// Move a commitment to a different section at a specific index
+    func moveCommitmentToSectionAtIndex(_ commitment: Commitment, to targetSection: Section, atIndex: Int) {
+        guard commitment.section != targetSection else { return }
+
+        // Validate Focus section capacity
+        if targetSection == .focus {
+            guard canAddTask(to: .focus, timeframe: commitment.timeframe, date: commitment.commitmentDate) else { return }
+        }
+
+        // Get source and target section lists
+        var sourceList = uncompletedCommitmentsForSection(commitment.section)
+        var targetList = uncompletedCommitmentsForSection(targetSection)
+
+        // Remove from source
+        sourceList.removeAll { $0.id == commitment.id }
+
+        // Insert into target at the specified index (clamped)
+        let insertIndex = min(atIndex, targetList.count)
+        var movedCommitment = commitment
+        movedCommitment.section = targetSection
+        targetList.insert(movedCommitment, at: insertIndex)
+
+        // Update in main commitments array
+        if let mainIndex = commitments.firstIndex(where: { $0.id == commitment.id }) {
+            commitments[mainIndex].section = targetSection
+        }
+
+        // Reassign sort orders for both sections
+        for (index, c) in sourceList.enumerated() {
+            if let mainIndex = commitments.firstIndex(where: { $0.id == c.id }) {
+                commitments[mainIndex].sortOrder = index
+            }
+        }
+        for (index, c) in targetList.enumerated() {
+            if let mainIndex = commitments.firstIndex(where: { $0.id == c.id }) {
+                commitments[mainIndex].sortOrder = index
+            }
+        }
+
+        // Persist in background
+        let allUpdates = sourceList.enumerated().map { (i, c) in (id: c.id, sortOrder: i) }
+            + targetList.enumerated().map { (i, c) in (id: c.id, sortOrder: i) }
+        Task {
+            await persistCommitmentSortOrders(allUpdates)
+        }
+    }
+
+    /// Persist commitment sort orders to database
+    private func persistCommitmentSortOrders(_ updates: [(id: UUID, sortOrder: Int)]) async {
+        do {
+            try await commitmentRepository.updateCommitmentSortOrders(updates)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
     /// Toggle task expansion
     func toggleExpanded(_ taskId: UUID) {
         if expandedTasks.contains(taskId) {
@@ -576,13 +687,18 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
             let createdTask = try await taskRepository.createTask(newTask)
 
             // Create commitment for current timeframe/date
+            let maxSort = commitments
+                .filter { $0.section == section &&
+                    isSameTimeframe($0.commitmentDate, timeframe: selectedTimeframe, selectedDate: selectedDate) }
+                .map { $0.sortOrder }
+                .max() ?? -1
             let commitment = Commitment(
                 userId: userId,
                 taskId: createdTask.id,
                 timeframe: selectedTimeframe,
                 section: section,
                 commitmentDate: selectedDate,
-                sortOrder: 0
+                sortOrder: maxSort + 1
             )
             let createdCommitment = try await commitmentRepository.createCommitment(commitment)
 

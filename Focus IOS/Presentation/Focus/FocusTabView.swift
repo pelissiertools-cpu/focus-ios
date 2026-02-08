@@ -6,12 +6,30 @@
 //
 
 import SwiftUI
-import UniformTypeIdentifiers
+
+// MARK: - Section Frame Preference Key
+
+struct SectionFramePreference: PreferenceKey {
+    static let defaultValue: [String: CGRect] = [:]
+    static func reduce(value: inout [String: CGRect], nextValue: () -> [String: CGRect]) {
+        value.merge(nextValue()) { $1 }
+    }
+}
 
 struct FocusTabView: View {
     @EnvironmentObject var authService: AuthService
     @StateObject private var viewModel: FocusTabViewModel
     @State private var showCalendarPicker = false
+
+    // Drag state
+    @State private var draggingCommitmentId: UUID?
+    @State private var dragFingerY: CGFloat = 0
+    @State private var dragTranslation: CGFloat = 0
+    @State private var dragReorderAdjustment: CGFloat = 0
+    @State private var lastReorderTime: Date = .distantPast
+    @State private var rowFrames: [UUID: CGRect] = [:]
+    @State private var sectionFrames: [String: CGRect] = [:]
+    @State private var targetedSection: Section?
 
     init() {
         _viewModel = StateObject(wrappedValue: FocusTabViewModel(authService: AuthService()))
@@ -58,18 +76,39 @@ struct FocusTabView: View {
                             SectionView(
                                 title: "Focus",
                                 section: .focus,
-                                viewModel: viewModel
+                                viewModel: viewModel,
+                                draggingCommitmentId: draggingCommitmentId,
+                                dragTranslation: dragTranslation,
+                                dragReorderAdjustment: dragReorderAdjustment,
+                                targetedSection: targetedSection,
+                                onDragChanged: { id, value in handleCommitmentDrag(id, value) },
+                                onDragEnded: { handleCommitmentDragEnd() }
                             )
+                            .zIndex(draggingCommitmentId != nil && viewModel.uncompletedCommitmentsForSection(.focus).contains(where: { $0.id == draggingCommitmentId }) ? 1 : 0)
 
                             // Extra Section
                             SectionView(
                                 title: "Extra",
                                 section: .extra,
-                                viewModel: viewModel
+                                viewModel: viewModel,
+                                draggingCommitmentId: draggingCommitmentId,
+                                dragTranslation: dragTranslation,
+                                dragReorderAdjustment: dragReorderAdjustment,
+                                targetedSection: targetedSection,
+                                onDragChanged: { id, value in handleCommitmentDrag(id, value) },
+                                onDragEnded: { handleCommitmentDragEnd() }
                             )
+                            .zIndex(draggingCommitmentId != nil && viewModel.uncompletedCommitmentsForSection(.extra).contains(where: { $0.id == draggingCommitmentId }) ? 1 : 0)
                         }
                         .padding()
+                        .onPreferenceChange(RowFramePreference.self) { frames in
+                            rowFrames = frames
+                        }
+                        .onPreferenceChange(SectionFramePreference.self) { frames in
+                            sectionFrames = frames
+                        }
                     }
+                    .coordinateSpace(name: "focusList")
                 }
             }
             .task {
@@ -123,13 +162,112 @@ struct FocusTabView: View {
             }
         }
     }
+
+    // MARK: - Drag Handlers
+
+    private func handleCommitmentDrag(_ commitmentId: UUID, _ value: DragGesture.Value) {
+        if draggingCommitmentId == nil {
+            withAnimation(.easeInOut(duration: 0.15)) {
+                draggingCommitmentId = commitmentId
+            }
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        }
+        dragTranslation = value.translation.height
+        dragFingerY = value.location.y
+
+        // Update targeted section highlight
+        if let draggedCommitment = viewModel.commitments.first(where: { $0.id == commitmentId }) {
+            let otherSection: Section = draggedCommitment.section == .focus ? .extra : .focus
+            if let sectionFrame = sectionFrames[otherSection.rawValue],
+               dragFingerY >= sectionFrame.minY && dragFingerY <= sectionFrame.maxY {
+                if targetedSection != otherSection {
+                    targetedSection = otherSection
+                }
+            } else {
+                if targetedSection != nil {
+                    targetedSection = nil
+                }
+            }
+        }
+
+        // Cooldown: prevent double-swaps during animation
+        guard Date().timeIntervalSince(lastReorderTime) > 0.25 else { return }
+
+        // Find the dragged commitment and its current section
+        guard let draggedCommitment = viewModel.commitments.first(where: { $0.id == commitmentId }) else { return }
+
+        // Within-section reorder: check midpoint crossings in same section
+        let sameSection = viewModel.uncompletedCommitmentsForSection(draggedCommitment.section)
+        guard let currentIdx = sameSection.firstIndex(where: { $0.id == commitmentId }) else { return }
+
+        for (idx, other) in sameSection.enumerated() where other.id != commitmentId {
+            guard let frame = rowFrames[other.id] else { continue }
+            let crossedDown = idx > currentIdx && dragFingerY > frame.midY
+            let crossedUp = idx < currentIdx && dragFingerY < frame.midY
+            if crossedDown || crossedUp {
+                let passedHeight = frame.height
+                dragReorderAdjustment += crossedDown ? -passedHeight : passedHeight
+
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    viewModel.reorderCommitment(droppedId: commitmentId, targetId: other.id)
+                }
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                lastReorderTime = Date()
+                break
+            }
+        }
+    }
+
+    private func handleCommitmentDragEnd() {
+        // Check for cross-section drop
+        if let commitmentId = draggingCommitmentId,
+           let commitment = viewModel.commitments.first(where: { $0.id == commitmentId }) {
+            let otherSection: Section = commitment.section == .focus ? .extra : .focus
+            let otherSectionKey = otherSection.rawValue
+
+            if let sectionFrame = sectionFrames[otherSectionKey],
+               dragFingerY >= sectionFrame.minY && dragFingerY <= sectionFrame.maxY {
+                // Validate Focus section capacity
+                if otherSection != .focus || viewModel.canAddTask(to: .focus, timeframe: commitment.timeframe, date: commitment.commitmentDate) {
+                    // Find insertion index based on finger position
+                    let otherList = viewModel.uncompletedCommitmentsForSection(otherSection)
+                    var insertIdx = otherList.count
+                    for (idx, other) in otherList.enumerated() {
+                        if let frame = rowFrames[other.id], dragFingerY < frame.midY {
+                            insertIdx = idx
+                            break
+                        }
+                    }
+                    viewModel.moveCommitmentToSectionAtIndex(commitment, to: otherSection, atIndex: insertIdx)
+                }
+            }
+        }
+
+        withAnimation(.easeInOut(duration: 0.2)) {
+            draggingCommitmentId = nil
+            dragTranslation = 0
+            dragReorderAdjustment = 0
+            dragFingerY = 0
+            targetedSection = nil
+        }
+        lastReorderTime = .distantPast
+    }
 }
+
+// MARK: - Section View
 
 struct SectionView: View {
     let title: String
     let section: Section
     @ObservedObject var viewModel: FocusTabViewModel
-    @State private var isTargeted = false
+
+    // Drag parameters from parent
+    var draggingCommitmentId: UUID?
+    var dragTranslation: CGFloat = 0
+    var dragReorderAdjustment: CGFloat = 0
+    var targetedSection: Section? = nil
+    var onDragChanged: ((UUID, DragGesture.Value) -> Void)? = nil
+    var onDragEnded: (() -> Void)? = nil
 
     var sectionCommitments: [Commitment] {
         viewModel.commitments.filter { commitment in
@@ -143,17 +281,11 @@ struct SectionView: View {
     }
 
     var uncompletedCommitments: [Commitment] {
-        sectionCommitments.filter { commitment in
-            guard let task = viewModel.tasksMap[commitment.taskId] else { return true }
-            return !task.isCompleted
-        }
+        viewModel.uncompletedCommitmentsForSection(section)
     }
 
     var completedCommitments: [Commitment] {
-        sectionCommitments.filter { commitment in
-            guard let task = viewModel.tasksMap[commitment.taskId] else { return false }
-            return task.isCompleted
-        }
+        viewModel.completedCommitmentsForSection(section)
     }
 
     var body: some View {
@@ -217,23 +349,55 @@ struct SectionView: View {
                         .padding(.vertical, 8)
                 } else {
                     VStack(spacing: 0) {
-                        // For Extra section: show uncompleted tasks, then Done pill
-                        // For Focus section: show all tasks normally
-                        let tasksToShow = section == .extra ? uncompletedCommitments : sectionCommitments
-
-                        ForEach(Array(tasksToShow.enumerated()), id: \.element.id) { index, commitment in
+                        // Uncompleted commitments — draggable with floating pill
+                        ForEach(Array(uncompletedCommitments.enumerated()), id: \.element.id) { index, commitment in
                             if let task = viewModel.tasksMap[commitment.taskId] {
-                                CommitmentRow(commitment: commitment, task: task, section: section, viewModel: viewModel)
+                                let isDragging = draggingCommitmentId == commitment.id
 
-                                if index < tasksToShow.count - 1 {
-                                    Divider()
+                                VStack(spacing: 0) {
+                                    if index > 0 {
+                                        Divider()
+                                    }
+                                    CommitmentRow(
+                                        commitment: commitment,
+                                        task: task,
+                                        section: section,
+                                        viewModel: viewModel,
+                                        onDragChanged: { value in onDragChanged?(commitment.id, value) },
+                                        onDragEnded: { onDragEnded?() }
+                                    )
+                                }
+                                .background(
+                                    GeometryReader { geo in
+                                        Color.clear.preference(
+                                            key: RowFramePreference.self,
+                                            value: [commitment.id: geo.frame(in: .named("focusList"))]
+                                        )
+                                    }
+                                )
+                                .background(Color(.secondarySystemBackground))
+                                .offset(y: isDragging ? (dragTranslation + dragReorderAdjustment) : 0)
+                                .scaleEffect(isDragging ? 1.03 : 1.0)
+                                .shadow(color: .black.opacity(isDragging ? 0.15 : 0), radius: 8, y: 2)
+                                .zIndex(isDragging ? 1 : 0)
+                                .transaction { t in
+                                    if isDragging { t.animation = nil }
                                 }
                             }
                         }
 
-                        // Done subsection pill (Extra section only, when there are completed tasks)
+                        // Completed commitments — inline below for Focus, Done pill for Extra
+                        if section == .focus && !completedCommitments.isEmpty {
+                            ForEach(Array(completedCommitments.enumerated()), id: \.element.id) { index, commitment in
+                                if let task = viewModel.tasksMap[commitment.taskId] {
+                                    Divider()
+                                    CommitmentRow(commitment: commitment, task: task, section: section, viewModel: viewModel)
+                                }
+                            }
+                        }
+
                         if section == .extra && !completedCommitments.isEmpty {
-                            if !tasksToShow.isEmpty {
+                            if !uncompletedCommitments.isEmpty {
                                 Divider()
                                     .padding(.top, 8)
                             }
@@ -249,27 +413,22 @@ struct SectionView: View {
             }
         }
         .padding()
-        .background(Color(.secondarySystemBackground))
-        .cornerRadius(12)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color(.secondarySystemBackground))
+        )
         .overlay(
             RoundedRectangle(cornerRadius: 12)
-                .stroke(isTargeted ? Color.accentColor : Color.clear, lineWidth: 2)
+                .stroke(targetedSection == section ? Color.accentColor : Color.clear, lineWidth: 2)
         )
-        .onDrop(of: [.text], isTargeted: $isTargeted) { providers in
-            guard let provider = providers.first else { return false }
-            let currentCommitments = viewModel.commitments
-            provider.loadObject(ofClass: NSString.self) { string, _ in
-                guard let idString = string as? String,
-                      let id = UUID(uuidString: idString),
-                      let commitment = currentCommitments.first(where: { $0.id == id }),
-                      commitment.section != section else { return }
-
-                Task { @MainActor in
-                    await viewModel.moveCommitmentToSection(commitment, to: section)
-                }
+        .background(
+            GeometryReader { geo in
+                Color.clear.preference(
+                    key: SectionFramePreference.self,
+                    value: [section.rawValue: geo.frame(in: .named("focusList"))]
+                )
             }
-            return true
-        }
+        )
     }
 }
 
@@ -328,6 +487,8 @@ struct DonePillView: View {
     }
 }
 
+// MARK: - Add Task Sheet
+
 struct AddTaskToFocusSheet: View {
     let section: Section
     @ObservedObject var viewModel: FocusTabViewModel
@@ -375,11 +536,15 @@ struct AddTaskToFocusSheet: View {
     }
 }
 
+// MARK: - Commitment Row
+
 struct CommitmentRow: View {
     let commitment: Commitment
     let task: FocusTask
     let section: Section
     @ObservedObject var viewModel: FocusTabViewModel
+    var onDragChanged: ((DragGesture.Value) -> Void)? = nil
+    var onDragEnded: (() -> Void)? = nil
 
     private var subtasks: [FocusTask] {
         viewModel.getSubtasks(for: task.id)
@@ -406,12 +571,15 @@ struct CommitmentRow: View {
         VStack(spacing: 0) {
             // Main task row - matching ExpandableTaskRow style
             HStack(spacing: 12) {
-                // Drag handle (left side) - only for uncompleted tasks
-                if !task.isCompleted {
+                // Drag handle (left side) - only for uncompleted tasks with drag enabled
+                if !task.isCompleted && onDragChanged != nil {
                     DragHandleView()
-                        .onDrag {
-                            NSItemProvider(object: commitment.id.uuidString as NSString)
-                        }
+                        .contentShape(Rectangle())
+                        .highPriorityGesture(
+                            DragGesture(minimumDistance: 5, coordinateSpace: .named("focusList"))
+                                .onChanged { value in onDragChanged?(value) }
+                                .onEnded { _ in onDragEnded?() }
+                        )
                 }
 
                 // Child commitment indicator (indentation)
@@ -498,6 +666,8 @@ struct CommitmentRow: View {
         }
     }
 }
+
+// MARK: - Focus Subtask Row
 
 struct FocusSubtaskRow: View {
     let subtask: FocusTask

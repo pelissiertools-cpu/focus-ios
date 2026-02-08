@@ -12,6 +12,14 @@ import Supabase
 class CommitmentRepository {
     private let supabase: SupabaseClient
 
+    private struct CommitmentSortOrderUpdate: Encodable {
+        let sortOrder: Int
+
+        enum CodingKeys: String, CodingKey {
+            case sortOrder = "sort_order"
+        }
+    }
+
     init(supabase: SupabaseClient = SupabaseClientManager.shared.client) {
         self.supabase = supabase
     }
@@ -143,6 +151,18 @@ class CommitmentRepository {
             .value
 
         return created
+    }
+
+    /// Update sort orders for multiple commitments
+    func updateCommitmentSortOrders(_ updates: [(id: UUID, sortOrder: Int)]) async throws {
+        for update in updates {
+            let sortUpdate = CommitmentSortOrderUpdate(sortOrder: update.sortOrder)
+            try await supabase
+                .from("commitments")
+                .update(sortUpdate)
+                .eq("id", value: update.id.uuidString)
+                .execute()
+        }
     }
 
     /// Count child commitments for a parent

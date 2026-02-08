@@ -37,7 +37,6 @@ struct LibraryTabView: View {
                 }
                 .frame(maxHeight: .infinity)
             }
-            .navigationTitle("Library")
         }
     }
 }

@@ -72,7 +72,6 @@ struct FocusTabView: View {
                     }
                 }
             }
-            .navigationTitle("Focus")
             .task {
                 await viewModel.fetchCommitments()
             }

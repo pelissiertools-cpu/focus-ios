@@ -25,14 +25,26 @@ struct TasksListView: View {
             } else {
                 taskList
             }
-        }
-        .navigationTitle("Tasks")
-        .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
-                Button {
-                    viewModel.showingAddTask = true
-                } label: {
-                    Image(systemName: "plus")
+
+            // Floating add button
+            VStack {
+                Spacer()
+                HStack {
+                    Spacer()
+                    Button {
+                        viewModel.showingAddTask = true
+                    } label: {
+                        Image(systemName: "plus")
+                            .font(.title2)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.white)
+                            .frame(width: 56, height: 56)
+                            .background(Color.blue)
+                            .clipShape(Circle())
+                            .shadow(radius: 4, y: 2)
+                    }
+                    .padding(.trailing, 20)
+                    .padding(.bottom, 20)
                 }
             }
         }

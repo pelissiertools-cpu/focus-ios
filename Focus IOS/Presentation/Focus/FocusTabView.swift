@@ -223,7 +223,7 @@ struct SectionView: View {
 
                         ForEach(Array(tasksToShow.enumerated()), id: \.element.id) { index, commitment in
                             if let task = viewModel.tasksMap[commitment.taskId] {
-                                CommitmentRow(commitment: commitment, task: task, viewModel: viewModel)
+                                CommitmentRow(commitment: commitment, task: task, section: section, viewModel: viewModel)
 
                                 if index < tasksToShow.count - 1 {
                                     Divider()
@@ -240,6 +240,7 @@ struct SectionView: View {
 
                             DonePillView(
                                 completedCommitments: completedCommitments,
+                                section: section,
                                 viewModel: viewModel
                             )
                         }
@@ -276,6 +277,7 @@ struct SectionView: View {
 
 struct DonePillView: View {
     let completedCommitments: [Commitment]
+    let section: Section
     @ObservedObject var viewModel: FocusTabViewModel
 
     private var isExpanded: Bool {
@@ -317,7 +319,7 @@ struct DonePillView: View {
                     ForEach(Array(completedCommitments.enumerated()), id: \.element.id) { index, commitment in
                         if let task = viewModel.tasksMap[commitment.taskId] {
                             Divider()
-                            CommitmentRow(commitment: commitment, task: task, viewModel: viewModel)
+                            CommitmentRow(commitment: commitment, task: task, section: section, viewModel: viewModel)
                         }
                     }
                 }
@@ -376,6 +378,7 @@ struct AddTaskToFocusSheet: View {
 struct CommitmentRow: View {
     let commitment: Commitment
     let task: FocusTask
+    let section: Section
     @ObservedObject var viewModel: FocusTabViewModel
 
     private var subtasks: [FocusTask] {
@@ -422,6 +425,7 @@ struct CommitmentRow: View {
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text(task.title)
+                        .font(section == .focus ? .title3 : .body)
                         .strikethrough(task.isCompleted)
                         .foregroundColor(task.isCompleted ? .secondary : .primary)
 
@@ -476,7 +480,7 @@ struct CommitmentRow: View {
                 }
                 .buttonStyle(.plain)
             }
-            .padding(.vertical, 8)
+            .padding(.vertical, section == .focus ? 14 : 8)
 
             // Subtasks and add row (shown when expanded)
             if isExpanded {

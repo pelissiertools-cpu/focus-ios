@@ -412,6 +412,38 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
         }
     }
 
+    /// Move a commitment to a different section (Focus <-> Extra)
+    /// Returns true if successful, false if section limit exceeded
+    func moveCommitmentToSection(_ commitment: Commitment, to targetSection: Section) async -> Bool {
+        // Skip if already in target section
+        guard commitment.section != targetSection else { return true }
+
+        // Check section limits for Focus
+        if targetSection == .focus {
+            guard canAddTask(to: .focus, timeframe: commitment.timeframe, date: commitment.commitmentDate) else {
+                errorMessage = "Focus section is full (\(Section.focus.maxTasks(for: commitment.timeframe)!) max)"
+                return false
+            }
+        }
+
+        // Update commitment
+        var updatedCommitment = commitment
+        updatedCommitment.section = targetSection
+
+        do {
+            try await commitmentRepository.updateCommitment(updatedCommitment)
+
+            // Update local state
+            if let index = commitments.firstIndex(where: { $0.id == commitment.id }) {
+                commitments[index] = updatedCommitment
+            }
+            return true
+        } catch {
+            errorMessage = error.localizedDescription
+            return false
+        }
+    }
+
     /// Toggle task expansion
     func toggleExpanded(_ taskId: UUID) {
         if expandedTasks.contains(taskId) {

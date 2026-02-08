@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct FocusTabView: View {
     @EnvironmentObject var authService: AuthService
@@ -127,6 +128,7 @@ struct SectionView: View {
     let title: String
     let section: Section
     @ObservedObject var viewModel: FocusTabViewModel
+    @State private var isTargeted = false
 
     var sectionCommitments: [Commitment] {
         viewModel.commitments.filter { commitment in
@@ -174,6 +176,24 @@ struct SectionView: View {
         .padding()
         .background(Color(.secondarySystemBackground))
         .cornerRadius(12)
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(isTargeted ? Color.accentColor : Color.clear, lineWidth: 2)
+        )
+        .onDrop(of: [.text], isTargeted: $isTargeted) { providers in
+            guard let provider = providers.first else { return false }
+            provider.loadObject(ofClass: NSString.self) { string, _ in
+                guard let idString = string as? String,
+                      let id = UUID(uuidString: idString),
+                      let commitment = viewModel.commitments.first(where: { $0.id == id }),
+                      commitment.section != section else { return }
+
+                Task { @MainActor in
+                    await viewModel.moveCommitmentToSection(commitment, to: section)
+                }
+            }
+            return true
+        }
     }
 }
 
@@ -207,6 +227,14 @@ struct CommitmentRow: View {
         VStack(spacing: 0) {
             // Main task row - matching ExpandableTaskRow style
             HStack(spacing: 12) {
+                // Drag handle (left side)
+                Image(systemName: "line.3.horizontal")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .onDrag {
+                        NSItemProvider(object: commitment.id.uuidString as NSString)
+                    }
+
                 // Child commitment indicator (indentation)
                 if commitment.isChildCommitment {
                     Image(systemName: "arrow.turn.down.right")

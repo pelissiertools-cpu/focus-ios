@@ -93,6 +93,9 @@ struct CommitmentSelectionSheet: View {
             .onChange(of: selectedTimeframe) { _ in
                 fetchTaskCommitments()
             }
+            .onChange(of: selectedSection) { _ in
+                fetchTaskCommitments()
+            }
         }
     }
 
@@ -106,6 +109,10 @@ struct CommitmentSelectionSheet: View {
         do {
             let commitmentRepository = CommitmentRepository()
 
+            // Fetch ALL commitments for this task (both sections) to check for conflicts
+            let allCommitments = try await commitmentRepository.fetchCommitments(forTask: task.id)
+            let otherSection: Section = selectedSection == .focus ? .extra : .focus
+
             let originalDates = Set(originalCommitments.map { normalizeDate($0.commitmentDate) })
             let currentDates = Set(selectedDates.map { normalizeDate($0) })
 
@@ -115,15 +122,25 @@ struct CommitmentSelectionSheet: View {
             // Find dates to remove (in original but not in current)
             let datesToRemove = originalDates.subtracting(currentDates)
 
-            // Delete removed commitments
+            // Delete removed commitments from current section
             for date in datesToRemove {
                 if let commitment = originalCommitments.first(where: { normalizeDate($0.commitmentDate) == date }) {
                     try await commitmentRepository.deleteCommitment(id: commitment.id)
                 }
             }
 
-            // Create new commitments
+            // For new dates, check if there's a conflict in the other section and remove it
             for date in datesToAdd {
+                // Find and delete any conflicting commitment in the other section
+                if let conflicting = allCommitments.first(where: {
+                    $0.section == otherSection &&
+                    $0.timeframe == selectedTimeframe &&
+                    normalizeDate($0.commitmentDate) == normalizeDate(date)
+                }) {
+                    try await commitmentRepository.deleteCommitment(id: conflicting.id)
+                }
+
+                // Create the new commitment in selected section
                 let commitment = Commitment(
                     userId: task.userId,
                     taskId: task.id,
@@ -166,8 +183,10 @@ struct CommitmentSelectionSheet: View {
                 let commitmentRepository = CommitmentRepository()
                 let commitments = try await commitmentRepository.fetchCommitments(forTask: task.id)
 
-                // Filter by current timeframe
-                let filtered = commitments.filter { $0.timeframe == selectedTimeframe }
+                // Filter by current timeframe AND section
+                let filtered = commitments.filter {
+                    $0.timeframe == selectedTimeframe && $0.section == selectedSection
+                }
 
                 await MainActor.run {
                     originalCommitments = filtered

@@ -31,6 +31,11 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
     @Published var selectedParentCommitmentForSubtaskCommit: Commitment?
     @Published var showSubtaskCommitSheet = false
 
+    // Section collapse and add task state
+    @Published var isExtraSectionCollapsed: Bool = false
+    @Published var showAddTaskSheet: Bool = false
+    @Published var addTaskSection: Section = .extra
+
     private let commitmentRepository: CommitmentRepository
     private let taskRepository: TaskRepository
     private let authService: AuthService
@@ -456,6 +461,65 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
     /// Check if task is expanded
     func isExpanded(_ taskId: UUID) -> Bool {
         expandedTasks.contains(taskId)
+    }
+
+    /// Toggle section collapsed state (Extra section only)
+    func toggleSectionCollapsed(_ section: Section) {
+        if section == .extra {
+            isExtraSectionCollapsed.toggle()
+        }
+    }
+
+    /// Check if section is collapsed
+    func isSectionCollapsed(_ section: Section) -> Bool {
+        section == .extra ? isExtraSectionCollapsed : false
+    }
+
+    /// Create a new task and immediately commit it to the current timeframe/date/section
+    func createTaskWithCommitment(title: String, section: Section) async {
+        guard let userId = authService.currentUser?.id else {
+            errorMessage = "No authenticated user"
+            return
+        }
+
+        guard !title.trimmingCharacters(in: .whitespaces).isEmpty else {
+            return
+        }
+
+        // Check section limits for Focus
+        if section == .focus && !canAddTask(to: .focus) {
+            errorMessage = "Focus section is full"
+            return
+        }
+
+        do {
+            // Create the task
+            let newTask = FocusTask(
+                userId: userId,
+                title: title,
+                type: .task,
+                isCompleted: false,
+                isInLibrary: true
+            )
+            let createdTask = try await taskRepository.createTask(newTask)
+
+            // Create commitment for current timeframe/date
+            let commitment = Commitment(
+                userId: userId,
+                taskId: createdTask.id,
+                timeframe: selectedTimeframe,
+                section: section,
+                commitmentDate: selectedDate,
+                sortOrder: 0
+            )
+            let createdCommitment = try await commitmentRepository.createCommitment(commitment)
+
+            // Update local state
+            tasksMap[createdTask.id] = createdTask
+            commitments.append(createdCommitment)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
     }
 
     /// Toggle task completion

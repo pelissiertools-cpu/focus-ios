@@ -115,6 +115,12 @@ struct FocusTabView: View {
                     timeframe: viewModel.selectedTimeframe
                 )
             }
+            .sheet(isPresented: $viewModel.showAddTaskSheet) {
+                AddTaskToFocusSheet(
+                    section: viewModel.addTaskSection,
+                    viewModel: viewModel
+                )
+            }
         }
     }
 }
@@ -138,31 +144,69 @@ struct SectionView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            // Section Header with Count
-            HStack {
+            // Section Header
+            HStack(spacing: 12) {
+                // Section icon
+                Image(systemName: section == .focus ? "target" : "tray.full")
+                    .foregroundColor(.secondary)
+
                 Text(title)
                     .font(.title2)
                     .fontWeight(.bold)
 
-                Spacer()
-
+                // Count display
                 if let maxTasks = section.maxTasks(for: viewModel.selectedTimeframe) {
                     Text("\(sectionCommitments.count)/\(maxTasks)")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
+                } else if !sectionCommitments.isEmpty {
+                    Text("\(sectionCommitments.count)")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+
+                // Collapse chevron (Extra section only) - next to title/count
+                if section == .extra {
+                    Image(systemName: viewModel.isSectionCollapsed(section) ? "chevron.right" : "chevron.down")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+
+                Spacer()
+
+                // Add button (far right)
+                Button {
+                    viewModel.addTaskSection = section
+                    viewModel.showAddTaskSheet = true
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.body)
+                        .foregroundColor(.blue)
+                }
+                .buttonStyle(.plain)
+                .disabled(section == .focus && !viewModel.canAddTask(to: .focus))
+            }
+            .contentShape(Rectangle())
+            .onTapGesture {
+                if section == .extra {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        viewModel.toggleSectionCollapsed(section)
+                    }
                 }
             }
 
-            // Committed Tasks
-            if sectionCommitments.isEmpty {
-                Text("No tasks committed yet")
-                    .foregroundColor(.secondary)
-                    .padding()
-            } else {
-                VStack(spacing: 0) {
-                    ForEach(sectionCommitments) { commitment in
-                        if let task = viewModel.tasksMap[commitment.taskId] {
-                            CommitmentRow(commitment: commitment, task: task, viewModel: viewModel)
+            // Committed Tasks (hidden when collapsed)
+            if !viewModel.isSectionCollapsed(section) {
+                if sectionCommitments.isEmpty {
+                    Text("No to-dos yet. Tap + to add one.")
+                        .foregroundColor(.secondary)
+                        .padding()
+                } else {
+                    VStack(spacing: 0) {
+                        ForEach(sectionCommitments) { commitment in
+                            if let task = viewModel.tasksMap[commitment.taskId] {
+                                CommitmentRow(commitment: commitment, task: task, viewModel: viewModel)
+                            }
                         }
                     }
                 }
@@ -189,6 +233,53 @@ struct SectionView: View {
                 }
             }
             return true
+        }
+    }
+}
+
+struct AddTaskToFocusSheet: View {
+    let section: Section
+    @ObservedObject var viewModel: FocusTabViewModel
+    @Environment(\.dismiss) var dismiss
+
+    @State private var taskTitle = ""
+    @FocusState private var isFocused: Bool
+    @State private var isSaving = false
+
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 20) {
+                TextField("Task title", text: $taskTitle)
+                    .textFieldStyle(.roundedBorder)
+                    .focused($isFocused)
+                    .padding()
+                    .onSubmit {
+                        saveTask()
+                    }
+
+                Spacer()
+            }
+            .navigationTitle("New Task")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Add") { saveTask() }
+                        .disabled(taskTitle.trimmingCharacters(in: .whitespaces).isEmpty || isSaving)
+                }
+            }
+            .onAppear { isFocused = true }
+        }
+    }
+
+    private func saveTask() {
+        guard !taskTitle.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+        isSaving = true
+        Task {
+            await viewModel.createTaskWithCommitment(title: taskTitle, section: section)
+            dismiss()
         }
     }
 }

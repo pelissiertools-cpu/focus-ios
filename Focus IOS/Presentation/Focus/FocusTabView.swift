@@ -200,12 +200,16 @@ struct SectionView: View {
                 if sectionCommitments.isEmpty {
                     Text("No to-dos yet. Tap + to add one.")
                         .foregroundColor(.secondary)
-                        .padding()
+                        .padding(.vertical, 8)
                 } else {
                     VStack(spacing: 0) {
-                        ForEach(sectionCommitments) { commitment in
+                        ForEach(Array(sectionCommitments.enumerated()), id: \.element.id) { index, commitment in
                             if let task = viewModel.tasksMap[commitment.taskId] {
                                 CommitmentRow(commitment: commitment, task: task, viewModel: viewModel)
+
+                                if index < sectionCommitments.count - 1 {
+                                    Divider()
+                                }
                             }
                         }
                     }
@@ -352,10 +356,8 @@ struct CommitmentRow: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .contentShape(Rectangle())
                 .onTapGesture {
-                    if hasSubtasks {
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            viewModel.toggleExpanded(task.id)
-                        }
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        viewModel.toggleExpanded(task.id)
                     }
                 }
                 .onLongPressGesture {
@@ -388,20 +390,21 @@ struct CommitmentRow: View {
                 .buttonStyle(.plain)
             }
             .padding(.vertical, 8)
-            .padding(.horizontal)
-            .background(commitment.isChildCommitment
-                ? Color(.tertiarySystemBackground)
-                : Color(.systemBackground))
 
-            // Subtasks (shown when expanded)
-            if isExpanded && hasSubtasks {
+            // Subtasks and add row (shown when expanded)
+            if isExpanded {
                 VStack(spacing: 0) {
-                    ForEach(subtasks) { subtask in
+                    ForEach(Array(subtasks.enumerated()), id: \.element.id) { index, subtask in
                         FocusSubtaskRow(subtask: subtask, parentId: task.id, parentCommitment: commitment, viewModel: viewModel)
+
+                        if index < subtasks.count - 1 {
+                            Divider()
+                        }
                     }
+                    Divider()
+                    FocusInlineAddSubtaskRow(parentId: task.id, viewModel: viewModel)
                 }
                 .padding(.leading, 32)
-                .background(Color(.systemBackground))
             }
         }
     }
@@ -462,6 +465,66 @@ struct FocusSubtaskRow: View {
         .contentShape(Rectangle())
         .onLongPressGesture {
             viewModel.selectedTaskForDetails = subtask
+        }
+    }
+}
+
+// MARK: - Inline Add Subtask Row
+
+struct FocusInlineAddSubtaskRow: View {
+    let parentId: UUID
+    @ObservedObject var viewModel: FocusTabViewModel
+    @State private var newSubtaskTitle = ""
+    @State private var isEditing = false
+    @FocusState private var isFocused: Bool
+
+    var body: some View {
+        HStack(spacing: 12) {
+            if isEditing {
+                TextField("Subtask title", text: $newSubtaskTitle)
+                    .font(.subheadline)
+                    .focused($isFocused)
+                    .onSubmit {
+                        submitSubtask()
+                    }
+
+                Spacer()
+
+                Image(systemName: "circle")
+                    .font(.subheadline)
+                    .foregroundColor(.gray.opacity(0.5))
+            } else {
+                Button {
+                    isEditing = true
+                    isFocused = true
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "plus")
+                            .font(.subheadline)
+                        Text("Add")
+                            .font(.subheadline)
+                    }
+                    .foregroundColor(.secondary)
+                }
+                .buttonStyle(.plain)
+
+                Spacer()
+            }
+        }
+        .padding(.vertical, 6)
+    }
+
+    private func submitSubtask() {
+        let title = newSubtaskTitle.trimmingCharacters(in: .whitespaces)
+        guard !title.isEmpty else {
+            isEditing = false
+            return
+        }
+
+        Task {
+            await viewModel.createSubtask(title: title, parentId: parentId)
+            newSubtaskTitle = ""
+            // Keep editing mode open for adding more subtasks
         }
     }
 }

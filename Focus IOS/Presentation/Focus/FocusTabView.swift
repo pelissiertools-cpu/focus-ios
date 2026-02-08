@@ -408,9 +408,7 @@ struct CommitmentRow: View {
             HStack(spacing: 12) {
                 // Drag handle (left side) - only for uncompleted tasks
                 if !task.isCompleted {
-                    Image(systemName: "line.3.horizontal")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
+                    DragHandleView()
                         .onDrag {
                             NSItemProvider(object: commitment.id.uuidString as NSString)
                         }

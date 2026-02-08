@@ -7,6 +7,7 @@
 
 import Foundation
 import Combine
+import SwiftUI
 import Auth
 
 @MainActor
@@ -89,6 +90,18 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel {
         )
     }
 
+    // MARK: - Computed Properties
+
+    /// Uncompleted top-level tasks sorted by sortOrder
+    var uncompletedTasks: [FocusTask] {
+        tasks.filter { !$0.isCompleted }.sorted { $0.sortOrder < $1.sortOrder }
+    }
+
+    /// Completed top-level tasks
+    var completedTasks: [FocusTask] {
+        tasks.filter { $0.isCompleted }
+    }
+
     // MARK: - Subtask Expansion
 
     /// Toggle expansion state for a task
@@ -113,10 +126,22 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel {
         isDoneSubsectionCollapsed.toggle()
     }
 
-    /// Get subtasks for a task (sorted: uncompleted first)
+    /// Get subtasks for a task (uncompleted first, each group sorted by sortOrder)
     func getSubtasks(for taskId: UUID) -> [FocusTask] {
         let subtasks = subtasksMap[taskId] ?? []
-        return subtasks.sorted { !$0.isCompleted && $1.isCompleted }
+        let uncompleted = subtasks.filter { !$0.isCompleted }.sorted { $0.sortOrder < $1.sortOrder }
+        let completed = subtasks.filter { $0.isCompleted }.sorted { $0.sortOrder < $1.sortOrder }
+        return uncompleted + completed
+    }
+
+    /// Get uncompleted subtasks sorted by sortOrder
+    func getUncompletedSubtasks(for taskId: UUID) -> [FocusTask] {
+        (subtasksMap[taskId] ?? []).filter { !$0.isCompleted }.sorted { $0.sortOrder < $1.sortOrder }
+    }
+
+    /// Get completed subtasks sorted by sortOrder
+    func getCompletedSubtasks(for taskId: UUID) -> [FocusTask] {
+        (subtasksMap[taskId] ?? []).filter { $0.isCompleted }.sorted { $0.sortOrder < $1.sortOrder }
     }
 
     /// Find a task by ID (searches both tasks and subtasks)
@@ -171,7 +196,7 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel {
         }
     }
 
-    /// Create a new task
+    /// Create a new task (inserted at the top with sortOrder 0)
     func createTask(title: String) async {
         guard let userId = authService.currentUser?.id else {
             errorMessage = "No authenticated user"
@@ -185,11 +210,24 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel {
                 userId: userId,
                 title: title,
                 type: .task,
-                isCompleted: false
+                isCompleted: false,
+                sortOrder: 0
             )
 
             let createdTask = try await repository.createTask(newTask)
             tasks.insert(createdTask, at: 0)
+
+            // Reassign sort orders so the new task is at 0 and others shift up
+            let uncompleted = tasks.filter { !$0.isCompleted }.sorted { $0.sortOrder < $1.sortOrder }
+            var updates: [(id: UUID, sortOrder: Int)] = []
+            for (index, task) in uncompleted.enumerated() {
+                if let tasksIndex = tasks.firstIndex(where: { $0.id == task.id }) {
+                    tasks[tasksIndex].sortOrder = index
+                }
+                updates.append((id: task.id, sortOrder: index))
+            }
+            await persistSortOrders(updates)
+
             showingAddTask = false
         } catch {
             errorMessage = error.localizedDescription
@@ -385,6 +423,73 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel {
             }
         } catch {
             errorMessage = error.localizedDescription
+        }
+    }
+
+    // MARK: - Reordering
+
+    /// Reorder a task by placing the dragged task at the target task's position
+    func reorderTask(droppedId: UUID, targetId: UUID) {
+        var uncompleted = tasks.filter { !$0.isCompleted }.sorted { $0.sortOrder < $1.sortOrder }
+
+        guard let fromIndex = uncompleted.firstIndex(where: { $0.id == droppedId }),
+              let toIndex = uncompleted.firstIndex(where: { $0.id == targetId }),
+              fromIndex != toIndex else { return }
+
+        let moved = uncompleted.remove(at: fromIndex)
+        uncompleted.insert(moved, at: toIndex)
+
+        // Reassign sort orders in the main tasks array
+        for (index, task) in uncompleted.enumerated() {
+            if let tasksIndex = tasks.firstIndex(where: { $0.id == task.id }) {
+                tasks[tasksIndex].sortOrder = index
+            }
+        }
+
+        // Persist in background
+        let updates = uncompleted.enumerated().map { (index, task) in
+            (id: task.id, sortOrder: index)
+        }
+        Task {
+            await persistSortOrders(updates)
+        }
+    }
+
+    /// Reorder a subtask by placing the dragged subtask at the target subtask's position
+    func reorderSubtask(droppedId: UUID, targetId: UUID, parentId: UUID) {
+        guard var allSubtasks = subtasksMap[parentId] else { return }
+        var uncompleted = allSubtasks.filter { !$0.isCompleted }.sorted { $0.sortOrder < $1.sortOrder }
+
+        guard let fromIndex = uncompleted.firstIndex(where: { $0.id == droppedId }),
+              let toIndex = uncompleted.firstIndex(where: { $0.id == targetId }),
+              fromIndex != toIndex else { return }
+
+        let moved = uncompleted.remove(at: fromIndex)
+        uncompleted.insert(moved, at: toIndex)
+
+        // Reassign sort orders
+        for (index, subtask) in uncompleted.enumerated() {
+            if let mapIndex = allSubtasks.firstIndex(where: { $0.id == subtask.id }) {
+                allSubtasks[mapIndex].sortOrder = index
+            }
+        }
+        subtasksMap[parentId] = allSubtasks
+
+        // Persist in background
+        let updates = uncompleted.enumerated().map { (index, subtask) in
+            (id: subtask.id, sortOrder: index)
+        }
+        Task {
+            await persistSortOrders(updates)
+        }
+    }
+
+    /// Persist sort order changes to Supabase
+    private func persistSortOrders(_ updates: [(id: UUID, sortOrder: Int)]) async {
+        do {
+            try await repository.updateSortOrders(updates)
+        } catch {
+            errorMessage = "Failed to save order: \(error.localizedDescription)"
         }
     }
 

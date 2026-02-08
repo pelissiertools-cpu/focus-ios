@@ -29,11 +29,23 @@ class TaskRepository {
         }
     }
 
+    /// Helper struct for sort order updates
+    private struct SortOrderUpdate: Encodable {
+        let sortOrder: Int
+        let modifiedDate: Date
+
+        enum CodingKeys: String, CodingKey {
+            case sortOrder = "sort_order"
+            case modifiedDate = "modified_date"
+        }
+    }
+
     /// Fetch all tasks for the current user
     func fetchTasks() async throws -> [FocusTask] {
         let tasks: [FocusTask] = try await supabase
             .from("tasks")
             .select()
+            .order("sort_order", ascending: true)
             .order("created_date", ascending: false)
             .execute()
             .value
@@ -47,6 +59,7 @@ class TaskRepository {
             .from("tasks")
             .select()
             .eq("type", value: type.rawValue)
+            .order("sort_order", ascending: true)
             .order("created_date", ascending: false)
             .execute()
             .value
@@ -175,6 +188,19 @@ class TaskRepository {
             .update(update)
             .eq("parent_task_id", value: parentId.uuidString)
             .execute()
+    }
+
+    /// Update sort orders for multiple tasks
+    func updateSortOrders(_ updates: [(id: UUID, sortOrder: Int)]) async throws {
+        let now = Date()
+        for update in updates {
+            let sortUpdate = SortOrderUpdate(sortOrder: update.sortOrder, modifiedDate: now)
+            try await supabase
+                .from("tasks")
+                .update(sortUpdate)
+                .eq("id", value: update.id.uuidString)
+                .execute()
+        }
     }
 
     /// Restore subtasks to specific completion states

@@ -101,7 +101,7 @@ struct CommitSheet: View {
                     .fontWeight(.semibold)
                 }
             }
-            .onChange(of: selectedTargetTimeframe) { _ in
+            .onChange(of: selectedTargetTimeframe) {
                 // Clear selections when timeframe changes
                 selectedDates.removeAll()
             }
@@ -841,7 +841,7 @@ struct SubtaskCommitSheet: View {
                     .fontWeight(.semibold)
                 }
             }
-            .onChange(of: selectedTargetTimeframe) { _ in
+            .onChange(of: selectedTargetTimeframe) {
                 // Clear selections when timeframe changes
                 selectedDates.removeAll()
             }

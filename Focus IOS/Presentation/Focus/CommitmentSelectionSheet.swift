@@ -90,10 +90,10 @@ struct CommitmentSelectionSheet: View {
                 fetchSubtaskCount()
                 fetchTaskCommitments()
             }
-            .onChange(of: selectedTimeframe) { _ in
+            .onChange(of: selectedTimeframe) {
                 fetchTaskCommitments()
             }
-            .onChange(of: selectedSection) { _ in
+            .onChange(of: selectedSection) {
                 fetchTaskCommitments()
             }
         }

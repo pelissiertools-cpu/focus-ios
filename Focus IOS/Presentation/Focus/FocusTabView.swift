@@ -28,7 +28,7 @@ struct FocusTabView: View {
                 }
                 .pickerStyle(.segmented)
                 .padding()
-                .onChange(of: viewModel.selectedTimeframe) { _ in
+                .onChange(of: viewModel.selectedTimeframe) {
                     Task {
                         await viewModel.fetchCommitments()
                     }
@@ -51,7 +51,7 @@ struct FocusTabView: View {
                             .padding(.horizontal)
                     }
                 }
-                .onChange(of: viewModel.selectedDate) { _ in
+                .onChange(of: viewModel.selectedDate) {
                     Task {
                         await viewModel.fetchCommitments()
                     }
@@ -182,10 +182,11 @@ struct SectionView: View {
         )
         .onDrop(of: [.text], isTargeted: $isTargeted) { providers in
             guard let provider = providers.first else { return false }
+            let currentCommitments = viewModel.commitments
             provider.loadObject(ofClass: NSString.self) { string, _ in
                 guard let idString = string as? String,
                       let id = UUID(uuidString: idString),
-                      let commitment = viewModel.commitments.first(where: { $0.id == id }),
+                      let commitment = currentCommitments.first(where: { $0.id == id }),
                       commitment.section != section else { return }
 
                 Task { @MainActor in

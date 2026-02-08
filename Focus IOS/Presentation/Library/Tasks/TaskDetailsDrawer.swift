@@ -279,7 +279,7 @@ struct DrawerSubtaskRow<VM: TaskEditingViewModel>: View {
                 .onSubmit {
                     saveSubtaskTitle()
                 }
-                .onChange(of: isEditing) { editing in
+                .onChange(of: isEditing) { _, editing in
                     if !editing {
                         saveSubtaskTitle()
                     }

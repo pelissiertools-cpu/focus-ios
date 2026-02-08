@@ -142,6 +142,20 @@ struct SectionView: View {
         }
     }
 
+    var uncompletedCommitments: [Commitment] {
+        sectionCommitments.filter { commitment in
+            guard let task = viewModel.tasksMap[commitment.taskId] else { return true }
+            return !task.isCompleted
+        }
+    }
+
+    var completedCommitments: [Commitment] {
+        sectionCommitments.filter { commitment in
+            guard let task = viewModel.tasksMap[commitment.taskId] else { return false }
+            return task.isCompleted
+        }
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             // Section Header
@@ -203,14 +217,31 @@ struct SectionView: View {
                         .padding(.vertical, 8)
                 } else {
                     VStack(spacing: 0) {
-                        ForEach(Array(sectionCommitments.enumerated()), id: \.element.id) { index, commitment in
+                        // For Extra section: show uncompleted tasks, then Done pill
+                        // For Focus section: show all tasks normally
+                        let tasksToShow = section == .extra ? uncompletedCommitments : sectionCommitments
+
+                        ForEach(Array(tasksToShow.enumerated()), id: \.element.id) { index, commitment in
                             if let task = viewModel.tasksMap[commitment.taskId] {
                                 CommitmentRow(commitment: commitment, task: task, viewModel: viewModel)
 
-                                if index < sectionCommitments.count - 1 {
+                                if index < tasksToShow.count - 1 {
                                     Divider()
                                 }
                             }
+                        }
+
+                        // Done subsection pill (Extra section only, when there are completed tasks)
+                        if section == .extra && !completedCommitments.isEmpty {
+                            if !tasksToShow.isEmpty {
+                                Divider()
+                                    .padding(.top, 8)
+                            }
+
+                            DonePillView(
+                                completedCommitments: completedCommitments,
+                                viewModel: viewModel
+                            )
                         }
                     }
                 }
@@ -237,6 +268,60 @@ struct SectionView: View {
                 }
             }
             return true
+        }
+    }
+}
+
+// MARK: - Done Pill View
+
+struct DonePillView: View {
+    let completedCommitments: [Commitment]
+    @ObservedObject var viewModel: FocusTabViewModel
+
+    private var isExpanded: Bool {
+        !viewModel.isDoneSubsectionCollapsed
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // Done pill header
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    viewModel.toggleDoneSubsectionCollapsed()
+                }
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+
+                    Text("Done")
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                        .foregroundColor(.secondary)
+
+                    Text("(\(completedCommitments.count))")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+
+                    Spacer()
+                }
+                .padding(.vertical, 10)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            // Expanded completed tasks
+            if isExpanded {
+                VStack(spacing: 0) {
+                    ForEach(Array(completedCommitments.enumerated()), id: \.element.id) { index, commitment in
+                        if let task = viewModel.tasksMap[commitment.taskId] {
+                            Divider()
+                            CommitmentRow(commitment: commitment, task: task, viewModel: viewModel)
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -318,13 +403,15 @@ struct CommitmentRow: View {
         VStack(spacing: 0) {
             // Main task row - matching ExpandableTaskRow style
             HStack(spacing: 12) {
-                // Drag handle (left side)
-                Image(systemName: "line.3.horizontal")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-                    .onDrag {
-                        NSItemProvider(object: commitment.id.uuidString as NSString)
-                    }
+                // Drag handle (left side) - only for uncompleted tasks
+                if !task.isCompleted {
+                    Image(systemName: "line.3.horizontal")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .onDrag {
+                            NSItemProvider(object: commitment.id.uuidString as NSString)
+                        }
+                }
 
                 // Child commitment indicator (indentation)
                 if commitment.isChildCommitment {

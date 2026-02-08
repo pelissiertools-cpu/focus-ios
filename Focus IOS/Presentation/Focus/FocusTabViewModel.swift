@@ -33,6 +33,7 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
 
     // Section collapse and add task state
     @Published var isExtraSectionCollapsed: Bool = false
+    @Published var isDoneSubsectionCollapsed: Bool = true  // Closed by default
     @Published var showAddTaskSheet: Bool = false
     @Published var addTaskSection: Section = .extra
 
@@ -473,6 +474,11 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
     /// Check if section is collapsed
     func isSectionCollapsed(_ section: Section) -> Bool {
         section == .extra ? isExtraSectionCollapsed : false
+    }
+
+    /// Toggle Done subsection collapsed state
+    func toggleDoneSubsectionCollapsed() {
+        isDoneSubsectionCollapsed.toggle()
     }
 
     /// Create a new task and immediately commit it to the current timeframe/date/section

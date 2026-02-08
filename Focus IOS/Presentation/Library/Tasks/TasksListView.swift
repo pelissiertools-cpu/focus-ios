@@ -88,9 +88,18 @@ struct TasksListView: View {
         .padding()
     }
 
+    private var uncompletedTasks: [FocusTask] {
+        viewModel.tasks.filter { !$0.isCompleted }
+    }
+
+    private var completedTasks: [FocusTask] {
+        viewModel.tasks.filter { $0.isCompleted }
+    }
+
     private var taskList: some View {
         List {
-            ForEach(viewModel.tasks) { task in
+            // Uncompleted tasks
+            ForEach(uncompletedTasks) { task in
                 VStack(spacing: 0) {
                     ExpandableTaskRow(task: task, viewModel: viewModel)
 
@@ -109,8 +118,79 @@ struct TasksListView: View {
                     }
                 }
             }
+
+            // Done pill (when there are completed tasks)
+            if !completedTasks.isEmpty {
+                LibraryDonePillView(completedTasks: completedTasks, viewModel: viewModel)
+            }
         }
         .listStyle(.plain)
+    }
+}
+
+// MARK: - Library Done Pill View
+
+struct LibraryDonePillView: View {
+    let completedTasks: [FocusTask]
+    @ObservedObject var viewModel: TaskListViewModel
+
+    private var isExpanded: Bool {
+        !viewModel.isDoneSubsectionCollapsed
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // Done pill header
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    viewModel.toggleDoneSubsectionCollapsed()
+                }
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+
+                    Text("Done")
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                        .foregroundColor(.secondary)
+
+                    Text("(\(completedTasks.count))")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+
+                    Spacer()
+                }
+                .padding(.vertical, 10)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            // Expanded completed tasks
+            if isExpanded {
+                ForEach(completedTasks) { task in
+                    VStack(spacing: 0) {
+                        Divider()
+                        ExpandableTaskRow(task: task, viewModel: viewModel)
+
+                        if viewModel.isExpanded(task.id) {
+                            SubtasksList(parentTask: task, viewModel: viewModel)
+                            InlineAddSubtaskRow(parentId: task.id, viewModel: viewModel)
+                        }
+                    }
+                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                        Button(role: .destructive) {
+                            Task {
+                                await viewModel.deleteTask(task)
+                            }
+                        } label: {
+                            Label("Delete", systemImage: "trash")
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 

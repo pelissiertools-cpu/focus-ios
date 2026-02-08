@@ -22,6 +22,9 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel {
     @Published var expandedTasks: Set<UUID> = []
     @Published var isLoadingSubtasks: Set<UUID> = []
 
+    // Done subsection state
+    @Published var isDoneSubsectionCollapsed: Bool = true  // Closed by default
+
     private let repository: TaskRepository
     private let commitmentRepository: CommitmentRepository
     private let authService: AuthService
@@ -103,6 +106,11 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel {
     /// Check if task is expanded
     func isExpanded(_ taskId: UUID) -> Bool {
         expandedTasks.contains(taskId)
+    }
+
+    /// Toggle Done subsection collapsed state
+    func toggleDoneSubsectionCollapsed() {
+        isDoneSubsectionCollapsed.toggle()
     }
 
     /// Get subtasks for a task (sorted: uncompleted first)

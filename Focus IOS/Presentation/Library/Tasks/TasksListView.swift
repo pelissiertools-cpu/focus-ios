@@ -133,6 +133,7 @@ struct TasksListView: View {
 struct LibraryDonePillView: View {
     let completedTasks: [FocusTask]
     @ObservedObject var viewModel: TaskListViewModel
+    @State private var showClearConfirmation = false
 
     private var isExpanded: Bool {
         !viewModel.isDoneSubsectionCollapsed
@@ -161,6 +162,24 @@ struct LibraryDonePillView: View {
                         .foregroundColor(.secondary)
 
                     Spacer()
+
+                    // Clear list pill button (only visible when expanded)
+                    if isExpanded {
+                        Button {
+                            showClearConfirmation = true
+                        } label: {
+                            Text("Clear list")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 4)
+                                .background(
+                                    Capsule()
+                                        .fill(Color.secondary.opacity(0.15))
+                                )
+                        }
+                        .buttonStyle(.plain)
+                    }
                 }
                 .padding(.vertical, 10)
                 .contentShape(Rectangle())
@@ -190,6 +209,16 @@ struct LibraryDonePillView: View {
                     }
                 }
             }
+        }
+        .alert("Clear completed tasks?", isPresented: $showClearConfirmation) {
+            Button("Cancel", role: .cancel) { }
+            Button("Clear", role: .destructive) {
+                Task {
+                    await viewModel.clearCompletedTasks()
+                }
+            }
+        } message: {
+            Text("This will permanently delete \(completedTasks.count) completed task\(completedTasks.count == 1 ? "" : "s").")
         }
     }
 }

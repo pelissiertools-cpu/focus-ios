@@ -337,6 +337,24 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel {
         }
     }
 
+    /// Clear all completed tasks from the library
+    func clearCompletedTasks() async {
+        let completedTaskIds = tasks.filter { $0.isCompleted }.map { $0.id }
+
+        do {
+            // Delete commitments and tasks for each completed task
+            for taskId in completedTaskIds {
+                try await commitmentRepository.deleteCommitments(forTask: taskId)
+                try await repository.deleteTask(id: taskId)
+            }
+
+            // Remove from local array
+            tasks.removeAll { $0.isCompleted }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
     /// Update task title
     func updateTask(_ task: FocusTask, newTitle: String) async {
         guard !newTitle.trimmingCharacters(in: .whitespaces).isEmpty else {

@@ -7,9 +7,11 @@
 
 import SwiftUI
 
-// Week Picker
-struct WeekPicker: View {
+/// Unified date navigator that adapts based on selected timeframe
+struct DateNavigator: View {
     @Binding var selectedDate: Date
+    let timeframe: Timeframe
+    let onTap: () -> Void
 
     private var calendar: Calendar {
         var cal = Calendar.current
@@ -19,124 +21,160 @@ struct WeekPicker: View {
 
     var body: some View {
         HStack {
+            // Left chevron - navigate previous period
             Button {
-                selectedDate = calendar.date(byAdding: .weekOfYear, value: -1, to: selectedDate) ?? selectedDate
+                navigatePrevious()
             } label: {
                 Image(systemName: "chevron.left")
+                    .font(.title3)
+                    .foregroundColor(.secondary)
             }
-            .buttonStyle(.borderless)
+            .buttonStyle(.plain)
 
             Spacer()
 
-            Text(weekText)
-                .font(.headline)
+            // Center: tappable title/subtitle
+            Button(action: onTap) {
+                VStack(spacing: 4) {
+                    Text(titleText)
+                        .font(.title)
+                        .fontWeight(.bold)
+                        .foregroundColor(.primary)
+
+                    if let subtitle = subtitleText {
+                        Text(subtitle)
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(Color(.secondarySystemBackground))
+                            .cornerRadius(16)
+                    }
+                }
+            }
+            .buttonStyle(.plain)
 
             Spacer()
 
+            // Right chevron - navigate next period
             Button {
-                selectedDate = calendar.date(byAdding: .weekOfYear, value: 1, to: selectedDate) ?? selectedDate
+                navigateNext()
             } label: {
                 Image(systemName: "chevron.right")
+                    .font(.title3)
+                    .foregroundColor(.secondary)
             }
-            .buttonStyle(.borderless)
+            .buttonStyle(.plain)
         }
-        .padding()
-        .background(Color(.secondarySystemBackground))
-        .cornerRadius(8)
+        .padding(.horizontal)
+        .padding(.vertical, 8)
     }
 
-    private var weekText: String {
-        var calendar = Calendar.current
-        calendar.firstWeekday = 1 // Sunday
+    // MARK: - Navigation
 
-        let weekOfYear = calendar.component(.weekOfYear, from: selectedDate)
+    private func navigatePrevious() {
+        let component: Calendar.Component
+        switch timeframe {
+        case .daily: component = .day
+        case .weekly: component = .weekOfYear
+        case .monthly: component = .month
+        case .yearly: component = .year
+        }
+        selectedDate = calendar.date(byAdding: component, value: -1, to: selectedDate) ?? selectedDate
+    }
 
-        // Get start and end of week
+    private func navigateNext() {
+        let component: Calendar.Component
+        switch timeframe {
+        case .daily: component = .day
+        case .weekly: component = .weekOfYear
+        case .monthly: component = .month
+        case .yearly: component = .year
+        }
+        selectedDate = calendar.date(byAdding: component, value: 1, to: selectedDate) ?? selectedDate
+    }
+
+    // MARK: - Title Text
+
+    private var titleText: String {
+        switch timeframe {
+        case .daily:
+            // "Sunday"
+            let formatter = DateFormatter()
+            formatter.dateFormat = "EEEE"
+            return formatter.string(from: selectedDate)
+
+        case .weekly:
+            // "Week 6"
+            let weekOfYear = calendar.component(.weekOfYear, from: selectedDate)
+            return "Week \(weekOfYear)"
+
+        case .monthly:
+            // "February 2026"
+            let formatter = DateFormatter()
+            formatter.dateFormat = "MMMM yyyy"
+            return formatter.string(from: selectedDate)
+
+        case .yearly:
+            // "2026"
+            let formatter = DateFormatter()
+            formatter.dateFormat = "yyyy"
+            return formatter.string(from: selectedDate)
+        }
+    }
+
+    // MARK: - Subtitle Text
+
+    private var subtitleText: String? {
+        switch timeframe {
+        case .daily:
+            // "Feb 8th, 2026"
+            return formattedDateWithOrdinal(selectedDate)
+
+        case .weekly:
+            // "Feb 2 - Feb 8, 2026"
+            return weekRangeText
+
+        case .monthly, .yearly:
+            return nil
+        }
+    }
+
+    private var weekRangeText: String {
         guard let weekStart = calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: selectedDate)),
               let weekEnd = calendar.date(byAdding: .day, value: 6, to: weekStart) else {
-            return "Week \(weekOfYear)"
+            return ""
         }
 
+        let startFormatter = DateFormatter()
+        startFormatter.dateFormat = "MMM d"
+
+        let endFormatter = DateFormatter()
+        endFormatter.dateFormat = "MMM d, yyyy"
+
+        return "\(startFormatter.string(from: weekStart)) - \(endFormatter.string(from: weekEnd))"
+    }
+
+    private func formattedDateWithOrdinal(_ date: Date) -> String {
+        let day = calendar.component(.day, from: date)
+        let ordinal = ordinalSuffix(for: day)
+
         let formatter = DateFormatter()
-        formatter.dateFormat = "MMM d"
-        return "Week \(weekOfYear): \(formatter.string(from: weekStart)) - \(formatter.string(from: weekEnd))"
-    }
-}
+        formatter.dateFormat = "MMM"
+        let month = formatter.string(from: date)
 
-// Month Picker
-struct MonthPicker: View {
-    @Binding var selectedDate: Date
-
-    var body: some View {
-        HStack {
-            Button {
-                selectedDate = Calendar.current.date(byAdding: .month, value: -1, to: selectedDate) ?? selectedDate
-            } label: {
-                Image(systemName: "chevron.left")
-            }
-            .buttonStyle(.borderless)
-
-            Spacer()
-
-            Text(monthText)
-                .font(.headline)
-
-            Spacer()
-
-            Button {
-                selectedDate = Calendar.current.date(byAdding: .month, value: 1, to: selectedDate) ?? selectedDate
-            } label: {
-                Image(systemName: "chevron.right")
-            }
-            .buttonStyle(.borderless)
-        }
-        .padding()
-        .background(Color(.secondarySystemBackground))
-        .cornerRadius(8)
-    }
-
-    private var monthText: String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "MMMM yyyy"
-        return formatter.string(from: selectedDate)
-    }
-}
-
-// Year Picker
-struct YearPicker: View {
-    @Binding var selectedDate: Date
-
-    var body: some View {
-        HStack {
-            Button {
-                selectedDate = Calendar.current.date(byAdding: .year, value: -1, to: selectedDate) ?? selectedDate
-            } label: {
-                Image(systemName: "chevron.left")
-            }
-            .buttonStyle(.borderless)
-
-            Spacer()
-
-            Text(yearText)
-                .font(.headline)
-
-            Spacer()
-
-            Button {
-                selectedDate = Calendar.current.date(byAdding: .year, value: 1, to: selectedDate) ?? selectedDate
-            } label: {
-                Image(systemName: "chevron.right")
-            }
-            .buttonStyle(.borderless)
-        }
-        .padding()
-        .background(Color(.secondarySystemBackground))
-        .cornerRadius(8)
-    }
-
-    private var yearText: String {
-        let formatter = DateFormatter()
         formatter.dateFormat = "yyyy"
-        return formatter.string(from: selectedDate)
+        let year = formatter.string(from: date)
+
+        return "\(month) \(day)\(ordinal), \(year)"
+    }
+
+    private func ordinalSuffix(for day: Int) -> String {
+        switch day {
+        case 1, 21, 31: return "st"
+        case 2, 22: return "nd"
+        case 3, 23: return "rd"
+        default: return "th"
+        }
     }
 }

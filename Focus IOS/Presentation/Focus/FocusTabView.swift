@@ -11,6 +11,7 @@ import UniformTypeIdentifiers
 struct FocusTabView: View {
     @EnvironmentObject var authService: AuthService
     @StateObject private var viewModel: FocusTabViewModel
+    @State private var showCalendarPicker = false
 
     init() {
         _viewModel = StateObject(wrappedValue: FocusTabViewModel(authService: AuthService()))
@@ -19,6 +20,18 @@ struct FocusTabView: View {
     var body: some View {
         NavigationView {
             VStack(spacing: 0) {
+                // Date Navigator (above timeframe toggle)
+                DateNavigator(
+                    selectedDate: $viewModel.selectedDate,
+                    timeframe: viewModel.selectedTimeframe,
+                    onTap: { showCalendarPicker = true }
+                )
+                .onChange(of: viewModel.selectedDate) {
+                    Task {
+                        await viewModel.fetchCommitments()
+                    }
+                }
+
                 // Timeframe Picker
                 Picker("Timeframe", selection: $viewModel.selectedTimeframe) {
                     Text("Daily").tag(Timeframe.daily)
@@ -29,29 +42,6 @@ struct FocusTabView: View {
                 .pickerStyle(.segmented)
                 .padding()
                 .onChange(of: viewModel.selectedTimeframe) {
-                    Task {
-                        await viewModel.fetchCommitments()
-                    }
-                }
-
-                // Date Selection based on timeframe
-                Group {
-                    switch viewModel.selectedTimeframe {
-                    case .daily:
-                        DatePicker("Date", selection: $viewModel.selectedDate, displayedComponents: .date)
-                            .padding(.horizontal)
-                    case .weekly:
-                        WeekPicker(selectedDate: $viewModel.selectedDate)
-                            .padding(.horizontal)
-                    case .monthly:
-                        MonthPicker(selectedDate: $viewModel.selectedDate)
-                            .padding(.horizontal)
-                    case .yearly:
-                        YearPicker(selectedDate: $viewModel.selectedDate)
-                            .padding(.horizontal)
-                    }
-                }
-                .onChange(of: viewModel.selectedDate) {
                     Task {
                         await viewModel.fetchCommitments()
                     }
@@ -119,6 +109,12 @@ struct FocusTabView: View {
                         viewModel: viewModel
                     )
                 }
+            }
+            .sheet(isPresented: $showCalendarPicker) {
+                SingleSelectCalendarPicker(
+                    selectedDate: $viewModel.selectedDate,
+                    timeframe: viewModel.selectedTimeframe
+                )
             }
         }
     }

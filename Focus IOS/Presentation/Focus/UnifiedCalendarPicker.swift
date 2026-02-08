@@ -747,3 +747,94 @@ struct YearButton: View {
         }
     }
 }
+
+// MARK: - Single Select Calendar Picker
+
+/// Wrapper for single-date selection used by the DateNavigator
+struct SingleSelectCalendarPicker: View {
+    @Binding var selectedDate: Date
+    let timeframe: Timeframe
+    @Environment(\.dismiss) var dismiss
+
+    // Internal state - converts single date to Set for existing calendar views
+    @State private var selectedDates: Set<Date> = []
+    @State private var initialDate: Date = Date()
+
+    private var calendar: Calendar {
+        var cal = Calendar.current
+        cal.firstWeekday = 1 // Sunday
+        return cal
+    }
+
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 0) {
+                switch timeframe {
+                case .daily:
+                    DailyCalendarView(selectedDates: $selectedDates)
+                case .weekly:
+                    WeeklyCalendarView(selectedDates: $selectedDates)
+                case .monthly:
+                    MonthlyCalendarView(selectedDates: $selectedDates)
+                case .yearly:
+                    YearlyCalendarView(selectedDates: $selectedDates)
+                }
+
+                Spacer()
+            }
+            .navigationTitle(navigationTitle)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") {
+                        applySelection()
+                        dismiss()
+                    }
+                }
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+            }
+        }
+        .onAppear {
+            // Store initial date to detect user changes
+            initialDate = calendar.startOfDay(for: selectedDate)
+            selectedDates = [initialDate]
+        }
+        .onChange(of: selectedDates) {
+            // Enforce single selection - keep only the newest date
+            if selectedDates.count > 1 {
+                // Find the new date (the one that's not the initial date)
+                if let newDate = selectedDates.first(where: { !calendar.isDate($0, inSameDayAs: initialDate) }) {
+                    selectedDates = [newDate]
+                    return // Will trigger onChange again with count == 1
+                }
+            }
+
+            // Auto-dismiss only when user selects a different date
+            if let newDate = selectedDates.first,
+               selectedDates.count == 1,
+               !calendar.isDate(newDate, inSameDayAs: initialDate) {
+                selectedDate = newDate
+                dismiss()
+            }
+        }
+    }
+
+    private var navigationTitle: String {
+        switch timeframe {
+        case .daily: return "Select Date"
+        case .weekly: return "Select Week"
+        case .monthly: return "Select Month"
+        case .yearly: return "Select Year"
+        }
+    }
+
+    private func applySelection() {
+        if let firstDate = selectedDates.first {
+            selectedDate = firstDate
+        }
+    }
+}

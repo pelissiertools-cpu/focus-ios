@@ -14,6 +14,7 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
     @EnvironmentObject var focusViewModel: FocusTabViewModel
     @State private var taskTitle: String
     @State private var showingCommitmentSheet = false
+    @State private var showingRescheduleSheet = false
     @State private var newSubtaskTitle: String = ""
     @FocusState private var isFocused: Bool
     @FocusState private var isNewSubtaskFocused: Bool
@@ -37,6 +38,15 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
         self.viewModel = viewModel
         self.commitment = commitment
         _taskTitle = State(initialValue: task.title)
+    }
+
+    private func nextTimeframeLabel(for timeframe: Timeframe) -> String {
+        switch timeframe {
+        case .daily: return "Tomorrow"
+        case .weekly: return "Next Week"
+        case .monthly: return "Next Month"
+        case .yearly: return "Next Year"
+        }
     }
 
     var body: some View {
@@ -151,6 +161,30 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                         }
                     }
 
+                    // Reschedule (any non-completed parent task in Focus view)
+                    if commitment != nil, !isSubtask, !task.isCompleted {
+                        Button {
+                            showingRescheduleSheet = true
+                        } label: {
+                            Label("Reschedule", systemImage: "calendar")
+                        }
+                    }
+
+                    // Push to Next (any non-completed parent task in Focus view)
+                    if let commitment = commitment, !isSubtask, !task.isCompleted {
+                        Button {
+                            Task {
+                                let success = await focusViewModel.pushCommitmentToNext(commitment)
+                                if success {
+                                    dismiss()
+                                }
+                                // If failed (section full), error message shown, drawer stays open
+                            }
+                        } label: {
+                            Label("Push to \(nextTimeframeLabel(for: commitment.timeframe))", systemImage: "arrow.turn.right.down")
+                        }
+                    }
+
                     // Delete - only show for:
                     // 1. Subtasks (always deletable)
                     // 2. Tasks in Library view (no commitment)
@@ -206,6 +240,11 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
             }
             .sheet(isPresented: $showingCommitmentSheet) {
                 CommitmentSelectionSheet(task: task, focusViewModel: focusViewModel)
+            }
+            .sheet(isPresented: $showingRescheduleSheet) {
+                if let commitment = commitment {
+                    RescheduleSheet(commitment: commitment, focusViewModel: focusViewModel)
+                }
             }
         }
     }

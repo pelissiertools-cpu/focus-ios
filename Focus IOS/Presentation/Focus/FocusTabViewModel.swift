@@ -418,6 +418,72 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
         }
     }
 
+    /// Reschedule a commitment to a new date and/or timeframe
+    /// Only the parent's commitment moves - subtask commitments stay at their original dates
+    /// Returns true if successful, false if section limit exceeded
+    func rescheduleCommitment(_ commitment: Commitment, to newDate: Date, newTimeframe: Timeframe) async -> Bool {
+        // Check section limits for Focus section at destination
+        if commitment.section == .focus {
+            let canAdd = canAddToFocusSection(timeframe: newTimeframe, date: newDate, excludingCommitmentId: commitment.id)
+            if !canAdd {
+                errorMessage = "Focus section is full at destination (\(Section.focus.maxTasks(for: newTimeframe)!) max)"
+                return false
+            }
+        }
+
+        do {
+            // Update commitment with new date and timeframe (subtask commitments stay)
+            var updatedCommitment = commitment
+            updatedCommitment.commitmentDate = newDate
+            updatedCommitment.timeframe = newTimeframe
+
+            try await commitmentRepository.updateCommitment(updatedCommitment)
+
+            // Refresh to update view
+            await fetchCommitments()
+            return true
+        } catch {
+            errorMessage = error.localizedDescription
+            return false
+        }
+    }
+
+    /// Check if Focus section has room at a specific date/timeframe
+    /// Excludes a commitment ID to allow rescheduling within same section
+    private func canAddToFocusSection(timeframe: Timeframe, date: Date, excludingCommitmentId: UUID) -> Bool {
+        // Count existing Focus commitments at destination (excluding the one being moved)
+        let existingCount = commitments.filter {
+            $0.section == .focus &&
+            $0.timeframe == timeframe &&
+            isSameTimeframe($0.commitmentDate, timeframe: timeframe, selectedDate: date) &&
+            $0.id != excludingCommitmentId
+        }.count
+
+        let maxAllowed = Section.focus.maxTasks(for: timeframe) ?? Int.max
+        return existingCount < maxAllowed
+    }
+
+    /// Push commitment to next period (tomorrow, next week, next month, next year)
+    /// Returns true if successful, false if section limit exceeded
+    func pushCommitmentToNext(_ commitment: Commitment) async -> Bool {
+        let calendar = Calendar.current
+        let newDate: Date?
+
+        switch commitment.timeframe {
+        case .daily:
+            newDate = calendar.date(byAdding: .day, value: 1, to: commitment.commitmentDate)
+        case .weekly:
+            newDate = calendar.date(byAdding: .weekOfYear, value: 1, to: commitment.commitmentDate)
+        case .monthly:
+            newDate = calendar.date(byAdding: .month, value: 1, to: commitment.commitmentDate)
+        case .yearly:
+            newDate = calendar.date(byAdding: .year, value: 1, to: commitment.commitmentDate)
+        }
+
+        guard let nextDate = newDate else { return false }
+        return await rescheduleCommitment(commitment, to: nextDate, newTimeframe: commitment.timeframe)
+    }
+
     /// Move a commitment to a different section (Focus <-> Extra)
     /// Returns true if successful, false if section limit exceeded
     func moveCommitmentToSection(_ commitment: Commitment, to targetSection: Section) async -> Bool {

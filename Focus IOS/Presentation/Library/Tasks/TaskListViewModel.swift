@@ -37,6 +37,10 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel {
     @Published var commitmentFilter: CommitmentFilter? = nil
     @Published var committedTaskIds: Set<UUID> = []
 
+    // Edit mode
+    @Published var isEditMode: Bool = false
+    @Published var selectedTaskIds: Set<UUID> = []
+
     private let repository: TaskRepository
     private let commitmentRepository: CommitmentRepository
     private let categoryRepository: CategoryRepository
@@ -662,6 +666,160 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel {
                 tasks[index].categoryId = categoryId
                 tasks[index].modifiedDate = Date()
             }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    // MARK: - Edit Mode
+
+    var selectedCount: Int { selectedTaskIds.count }
+
+    var allUncompletedSelected: Bool {
+        let uncompletedIds = Set(uncompletedTasks.map { $0.id })
+        return !uncompletedIds.isEmpty && uncompletedIds.isSubset(of: selectedTaskIds)
+    }
+
+    var selectedTasks: [FocusTask] {
+        tasks.filter { selectedTaskIds.contains($0.id) }
+    }
+
+    func enterEditMode() {
+        withAnimation(.easeInOut(duration: 0.25)) {
+            isEditMode = true
+            selectedTaskIds = []
+            expandedTasks.removeAll()
+        }
+    }
+
+    func exitEditMode() {
+        withAnimation(.easeInOut(duration: 0.25)) {
+            isEditMode = false
+            selectedTaskIds = []
+        }
+    }
+
+    func toggleTaskSelection(_ taskId: UUID) {
+        if selectedTaskIds.contains(taskId) {
+            selectedTaskIds.remove(taskId)
+        } else {
+            selectedTaskIds.insert(taskId)
+        }
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+    }
+
+    func selectAllUncompleted() {
+        selectedTaskIds = Set(uncompletedTasks.map { $0.id })
+    }
+
+    func deselectAll() {
+        selectedTaskIds = []
+    }
+
+    func batchDeleteTasks() async {
+        let idsToDelete = selectedTaskIds
+
+        do {
+            for taskId in idsToDelete {
+                try await commitmentRepository.deleteCommitments(forTask: taskId)
+                try await repository.deleteTask(id: taskId)
+            }
+
+            tasks.removeAll { idsToDelete.contains($0.id) }
+            for taskId in idsToDelete {
+                subtasksMap.removeValue(forKey: taskId)
+            }
+            exitEditMode()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func batchMoveToCategory(_ categoryId: UUID?) async {
+        do {
+            for taskId in selectedTaskIds {
+                if let index = tasks.firstIndex(where: { $0.id == taskId }) {
+                    var updated = tasks[index]
+                    updated.categoryId = categoryId
+                    updated.modifiedDate = Date()
+                    try await repository.updateTask(updated)
+                    tasks[index].categoryId = categoryId
+                    tasks[index].modifiedDate = Date()
+                }
+            }
+            exitEditMode()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func createProjectFromSelected(title: String) async {
+        guard let userId = authService.currentUser?.id else {
+            errorMessage = "No authenticated user"
+            return
+        }
+        let trimmed = title.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return }
+
+        do {
+            let projectTask = FocusTask(
+                userId: userId,
+                title: trimmed,
+                type: .project,
+                isCompleted: false,
+                sortOrder: 0,
+                isInLibrary: true
+            )
+            let createdProject = try await repository.createTask(projectTask)
+
+            for (index, taskId) in selectedTaskIds.enumerated() {
+                if let taskIndex = tasks.firstIndex(where: { $0.id == taskId }) {
+                    var task = tasks[taskIndex]
+                    task.parentTaskId = createdProject.id
+                    task.sortOrder = index
+                    task.modifiedDate = Date()
+                    try await repository.updateTask(task)
+                }
+            }
+
+            tasks.removeAll { selectedTaskIds.contains($0.id) }
+            exitEditMode()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func createListFromSelected(title: String) async {
+        guard let userId = authService.currentUser?.id else {
+            errorMessage = "No authenticated user"
+            return
+        }
+        let trimmed = title.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return }
+
+        do {
+            let listTask = FocusTask(
+                userId: userId,
+                title: trimmed,
+                type: .list,
+                isCompleted: false,
+                sortOrder: 0,
+                isInLibrary: true
+            )
+            let createdList = try await repository.createTask(listTask)
+
+            for (index, taskId) in selectedTaskIds.enumerated() {
+                if let taskIndex = tasks.firstIndex(where: { $0.id == taskId }) {
+                    var task = tasks[taskIndex]
+                    task.parentTaskId = createdList.id
+                    task.sortOrder = index
+                    task.modifiedDate = Date()
+                    try await repository.updateTask(task)
+                }
+            }
+
+            tasks.removeAll { selectedTaskIds.contains($0.id) }
+            exitEditMode()
         } catch {
             errorMessage = error.localizedDescription
         }

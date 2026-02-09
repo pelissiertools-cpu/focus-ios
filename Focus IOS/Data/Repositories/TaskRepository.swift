@@ -158,7 +158,7 @@ class TaskRepository {
     // MARK: - Subtask Operations
 
     /// Create a subtask under a parent task
-    func createSubtask(title: String, parentTaskId: UUID, userId: UUID) async throws -> FocusTask {
+    func createSubtask(title: String, parentTaskId: UUID, userId: UUID, projectId: UUID? = nil) async throws -> FocusTask {
         let existingSubtasks = try await fetchSubtasks(parentId: parentTaskId)
         let nextSortOrder = (existingSubtasks.map { $0.sortOrder }.max() ?? -1) + 1
 
@@ -168,6 +168,7 @@ class TaskRepository {
             type: .task,
             isCompleted: false,
             sortOrder: nextSortOrder,
+            projectId: projectId,
             parentTaskId: parentTaskId
         )
 
@@ -215,6 +216,72 @@ class TaskRepository {
                 .eq("id", value: update.id.uuidString)
                 .execute()
         }
+    }
+
+    // MARK: - Project Operations
+
+    /// Fetch all projects for the current user
+    func fetchProjects() async throws -> [FocusTask] {
+        let projects: [FocusTask] = try await supabase
+            .from("tasks")
+            .select()
+            .eq("type", value: TaskType.project.rawValue)
+            .order("sort_order", ascending: true)
+            .order("created_date", ascending: false)
+            .execute()
+            .value
+
+        return projects
+    }
+
+    /// Fetch tasks belonging to a specific project
+    func fetchProjectTasks(projectId: UUID) async throws -> [FocusTask] {
+        let tasks: [FocusTask] = try await supabase
+            .from("tasks")
+            .select()
+            .eq("project_id", value: projectId.uuidString)
+            .order("sort_order", ascending: true)
+            .execute()
+            .value
+
+        return tasks
+    }
+
+    /// Create a new project
+    func createProject(title: String, userId: UUID, categoryId: UUID? = nil) async throws -> FocusTask {
+        let existingProjects = try await fetchProjects()
+        let nextSortOrder = (existingProjects.map { $0.sortOrder }.max() ?? -1) + 1
+
+        let project = FocusTask(
+            userId: userId,
+            title: title,
+            type: .project,
+            sortOrder: nextSortOrder,
+            categoryId: categoryId
+        )
+
+        return try await createTask(project)
+    }
+
+    /// Create a task under a project
+    func createProjectTask(title: String, projectId: UUID, userId: UUID, sortOrder: Int? = nil) async throws -> FocusTask {
+        let order: Int
+        if let sortOrder = sortOrder {
+            order = sortOrder
+        } else {
+            let existingTasks = try await fetchProjectTasks(projectId: projectId)
+            order = (existingTasks.map { $0.sortOrder }.max() ?? -1) + 1
+        }
+
+        let task = FocusTask(
+            userId: userId,
+            title: title,
+            type: .task,
+            sortOrder: order,
+            projectId: projectId
+        )
+
+        return try await createTask(task)
     }
 
     /// Restore subtasks to specific completion states

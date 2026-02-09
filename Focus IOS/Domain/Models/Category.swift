@@ -14,6 +14,7 @@ struct Category: Codable, Identifiable {
     let userId: UUID
     var name: String
     var sortOrder: Int
+    var type: String
     let createdDate: Date
 
     // Coding keys to match Supabase snake_case
@@ -22,6 +23,7 @@ struct Category: Codable, Identifiable {
         case userId = "user_id"
         case name
         case sortOrder = "sort_order"
+        case type
         case createdDate = "created_date"
     }
 
@@ -31,12 +33,14 @@ struct Category: Codable, Identifiable {
         userId: UUID,
         name: String,
         sortOrder: Int = 0,
+        type: String = "task",
         createdDate: Date = Date()
     ) {
         self.id = id
         self.userId = userId
         self.name = name
         self.sortOrder = sortOrder
+        self.type = type
         self.createdDate = createdDate
     }
 }

@@ -605,7 +605,7 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel {
 
     func fetchCategories() async {
         do {
-            self.categories = try await categoryRepository.fetchCategories()
+            self.categories = try await categoryRepository.fetchCategories(type: "task")
         } catch {
             errorMessage = error.localizedDescription
         }

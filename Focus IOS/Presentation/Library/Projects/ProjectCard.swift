@@ -1,0 +1,908 @@
+//
+//  ProjectCard.swift
+//  Focus IOS
+//
+
+import SwiftUI
+
+// MARK: - Project Card
+
+struct ProjectCard: View {
+    let project: FocusTask
+    @ObservedObject var viewModel: ProjectsViewModel
+
+    private var taskProgress: (completed: Int, total: Int) {
+        viewModel.taskProgress(for: project.id)
+    }
+
+    private var subtaskProgress: (completed: Int, total: Int) {
+        viewModel.subtaskProgress(for: project.id)
+    }
+
+    private var progressPercentage: Double {
+        viewModel.progressPercentage(for: project.id)
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // Header
+            projectHeader
+
+            // Progress bar
+            if taskProgress.total > 0 {
+                GeometryReader { geometry in
+                    ZStack(alignment: .leading) {
+                        Rectangle()
+                            .fill(Color(.systemGray5))
+                            .frame(height: 3)
+
+                        Rectangle()
+                            .fill(Color.blue)
+                            .frame(width: geometry.size.width * progressPercentage, height: 3)
+                    }
+                }
+                .frame(height: 3)
+                .padding(.horizontal)
+                .padding(.bottom, viewModel.isExpanded(project.id) ? 0 : 12)
+            }
+
+            // Expanded content
+            if viewModel.isExpanded(project.id) {
+                expandedContent
+            }
+        }
+        .background {
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color(.secondarySystemBackground))
+        }
+    }
+
+    // MARK: - Header
+
+    private var projectHeader: some View {
+        HStack(spacing: 12) {
+            // Project icon
+            Image(systemName: "archivebox.fill")
+                .font(.title3)
+                .foregroundColor(.orange)
+
+            // Title and progress
+            VStack(alignment: .leading, spacing: 6) {
+                Text(project.title)
+                    .font(.headline)
+                    .lineLimit(1)
+
+                HStack(spacing: 16) {
+                    HStack(spacing: 4) {
+                        Text("Task")
+                            .font(.caption)
+                        Text("\(taskProgress.completed)/\(taskProgress.total)")
+                            .font(.caption)
+                    }
+                    .foregroundColor(.secondary)
+
+                    HStack(spacing: 4) {
+                        Text("Sub Task")
+                            .font(.caption)
+                        Text("\(subtaskProgress.completed)/\(subtaskProgress.total)")
+                            .font(.caption)
+                    }
+                    .foregroundColor(.secondary)
+                }
+            }
+
+            Spacer()
+
+            // Drag handle
+            DragHandleView()
+        }
+        .padding()
+        .contentShape(Rectangle())
+        .onTapGesture {
+            _Concurrency.Task { @MainActor in
+                await viewModel.toggleExpanded(project.id)
+            }
+        }
+        .onLongPressGesture {
+            viewModel.selectedProjectForDetails = project
+        }
+    }
+
+    // MARK: - Expanded Content
+
+    private var expandedContent: some View {
+        VStack(spacing: 0) {
+            Divider()
+                .padding(.horizontal)
+
+            if viewModel.isLoadingProjectTasks.contains(project.id) {
+                HStack {
+                    Spacer()
+                    ProgressView()
+                        .scaleEffect(0.8)
+                    Spacer()
+                }
+                .padding()
+            } else {
+                let tasks = viewModel.projectTasksMap[project.id] ?? []
+
+                if tasks.isEmpty {
+                    Text("No tasks yet")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .padding()
+                } else {
+                    ForEach(tasks) { task in
+                        VStack(spacing: 0) {
+                            ProjectTaskRow(
+                                task: task,
+                                projectId: project.id,
+                                viewModel: viewModel
+                            )
+
+                            // Subtasks (nested directly under parent)
+                            if viewModel.isTaskExpanded(task.id) {
+                                ProjectSubtasksList(
+                                    parentTask: task,
+                                    viewModel: viewModel
+                                )
+                                InlineAddSubtaskForProjectRow(
+                                    parentId: task.id,
+                                    viewModel: viewModel
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // Add task row
+                InlineAddProjectTaskRow(
+                    projectId: project.id,
+                    viewModel: viewModel
+                )
+            }
+        }
+        .padding(.bottom, 12)
+    }
+}
+
+// MARK: - Project Task Row
+
+struct ProjectTaskRow: View {
+    let task: FocusTask
+    let projectId: UUID
+    @ObservedObject var viewModel: ProjectsViewModel
+
+    private var subtaskCount: (completed: Int, total: Int) {
+        let subtasks = viewModel.subtasksMap[task.id] ?? []
+        let completed = subtasks.filter { $0.isCompleted }.count
+        return (completed, subtasks.count)
+    }
+
+    var body: some View {
+        HStack(spacing: 12) {
+            // Expand indicator
+            Image(systemName: "line.3.horizontal")
+                .font(.caption)
+                .foregroundColor(.secondary)
+
+            // Task title + subtask count
+            VStack(alignment: .leading, spacing: 2) {
+                Text(task.title)
+                    .font(.subheadline)
+                    .strikethrough(task.isCompleted)
+                    .foregroundColor(task.isCompleted ? .secondary : .primary)
+            }
+
+            Spacer()
+
+            // Subtask count badge
+            if subtaskCount.total > 0 {
+                Text("\(subtaskCount.completed)/\(subtaskCount.total)")
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(Color(.systemGray5))
+                    .cornerRadius(8)
+            }
+
+            // Completion button
+            Button {
+                _Concurrency.Task {
+                    await viewModel.toggleTaskCompletion(task, projectId: projectId)
+                }
+            } label: {
+                Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
+                    .font(.title3)
+                    .foregroundColor(task.isCompleted ? .blue : .gray)
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal)
+        .padding(.vertical, 10)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            _Concurrency.Task {
+                await viewModel.toggleTaskExpanded(task.id)
+            }
+        }
+    }
+}
+
+// MARK: - Project Subtasks List
+
+struct ProjectSubtasksList: View {
+    let parentTask: FocusTask
+    @ObservedObject var viewModel: ProjectsViewModel
+
+    var body: some View {
+        VStack(spacing: 0) {
+            if viewModel.isLoadingSubtasks.contains(parentTask.id) {
+                HStack {
+                    Spacer()
+                    ProgressView()
+                        .scaleEffect(0.7)
+                    Spacer()
+                }
+                .padding(.vertical, 4)
+            } else {
+                // Uncompleted subtasks
+                ForEach(viewModel.getUncompletedSubtasks(for: parentTask.id)) { subtask in
+                    ProjectSubtaskRow(
+                        subtask: subtask,
+                        parentId: parentTask.id,
+                        viewModel: viewModel
+                    )
+                }
+
+                // Completed subtasks
+                ForEach(viewModel.getCompletedSubtasks(for: parentTask.id)) { subtask in
+                    ProjectSubtaskRow(
+                        subtask: subtask,
+                        parentId: parentTask.id,
+                        viewModel: viewModel
+                    )
+                }
+            }
+        }
+        .padding(.leading, 32)
+    }
+}
+
+// MARK: - Project Subtask Row
+
+struct ProjectSubtaskRow: View {
+    let subtask: FocusTask
+    let parentId: UUID
+    @ObservedObject var viewModel: ProjectsViewModel
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Text(subtask.title)
+                .font(.subheadline)
+                .strikethrough(subtask.isCompleted)
+                .foregroundColor(subtask.isCompleted ? .secondary : .primary)
+
+            Spacer()
+
+            Button {
+                _Concurrency.Task {
+                    await viewModel.toggleSubtaskCompletion(subtask, parentId: parentId)
+                }
+            } label: {
+                Image(systemName: subtask.isCompleted ? "checkmark.circle.fill" : "circle")
+                    .font(.subheadline)
+                    .foregroundColor(subtask.isCompleted ? .blue : .gray)
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.vertical, 6)
+        .padding(.horizontal)
+    }
+}
+
+// MARK: - Inline Add Project Task Row
+
+struct InlineAddProjectTaskRow: View {
+    let projectId: UUID
+    @ObservedObject var viewModel: ProjectsViewModel
+    @State private var newTaskTitle = ""
+    @State private var isEditing = false
+    @FocusState private var isFocused: Bool
+
+    var body: some View {
+        HStack(spacing: 12) {
+            if isEditing {
+                TextField("Task title", text: $newTaskTitle)
+                    .font(.subheadline)
+                    .focused($isFocused)
+                    .onSubmit {
+                        submitTask()
+                    }
+
+                Spacer()
+
+                Image(systemName: "circle")
+                    .font(.subheadline)
+                    .foregroundColor(.gray.opacity(0.5))
+            } else {
+                Button {
+                    isEditing = true
+                    isFocused = true
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "plus")
+                            .font(.subheadline)
+                        Text("Add")
+                            .font(.subheadline)
+                    }
+                    .foregroundColor(.secondary)
+                }
+                .buttonStyle(.plain)
+
+                Spacer()
+            }
+        }
+        .padding(.horizontal)
+        .padding(.vertical, 8)
+    }
+
+    private func submitTask() {
+        let title = newTaskTitle.trimmingCharacters(in: .whitespaces)
+        guard !title.isEmpty else {
+            isEditing = false
+            return
+        }
+
+        _Concurrency.Task {
+            await viewModel.createProjectTask(title: title, projectId: projectId)
+            newTaskTitle = ""
+        }
+    }
+}
+
+// MARK: - Inline Add Subtask For Project Row
+
+struct InlineAddSubtaskForProjectRow: View {
+    let parentId: UUID
+    @ObservedObject var viewModel: ProjectsViewModel
+    @State private var newTitle = ""
+    @State private var isEditing = false
+    @FocusState private var isFocused: Bool
+
+    var body: some View {
+        HStack(spacing: 12) {
+            if isEditing {
+                TextField("Subtask title", text: $newTitle)
+                    .font(.subheadline)
+                    .focused($isFocused)
+                    .onSubmit {
+                        submitSubtask()
+                    }
+
+                Spacer()
+
+                Image(systemName: "circle")
+                    .font(.caption)
+                    .foregroundColor(.gray.opacity(0.5))
+            } else {
+                Button {
+                    isEditing = true
+                    isFocused = true
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "plus")
+                            .font(.subheadline)
+                        Text("Add")
+                            .font(.subheadline)
+                    }
+                    .foregroundColor(.secondary)
+                }
+                .buttonStyle(.plain)
+
+                Spacer()
+            }
+        }
+        .padding(.vertical, 6)
+        .padding(.horizontal)
+        .padding(.leading, 32)
+    }
+
+    private func submitSubtask() {
+        let title = newTitle.trimmingCharacters(in: .whitespaces)
+        guard !title.isEmpty else {
+            isEditing = false
+            return
+        }
+
+        _Concurrency.Task {
+            await viewModel.createSubtask(title: title, parentId: parentId)
+            newTitle = ""
+        }
+    }
+}
+
+// MARK: - Project Category Filter Pill
+
+struct ProjectCategoryFilterPill: View {
+    @ObservedObject var viewModel: ProjectsViewModel
+    @Binding var showDropdown: Bool
+
+    private var selectedCategoryName: String {
+        if let id = viewModel.selectedCategoryId,
+           let category = viewModel.categories.first(where: { $0.id == id }) {
+            return category.name
+        }
+        return "All"
+    }
+
+    var body: some View {
+        Button {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                showDropdown.toggle()
+            }
+        } label: {
+            HStack(spacing: 6) {
+                Text(selectedCategoryName)
+                    .font(.subheadline.weight(.medium))
+                    .lineLimit(1)
+                Image(systemName: showDropdown ? "chevron.up" : "chevron.down")
+                    .font(.caption)
+            }
+            .foregroundColor(viewModel.selectedCategoryId != nil ? .white : .secondary)
+            .padding(.horizontal, 20)
+            .padding(.vertical, 10)
+        }
+        .buttonStyle(.plain)
+        .background {
+            RoundedRectangle(cornerRadius: 14)
+                .fill(viewModel.selectedCategoryId != nil
+                      ? Color.blue
+                      : Color.secondary.opacity(0.15))
+        }
+    }
+}
+
+// MARK: - Project Category Dropdown Menu
+
+struct ProjectCategoryDropdownMenu: View {
+    @ObservedObject var viewModel: ProjectsViewModel
+    @Binding var showDropdown: Bool
+    @State private var newCategoryName = ""
+    @State private var isAddingCategory = false
+    @FocusState private var isTextFieldFocused: Bool
+
+    private var selectedCategoryName: String {
+        if let id = viewModel.selectedCategoryId,
+           let category = viewModel.categories.first(where: { $0.id == id }) {
+            return category.name
+        }
+        return "All"
+    }
+
+    var body: some View {
+        ZStack(alignment: .topLeading) {
+            Color.black.opacity(0.001)
+                .ignoresSafeArea()
+                .onTapGesture { closeDropdown() }
+
+            VStack(alignment: .leading, spacing: 0) {
+                // Header
+                HStack(spacing: 6) {
+                    Text(selectedCategoryName)
+                        .font(.subheadline.weight(.medium))
+                        .lineLimit(1)
+                    Image(systemName: "chevron.up")
+                        .font(.caption)
+                }
+                .foregroundColor(.secondary)
+                .padding(.horizontal, 20)
+                .padding(.vertical, 10)
+                .contentShape(Rectangle())
+                .onTapGesture { closeDropdown() }
+
+                Divider()
+                    .padding(.horizontal, 16)
+
+                // "All" option
+                Button {
+                    viewModel.selectCategory(nil)
+                    closeDropdown()
+                } label: {
+                    HStack {
+                        Text("All")
+                            .font(.body)
+                        Spacer()
+                        if viewModel.selectedCategoryId == nil {
+                            Image(systemName: "checkmark")
+                                .font(.body)
+                                .foregroundColor(.blue)
+                        }
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 12)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+
+                // Category list
+                ForEach(viewModel.categories) { category in
+                    Button {
+                        viewModel.selectCategory(category.id)
+                        closeDropdown()
+                    } label: {
+                        HStack {
+                            Text(category.name)
+                                .font(.body)
+                                .lineLimit(1)
+                            Spacer()
+                            if viewModel.selectedCategoryId == category.id {
+                                Image(systemName: "checkmark")
+                                    .font(.body)
+                                    .foregroundColor(.blue)
+                            }
+                        }
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 12)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                }
+
+                Divider()
+                    .padding(.horizontal, 16)
+
+                // Add new category
+                if isAddingCategory {
+                    HStack(spacing: 8) {
+                        TextField("Category name", text: $newCategoryName)
+                            .font(.body)
+                            .focused($isTextFieldFocused)
+                            .onSubmit { submitNewCategory() }
+                        Button {
+                            submitNewCategory()
+                        } label: {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.body)
+                                .foregroundColor(
+                                    newCategoryName.trimmingCharacters(in: .whitespaces).isEmpty
+                                    ? .gray : .blue
+                                )
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(newCategoryName.trimmingCharacters(in: .whitespaces).isEmpty)
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 12)
+                } else {
+                    Button {
+                        isAddingCategory = true
+                        isTextFieldFocused = true
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "plus")
+                                .font(.body)
+                            Text("New Category")
+                                .font(.body)
+                        }
+                        .foregroundColor(.blue)
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 12)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .background {
+                RoundedRectangle(cornerRadius: 14)
+                    .fill(.regularMaterial)
+            }
+            .shadow(color: .black.opacity(0.2), radius: 12, x: 0, y: 6)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(minWidth: 200)
+            .padding(.leading, 16)
+            .padding(.top, 4)
+        }
+    }
+
+    private func closeDropdown() {
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+            showDropdown = false
+        }
+        isAddingCategory = false
+        newCategoryName = ""
+    }
+
+    private func submitNewCategory() {
+        let name = newCategoryName.trimmingCharacters(in: .whitespaces)
+        guard !name.isEmpty else { return }
+        _Concurrency.Task {
+            await viewModel.createCategory(name: name)
+        }
+        closeDropdown()
+    }
+}
+
+// MARK: - Add Project Sheet
+
+struct AddProjectSheet: View {
+    @ObservedObject var viewModel: ProjectsViewModel
+    @State private var projectTitle = ""
+    @State private var selectedCategoryId: UUID? = nil
+    @State private var draftTasks: [DraftTask] = []
+    @State private var showNewCategory = false
+    @State private var newCategoryName = ""
+    @FocusState private var titleFocused: Bool
+
+    var body: some View {
+        NavigationView {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    // Project name
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Project Name")
+                            .font(.subheadline.weight(.medium))
+                            .foregroundColor(.secondary)
+
+                        TextField("Project name", text: $projectTitle)
+                            .textFieldStyle(.roundedBorder)
+                            .focused($titleFocused)
+                    }
+
+                    // Category picker — always visible
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Category")
+                            .font(.subheadline.weight(.medium))
+                            .foregroundColor(.secondary)
+
+                        HStack {
+                            Picker("Category", selection: $selectedCategoryId) {
+                                Text("None").tag(nil as UUID?)
+                                ForEach(viewModel.categories) { category in
+                                    Text(category.name).tag(category.id as UUID?)
+                                }
+                            }
+                            .pickerStyle(.menu)
+
+                            Spacer()
+
+                            Button {
+                                showNewCategory = true
+                            } label: {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "plus")
+                                    Text("New")
+                                }
+                                .font(.caption)
+                                .foregroundColor(.blue)
+                            }
+                            .buttonStyle(.plain)
+                        }
+
+                        if showNewCategory {
+                            HStack {
+                                TextField("Category name", text: $newCategoryName)
+                                    .textFieldStyle(.roundedBorder)
+                                    .font(.subheadline)
+
+                                Button("Add") {
+                                    submitNewCategory()
+                                }
+                                .disabled(newCategoryName.trimmingCharacters(in: .whitespaces).isEmpty)
+                            }
+                        }
+                    }
+
+                    // Tasks section
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Tasks")
+                            .font(.subheadline.weight(.medium))
+                            .foregroundColor(.secondary)
+
+                        ForEach($draftTasks) { $draftTask in
+                            DraftTaskCard(
+                                draftTask: $draftTask,
+                                onDelete: {
+                                    draftTasks.removeAll { $0.id == draftTask.id }
+                                }
+                            )
+                        }
+
+                        // Add task button
+                        Button {
+                            draftTasks.append(DraftTask())
+                        } label: {
+                            HStack(spacing: 8) {
+                                Image(systemName: "plus")
+                                    .font(.subheadline)
+                                Text("Add Task")
+                                    .font(.subheadline)
+                            }
+                            .foregroundColor(.blue)
+                            .padding(.vertical, 8)
+                        }
+                        .buttonStyle(.plain)
+                    }
+
+                    // Create button
+                    Button {
+                        _Concurrency.Task {
+                            await viewModel.saveNewProject(
+                                title: projectTitle,
+                                categoryId: selectedCategoryId,
+                                draftTasks: draftTasks
+                            )
+                        }
+                    } label: {
+                        Text("Create Project")
+                            .font(.headline)
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                            .background(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(projectTitle.trimmingCharacters(in: .whitespaces).isEmpty
+                                          ? Color.blue.opacity(0.5)
+                                          : Color.blue)
+                            )
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(projectTitle.trimmingCharacters(in: .whitespaces).isEmpty)
+                    .padding(.top, 8)
+                }
+                .padding()
+            }
+            .navigationTitle("New Project")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") {
+                        viewModel.showingAddProject = false
+                    }
+                }
+            }
+            .onAppear {
+                titleFocused = true
+            }
+        }
+    }
+
+    private func submitNewCategory() {
+        let name = newCategoryName.trimmingCharacters(in: .whitespaces)
+        guard !name.isEmpty else { return }
+        _Concurrency.Task {
+            await viewModel.createCategory(name: name)
+            if let created = viewModel.categories.last {
+                selectedCategoryId = created.id
+            }
+            newCategoryName = ""
+            showNewCategory = false
+        }
+    }
+}
+
+// MARK: - Draft Task Card (for AddProjectSheet)
+
+struct DraftTaskCard: View {
+    @Binding var draftTask: DraftTask
+    let onDelete: () -> Void
+    @FocusState private var taskTitleFocused: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            // Task title row
+            HStack(spacing: 8) {
+                Image(systemName: "line.3.horizontal")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+
+                TextField("Task title", text: $draftTask.title)
+                    .font(.subheadline)
+                    .focused($taskTitleFocused)
+
+                Button(role: .destructive) {
+                    onDelete()
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+                .buttonStyle(.plain)
+            }
+
+            // Subtasks (nested under their parent)
+            ForEach(Array(draftTask.subtasks.enumerated()), id: \.element.id) { index, _ in
+                HStack(spacing: 8) {
+                    TextField("Subtask title", text: $draftTask.subtasks[index].title)
+                        .font(.caption)
+
+                    Button {
+                        draftTask.subtasks.remove(at: index)
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.leading, 28)
+            }
+
+            // Add subtask button
+            Button {
+                draftTask.subtasks.append(DraftSubtask(title: ""))
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "plus")
+                        .font(.caption)
+                    Text("Add subtask")
+                        .font(.caption)
+                }
+                .foregroundColor(.secondary)
+            }
+            .buttonStyle(.plain)
+            .padding(.leading, 28)
+        }
+        .padding(12)
+        .background {
+            RoundedRectangle(cornerRadius: 10)
+                .fill(Color(.tertiarySystemBackground))
+        }
+    }
+}
+
+// MARK: - Project Details Drawer
+
+struct ProjectDetailsDrawer: View {
+    let project: FocusTask
+    @ObservedObject var viewModel: ProjectsViewModel
+    @State private var projectTitle: String
+    @Environment(\.dismiss) private var dismiss
+
+    init(project: FocusTask, viewModel: ProjectsViewModel) {
+        self.project = project
+        self.viewModel = viewModel
+        _projectTitle = State(initialValue: project.title)
+    }
+
+    var body: some View {
+        NavigationView {
+            List {
+                SwiftUI.Section("Title") {
+                    TextField("Project title", text: $projectTitle)
+                }
+
+                SwiftUI.Section("Statistics") {
+                    let taskProg = viewModel.taskProgress(for: project.id)
+                    let subtaskProg = viewModel.subtaskProgress(for: project.id)
+
+                    Label("\(taskProg.completed)/\(taskProg.total) tasks completed", systemImage: "checklist")
+                        .foregroundColor(.secondary)
+
+                    Label("\(subtaskProg.completed)/\(subtaskProg.total) subtasks completed", systemImage: "list.bullet.indent")
+                        .foregroundColor(.secondary)
+                }
+
+                SwiftUI.Section {
+                    Button(role: .destructive) {
+                        _Concurrency.Task {
+                            await viewModel.deleteProject(project)
+                            dismiss()
+                        }
+                    } label: {
+                        Label("Delete Project", systemImage: "trash")
+                    }
+                }
+            }
+            .navigationTitle("Project Details")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
+}

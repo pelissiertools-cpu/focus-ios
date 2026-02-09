@@ -163,6 +163,17 @@ ADD COLUMN IF NOT EXISTS parent_commitment_id UUID REFERENCES commitments(id) ON
 CREATE INDEX IF NOT EXISTS idx_commitments_parent_id ON commitments(parent_commitment_id);
 
 -- ==============================================
+-- CATEGORY TYPE SUPPORT
+-- Separate task categories from project categories
+-- ==============================================
+
+-- Add type column to categories (default 'task' for backward compatibility)
+ALTER TABLE categories ADD COLUMN IF NOT EXISTS type TEXT DEFAULT 'task';
+
+-- Index for type-filtered lookups
+CREATE INDEX IF NOT EXISTS idx_categories_type ON categories(type);
+
+-- ==============================================
 -- VERIFICATION QUERIES
 -- Run these after migration to verify setup
 -- ==============================================

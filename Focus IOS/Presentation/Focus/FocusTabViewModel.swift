@@ -1054,4 +1054,10 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
 
         return slots.filter { !existingDates.contains(calendar.startOfDay(for: $0)) }
     }
+
+    // MARK: - TaskEditingViewModel (Category stubs - not used in Focus view)
+
+    func moveTaskToCategory(_ task: FocusTask, categoryId: UUID?) async {}
+
+    func createCategoryAndMove(name: String, task: FocusTask) async {}
 }

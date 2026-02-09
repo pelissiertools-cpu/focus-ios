@@ -85,7 +85,7 @@ struct TasksListView: View {
             AddTaskSheet(viewModel: viewModel)
         }
         .sheet(item: $viewModel.selectedTaskForDetails) { task in
-            TaskDetailsDrawer(task: task, viewModel: viewModel)
+            TaskDetailsDrawer(task: task, viewModel: viewModel, categories: viewModel.categories)
         }
         .alert("Error", isPresented: .constant(viewModel.errorMessage != nil)) {
             Button("OK") {

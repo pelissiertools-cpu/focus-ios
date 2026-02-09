@@ -612,4 +612,42 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel {
     func selectCategory(_ categoryId: UUID?) {
         selectedCategoryId = categoryId
     }
+
+    func moveTaskToCategory(_ task: FocusTask, categoryId: UUID?) async {
+        do {
+            var updated = task
+            updated.categoryId = categoryId
+            updated.modifiedDate = Date()
+            try await repository.updateTask(updated)
+
+            if let index = tasks.firstIndex(where: { $0.id == task.id }) {
+                tasks[index].categoryId = categoryId
+                tasks[index].modifiedDate = Date()
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func createCategoryAndMove(name: String, task: FocusTask) async {
+        guard let userId = authService.currentUser?.id else {
+            errorMessage = "No authenticated user"
+            return
+        }
+        let trimmed = name.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return }
+
+        do {
+            let newCategory = Category(
+                userId: userId,
+                name: trimmed,
+                sortOrder: categories.count
+            )
+            let created = try await categoryRepository.createCategory(newCategory)
+            categories.append(created)
+            await moveTaskToCategory(task, categoryId: created.id)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
 }

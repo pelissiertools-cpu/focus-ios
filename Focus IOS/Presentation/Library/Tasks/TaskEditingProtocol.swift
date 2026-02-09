@@ -31,4 +31,10 @@ protocol TaskEditingViewModel: ObservableObject {
 
     /// Create a new subtask
     func createSubtask(title: String, parentId: UUID) async
+
+    /// Move a task to a different category
+    func moveTaskToCategory(_ task: FocusTask, categoryId: UUID?) async
+
+    /// Create a new category and move the task to it
+    func createCategoryAndMove(name: String, task: FocusTask) async
 }

@@ -10,11 +10,14 @@ import SwiftUI
 struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
     let task: FocusTask
     let commitment: Commitment?
+    let categories: [Category]
     @ObservedObject var viewModel: VM
     @EnvironmentObject var focusViewModel: FocusTabViewModel
     @State private var taskTitle: String
     @State private var showingCommitmentSheet = false
     @State private var showingRescheduleSheet = false
+    @State private var showingNewCategoryAlert = false
+    @State private var newCategoryName = ""
     @State private var newSubtaskTitle: String = ""
     @FocusState private var isFocused: Bool
     @FocusState private var isNewSubtaskFocused: Bool
@@ -33,10 +36,19 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
         viewModel.getSubtasks(for: task.id)
     }
 
-    init(task: FocusTask, viewModel: VM, commitment: Commitment? = nil) {
+    private var currentCategoryName: String {
+        if let categoryId = task.categoryId,
+           let category = categories.first(where: { $0.id == categoryId }) {
+            return category.name
+        }
+        return "None"
+    }
+
+    init(task: FocusTask, viewModel: VM, commitment: Commitment? = nil, categories: [Category] = []) {
         self.task = task
         self.viewModel = viewModel
         self.commitment = commitment
+        self.categories = categories
         _taskTitle = State(initialValue: task.title)
     }
 
@@ -107,6 +119,45 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
 
                 // Actions Section
                 SwiftUI.Section {
+                    // Move to category (only for parent tasks in Library view)
+                    if !isSubtask && commitment == nil {
+                        Menu {
+                            Button {
+                                moveTask(to: nil)
+                            } label: {
+                                if task.categoryId == nil {
+                                    Label("None", systemImage: "checkmark")
+                                } else {
+                                    Text("None")
+                                }
+                            }
+                            ForEach(categories) { category in
+                                Button {
+                                    moveTask(to: category.id)
+                                } label: {
+                                    if task.categoryId == category.id {
+                                        Label(category.name, systemImage: "checkmark")
+                                    } else {
+                                        Text(category.name)
+                                    }
+                                }
+                            }
+                            Divider()
+                            Button {
+                                showingNewCategoryAlert = true
+                            } label: {
+                                Label("New Category", systemImage: "plus")
+                            }
+                        } label: {
+                            HStack {
+                                Label("Move to", systemImage: "folder")
+                                Spacer()
+                                Text(currentCategoryName)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                    }
+
                     // Commit to Focus (only shown when not already committed)
                     if commitment == nil {
                         Button {
@@ -238,6 +289,13 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
             .onAppear {
                 isFocused = true
             }
+            .alert("New Category", isPresented: $showingNewCategoryAlert) {
+                TextField("Category name", text: $newCategoryName)
+                Button("Cancel", role: .cancel) { newCategoryName = "" }
+                Button("Create") { createAndMoveToCategory() }
+            } message: {
+                Text("Enter a name for the new category.")
+            }
             .sheet(isPresented: $showingCommitmentSheet) {
                 CommitmentSelectionSheet(task: task, focusViewModel: focusViewModel)
             }
@@ -268,6 +326,22 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
             } else {
                 await viewModel.createSubtask(title: title, parentId: task.id)
             }
+        }
+    }
+
+    private func moveTask(to categoryId: UUID?) {
+        Task {
+            await viewModel.moveTaskToCategory(task, categoryId: categoryId)
+            dismiss()
+        }
+    }
+
+    private func createAndMoveToCategory() {
+        let name = newCategoryName
+        newCategoryName = ""
+        Task {
+            await viewModel.createCategoryAndMove(name: name, task: task)
+            dismiss()
         }
     }
 

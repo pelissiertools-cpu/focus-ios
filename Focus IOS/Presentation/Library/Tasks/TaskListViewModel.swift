@@ -33,6 +33,10 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel {
     @Published var categories: [Category] = []
     @Published var selectedCategoryId: UUID? = nil
 
+    // Commitment filter
+    @Published var commitmentFilter: CommitmentFilter? = nil
+    @Published var committedTaskIds: Set<UUID> = []
+
     private let repository: TaskRepository
     private let commitmentRepository: CommitmentRepository
     private let categoryRepository: CategoryRepository
@@ -102,11 +106,19 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel {
 
     // MARK: - Computed Properties
 
-    /// Uncompleted top-level tasks sorted by sortOrder, filtered by category and search text
+    /// Uncompleted top-level tasks sorted by sortOrder, filtered by category, commitment status, and search text
     var uncompletedTasks: [FocusTask] {
         var filtered = tasks.filter { !$0.isCompleted }
         if let categoryId = selectedCategoryId {
             filtered = filtered.filter { $0.categoryId == categoryId }
+        }
+        if let commitmentFilter = commitmentFilter {
+            switch commitmentFilter {
+            case .committed:
+                filtered = filtered.filter { committedTaskIds.contains($0.id) }
+            case .uncommitted:
+                filtered = filtered.filter { !committedTaskIds.contains($0.id) }
+            }
         }
         let searched = searchText.isEmpty ? filtered : filtered.filter {
             $0.title.localizedCaseInsensitiveContains(searchText)
@@ -114,11 +126,19 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel {
         return searched.sorted { $0.sortOrder < $1.sortOrder }
     }
 
-    /// Completed top-level tasks, filtered by category and search text
+    /// Completed top-level tasks, filtered by category, commitment status, and search text
     var completedTasks: [FocusTask] {
         var filtered = tasks.filter { $0.isCompleted }
         if let categoryId = selectedCategoryId {
             filtered = filtered.filter { $0.categoryId == categoryId }
+        }
+        if let commitmentFilter = commitmentFilter {
+            switch commitmentFilter {
+            case .committed:
+                filtered = filtered.filter { committedTaskIds.contains($0.id) }
+            case .uncommitted:
+                filtered = filtered.filter { !committedTaskIds.contains($0.id) }
+            }
         }
         return searchText.isEmpty ? filtered : filtered.filter {
             $0.title.localizedCaseInsensitiveContains(searchText)
@@ -611,6 +631,24 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel {
 
     func selectCategory(_ categoryId: UUID?) {
         selectedCategoryId = categoryId
+    }
+
+    // MARK: - Commitment Filter
+
+    func fetchCommittedTaskIds() async {
+        do {
+            committedTaskIds = try await commitmentRepository.fetchCommittedTaskIds()
+        } catch {
+            print("Error fetching committed task IDs: \(error)")
+        }
+    }
+
+    func toggleCommitmentFilter(_ filter: CommitmentFilter) {
+        if commitmentFilter == filter {
+            commitmentFilter = nil
+        } else {
+            commitmentFilter = filter
+        }
     }
 
     func moveTaskToCategory(_ task: FocusTask, categoryId: UUID?) async {

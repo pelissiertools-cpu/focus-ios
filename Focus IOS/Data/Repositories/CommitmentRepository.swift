@@ -143,6 +143,25 @@ class CommitmentRepository {
         return commitments
     }
 
+    // MARK: - Committed Task IDs
+
+    private struct TaskIdRow: Decodable {
+        let taskId: UUID
+        enum CodingKeys: String, CodingKey {
+            case taskId = "task_id"
+        }
+    }
+
+    /// Fetch the set of task IDs that have at least one commitment (RLS scoped to current user)
+    func fetchCommittedTaskIds() async throws -> Set<UUID> {
+        let rows: [TaskIdRow] = try await supabase
+            .from("commitments")
+            .select("task_id")
+            .execute()
+            .value
+        return Set(rows.map { $0.taskId })
+    }
+
     // MARK: - Trickle-Down (Child Commitment) Methods
 
     /// Fetch child commitments for a parent commitment

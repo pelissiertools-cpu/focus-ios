@@ -75,11 +75,16 @@ struct TasksListView: View {
             }
             .padding(.top, 44)
 
-            // Category pill (floats on top)
-            CategoryFilterPill(viewModel: viewModel)
-                .padding(.top, 4)
+            // Filter pills row (floats on top)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    CategoryFilterPill(viewModel: viewModel)
+                    CommitmentFilterPills(viewModel: viewModel)
+                }
                 .padding(.horizontal)
-                .zIndex(10)
+            }
+            .padding(.top, 4)
+            .zIndex(10)
         }
         .sheet(isPresented: $viewModel.showingAddTask) {
             AddTaskSheet(viewModel: viewModel)
@@ -101,10 +106,15 @@ struct TasksListView: View {
             if viewModel.tasks.isEmpty && !viewModel.isLoading {
                 await viewModel.fetchTasks()
                 await viewModel.fetchCategories()
+                await viewModel.fetchCommittedTaskIds()
             }
         }
         .onAppear {
             viewModel.searchText = searchText
+            // Refresh committed task IDs (lightweight, handles changes from Focus tab)
+            Task {
+                await viewModel.fetchCommittedTaskIds()
+            }
         }
         .onChange(of: searchText) { _, newValue in
             viewModel.searchText = newValue

@@ -593,10 +593,17 @@ struct CommitmentRow: View {
                 }
 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(task.title)
-                        .font(section == .focus ? .title3 : .body)
-                        .strikethrough(task.isCompleted)
-                        .foregroundColor(task.isCompleted ? .secondary : .primary)
+                    HStack(spacing: 6) {
+                        Text(task.title)
+                            .font(section == .focus ? .title3 : .body)
+                            .strikethrough(task.isCompleted)
+                            .foregroundColor(task.isCompleted ? .secondary : .primary)
+                        if task.type == .list {
+                            Image(systemName: "list.bullet")
+                                .font(section == .focus ? .subheadline : .caption)
+                                .foregroundColor(.blue)
+                        }
+                    }
 
                     // Subtask count indicator
                     if hasSubtasks {

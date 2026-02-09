@@ -37,12 +37,13 @@ struct CommitmentSelectionSheet: View {
     var body: some View {
         NavigationView {
             Form {
-                SwiftUI.Section("Task") {
+                SwiftUI.Section(task.type == .list ? "List" : "Task") {
                     Text(task.title)
                         .font(.headline)
 
                     if isParentTask {
-                        Text("Includes \(subtaskCount) subtask\(subtaskCount == 1 ? "" : "s")")
+                        let itemLabel = task.type == .list ? "item" : "subtask"
+                        Text("Includes \(subtaskCount) \(itemLabel)\(subtaskCount == 1 ? "" : "s")")
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
@@ -63,7 +64,7 @@ struct CommitmentSelectionSheet: View {
                     )
                 }
             }
-            .navigationTitle("Commit Task")
+            .navigationTitle(task.type == .list ? "Commit List" : "Commit Task")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {

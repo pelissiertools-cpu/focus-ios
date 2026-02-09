@@ -47,7 +47,6 @@ struct ListsView: View {
         .padding(.top, 44)
         .sheet(isPresented: $viewModel.showingAddList) {
             AddListSheet(viewModel: viewModel)
-                .drawerStyle()
         }
         .sheet(item: $viewModel.selectedListForDetails) { list in
             ListDetailsDrawer(list: list, viewModel: viewModel)
@@ -609,11 +608,18 @@ struct AddListSheet: View {
     @State private var showNewCategory = false
     @State private var newCategoryName = ""
     @State private var draftItems: [DraftSubtaskEntry] = []
+    @State private var commitAfterCreate = false
+    @State private var selectedTimeframe: Timeframe = .daily
+    @State private var selectedSection: Section = .focus
+    @State private var selectedDates: Set<Date> = []
+    @State private var sheetDetent: PresentationDetent = .fraction(0.75)
+    @EnvironmentObject var focusViewModel: FocusTabViewModel
     @FocusState private var titleFocused: Bool
     @FocusState private var focusedItemId: UUID?
 
     var body: some View {
         NavigationView {
+            ScrollViewReader { proxy in
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
                     // List title
@@ -720,6 +726,28 @@ struct AddListSheet: View {
                         }
                     }
 
+                    // Commit to Focus toggle
+                    VStack(alignment: .leading, spacing: 12) {
+                        Toggle(isOn: $commitAfterCreate.animation(.easeInOut(duration: 0.2))) {
+                            Label("Commit to Focus", systemImage: "arrow.right.circle")
+                                .font(.subheadline.weight(.medium))
+                        }
+                        .tint(.blue)
+
+                        if commitAfterCreate {
+                            Picker("Section", selection: $selectedSection) {
+                                Text("Focus").tag(Section.focus)
+                                Text("Extra").tag(Section.extra)
+                            }
+                            .pickerStyle(.segmented)
+
+                            UnifiedCalendarPicker(
+                                selectedDates: $selectedDates,
+                                selectedTimeframe: $selectedTimeframe
+                            )
+                        }
+                    }
+
                     // Create button
                     Button {
                         createList()
@@ -738,9 +766,27 @@ struct AddListSheet: View {
                     .buttonStyle(.plain)
                     .disabled(listTitle.trimmingCharacters(in: .whitespaces).isEmpty)
                     .padding(.top, 8)
+                    .id("createButton")
                 }
                 .padding()
             }
+            .onChange(of: commitAfterCreate) { _, isOn in
+                if isOn {
+                    titleFocused = false
+                    focusedItemId = nil
+                }
+                withAnimation {
+                    sheetDetent = isOn ? .large : .fraction(0.75)
+                }
+                if isOn {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        withAnimation {
+                            proxy.scrollTo("createButton", anchor: .bottom)
+                        }
+                    }
+                }
+            }
+            } // ScrollViewReader
             .navigationTitle("New List")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -753,6 +799,9 @@ struct AddListSheet: View {
             .onAppear {
                 titleFocused = true
             }
+            .presentationDetents([.fraction(0.75), .large], selection: $sheetDetent)
+            .presentationDragIndicator(.visible)
+            .presentationContentInteraction(.scrolls)
         }
     }
 
@@ -772,6 +821,24 @@ struct AddListSheet: View {
                 // Auto-expand the new list if it has items
                 if !itemTitles.isEmpty {
                     viewModel.expandedLists.insert(createdList.id)
+                }
+
+                // Create commitments if toggle is on and dates selected
+                if commitAfterCreate && !selectedDates.isEmpty {
+                    let commitmentRepository = CommitmentRepository()
+                    for date in selectedDates {
+                        let commitment = Commitment(
+                            userId: createdList.userId,
+                            taskId: createdList.id,
+                            timeframe: selectedTimeframe,
+                            section: selectedSection,
+                            commitmentDate: date,
+                            sortOrder: 0
+                        )
+                        _ = try? await commitmentRepository.createCommitment(commitment)
+                    }
+                    await focusViewModel.fetchCommitments()
+                    await viewModel.fetchCommittedTaskIds()
                 }
             }
             listTitle = ""
@@ -808,6 +875,8 @@ struct ListDetailsDrawer: View {
     @State private var listTitle: String
     @State private var showingNewCategory = false
     @State private var newCategoryName = ""
+    @State private var showingCommitmentSheet = false
+    @EnvironmentObject var focusViewModel: FocusTabViewModel
     @Environment(\.dismiss) private var dismiss
 
     init(list: FocusTask, viewModel: ListsViewModel) {
@@ -880,6 +949,14 @@ struct ListDetailsDrawer: View {
                 }
 
                 SwiftUI.Section {
+                    Button {
+                        showingCommitmentSheet = true
+                    } label: {
+                        Label("Commit to Focus", systemImage: "arrow.right.circle")
+                    }
+                }
+
+                SwiftUI.Section {
                     Button(role: .destructive) {
                         _Concurrency.Task {
                             await viewModel.deleteList(list)
@@ -910,6 +987,11 @@ struct ListDetailsDrawer: View {
                         await viewModel.createCategoryAndMove(name: name, task: list)
                     }
                 }
+            }
+            .sheet(isPresented: $showingCommitmentSheet, onDismiss: {
+                _Concurrency.Task { await viewModel.fetchCommittedTaskIds() }
+            }) {
+                CommitmentSelectionSheet(task: list, focusViewModel: focusViewModel)
             }
         }
     }

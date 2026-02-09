@@ -303,7 +303,8 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel {
                 try await repository.uncompleteTask(id: task.id)
 
                 // Restore subtasks to previous states if available
-                if let previousStates = task.previousCompletionState {
+                let currentTask = tasks.first(where: { $0.id == task.id })
+                if let previousStates = currentTask?.previousCompletionState {
                     try await repository.restoreSubtaskStates(parentId: task.id, completionStates: previousStates)
                     // Refresh subtasks from DB
                     await fetchSubtasks(for: task.id)
@@ -358,6 +359,8 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel {
 
     /// Toggle subtask completion - auto-completes parent when all done
     func toggleSubtaskCompletion(_ subtask: FocusTask, parentId: UUID) async {
+        // Capture BEFORE toggle for potential parent auto-complete restore
+        let preToggleStates = (subtasksMap[parentId] ?? []).map { $0.isCompleted }
         do {
             if subtask.isCompleted {
                 try await repository.uncompleteTask(id: subtask.id)
@@ -388,8 +391,10 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel {
                 if allComplete && !subtasks.isEmpty {
                     if let parentIndex = tasks.firstIndex(where: { $0.id == parentId }),
                        !tasks[parentIndex].isCompleted {
-                        // Save current states before auto-completing
-                        tasks[parentIndex].previousCompletionState = subtasks.map { $0.isCompleted }
+                        // Save pre-toggle states for restore on parent uncomplete
+                        tasks[parentIndex].previousCompletionState = preToggleStates
+                        let parentToSave = tasks[parentIndex]
+                        try await repository.updateTask(parentToSave)
                         try await repository.completeTask(id: parentId)
                         tasks[parentIndex].isCompleted = true
                         tasks[parentIndex].completedDate = Date()

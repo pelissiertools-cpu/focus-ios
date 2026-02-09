@@ -9,13 +9,14 @@ import SwiftUI
 import Auth
 
 @MainActor
-class ProjectsViewModel: ObservableObject {
+class ProjectsViewModel: ObservableObject, TaskEditingViewModel {
     // MARK: - Published Properties
     @Published var projects: [FocusTask] = []
     @Published var isLoading = false
     @Published var errorMessage: String?
     @Published var showingAddProject = false
     @Published var selectedProjectForDetails: FocusTask?
+    @Published var selectedTaskForDetails: FocusTask?
 
     // Project tasks state management
     @Published var projectTasksMap: [UUID: [FocusTask]] = [:]
@@ -304,11 +305,30 @@ class ProjectsViewModel: ObservableObject {
     func toggleTaskCompletion(_ task: FocusTask, projectId: UUID) async {
         do {
             if task.isCompleted {
+                // Uncompleting parent - restore previous subtask states
                 try await repository.uncompleteTask(id: task.id)
+
+                let currentTask = projectTasksMap[projectId]?.first(where: { $0.id == task.id })
+                if let previousStates = currentTask?.previousCompletionState {
+                    try await repository.restoreSubtaskStates(parentId: task.id, completionStates: previousStates)
+                    await fetchSubtasks(for: task.id)
+                }
             } else {
-                try await repository.completeTask(id: task.id)
-                // Also complete all subtasks
+                // Completing parent - save subtask states then complete all
                 let subtasks = subtasksMap[task.id] ?? []
+                let previousStates = subtasks.map { $0.isCompleted }
+
+                // Save previous states to parent task
+                if var tasks = projectTasksMap[projectId],
+                   let index = tasks.firstIndex(where: { $0.id == task.id }) {
+                    tasks[index].previousCompletionState = previousStates
+                    var updatedTask = tasks[index]
+                    updatedTask.previousCompletionState = previousStates
+                    try await repository.updateTask(updatedTask)
+                    projectTasksMap[projectId] = tasks
+                }
+
+                try await repository.completeTask(id: task.id)
                 if !subtasks.isEmpty {
                     try await repository.completeSubtasks(parentId: task.id)
                     if var localSubtasks = subtasksMap[task.id] {
@@ -338,6 +358,8 @@ class ProjectsViewModel: ObservableObject {
     }
 
     func toggleSubtaskCompletion(_ subtask: FocusTask, parentId: UUID) async {
+        // Capture BEFORE toggle for potential parent auto-complete restore
+        let preToggleStates = (subtasksMap[parentId] ?? []).map { $0.isCompleted }
         do {
             if subtask.isCompleted {
                 try await repository.uncompleteTask(id: subtask.id)
@@ -362,8 +384,11 @@ class ProjectsViewModel: ObservableObject {
                     for (projectId, tasks) in projectTasksMap {
                         if let taskIndex = tasks.firstIndex(where: { $0.id == parentId }),
                            !tasks[taskIndex].isCompleted {
-                            try await repository.completeTask(id: parentId)
+                            // Save pre-toggle states for restore on parent uncomplete
                             var updatedTasks = tasks
+                            updatedTasks[taskIndex].previousCompletionState = preToggleStates
+                            try await repository.updateTask(updatedTasks[taskIndex])
+                            try await repository.completeTask(id: parentId)
                             updatedTasks[taskIndex].isCompleted = true
                             updatedTasks[taskIndex].completedDate = Date()
                             projectTasksMap[projectId] = updatedTasks
@@ -472,6 +497,101 @@ class ProjectsViewModel: ObservableObject {
 
     func getCompletedSubtasks(for taskId: UUID) -> [FocusTask] {
         (subtasksMap[taskId] ?? []).filter { $0.isCompleted }.sorted { $0.sortOrder < $1.sortOrder }
+    }
+
+    // MARK: - TaskEditingViewModel Conformance
+
+    func findTask(byId id: UUID) -> FocusTask? {
+        for tasks in projectTasksMap.values {
+            if let task = tasks.first(where: { $0.id == id }) {
+                return task
+            }
+        }
+        for subtasks in subtasksMap.values {
+            if let subtask = subtasks.first(where: { $0.id == id }) {
+                return subtask
+            }
+        }
+        return nil
+    }
+
+    func getSubtasks(for taskId: UUID) -> [FocusTask] {
+        getUncompletedSubtasks(for: taskId) + getCompletedSubtasks(for: taskId)
+    }
+
+    func updateTask(_ task: FocusTask, newTitle: String) async {
+        guard !newTitle.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+
+        do {
+            var updatedTask = task
+            updatedTask.title = newTitle
+            updatedTask.modifiedDate = Date()
+            try await repository.updateTask(updatedTask)
+
+            // Update local state in projectTasksMap
+            if let projectId = task.projectId,
+               var tasks = projectTasksMap[projectId],
+               let index = tasks.firstIndex(where: { $0.id == task.id }) {
+                tasks[index].title = newTitle
+                tasks[index].modifiedDate = Date()
+                projectTasksMap[projectId] = tasks
+            }
+
+            // Update local state in subtasksMap
+            if let parentId = task.parentTaskId,
+               var subtasks = subtasksMap[parentId],
+               let index = subtasks.firstIndex(where: { $0.id == task.id }) {
+                subtasks[index].title = newTitle
+                subtasks[index].modifiedDate = Date()
+                subtasksMap[parentId] = subtasks
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func deleteTask(_ task: FocusTask) async {
+        guard let projectId = task.projectId else { return }
+        await deleteProjectTask(task, projectId: projectId)
+    }
+
+    func moveTaskToCategory(_ task: FocusTask, categoryId: UUID?) async {
+        do {
+            var updated = task
+            updated.categoryId = categoryId
+            updated.modifiedDate = Date()
+            try await repository.updateTask(updated)
+
+            if let projectId = task.projectId,
+               var tasks = projectTasksMap[projectId],
+               let index = tasks.firstIndex(where: { $0.id == task.id }) {
+                tasks[index].categoryId = categoryId
+                tasks[index].modifiedDate = Date()
+                projectTasksMap[projectId] = tasks
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func createCategoryAndMove(name: String, task: FocusTask) async {
+        guard let userId = authService.currentUser?.id else { return }
+        let trimmed = name.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return }
+
+        do {
+            let newCategory = Category(
+                userId: userId,
+                name: trimmed,
+                sortOrder: categories.count,
+                type: "project"
+            )
+            let created = try await categoryRepository.createCategory(newCategory)
+            categories.append(created)
+            await moveTaskToCategory(task, categoryId: created.id)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
     }
 }
 

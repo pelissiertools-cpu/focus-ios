@@ -227,6 +227,9 @@ struct ProjectTaskRow: View {
                 await viewModel.toggleTaskExpanded(task.id)
             }
         }
+        .onLongPressGesture {
+            viewModel.selectedTaskForDetails = task
+        }
     }
 }
 
@@ -299,6 +302,10 @@ struct ProjectSubtaskRow: View {
         }
         .padding(.vertical, 6)
         .padding(.horizontal)
+        .contentShape(Rectangle())
+        .onLongPressGesture {
+            viewModel.selectedTaskForDetails = subtask
+        }
     }
 }
 

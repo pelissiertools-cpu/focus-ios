@@ -79,6 +79,9 @@ struct ProjectsListView: View {
         .sheet(item: $viewModel.selectedProjectForDetails) { project in
             ProjectDetailsDrawer(project: project, viewModel: viewModel)
         }
+        .sheet(item: $viewModel.selectedTaskForDetails) { task in
+            TaskDetailsDrawer(task: task, viewModel: viewModel, categories: viewModel.categories)
+        }
         .alert("Error", isPresented: .constant(viewModel.errorMessage != nil)) {
             Button("OK") {
                 viewModel.errorMessage = nil

@@ -742,6 +742,8 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
 
     /// Toggle subtask completion - auto-completes parent when all same-timeframe subtasks done
     func toggleSubtaskCompletion(_ subtask: FocusTask, parentId: UUID) async {
+        // Capture BEFORE toggle for potential parent auto-complete restore
+        let preToggleStates = (subtasksMap[parentId] ?? []).map { $0.isCompleted }
         do {
             if subtask.isCompleted {
                 try await taskRepository.uncompleteTask(id: subtask.id)
@@ -772,7 +774,8 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
 
                 if shouldAutoComplete {
                     if var parentTask = tasksMap[parentId], !parentTask.isCompleted {
-                        parentTask.previousCompletionState = subtasks.map { $0.isCompleted }
+                        parentTask.previousCompletionState = preToggleStates
+                        try await taskRepository.updateTask(parentTask)
                         try await taskRepository.completeTask(id: parentId)
                         parentTask.isCompleted = true
                         parentTask.completedDate = Date()

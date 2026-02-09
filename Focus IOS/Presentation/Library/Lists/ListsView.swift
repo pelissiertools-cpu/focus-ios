@@ -30,6 +30,7 @@ struct ListsView: View {
         ZStack {
             if viewModel.isLoading {
                 ProgressView("Loading lists...")
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if viewModel.lists.isEmpty {
                 emptyState
             } else if viewModel.filteredLists.isEmpty {
@@ -111,6 +112,7 @@ struct ListsView: View {
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding()
     }
 
@@ -318,11 +320,6 @@ struct ListRow: View {
                     )
             }
 
-            // List icon
-            Image(systemName: "list.bullet")
-                .font(.title3)
-                .foregroundColor(.blue)
-
             // Title + item count
             VStack(alignment: .leading, spacing: 4) {
                 Text(list.title)
@@ -337,12 +334,6 @@ struct ListRow: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
-            // Expand chevron (NO checkbox)
-            if !isEditMode {
-                Image(systemName: viewModel.isExpanded(list.id) ? "chevron.down" : "chevron.right")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
         }
         .padding(.vertical, 12)
         .contentShape(Rectangle())
@@ -490,7 +481,7 @@ struct ListDoneSection: View {
                             .font(.caption)
                             .foregroundColor(.secondary)
 
-                        Text("Done")
+                        Text("Completed")
                             .font(.subheadline)
                             .fontWeight(.medium)
                             .foregroundColor(.secondary)
@@ -604,7 +595,7 @@ struct InlineAddItemRow: View {
         _Concurrency.Task {
             await viewModel.createItem(title: title, listId: listId)
             newItemTitle = ""
-            // Keep editing mode open for adding more items
+            isFocused = true
         }
     }
 }
@@ -617,7 +608,9 @@ struct AddListSheet: View {
     @State private var selectedCategoryId: UUID? = nil
     @State private var showNewCategory = false
     @State private var newCategoryName = ""
+    @State private var draftItems: [DraftSubtaskEntry] = []
     @FocusState private var titleFocused: Bool
+    @FocusState private var focusedItemId: UUID?
 
     var body: some View {
         NavigationView {
@@ -632,6 +625,55 @@ struct AddListSheet: View {
                         TextField("What's your list for?", text: $listTitle)
                             .textFieldStyle(.roundedBorder)
                             .focused($titleFocused)
+                    }
+
+                    // Items
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Items")
+                            .font(.subheadline.weight(.medium))
+                            .foregroundColor(.secondary)
+
+                        ForEach(draftItems) { entry in
+                            HStack(spacing: 8) {
+                                Image(systemName: "circle")
+                                    .font(.subheadline)
+                                    .foregroundColor(.gray.opacity(0.5))
+
+                                TextField("Item title", text: Binding(
+                                    get: { draftItems.first(where: { $0.id == entry.id })?.title ?? "" },
+                                    set: { newValue in
+                                        if let idx = draftItems.firstIndex(where: { $0.id == entry.id }) {
+                                            draftItems[idx].title = newValue
+                                        }
+                                    }
+                                ))
+                                .font(.subheadline)
+                                .focused($focusedItemId, equals: entry.id)
+                                .onSubmit {
+                                    addNewDraftItem()
+                                }
+
+                                Button {
+                                    draftItems.removeAll { $0.id == entry.id }
+                                } label: {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .foregroundColor(.secondary)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+
+                        Button {
+                            addNewDraftItem()
+                        } label: {
+                            HStack(spacing: 4) {
+                                Image(systemName: "plus")
+                                Text("Add item")
+                            }
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                        }
+                        .buttonStyle(.plain)
                     }
 
                     // Category picker
@@ -718,11 +760,30 @@ struct AddListSheet: View {
         let title = listTitle.trimmingCharacters(in: .whitespaces)
         guard !title.isEmpty else { return }
 
+        let itemTitles = draftItems.map { $0.title.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+
         _Concurrency.Task { @MainActor in
             await viewModel.createList(title: title, categoryId: selectedCategoryId)
+            // Create draft items for the newly created list
+            if let createdList = viewModel.lists.last {
+                for itemTitle in itemTitles {
+                    await viewModel.createItem(title: itemTitle, listId: createdList.id)
+                }
+                // Auto-expand the new list if it has items
+                if !itemTitles.isEmpty {
+                    viewModel.expandedLists.insert(createdList.id)
+                }
+            }
             listTitle = ""
-            titleFocused = true
+            draftItems = []
+            viewModel.showingAddList = false
         }
+    }
+
+    private func addNewDraftItem() {
+        let newEntry = DraftSubtaskEntry()
+        draftItems.append(newEntry)
+        focusedItemId = newEntry.id
     }
 
     private func submitNewCategory() {

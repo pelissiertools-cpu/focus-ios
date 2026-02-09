@@ -44,6 +44,7 @@ struct TasksListView: View {
         ZStack {
             if viewModel.isLoading {
                 ProgressView("Loading tasks...")
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if viewModel.tasks.isEmpty {
                 emptyState
             } else {
@@ -130,6 +131,7 @@ struct TasksListView: View {
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding()
     }
 

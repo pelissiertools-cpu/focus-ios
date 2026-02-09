@@ -29,6 +29,7 @@ struct ProjectsListView: View {
         ZStack {
             if viewModel.isLoading {
                 ProgressView("Loading projects...")
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if viewModel.projects.isEmpty {
                 emptyState
             } else {
@@ -103,6 +104,7 @@ struct ProjectsListView: View {
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding()
     }
 

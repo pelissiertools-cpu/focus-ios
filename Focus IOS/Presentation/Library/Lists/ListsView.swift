@@ -15,13 +15,16 @@ struct ListsView: View {
     }
 
     var body: some View {
-        VStack {
-            Text("Lists View")
-                .font(.title2)
-                .padding()
+        ScrollView {
+            VStack {
+                Text("Lists View")
+                    .font(.title2)
+                    .padding()
 
-            Text("Coming Soon")
-                .foregroundColor(.secondary)
+                Text("Coming Soon")
+                    .foregroundColor(.secondary)
+            }
+            .padding(.bottom, 100)
         }
     }
 }

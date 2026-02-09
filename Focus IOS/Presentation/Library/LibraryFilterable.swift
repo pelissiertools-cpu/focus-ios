@@ -1,0 +1,41 @@
+//
+//  LibraryFilterable.swift
+//  Focus IOS
+//
+
+import Foundation
+import Combine
+
+@MainActor
+protocol LibraryFilterable: ObservableObject {
+    // MARK: - Category filter
+    var categories: [Category] { get }
+    var selectedCategoryId: UUID? { get set }
+    var categoryType: String { get }
+    func selectCategory(_ categoryId: UUID?)
+    func createCategory(name: String) async
+
+    // MARK: - Commitment filter
+    var commitmentFilter: CommitmentFilter? { get set }
+    var committedTaskIds: Set<UUID> { get }
+    func toggleCommitmentFilter(_ filter: CommitmentFilter)
+    func fetchCommittedTaskIds() async
+
+    // MARK: - Edit mode
+    var isEditMode: Bool { get }
+    var selectedItemIds: Set<UUID> { get }
+    var selectedCount: Int { get }
+    var allUncompletedSelected: Bool { get }
+    func enterEditMode()
+    func exitEditMode()
+    func selectAllUncompleted()
+    func deselectAll()
+
+    // MARK: - Add item
+    var showingAddItem: Bool { get set }
+
+    // MARK: - Batch operations
+    var showBatchDeleteConfirmation: Bool { get set }
+    var showBatchMovePicker: Bool { get set }
+    var showBatchCommitSheet: Bool { get set }
+}

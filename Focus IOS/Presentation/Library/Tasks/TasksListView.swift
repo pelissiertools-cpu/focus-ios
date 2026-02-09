@@ -176,6 +176,8 @@ struct TasksListView: View {
         }
         .sheet(isPresented: $viewModel.showingAddTask) {
             AddTaskSheet(viewModel: viewModel)
+                .presentationDetents([.fraction(0.75)])
+                .presentationDragIndicator(.visible)
         }
         .sheet(item: $viewModel.selectedTaskForDetails) { task in
             TaskDetailsDrawer(task: task, viewModel: viewModel, categories: viewModel.categories)
@@ -328,6 +330,7 @@ struct TasksListView: View {
                 }
             }
             .padding(.horizontal)
+            .padding(.bottom, 100)
             .onPreferenceChange(RowFramePreference.self) { frames in
                 rowFrames = frames
             }
@@ -771,41 +774,194 @@ struct InlineAddSubtaskRow: View {
 struct AddTaskSheet: View {
     @ObservedObject var viewModel: TaskListViewModel
     @State private var taskTitle = ""
-    @FocusState private var isFocused: Bool
+    @State private var draftSubtasks: [DraftSubtaskEntry] = []
+    @State private var selectedCategoryId: UUID? = nil
+    @State private var showNewCategory = false
+    @State private var newCategoryName = ""
+    @FocusState private var titleFocused: Bool
 
     var body: some View {
         NavigationView {
-            VStack(spacing: 20) {
-                TextField("Task title", text: $taskTitle)
-                    .textFieldStyle(.roundedBorder)
-                    .focused($isFocused)
-                    .padding()
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    // Task title
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Task")
+                            .font(.subheadline.weight(.medium))
+                            .foregroundColor(.secondary)
 
-                Button("Add Task") {
-                    Task {
-                        await viewModel.createTask(title: taskTitle)
+                        TextField("What do you need to do?", text: $taskTitle)
+                            .textFieldStyle(.roundedBorder)
+                            .focused($titleFocused)
                     }
-                }
-                .buttonStyle(.borderedProminent)
-                .disabled(taskTitle.trimmingCharacters(in: .whitespaces).isEmpty)
 
-                Spacer()
+                    // Subtasks
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Subtasks")
+                            .font(.subheadline.weight(.medium))
+                            .foregroundColor(.secondary)
+
+                        ForEach(Array(draftSubtasks.enumerated()), id: \.element.id) { index, _ in
+                            HStack(spacing: 8) {
+                                Image(systemName: "circle")
+                                    .font(.caption)
+                                    .foregroundColor(.gray.opacity(0.5))
+
+                                TextField("Subtask title", text: $draftSubtasks[index].title)
+                                    .font(.subheadline)
+
+                                Button {
+                                    draftSubtasks.remove(at: index)
+                                } label: {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .font(.subheadline)
+                                        .foregroundColor(.secondary)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                            .padding(.leading, 4)
+                        }
+
+                        Button {
+                            draftSubtasks.append(DraftSubtaskEntry())
+                        } label: {
+                            HStack(spacing: 6) {
+                                Image(systemName: "plus")
+                                    .font(.subheadline)
+                                Text("Add subtask")
+                                    .font(.subheadline)
+                            }
+                            .foregroundColor(.blue)
+                        }
+                        .buttonStyle(.plain)
+                        .padding(.leading, 4)
+                    }
+
+                    // Category picker
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Category")
+                            .font(.subheadline.weight(.medium))
+                            .foregroundColor(.secondary)
+
+                        HStack {
+                            Picker("Category", selection: $selectedCategoryId) {
+                                Text("None").tag(nil as UUID?)
+                                ForEach(viewModel.categories) { category in
+                                    Text(category.name).tag(category.id as UUID?)
+                                }
+                            }
+                            .pickerStyle(.menu)
+
+                            Spacer()
+
+                            Button {
+                                showNewCategory = true
+                            } label: {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "plus")
+                                    Text("New")
+                                }
+                                .font(.caption)
+                                .foregroundColor(.blue)
+                            }
+                            .buttonStyle(.plain)
+                        }
+
+                        if showNewCategory {
+                            HStack {
+                                TextField("Category name", text: $newCategoryName)
+                                    .textFieldStyle(.roundedBorder)
+                                    .font(.subheadline)
+
+                                Button("Add") {
+                                    submitNewCategory()
+                                }
+                                .disabled(newCategoryName.trimmingCharacters(in: .whitespaces).isEmpty)
+                            }
+                        }
+                    }
+
+                    // Add Task button
+                    Button {
+                        addTask()
+                    } label: {
+                        Text("Add Task")
+                            .font(.headline)
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                            .background(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(taskTitle.trimmingCharacters(in: .whitespaces).isEmpty
+                                          ? Color.blue.opacity(0.5)
+                                          : Color.blue)
+                            )
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(taskTitle.trimmingCharacters(in: .whitespaces).isEmpty)
+                    .padding(.top, 8)
+                }
+                .padding()
             }
-            .padding()
             .navigationTitle("New Task")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Cancel") {
+                    Button("Done") {
                         viewModel.showingAddTask = false
                     }
                 }
             }
             .onAppear {
-                isFocused = true
+                titleFocused = true
             }
         }
     }
+
+    private func addTask() {
+        let title = taskTitle.trimmingCharacters(in: .whitespaces)
+        guard !title.isEmpty else { return }
+
+        let subtasksToCreate = draftSubtasks
+            .map { $0.title.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+        let categoryToAssign = selectedCategoryId
+
+        _Concurrency.Task { @MainActor in
+            guard let parentId = await viewModel.createTask(title: title, categoryId: categoryToAssign) else {
+                return
+            }
+
+            for subtaskTitle in subtasksToCreate {
+                await viewModel.createSubtask(title: subtaskTitle, parentId: parentId)
+            }
+
+            // Reset fields for next task (keep category selection)
+            taskTitle = ""
+            draftSubtasks = []
+            titleFocused = true
+        }
+    }
+
+    private func submitNewCategory() {
+        let name = newCategoryName.trimmingCharacters(in: .whitespaces)
+        guard !name.isEmpty else { return }
+        _Concurrency.Task {
+            await viewModel.createCategory(name: name)
+            if let created = viewModel.categories.last {
+                selectedCategoryId = created.id
+            }
+            newCategoryName = ""
+            showNewCategory = false
+        }
+    }
+}
+
+// MARK: - Draft Subtask Entry (for AddTaskSheet)
+
+struct DraftSubtaskEntry: Identifiable {
+    let id = UUID()
+    var title: String = ""
 }
 
 #Preview {

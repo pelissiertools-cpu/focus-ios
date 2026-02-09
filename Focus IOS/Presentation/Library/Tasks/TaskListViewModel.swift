@@ -11,7 +11,7 @@ import SwiftUI
 import Auth
 
 @MainActor
-class TaskListViewModel: ObservableObject, TaskEditingViewModel {
+class TaskListViewModel: ObservableObject, TaskEditingViewModel, LibraryFilterable {
     @Published var tasks: [FocusTask] = []
     @Published var isLoading = false
     @Published var errorMessage: String?
@@ -40,6 +40,11 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel {
     // Edit mode
     @Published var isEditMode: Bool = false
     @Published var selectedTaskIds: Set<UUID> = []
+
+    // Batch operation triggers
+    @Published var showBatchDeleteConfirmation: Bool = false
+    @Published var showBatchMovePicker: Bool = false
+    @Published var showBatchCommitSheet: Bool = false
 
     private let repository: TaskRepository
     private let commitmentRepository: CommitmentRepository
@@ -118,6 +123,20 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel {
                 TaskNotificationKeys.subtasksChanged: subtasksChanged
             ]
         )
+    }
+
+    // MARK: - LibraryFilterable Conformance
+
+    var categoryType: String { "task" }
+
+    var showingAddItem: Bool {
+        get { showingAddTask }
+        set { showingAddTask = newValue }
+    }
+
+    var selectedItemIds: Set<UUID> {
+        get { selectedTaskIds }
+        set { selectedTaskIds = newValue }
     }
 
     // MARK: - Computed Properties
@@ -270,10 +289,11 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel {
     }
 
     /// Create a new task (inserted at the top with sortOrder 0)
-    func createTask(title: String) async {
+    @discardableResult
+    func createTask(title: String, categoryId: UUID? = nil) async -> UUID? {
         guard let userId = authService.currentUser?.id else {
             errorMessage = "No authenticated user"
-            return
+            return nil
         }
 
         errorMessage = nil
@@ -284,11 +304,13 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel {
                 title: title,
                 type: .task,
                 isCompleted: false,
-                sortOrder: 0
+                sortOrder: 0,
+                categoryId: categoryId
             )
 
             let createdTask = try await repository.createTask(newTask)
             tasks.insert(createdTask, at: 0)
+            subtasksMap[createdTask.id] = []
 
             // Reassign sort orders so the new task is at 0 and others shift up
             let uncompleted = tasks.filter { !$0.isCompleted }.sorted { $0.sortOrder < $1.sortOrder }
@@ -301,9 +323,10 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel {
             }
             await persistSortOrders(updates)
 
-            showingAddTask = false
+            return createdTask.id
         } catch {
             errorMessage = error.localizedDescription
+            return nil
         }
     }
 

@@ -129,7 +129,8 @@ struct ProjectsListView: View {
                 }
             }
             .padding(.horizontal)
-            .padding(.vertical, 8)
+            .padding(.top, 8)
+            .padding(.bottom, 100)
         }
     }
 }

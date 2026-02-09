@@ -111,6 +111,7 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel {
         } else {
             expandedTasks.insert(taskId)
             if subtasksMap[taskId] == nil {
+                subtasksMap[taskId] = []
                 await fetchSubtasks(for: taskId)
             }
         }
@@ -189,6 +190,19 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel {
             let allTasks = try await repository.fetchTasks(ofType: .task)
             // Filter to only top-level tasks (no parent)
             self.tasks = allTasks.filter { $0.parentTaskId == nil }
+
+            // Pre-populate subtasksMap from already-fetched data
+            var newSubtasksMap: [UUID: [FocusTask]] = [:]
+            for task in allTasks where task.parentTaskId != nil {
+                newSubtasksMap[task.parentTaskId!, default: []].append(task)
+            }
+            for task in self.tasks {
+                if newSubtasksMap[task.id] == nil {
+                    newSubtasksMap[task.id] = []
+                }
+            }
+            self.subtasksMap = newSubtasksMap
+
             isLoading = false
         } catch {
             self.errorMessage = error.localizedDescription

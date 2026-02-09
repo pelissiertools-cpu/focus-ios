@@ -443,50 +443,40 @@ struct SubtasksList: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            if viewModel.isLoadingSubtasks.contains(parentTask.id) {
-                HStack {
-                    Spacer()
-                    ProgressView()
-                        .scaleEffect(0.8)
-                    Spacer()
-                }
-                .padding(.vertical, 8)
-            } else {
-                // Uncompleted subtasks — reorderable via handle drag
-                ForEach(viewModel.getUncompletedSubtasks(for: parentTask.id)) { subtask in
-                    let isDragging = draggingSubtaskId == subtask.id
+            // Uncompleted subtasks — reorderable via handle drag
+            ForEach(viewModel.getUncompletedSubtasks(for: parentTask.id)) { subtask in
+                let isDragging = draggingSubtaskId == subtask.id
 
-                    SubtaskRow(
-                        subtask: subtask,
-                        parentId: parentTask.id,
-                        viewModel: viewModel,
-                        onDragChanged: onSubtaskDragChanged != nil
-                            ? { value in onSubtaskDragChanged?(subtask.id, value) }
-                            : nil,
-                        onDragEnded: onSubtaskDragEnded
-                    )
-                    .background(
-                        GeometryReader { geo in
-                            Color.clear.preference(
-                                key: RowFramePreference.self,
-                                value: [subtask.id: geo.frame(in: .named("taskList"))]
-                            )
-                        }
-                    )
-                    .background(Color(.systemBackground))
-                    .offset(y: isDragging ? (dragTranslation + dragReorderAdjustment) : 0)
-                    .scaleEffect(isDragging ? 1.03 : 1.0)
-                    .shadow(color: .black.opacity(isDragging ? 0.15 : 0), radius: 8, y: 2)
-                    .zIndex(isDragging ? 1 : 0)
-                    .transaction { t in
-                        if isDragging { t.animation = nil }
+                SubtaskRow(
+                    subtask: subtask,
+                    parentId: parentTask.id,
+                    viewModel: viewModel,
+                    onDragChanged: onSubtaskDragChanged != nil
+                        ? { value in onSubtaskDragChanged?(subtask.id, value) }
+                        : nil,
+                    onDragEnded: onSubtaskDragEnded
+                )
+                .background(
+                    GeometryReader { geo in
+                        Color.clear.preference(
+                            key: RowFramePreference.self,
+                            value: [subtask.id: geo.frame(in: .named("taskList"))]
+                        )
                     }
+                )
+                .background(Color(.systemBackground))
+                .offset(y: isDragging ? (dragTranslation + dragReorderAdjustment) : 0)
+                .scaleEffect(isDragging ? 1.03 : 1.0)
+                .shadow(color: .black.opacity(isDragging ? 0.15 : 0), radius: 8, y: 2)
+                .zIndex(isDragging ? 1 : 0)
+                .transaction { t in
+                    if isDragging { t.animation = nil }
                 }
+            }
 
-                // Completed subtasks — not draggable
-                ForEach(viewModel.getCompletedSubtasks(for: parentTask.id)) { subtask in
-                    SubtaskRow(subtask: subtask, parentId: parentTask.id, viewModel: viewModel)
-                }
+            // Completed subtasks — not draggable
+            ForEach(viewModel.getCompletedSubtasks(for: parentTask.id)) { subtask in
+                SubtaskRow(subtask: subtask, parentId: parentTask.id, viewModel: viewModel)
             }
         }
         .padding(.leading, 32)

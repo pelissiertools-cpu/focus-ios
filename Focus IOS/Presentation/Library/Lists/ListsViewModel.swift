@@ -295,6 +295,19 @@ class ListsViewModel: ObservableObject, LibraryFilterable, TaskEditingViewModel 
                     items[index].completedDate = nil
                 }
                 itemsMap[listId] = items
+
+                // Notify other views about item completion change
+                NotificationCenter.default.post(
+                    name: .taskCompletionChanged,
+                    object: nil,
+                    userInfo: [
+                        TaskNotificationKeys.taskId: item.id,
+                        TaskNotificationKeys.isCompleted: items[index].isCompleted,
+                        TaskNotificationKeys.completedDate: items[index].completedDate as Any,
+                        TaskNotificationKeys.source: TaskNotificationSource.library.rawValue,
+                        TaskNotificationKeys.subtasksChanged: false
+                    ]
+                )
             }
         } catch {
             errorMessage = error.localizedDescription

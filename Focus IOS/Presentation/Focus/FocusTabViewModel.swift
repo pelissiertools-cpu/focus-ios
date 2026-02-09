@@ -80,12 +80,57 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
         }
 
         // Update subtasksMap if this task is a subtask
+        var foundParentId: UUID? = nil
         for (parentId, var subtasks) in subtasksMap {
             if let index = subtasks.firstIndex(where: { $0.id == taskId }) {
                 subtasks[index].isCompleted = isCompleted
                 subtasks[index].completedDate = completedDate
                 subtasksMap[parentId] = subtasks
+                foundParentId = parentId
                 break
+            }
+        }
+
+        // If a subtask was updated, check auto-complete for its parent
+        if let parentId = foundParentId, let subtasks = subtasksMap[parentId] {
+            // Reconstruct pre-toggle states (invert the toggled subtask)
+            let preToggleStates = subtasks.map { sub in
+                sub.id == taskId ? !isCompleted : sub.isCompleted
+            }
+            let shouldAutoComplete = checkShouldAutoCompleteParent(parentId: parentId, subtasks: subtasks)
+
+            _Concurrency.Task { @MainActor in
+                do {
+                    if shouldAutoComplete {
+                        if var parentTask = self.tasksMap[parentId], !parentTask.isCompleted {
+                            parentTask.previousCompletionState = preToggleStates
+                            try await self.taskRepository.updateTask(parentTask)
+                            try await self.taskRepository.completeTask(id: parentId)
+                            parentTask.isCompleted = true
+                            parentTask.completedDate = Date()
+                            self.tasksMap[parentId] = parentTask
+                            self.postTaskCompletionNotification(
+                                taskId: parentId,
+                                isCompleted: true,
+                                completedDate: parentTask.completedDate
+                            )
+                        }
+                    } else {
+                        if var parentTask = self.tasksMap[parentId], parentTask.isCompleted {
+                            try await self.taskRepository.uncompleteTask(id: parentId)
+                            parentTask.isCompleted = false
+                            parentTask.completedDate = nil
+                            self.tasksMap[parentId] = parentTask
+                            self.postTaskCompletionNotification(
+                                taskId: parentId,
+                                isCompleted: false,
+                                completedDate: nil
+                            )
+                        }
+                    }
+                } catch {
+                    self.errorMessage = error.localizedDescription
+                }
             }
         }
 

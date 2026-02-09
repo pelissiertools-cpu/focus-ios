@@ -9,7 +9,7 @@ import SwiftUI
 
 struct MainTabView: View {
     @EnvironmentObject var authService: AuthService
-    @StateObject private var focusViewModel = FocusTabViewModel(authService: AuthService())
+    @EnvironmentObject var focusViewModel: FocusTabViewModel
 
     var body: some View {
         TabView {
@@ -29,6 +29,8 @@ struct MainTabView: View {
 }
 
 #Preview {
+    let authService = AuthService()
     MainTabView()
-        .environmentObject(AuthService())
+        .environmentObject(authService)
+        .environmentObject(FocusTabViewModel(authService: authService))
 }

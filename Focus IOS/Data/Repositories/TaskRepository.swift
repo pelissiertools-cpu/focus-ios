@@ -53,6 +53,20 @@ class TaskRepository {
         return tasks
     }
 
+    /// Fetch specific tasks by their IDs
+    func fetchTasksByIds(_ ids: [UUID]) async throws -> [FocusTask] {
+        guard !ids.isEmpty else { return [] }
+        let idStrings = ids.map { $0.uuidString }
+        let tasks: [FocusTask] = try await supabase
+            .from("tasks")
+            .select()
+            .in("id", values: idStrings)
+            .execute()
+            .value
+
+        return tasks
+    }
+
     /// Fetch tasks by type (task, project, list)
     func fetchTasks(ofType type: TaskType) async throws -> [FocusTask] {
         let tasks: [FocusTask] = try await supabase

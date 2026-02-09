@@ -30,16 +30,53 @@ class CommitmentRepository {
         date: Date,
         section: Section
     ) async throws -> [Commitment] {
+        let (startDate, endDate) = Self.dateRange(for: timeframe, date: date)
+
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        let startStr = formatter.string(from: startDate)
+        let endStr = formatter.string(from: endDate)
+
         let commitments: [Commitment] = try await supabase
             .from("commitments")
             .select()
             .eq("timeframe", value: timeframe.rawValue)
             .eq("section", value: section.rawValue)
+            .gte("commitment_date", value: startStr)
+            .lt("commitment_date", value: endStr)
             .order("sort_order", ascending: true)
             .execute()
             .value
 
         return commitments
+    }
+
+    /// Compute the start (inclusive) and end (exclusive) dates for a timeframe period
+    static func dateRange(for timeframe: Timeframe, date: Date) -> (start: Date, end: Date) {
+        var calendar = Calendar.current
+        calendar.firstWeekday = 1 // Sunday
+
+        switch timeframe {
+        case .daily:
+            let start = calendar.startOfDay(for: date)
+            let end = calendar.date(byAdding: .day, value: 1, to: start)!
+            return (start, end)
+        case .weekly:
+            let components = calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: date)
+            let start = calendar.date(from: components)!
+            let end = calendar.date(byAdding: .weekOfYear, value: 1, to: start)!
+            return (start, end)
+        case .monthly:
+            let components = calendar.dateComponents([.year, .month], from: date)
+            let start = calendar.date(from: components)!
+            let end = calendar.date(byAdding: .month, value: 1, to: start)!
+            return (start, end)
+        case .yearly:
+            let components = calendar.dateComponents([.year], from: date)
+            let start = calendar.date(from: components)!
+            let end = calendar.date(byAdding: .year, value: 1, to: start)!
+            return (start, end)
+        }
     }
 
     /// Fetch all commitments for a specific task

@@ -18,6 +18,7 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
     @Published var selectedTimeframe: Timeframe = .daily
     @Published var selectedDate: Date = Date()
     @Published var isLoading = false
+    @Published var hasLoadedInitialData = false
     @Published var errorMessage: String?
     @Published var selectedTaskForDetails: FocusTask?
 
@@ -104,7 +105,13 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
 
     /// Fetch commitments for selected timeframe and date
     func fetchCommitments() async {
-        isLoading = true
+        // Only show loading spinner on initial load (no cached data yet)
+        let isInitialLoad = !hasLoadedInitialData
+        if isInitialLoad {
+            isLoading = true
+        } else {
+            commitments = []
+        }
         errorMessage = nil
 
         do {
@@ -128,6 +135,7 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
             // Fetch child commitments for trickle-down display
             await fetchChildCommitments()
 
+            hasLoadedInitialData = true
             isLoading = false
         } catch {
             errorMessage = error.localizedDescription
@@ -137,22 +145,20 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
 
     /// Fetch task details for all commitments
     private func fetchTasksForCommitments() async {
-        let taskIds = Set(commitments.map { $0.taskId })
+        let taskIds = Array(Set(commitments.map { $0.taskId }))
+        guard !taskIds.isEmpty else { return }
 
         do {
-            // Fetch all tasks once instead of per-commitment
-            let allTasks = try await taskRepository.fetchTasks()
+            // Fetch only the tasks referenced by commitments
+            let tasks = try await taskRepository.fetchTasksByIds(taskIds)
 
-            for taskId in taskIds {
-                if let task = allTasks.first(where: { $0.id == taskId }) {
-                    tasksMap[taskId] = task
+            for task in tasks {
+                tasksMap[task.id] = task
 
-                    // Fetch subtasks for any task that has a commitment in this view
-                    // This includes subtasks that have been broken down and now act as parents
-                    let subtasks = try await taskRepository.fetchSubtasks(parentId: taskId)
-                    if !subtasks.isEmpty {
-                        subtasksMap[taskId] = subtasks
-                    }
+                // Fetch subtasks for any task that has a commitment in this view
+                let subtasks = try await taskRepository.fetchSubtasks(parentId: task.id)
+                if !subtasks.isEmpty {
+                    subtasksMap[task.id] = subtasks
                 }
             }
         } catch {

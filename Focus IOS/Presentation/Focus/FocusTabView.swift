@@ -18,7 +18,7 @@ struct SectionFramePreference: PreferenceKey {
 
 struct FocusTabView: View {
     @EnvironmentObject var authService: AuthService
-    @StateObject private var viewModel: FocusTabViewModel
+    @EnvironmentObject var viewModel: FocusTabViewModel
     @State private var showCalendarPicker = false
 
     // Drag state
@@ -30,10 +30,6 @@ struct FocusTabView: View {
     @State private var rowFrames: [UUID: CGRect] = [:]
     @State private var sectionFrames: [String: CGRect] = [:]
     @State private var targetedSection: Section?
-
-    init() {
-        _viewModel = StateObject(wrappedValue: FocusTabViewModel(authService: AuthService()))
-    }
 
     var body: some View {
         NavigationView {
@@ -112,7 +108,9 @@ struct FocusTabView: View {
                 }
             }
             .task {
-                await viewModel.fetchCommitments()
+                if !viewModel.hasLoadedInitialData {
+                    await viewModel.fetchCommitments()
+                }
             }
             .alert("Error", isPresented: .constant(viewModel.errorMessage != nil)) {
                 Button("OK") {
@@ -789,5 +787,8 @@ struct FocusInlineAddSubtaskRow: View {
 }
 
 #Preview {
+    let authService = AuthService()
     FocusTabView()
+        .environmentObject(authService)
+        .environmentObject(FocusTabViewModel(authService: authService))
 }

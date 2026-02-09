@@ -207,7 +207,7 @@ struct TasksListView: View {
                 newProjectTitle = ""
             }
         } message: {
-            Text("The \(viewModel.selectedCount) selected task\(viewModel.selectedCount == 1 ? "" : "s") will become subtasks of this project.")
+            Text("\(viewModel.selectedCount) selected task\(viewModel.selectedCount == 1 ? "" : "s") for your new project")
         }
         // Create List alert
         .alert("New List", isPresented: $showCreateListAlert) {

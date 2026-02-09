@@ -12,10 +12,20 @@ struct BatchMoveCategorySheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var showingNewCategoryAlert = false
     @State private var newCategoryName = ""
+    @State private var selectedTab = 0
 
     var body: some View {
         NavigationView {
-            List {
+            VStack(spacing: 0) {
+                Picker("Move To", selection: $selectedTab) {
+                    Text("Tasks").tag(0)
+                    Text("Projects").tag(1)
+                    Text("Lists").tag(2)
+                }
+                .pickerStyle(.segmented)
+                .padding()
+
+                List {
                 Button {
                     Task {
                         await viewModel.batchMoveToCategory(nil)
@@ -44,6 +54,7 @@ struct BatchMoveCategorySheet: View {
                     Label("New Category", systemImage: "plus")
                         .foregroundColor(.blue)
                 }
+            }
             }
             .navigationTitle("Move \(viewModel.selectedCount) Tasks")
             .navigationBarTitleDisplayMode(.inline)

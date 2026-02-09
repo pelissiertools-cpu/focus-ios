@@ -29,16 +29,23 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel {
     // Search
     @Published var searchText: String = ""
 
+    // Category filter
+    @Published var categories: [Category] = []
+    @Published var selectedCategoryId: UUID? = nil
+
     private let repository: TaskRepository
     private let commitmentRepository: CommitmentRepository
+    private let categoryRepository: CategoryRepository
     private let authService: AuthService
     private var cancellables = Set<AnyCancellable>()
 
     init(repository: TaskRepository = TaskRepository(),
          commitmentRepository: CommitmentRepository = CommitmentRepository(),
+         categoryRepository: CategoryRepository = CategoryRepository(),
          authService: AuthService) {
         self.repository = repository
         self.commitmentRepository = commitmentRepository
+        self.categoryRepository = categoryRepository
         self.authService = authService
         setupNotificationObserver()
     }
@@ -95,18 +102,24 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel {
 
     // MARK: - Computed Properties
 
-    /// Uncompleted top-level tasks sorted by sortOrder, filtered by search text
+    /// Uncompleted top-level tasks sorted by sortOrder, filtered by category and search text
     var uncompletedTasks: [FocusTask] {
-        let filtered = tasks.filter { !$0.isCompleted }
+        var filtered = tasks.filter { !$0.isCompleted }
+        if let categoryId = selectedCategoryId {
+            filtered = filtered.filter { $0.categoryId == categoryId }
+        }
         let searched = searchText.isEmpty ? filtered : filtered.filter {
             $0.title.localizedCaseInsensitiveContains(searchText)
         }
         return searched.sorted { $0.sortOrder < $1.sortOrder }
     }
 
-    /// Completed top-level tasks, filtered by search text
+    /// Completed top-level tasks, filtered by category and search text
     var completedTasks: [FocusTask] {
-        let filtered = tasks.filter { $0.isCompleted }
+        var filtered = tasks.filter { $0.isCompleted }
+        if let categoryId = selectedCategoryId {
+            filtered = filtered.filter { $0.categoryId == categoryId }
+        }
         return searchText.isEmpty ? filtered : filtered.filter {
             $0.title.localizedCaseInsensitiveContains(searchText)
         }
@@ -562,5 +575,41 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel {
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+
+    // MARK: - Categories
+
+    func fetchCategories() async {
+        do {
+            self.categories = try await categoryRepository.fetchCategories()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func createCategory(name: String) async {
+        guard let userId = authService.currentUser?.id else {
+            errorMessage = "No authenticated user"
+            return
+        }
+        let trimmed = name.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return }
+
+        do {
+            let newCategory = Category(
+                userId: userId,
+                name: trimmed,
+                sortOrder: categories.count
+            )
+            let created = try await categoryRepository.createCategory(newCategory)
+            categories.append(created)
+            selectedCategoryId = created.id
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func selectCategory(_ categoryId: UUID?) {
+        selectedCategoryId = categoryId
     }
 }

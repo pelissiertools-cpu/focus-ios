@@ -40,36 +40,46 @@ struct TasksListView: View {
     }
 
     var body: some View {
-        ZStack {
-            if viewModel.isLoading {
-                ProgressView("Loading tasks...")
-            } else if viewModel.tasks.isEmpty {
-                emptyState
-            } else {
-                taskList
-            }
+        ZStack(alignment: .topLeading) {
+            // Main content
+            ZStack {
+                if viewModel.isLoading {
+                    ProgressView("Loading tasks...")
+                } else if viewModel.tasks.isEmpty {
+                    emptyState
+                } else {
+                    taskList
+                }
 
-            // Floating add button
-            VStack {
-                Spacer()
-                HStack {
+                // Floating add button
+                VStack {
                     Spacer()
-                    Button {
-                        viewModel.showingAddTask = true
-                    } label: {
-                        Image(systemName: "plus")
-                            .font(.title2)
-                            .fontWeight(.semibold)
-                            .foregroundColor(.white)
-                            .frame(width: 56, height: 56)
-                            .background(Color.blue)
-                            .clipShape(Circle())
-                            .shadow(radius: 4, y: 2)
+                    HStack {
+                        Spacer()
+                        Button {
+                            viewModel.showingAddTask = true
+                        } label: {
+                            Image(systemName: "plus")
+                                .font(.title2)
+                                .fontWeight(.semibold)
+                                .foregroundColor(.white)
+                                .frame(width: 56, height: 56)
+                                .background(Color.blue)
+                                .clipShape(Circle())
+                                .shadow(radius: 4, y: 2)
+                        }
+                        .padding(.trailing, 20)
+                        .padding(.bottom, 20)
                     }
-                    .padding(.trailing, 20)
-                    .padding(.bottom, 20)
                 }
             }
+            .padding(.top, 44)
+
+            // Category pill (floats on top)
+            CategoryFilterPill(viewModel: viewModel)
+                .padding(.top, 4)
+                .padding(.horizontal)
+                .zIndex(10)
         }
         .sheet(isPresented: $viewModel.showingAddTask) {
             AddTaskSheet(viewModel: viewModel)
@@ -90,6 +100,7 @@ struct TasksListView: View {
             // Reinitialize viewModel with proper authService from environment
             if viewModel.tasks.isEmpty && !viewModel.isLoading {
                 await viewModel.fetchTasks()
+                await viewModel.fetchCategories()
             }
         }
         .onAppear {

@@ -26,6 +26,9 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel {
     // Done subsection state
     @Published var isDoneSubsectionCollapsed: Bool = true  // Closed by default
 
+    // Search
+    @Published var searchText: String = ""
+
     private let repository: TaskRepository
     private let commitmentRepository: CommitmentRepository
     private let authService: AuthService
@@ -92,14 +95,21 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel {
 
     // MARK: - Computed Properties
 
-    /// Uncompleted top-level tasks sorted by sortOrder
+    /// Uncompleted top-level tasks sorted by sortOrder, filtered by search text
     var uncompletedTasks: [FocusTask] {
-        tasks.filter { !$0.isCompleted }.sorted { $0.sortOrder < $1.sortOrder }
+        let filtered = tasks.filter { !$0.isCompleted }
+        let searched = searchText.isEmpty ? filtered : filtered.filter {
+            $0.title.localizedCaseInsensitiveContains(searchText)
+        }
+        return searched.sorted { $0.sortOrder < $1.sortOrder }
     }
 
-    /// Completed top-level tasks
+    /// Completed top-level tasks, filtered by search text
     var completedTasks: [FocusTask] {
-        tasks.filter { $0.isCompleted }
+        let filtered = tasks.filter { $0.isCompleted }
+        return searchText.isEmpty ? filtered : filtered.filter {
+            $0.title.localizedCaseInsensitiveContains(searchText)
+        }
     }
 
     // MARK: - Subtask Expansion

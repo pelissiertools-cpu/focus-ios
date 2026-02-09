@@ -22,6 +22,8 @@ struct TasksListView: View {
     @EnvironmentObject var authService: AuthService
     @StateObject private var viewModel: TaskListViewModel
 
+    let searchText: String
+
     // Drag state
     @State private var draggingTaskId: UUID?
     @State private var draggingSubtaskId: UUID?
@@ -32,8 +34,8 @@ struct TasksListView: View {
     @State private var lastReorderTime: Date = .distantPast
     @State private var rowFrames: [UUID: CGRect] = [:]
 
-    init() {
-        // Initialize with a placeholder, will be properly set in onAppear
+    init(searchText: String = "") {
+        self.searchText = searchText
         _viewModel = StateObject(wrappedValue: TaskListViewModel(authService: AuthService()))
     }
 
@@ -89,6 +91,12 @@ struct TasksListView: View {
             if viewModel.tasks.isEmpty && !viewModel.isLoading {
                 await viewModel.fetchTasks()
             }
+        }
+        .onAppear {
+            viewModel.searchText = searchText
+        }
+        .onChange(of: searchText) { _, newValue in
+            viewModel.searchText = newValue
         }
     }
 

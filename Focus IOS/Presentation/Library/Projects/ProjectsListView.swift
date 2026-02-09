@@ -8,6 +8,12 @@
 import SwiftUI
 
 struct ProjectsListView: View {
+    let searchText: String
+
+    init(searchText: String = "") {
+        self.searchText = searchText
+    }
+
     var body: some View {
         VStack {
             Text("Projects List")

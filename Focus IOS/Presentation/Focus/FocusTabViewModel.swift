@@ -716,25 +716,64 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
         }
     }
 
-    /// Toggle task completion
+    /// Toggle task completion with cascade to subtasks
     func toggleTaskCompletion(_ task: FocusTask) async {
-        let newIsCompleted = !task.isCompleted
-        let newCompletedDate: Date? = newIsCompleted ? Date() : nil
-
         do {
             if task.isCompleted {
+                // Uncompleting parent - restore previous subtask states
                 try await taskRepository.uncompleteTask(id: task.id)
+
+                let currentTask = tasksMap[task.id]
+                if let previousStates = currentTask?.previousCompletionState {
+                    try await taskRepository.restoreSubtaskStates(parentId: task.id, completionStates: previousStates)
+                    // Refresh subtasks from DB
+                    let refreshed = try await taskRepository.fetchSubtasks(parentId: task.id)
+                    if !refreshed.isEmpty {
+                        subtasksMap[task.id] = refreshed
+                    }
+                }
             } else {
+                // Completing parent - save subtask states and complete all
+                let subtasks = subtasksMap[task.id] ?? []
+                let previousStates = subtasks.map { $0.isCompleted }
+
+                // Save previous states to parent task
+                if var parentTask = tasksMap[task.id] {
+                    parentTask.previousCompletionState = previousStates
+                    try await taskRepository.updateTask(parentTask)
+                    tasksMap[task.id] = parentTask
+                }
+
+                // Complete parent and all subtasks
                 try await taskRepository.completeTask(id: task.id)
+                if !subtasks.isEmpty {
+                    try await taskRepository.completeSubtasks(parentId: task.id)
+                    if var localSubtasks = subtasksMap[task.id] {
+                        for i in localSubtasks.indices {
+                            localSubtasks[i].isCompleted = true
+                            localSubtasks[i].completedDate = Date()
+                        }
+                        subtasksMap[task.id] = localSubtasks
+                    }
+                }
             }
-            // Update local state
+
+            // Update local parent task state
             if var updatedTask = tasksMap[task.id] {
-                updatedTask.isCompleted = newIsCompleted
-                updatedTask.completedDate = newCompletedDate
+                updatedTask.isCompleted.toggle()
+                if updatedTask.isCompleted {
+                    updatedTask.completedDate = Date()
+                } else {
+                    updatedTask.completedDate = nil
+                }
                 tasksMap[task.id] = updatedTask
+                // Notify other views
+                postTaskCompletionNotification(
+                    taskId: task.id,
+                    isCompleted: updatedTask.isCompleted,
+                    completedDate: updatedTask.completedDate
+                )
             }
-            // Notify other views
-            postTaskCompletionNotification(taskId: task.id, isCompleted: newIsCompleted, completedDate: newCompletedDate)
         } catch {
             errorMessage = error.localizedDescription
         }

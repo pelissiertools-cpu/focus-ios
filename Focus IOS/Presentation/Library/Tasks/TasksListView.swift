@@ -79,8 +79,7 @@ struct TasksListView: View {
                                     .fontWeight(.semibold)
                                     .foregroundColor(.white)
                                     .frame(width: 56, height: 56)
-                                    .background(Color.blue)
-                                    .clipShape(Circle())
+                                    .glassEffect(.regular.tint(.blue).interactive(), in: .circle)
                                     .shadow(radius: 4, y: 2)
                             }
                             .padding(.trailing, 20)

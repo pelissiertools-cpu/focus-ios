@@ -257,7 +257,7 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LibraryFilterab
             let subtasks = try await repository.fetchSubtasks(parentId: parentId)
             subtasksMap[parentId] = subtasks
         } catch {
-            errorMessage = error.localizedDescription
+            if !Task.isCancelled { errorMessage = error.localizedDescription }
         }
 
         isLoadingSubtasks.remove(parentId)
@@ -265,7 +265,7 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LibraryFilterab
 
     /// Fetch all top-level tasks (no parent)
     func fetchTasks() async {
-        isLoading = true
+        if tasks.isEmpty { isLoading = true }
         errorMessage = nil
 
         do {
@@ -287,7 +287,7 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LibraryFilterab
 
             isLoading = false
         } catch {
-            self.errorMessage = error.localizedDescription
+            if !Task.isCancelled { self.errorMessage = error.localizedDescription }
             self.isLoading = false
         }
     }
@@ -656,7 +656,7 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LibraryFilterab
         do {
             self.categories = try await categoryRepository.fetchCategories(type: "task")
         } catch {
-            errorMessage = error.localizedDescription
+            if !Task.isCancelled { errorMessage = error.localizedDescription }
         }
     }
 

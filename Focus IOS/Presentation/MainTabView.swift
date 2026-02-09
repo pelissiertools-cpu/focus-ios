@@ -13,15 +13,15 @@ struct MainTabView: View {
 
     var body: some View {
         TabView {
-            LibraryTabView()
-                .tabItem {
-                    Label("Library", systemImage: "books.vertical")
-                }
-                .environmentObject(focusViewModel)
-
             FocusTabView()
                 .tabItem {
                     Label("Focus", systemImage: "target")
+                }
+                .environmentObject(focusViewModel)
+
+            LibraryTabView()
+                .tabItem {
+                    Label("Library", systemImage: "books.vertical")
                 }
                 .environmentObject(focusViewModel)
         }

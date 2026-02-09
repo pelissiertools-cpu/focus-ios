@@ -185,6 +185,14 @@ struct ListsView: View {
             }
         }
         .coordinateSpace(name: "listsList")
+        .refreshable {
+            await withCheckedContinuation { continuation in
+                _Concurrency.Task { @MainActor in
+                    await viewModel.fetchLists()
+                    continuation.resume()
+                }
+            }
+        }
     }
 
     // MARK: - List Drag Handlers

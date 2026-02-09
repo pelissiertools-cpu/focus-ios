@@ -55,6 +55,7 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LibraryFilterab
     private let commitmentRepository: CommitmentRepository
     private let categoryRepository: CategoryRepository
     let authService: AuthService
+    private var cancellables = Set<AnyCancellable>()
 
     init(repository: TaskRepository = TaskRepository(),
          commitmentRepository: CommitmentRepository = CommitmentRepository(),
@@ -64,6 +65,56 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LibraryFilterab
         self.commitmentRepository = commitmentRepository
         self.categoryRepository = categoryRepository
         self.authService = authService
+        setupNotificationObserver()
+    }
+
+    // MARK: - Notification Sync
+
+    private func setupNotificationObserver() {
+        NotificationCenter.default.publisher(for: .taskCompletionChanged)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] notification in
+                self?.handleTaskCompletionNotification(notification)
+            }
+            .store(in: &cancellables)
+    }
+
+    private func handleTaskCompletionNotification(_ notification: Notification) {
+        guard let userInfo = notification.userInfo,
+              let taskId = userInfo[TaskNotificationKeys.taskId] as? UUID,
+              let isCompleted = userInfo[TaskNotificationKeys.isCompleted] as? Bool,
+              let source = userInfo[TaskNotificationKeys.source] as? String,
+              source == TaskNotificationSource.focus.rawValue else {
+            return
+        }
+
+        let completedDate = userInfo[TaskNotificationKeys.completedDate] as? Date
+
+        // Update projects array if this project was completed/uncompleted
+        if let index = projects.firstIndex(where: { $0.id == taskId }) {
+            projects[index].isCompleted = isCompleted
+            projects[index].completedDate = completedDate
+        }
+
+        // Update projectTasksMap if this is a project task
+        for (projectId, var tasks) in projectTasksMap {
+            if let index = tasks.firstIndex(where: { $0.id == taskId }) {
+                tasks[index].isCompleted = isCompleted
+                tasks[index].completedDate = completedDate
+                projectTasksMap[projectId] = tasks
+                break
+            }
+        }
+
+        // Update subtasksMap if this is a subtask within a project
+        for (parentId, var subtasks) in subtasksMap {
+            if let index = subtasks.firstIndex(where: { $0.id == taskId }) {
+                subtasks[index].isCompleted = isCompleted
+                subtasks[index].completedDate = completedDate
+                subtasksMap[parentId] = subtasks
+                break
+            }
+        }
     }
 
     // MARK: - LibraryFilterable Conformance
@@ -164,7 +215,7 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LibraryFilterab
     // MARK: - Data Fetching
 
     func fetchProjects() async {
-        isLoading = true
+        if projects.isEmpty { isLoading = true }
         errorMessage = nil
 
         do {
@@ -179,7 +230,7 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LibraryFilterab
 
             isLoading = false
         } catch {
-            errorMessage = error.localizedDescription
+            if !Task.isCancelled { errorMessage = error.localizedDescription }
             isLoading = false
         }
     }
@@ -205,7 +256,7 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LibraryFilterab
                 }
             }
         } catch {
-            errorMessage = error.localizedDescription
+            if !Task.isCancelled { errorMessage = error.localizedDescription }
         }
 
         isLoadingProjectTasks.remove(projectId)
@@ -219,7 +270,7 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LibraryFilterab
             let subtasks = try await repository.fetchSubtasks(parentId: taskId)
             subtasksMap[taskId] = subtasks
         } catch {
-            errorMessage = error.localizedDescription
+            if !Task.isCancelled { errorMessage = error.localizedDescription }
         }
 
         isLoadingSubtasks.remove(taskId)

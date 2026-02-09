@@ -105,6 +105,14 @@ struct FocusTabView: View {
                         }
                     }
                     .coordinateSpace(name: "focusList")
+                    .refreshable {
+                        await withCheckedContinuation { continuation in
+                            _Concurrency.Task { @MainActor in
+                                await viewModel.fetchCommitments()
+                                continuation.resume()
+                            }
+                        }
+                    }
                 }
             }
             .task {

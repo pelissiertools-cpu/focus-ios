@@ -67,18 +67,19 @@ struct LibraryTabView: View {
 
                 // Tab content with shared controls overlay
                 ZStack(alignment: .topLeading) {
-                    // Tab content
-                    Group {
-                        switch selectedTab {
-                        case 0:
-                            TasksListView(viewModel: taskListVM, searchText: searchText, isSearchFocused: $isSearchFocused)
-                        case 1:
-                            ProjectsListView(viewModel: projectsVM, searchText: searchText)
-                        case 2:
-                            ListsView(viewModel: listsVM, searchText: searchText)
-                        default:
-                            TasksListView(viewModel: taskListVM, searchText: searchText)
-                        }
+                    // Tab content — all views stay alive to preserve scroll/state
+                    ZStack {
+                        TasksListView(viewModel: taskListVM, searchText: searchText, isSearchFocused: $isSearchFocused)
+                            .opacity(selectedTab == 0 ? 1 : 0)
+                            .allowsHitTesting(selectedTab == 0)
+
+                        ProjectsListView(viewModel: projectsVM, searchText: searchText)
+                            .opacity(selectedTab == 1 ? 1 : 0)
+                            .allowsHitTesting(selectedTab == 1)
+
+                        ListsView(viewModel: listsVM, searchText: searchText)
+                            .opacity(selectedTab == 2 ? 1 : 0)
+                            .allowsHitTesting(selectedTab == 2)
                     }
 
                     // Shared filter bar (floats on top)

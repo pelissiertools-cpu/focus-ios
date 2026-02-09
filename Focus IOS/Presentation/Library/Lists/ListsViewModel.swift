@@ -56,6 +56,7 @@ class ListsViewModel: ObservableObject, LibraryFilterable, TaskEditingViewModel 
     private let categoryRepository: CategoryRepository
     private let commitmentRepository: CommitmentRepository
     private let authService: AuthService
+    private var cancellables = Set<AnyCancellable>()
 
     init(repository: TaskRepository = TaskRepository(),
          categoryRepository: CategoryRepository = CategoryRepository(),
@@ -65,6 +66,46 @@ class ListsViewModel: ObservableObject, LibraryFilterable, TaskEditingViewModel 
         self.categoryRepository = categoryRepository
         self.commitmentRepository = commitmentRepository
         self.authService = authService
+        setupNotificationObserver()
+    }
+
+    // MARK: - Notification Sync
+
+    private func setupNotificationObserver() {
+        NotificationCenter.default.publisher(for: .taskCompletionChanged)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] notification in
+                self?.handleTaskCompletionNotification(notification)
+            }
+            .store(in: &cancellables)
+    }
+
+    private func handleTaskCompletionNotification(_ notification: Notification) {
+        guard let userInfo = notification.userInfo,
+              let taskId = userInfo[TaskNotificationKeys.taskId] as? UUID,
+              let isCompleted = userInfo[TaskNotificationKeys.isCompleted] as? Bool,
+              let source = userInfo[TaskNotificationKeys.source] as? String,
+              source == TaskNotificationSource.focus.rawValue else {
+            return
+        }
+
+        let completedDate = userInfo[TaskNotificationKeys.completedDate] as? Date
+
+        // Update lists array if this list was completed/uncompleted
+        if let index = lists.firstIndex(where: { $0.id == taskId }) {
+            lists[index].isCompleted = isCompleted
+            lists[index].completedDate = completedDate
+        }
+
+        // Update itemsMap if this is a list item
+        for (listId, var items) in itemsMap {
+            if let index = items.firstIndex(where: { $0.id == taskId }) {
+                items[index].isCompleted = isCompleted
+                items[index].completedDate = completedDate
+                itemsMap[listId] = items
+                break
+            }
+        }
     }
 
     // MARK: - LibraryFilterable Conformance
@@ -158,7 +199,7 @@ class ListsViewModel: ObservableObject, LibraryFilterable, TaskEditingViewModel 
     // MARK: - Data Fetching
 
     func fetchLists() async {
-        isLoading = true
+        if lists.isEmpty { isLoading = true }
         errorMessage = nil
 
         do {
@@ -173,7 +214,7 @@ class ListsViewModel: ObservableObject, LibraryFilterable, TaskEditingViewModel 
 
             isLoading = false
         } catch {
-            errorMessage = error.localizedDescription
+            if !Task.isCancelled { errorMessage = error.localizedDescription }
             isLoading = false
         }
     }
@@ -186,7 +227,7 @@ class ListsViewModel: ObservableObject, LibraryFilterable, TaskEditingViewModel 
             let items = try await repository.fetchSubtasks(parentId: listId)
             itemsMap[listId] = items
         } catch {
-            errorMessage = error.localizedDescription
+            if !Task.isCancelled { errorMessage = error.localizedDescription }
         }
 
         isLoadingItems.remove(listId)
@@ -196,7 +237,7 @@ class ListsViewModel: ObservableObject, LibraryFilterable, TaskEditingViewModel 
         do {
             self.categories = try await categoryRepository.fetchCategories(type: "list")
         } catch {
-            errorMessage = error.localizedDescription
+            if !Task.isCancelled { errorMessage = error.localizedDescription }
         }
     }
 

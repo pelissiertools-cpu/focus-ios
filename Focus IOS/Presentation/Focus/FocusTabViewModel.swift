@@ -121,8 +121,6 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
         let isInitialLoad = !hasLoadedInitialData
         if isInitialLoad {
             isLoading = true
-        } else {
-            commitments = []
         }
         errorMessage = nil
 
@@ -150,7 +148,7 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
             hasLoadedInitialData = true
             isLoading = false
         } catch {
-            errorMessage = error.localizedDescription
+            if !Task.isCancelled { errorMessage = error.localizedDescription }
             isLoading = false
         }
     }

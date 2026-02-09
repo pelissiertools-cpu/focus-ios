@@ -157,6 +157,14 @@ struct ProjectsListView: View {
             }
         }
         .coordinateSpace(name: "projectList")
+        .refreshable {
+            await withCheckedContinuation { continuation in
+                _Concurrency.Task { @MainActor in
+                    await viewModel.fetchProjects()
+                    continuation.resume()
+                }
+            }
+        }
     }
 
     private var doneSectionHeader: some View {

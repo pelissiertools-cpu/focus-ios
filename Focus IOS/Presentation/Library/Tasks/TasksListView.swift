@@ -204,6 +204,16 @@ struct TasksListView: View {
             }
         }
         .coordinateSpace(name: "taskList")
+        .refreshable {
+            await withCheckedContinuation { continuation in
+                _Concurrency.Task { @MainActor in
+                    await viewModel.fetchTasks()
+                    await viewModel.fetchCategories()
+                    await viewModel.fetchCommittedTaskIds()
+                    continuation.resume()
+                }
+            }
+        }
     }
 
     // MARK: - Task Drag Handlers

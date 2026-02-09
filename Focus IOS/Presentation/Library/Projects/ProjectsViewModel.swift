@@ -629,6 +629,40 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LibraryFilterab
         }
     }
 
+    // MARK: - Reordering
+
+    func reorderProject(droppedId: UUID, targetId: UUID) {
+        var uncompleted = projects.filter { !$0.isCompleted }.sorted { $0.sortOrder < $1.sortOrder }
+
+        guard let fromIndex = uncompleted.firstIndex(where: { $0.id == droppedId }),
+              let toIndex = uncompleted.firstIndex(where: { $0.id == targetId }),
+              fromIndex != toIndex else { return }
+
+        let moved = uncompleted.remove(at: fromIndex)
+        uncompleted.insert(moved, at: toIndex)
+
+        for (index, project) in uncompleted.enumerated() {
+            if let projectsIndex = projects.firstIndex(where: { $0.id == project.id }) {
+                projects[projectsIndex].sortOrder = index
+            }
+        }
+
+        let updates = uncompleted.enumerated().map { (index, project) in
+            (id: project.id, sortOrder: index)
+        }
+        _Concurrency.Task {
+            await persistSortOrders(updates)
+        }
+    }
+
+    private func persistSortOrders(_ updates: [(id: UUID, sortOrder: Int)]) async {
+        do {
+            try await repository.updateSortOrders(updates)
+        } catch {
+            errorMessage = "Failed to save order: \(error.localizedDescription)"
+        }
+    }
+
     // MARK: - Subtask Helpers
 
     func getUncompletedSubtasks(for taskId: UUID) -> [FocusTask] {

@@ -79,6 +79,7 @@ struct SignInView: View {
             .sheet(isPresented: $showSignUp) {
                 SignUpView()
                     .environmentObject(authService)
+                    .drawerStyle()
             }
         }
     }

@@ -12,6 +12,14 @@ struct ProjectsListView: View {
 
     let searchText: String
 
+    // Drag state
+    @State private var draggingProjectId: UUID?
+    @State private var dragFingerY: CGFloat = 0
+    @State private var dragTranslation: CGFloat = 0
+    @State private var dragReorderAdjustment: CGFloat = 0
+    @State private var lastReorderTime: Date = .distantPast
+    @State private var rowFrames: [UUID: CGRect] = [:]
+
     init(viewModel: ProjectsViewModel, searchText: String = "") {
         self.viewModel = viewModel
         self.searchText = searchText
@@ -30,12 +38,15 @@ struct ProjectsListView: View {
         .padding(.top, 44)
         .sheet(isPresented: $viewModel.showingAddProject) {
             AddProjectSheet(viewModel: viewModel)
+                .drawerStyle()
         }
         .sheet(item: $viewModel.selectedProjectForDetails) { project in
             ProjectDetailsDrawer(project: project, viewModel: viewModel)
+                .drawerStyle()
         }
         .sheet(item: $viewModel.selectedTaskForDetails) { task in
             TaskDetailsDrawer(task: task, viewModel: viewModel, categories: viewModel.categories)
+                .drawerStyle()
         }
         .alert("Error", isPresented: .constant(viewModel.errorMessage != nil)) {
             Button("OK") {
@@ -58,10 +69,12 @@ struct ProjectsListView: View {
         // Batch move category sheet
         .sheet(isPresented: $viewModel.showBatchMovePicker) {
             BatchMoveCategorySheet(viewModel: viewModel)
+                .drawerStyle()
         }
         // Batch commit sheet
         .sheet(isPresented: $viewModel.showBatchCommitSheet) {
             BatchCommitSheet(viewModel: viewModel)
+                .drawerStyle()
         }
         .task {
             if viewModel.projects.isEmpty && !viewModel.isLoading {
@@ -97,13 +110,84 @@ struct ProjectsListView: View {
         ScrollView {
             LazyVStack(spacing: 12) {
                 ForEach(viewModel.filteredProjects) { project in
-                    ProjectCard(project: project, viewModel: viewModel)
+                    let isDragging = draggingProjectId == project.id
+
+                    ProjectCard(
+                        project: project,
+                        viewModel: viewModel,
+                        onDragChanged: viewModel.isEditMode ? nil : { value in handleProjectDrag(project.id, value) },
+                        onDragEnded: viewModel.isEditMode ? nil : { handleProjectDragEnd() }
+                    )
+                    .background(
+                        GeometryReader { geo in
+                            Color.clear.preference(
+                                key: RowFramePreference.self,
+                                value: [project.id: geo.frame(in: .named("projectList"))]
+                            )
+                        }
+                    )
+                    .offset(y: isDragging ? (dragTranslation + dragReorderAdjustment) : 0)
+                    .scaleEffect(isDragging ? 1.03 : 1.0)
+                    .shadow(color: .black.opacity(isDragging ? 0.15 : 0), radius: 8, y: 2)
+                    .zIndex(isDragging ? 1 : 0)
+                    .transaction { t in
+                        if isDragging { t.animation = nil }
+                    }
                 }
             }
             .padding(.horizontal)
             .padding(.top, 8)
             .padding(.bottom, 100)
+            .onPreferenceChange(RowFramePreference.self) { frames in
+                rowFrames = frames
+            }
         }
+        .coordinateSpace(name: "projectList")
+    }
+
+    // MARK: - Drag Handlers
+
+    private func handleProjectDrag(_ projectId: UUID, _ value: DragGesture.Value) {
+        if draggingProjectId == nil {
+            withAnimation(.easeInOut(duration: 0.15)) {
+                draggingProjectId = projectId
+            }
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        }
+        dragTranslation = value.translation.height
+        dragFingerY = value.location.y
+
+        guard Date().timeIntervalSince(lastReorderTime) > 0.25 else { return }
+
+        let projects = viewModel.filteredProjects
+        guard let currentIdx = projects.firstIndex(where: { $0.id == projectId }) else { return }
+
+        for (idx, other) in projects.enumerated() where other.id != projectId {
+            guard let frame = rowFrames[other.id] else { continue }
+            let crossedDown = idx > currentIdx && dragFingerY > frame.midY
+            let crossedUp = idx < currentIdx && dragFingerY < frame.midY
+            if crossedDown || crossedUp {
+                let passedHeight = frame.height
+                dragReorderAdjustment += crossedDown ? -passedHeight : passedHeight
+
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    viewModel.reorderProject(droppedId: projectId, targetId: other.id)
+                }
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                lastReorderTime = Date()
+                break
+            }
+        }
+    }
+
+    private func handleProjectDragEnd() {
+        withAnimation(.easeInOut(duration: 0.2)) {
+            draggingProjectId = nil
+            dragTranslation = 0
+            dragReorderAdjustment = 0
+            dragFingerY = 0
+        }
+        lastReorderTime = .distantPast
     }
 }
 

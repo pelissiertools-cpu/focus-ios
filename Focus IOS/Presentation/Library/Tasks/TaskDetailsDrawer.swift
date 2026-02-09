@@ -298,10 +298,12 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
             }
             .sheet(isPresented: $showingCommitmentSheet) {
                 CommitmentSelectionSheet(task: task, focusViewModel: focusViewModel)
+                    .drawerStyle()
             }
             .sheet(isPresented: $showingRescheduleSheet) {
                 if let commitment = commitment {
                     RescheduleSheet(commitment: commitment, focusViewModel: focusViewModel)
+                        .drawerStyle()
                 }
             }
         }

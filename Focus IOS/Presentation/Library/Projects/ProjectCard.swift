@@ -10,6 +10,8 @@ import SwiftUI
 struct ProjectCard: View {
     let project: FocusTask
     @ObservedObject var viewModel: ProjectsViewModel
+    var onDragChanged: ((DragGesture.Value) -> Void)? = nil
+    var onDragEnded: (() -> Void)? = nil
 
     private var taskProgress: (completed: Int, total: Int) {
         viewModel.taskProgress(for: project.id)
@@ -94,7 +96,17 @@ struct ProjectCard: View {
             Spacer()
 
             // Drag handle
-            DragHandleView()
+            if !viewModel.isEditMode, let onDragChanged, let onDragEnded {
+                DragHandleView()
+                    .contentShape(Rectangle())
+                    .highPriorityGesture(
+                        DragGesture(minimumDistance: 5, coordinateSpace: .named("projectList"))
+                            .onChanged { value in onDragChanged(value) }
+                            .onEnded { _ in onDragEnded() }
+                    )
+            } else {
+                DragHandleView()
+            }
         }
         .padding()
         .contentShape(Rectangle())

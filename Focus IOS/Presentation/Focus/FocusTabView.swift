@@ -125,6 +125,7 @@ struct FocusTabView: View {
                 let commitment = viewModel.commitments.first { $0.taskId == task.id }
                 TaskDetailsDrawer(task: task, viewModel: viewModel, commitment: commitment)
                     .environmentObject(viewModel)
+                    .drawerStyle()
             }
             .sheet(isPresented: $viewModel.showCommitSheet) {
                 if let commitment = viewModel.selectedCommitmentForCommit,
@@ -134,6 +135,7 @@ struct FocusTabView: View {
                         task: task,
                         viewModel: viewModel
                     )
+                    .drawerStyle()
                 }
             }
             .sheet(isPresented: $viewModel.showSubtaskCommitSheet) {
@@ -144,6 +146,7 @@ struct FocusTabView: View {
                         parentCommitment: parentCommitment,
                         viewModel: viewModel
                     )
+                    .drawerStyle()
                 }
             }
             .sheet(isPresented: $showCalendarPicker) {
@@ -151,12 +154,14 @@ struct FocusTabView: View {
                     selectedDate: $viewModel.selectedDate,
                     timeframe: viewModel.selectedTimeframe
                 )
+                .drawerStyle()
             }
             .sheet(isPresented: $viewModel.showAddTaskSheet) {
                 AddTaskToFocusSheet(
                     section: viewModel.addTaskSection,
                     viewModel: viewModel
                 )
+                .drawerStyle()
             }
         }
     }

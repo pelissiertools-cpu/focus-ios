@@ -284,6 +284,7 @@ struct WeeklyCalendarView: View {
         }
         .sheet(isPresented: $showingMonthPicker) {
             MonthYearPickerSheet(selectedDate: $displayMonth)
+                .drawerStyle()
         }
     }
 
@@ -530,6 +531,7 @@ struct MonthlyCalendarView: View {
         }
         .sheet(isPresented: $showingYearPicker) {
             YearPickerSheet(selectedDate: $displayYear)
+                .drawerStyle()
         }
     }
 

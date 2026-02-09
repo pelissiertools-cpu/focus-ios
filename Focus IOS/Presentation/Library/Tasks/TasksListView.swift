@@ -62,11 +62,11 @@ struct TasksListView: View {
         .padding(.top, 44)
         .sheet(isPresented: $viewModel.showingAddTask) {
             AddTaskSheet(viewModel: viewModel)
-                .presentationDetents([.fraction(0.75)])
-                .presentationDragIndicator(.visible)
+                .drawerStyle()
         }
         .sheet(item: $viewModel.selectedTaskForDetails) { task in
             TaskDetailsDrawer(task: task, viewModel: viewModel, categories: viewModel.categories)
+                .drawerStyle()
         }
         .alert("Error", isPresented: .constant(viewModel.errorMessage != nil)) {
             Button("OK") {
@@ -89,10 +89,12 @@ struct TasksListView: View {
         // Batch move category sheet
         .sheet(isPresented: $viewModel.showBatchMovePicker) {
             BatchMoveCategorySheet(viewModel: viewModel)
+                .drawerStyle()
         }
         // Batch commit sheet
         .sheet(isPresented: $viewModel.showBatchCommitSheet) {
             BatchCommitSheet(viewModel: viewModel)
+                .drawerStyle()
         }
         .task {
             // Reinitialize viewModel with proper authService from environment

@@ -34,7 +34,7 @@ struct CategoryFilterPill: View {
             VStack(alignment: .leading, spacing: 0) {
                 // Header row (always visible)
                 Button {
-                    withAnimation(.easeInOut(duration: 0.2)) {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
                         showDropdown.toggle()
                     }
                     if !showDropdown {
@@ -44,21 +44,21 @@ struct CategoryFilterPill: View {
                 } label: {
                     HStack(spacing: 6) {
                         Text(selectedCategoryName)
-                            .font(.subheadline)
+                            .font(.subheadline.weight(.medium))
                             .lineLimit(1)
                         Image(systemName: showDropdown ? "chevron.up" : "chevron.down")
                             .font(.caption)
                     }
                     .foregroundColor(viewModel.selectedCategoryId != nil ? .white : .secondary)
                     .padding(.horizontal, 20)
-                    .padding(.vertical, 8)
+                    .padding(.vertical, 12)
                 }
                 .buttonStyle(.plain)
 
                 // Expanded content
                 if showDropdown {
                     Divider()
-                        .padding(.horizontal, 8)
+                        .padding(.horizontal, 16)
 
                     // "All" option
                     Button {
@@ -71,12 +71,12 @@ struct CategoryFilterPill: View {
                             Spacer()
                             if viewModel.selectedCategoryId == nil {
                                 Image(systemName: "checkmark")
-                                    .font(.subheadline)
+                                    .font(.body)
                                     .foregroundColor(.blue)
                             }
                         }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 10)
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 12)
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
@@ -94,19 +94,19 @@ struct CategoryFilterPill: View {
                                 Spacer()
                                 if viewModel.selectedCategoryId == category.id {
                                     Image(systemName: "checkmark")
-                                        .font(.subheadline)
+                                        .font(.body)
                                         .foregroundColor(.blue)
                                 }
                             }
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 10)
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 12)
                             .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
                     }
 
                     Divider()
-                        .padding(.horizontal, 8)
+                        .padding(.horizontal, 16)
 
                     // Add new category
                     if isAddingCategory {
@@ -128,8 +128,8 @@ struct CategoryFilterPill: View {
                             .buttonStyle(.plain)
                             .disabled(newCategoryName.trimmingCharacters(in: .whitespaces).isEmpty)
                         }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 10)
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 12)
                     } else {
                         Button {
                             isAddingCategory = true
@@ -137,29 +137,33 @@ struct CategoryFilterPill: View {
                         } label: {
                             HStack(spacing: 6) {
                                 Image(systemName: "plus")
-                                    .font(.subheadline)
+                                    .font(.body)
                                 Text("New Category")
                                     .font(.body)
                             }
                             .foregroundColor(.blue)
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 10)
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 12)
                         }
                         .buttonStyle(.plain)
                     }
                 }
             }
-            .background(
-                RoundedRectangle(cornerRadius: 10)
-                    .fill(showDropdown
-                          ? Color(.systemBackground)
-                          : (viewModel.selectedCategoryId != nil
-                             ? Color.blue
-                             : Color.secondary.opacity(0.15)))
-                    .shadow(color: showDropdown ? .black.opacity(0.15) : .clear,
-                            radius: 8, x: 0, y: 4)
-            )
-            .fixedSize(horizontal: true, vertical: true)
+            .background {
+                if showDropdown {
+                    RoundedRectangle(cornerRadius: 14)
+                        .fill(.regularMaterial)
+                } else {
+                    RoundedRectangle(cornerRadius: 14)
+                        .fill(viewModel.selectedCategoryId != nil
+                              ? Color.blue
+                              : Color.secondary.opacity(0.15))
+                }
+            }
+            .shadow(color: showDropdown ? .black.opacity(0.2) : .clear,
+                    radius: 12, x: 0, y: 6)
+            .fixedSize(horizontal: !showDropdown, vertical: true)
+            .frame(minWidth: showDropdown ? 200 : nil)
             .zIndex(10)
         }
     }
@@ -167,7 +171,7 @@ struct CategoryFilterPill: View {
     // MARK: - Helpers
 
     private func closeDropdown() {
-        withAnimation(.easeInOut(duration: 0.2)) {
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
             showDropdown = false
         }
         isAddingCategory = false

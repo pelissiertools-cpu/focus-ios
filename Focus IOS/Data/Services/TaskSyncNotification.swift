@@ -18,6 +18,7 @@ enum TaskNotificationKeys {
     static let isCompleted = "isCompleted"
     static let completedDate = "completedDate"
     static let source = "source"
+    static let subtasksChanged = "subtasksChanged"
 }
 
 /// Source identifiers to prevent notification echo

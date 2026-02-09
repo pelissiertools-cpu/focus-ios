@@ -88,9 +88,20 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
                 break
             }
         }
+
+        // Refresh subtasks from DB if parent's subtasks were changed
+        if let subtasksChanged = userInfo[TaskNotificationKeys.subtasksChanged] as? Bool,
+           subtasksChanged {
+            _Concurrency.Task { @MainActor in
+                if let refreshed = try? await self.taskRepository.fetchSubtasks(parentId: taskId),
+                   !refreshed.isEmpty {
+                    self.subtasksMap[taskId] = refreshed
+                }
+            }
+        }
     }
 
-    private func postTaskCompletionNotification(taskId: UUID, isCompleted: Bool, completedDate: Date?) {
+    private func postTaskCompletionNotification(taskId: UUID, isCompleted: Bool, completedDate: Date?, subtasksChanged: Bool = false) {
         NotificationCenter.default.post(
             name: .taskCompletionChanged,
             object: nil,
@@ -98,7 +109,8 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
                 TaskNotificationKeys.taskId: taskId,
                 TaskNotificationKeys.isCompleted: isCompleted,
                 TaskNotificationKeys.completedDate: completedDate as Any,
-                TaskNotificationKeys.source: TaskNotificationSource.focus.rawValue
+                TaskNotificationKeys.source: TaskNotificationSource.focus.rawValue,
+                TaskNotificationKeys.subtasksChanged: subtasksChanged
             ]
         )
     }
@@ -719,6 +731,8 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
     /// Toggle task completion with cascade to subtasks
     func toggleTaskCompletion(_ task: FocusTask) async {
         do {
+            var didRestoreSubtasks = false
+
             if task.isCompleted {
                 // Uncompleting parent - restore previous subtask states
                 try await taskRepository.uncompleteTask(id: task.id)
@@ -731,6 +745,7 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
                     if !refreshed.isEmpty {
                         subtasksMap[task.id] = refreshed
                     }
+                    didRestoreSubtasks = true
                 }
             } else {
                 // Completing parent - save subtask states and complete all
@@ -755,6 +770,7 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
                         }
                         subtasksMap[task.id] = localSubtasks
                     }
+                    didRestoreSubtasks = true
                 }
             }
 
@@ -771,7 +787,8 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
                 postTaskCompletionNotification(
                     taskId: task.id,
                     isCompleted: updatedTask.isCompleted,
-                    completedDate: updatedTask.completedDate
+                    completedDate: updatedTask.completedDate,
+                    subtasksChanged: didRestoreSubtasks
                 )
             }
         } catch {

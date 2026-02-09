@@ -93,9 +93,20 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel {
                 break
             }
         }
+
+        // Refresh subtasks from DB if parent's subtasks were changed
+        if let subtasksChanged = userInfo[TaskNotificationKeys.subtasksChanged] as? Bool,
+           subtasksChanged {
+            _Concurrency.Task { @MainActor in
+                if let refreshed = try? await self.repository.fetchSubtasks(parentId: taskId),
+                   !refreshed.isEmpty {
+                    self.subtasksMap[taskId] = refreshed
+                }
+            }
+        }
     }
 
-    private func postTaskCompletionNotification(taskId: UUID, isCompleted: Bool, completedDate: Date?) {
+    private func postTaskCompletionNotification(taskId: UUID, isCompleted: Bool, completedDate: Date?, subtasksChanged: Bool = false) {
         NotificationCenter.default.post(
             name: .taskCompletionChanged,
             object: nil,
@@ -103,7 +114,8 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel {
                 TaskNotificationKeys.taskId: taskId,
                 TaskNotificationKeys.isCompleted: isCompleted,
                 TaskNotificationKeys.completedDate: completedDate as Any,
-                TaskNotificationKeys.source: TaskNotificationSource.library.rawValue
+                TaskNotificationKeys.source: TaskNotificationSource.library.rawValue,
+                TaskNotificationKeys.subtasksChanged: subtasksChanged
             ]
         )
     }
@@ -298,6 +310,8 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel {
     /// Toggle parent task completion with cascade to subtasks
     func toggleCompletion(_ task: FocusTask) async {
         do {
+            var didRestoreSubtasks = false
+
             if task.isCompleted {
                 // Uncompleting parent - restore previous subtask states
                 try await repository.uncompleteTask(id: task.id)
@@ -308,6 +322,7 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel {
                     try await repository.restoreSubtaskStates(parentId: task.id, completionStates: previousStates)
                     // Refresh subtasks from DB
                     await fetchSubtasks(for: task.id)
+                    didRestoreSubtasks = true
                 }
             } else {
                 // Completing parent - save subtask states and complete all
@@ -334,6 +349,7 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel {
                         }
                         subtasksMap[task.id] = localSubtasks
                     }
+                    didRestoreSubtasks = true
                 }
             }
 
@@ -349,7 +365,8 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel {
                 postTaskCompletionNotification(
                     taskId: task.id,
                     isCompleted: tasks[index].isCompleted,
-                    completedDate: tasks[index].completedDate
+                    completedDate: tasks[index].completedDate,
+                    subtasksChanged: didRestoreSubtasks
                 )
             }
         } catch {

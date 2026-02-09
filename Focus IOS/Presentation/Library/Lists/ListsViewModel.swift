@@ -9,31 +9,59 @@ import SwiftUI
 import Auth
 
 @MainActor
-class ListsViewModel: ObservableObject, LibraryFilterable {
+class ListsViewModel: ObservableObject, LibraryFilterable, TaskEditingViewModel {
     // MARK: - Published Properties
+
+    // Lists data
+    @Published var lists: [FocusTask] = []
+    @Published var isLoading = false
+    @Published var errorMessage: String?
+
+    // Items state management (items = subtasks of a list)
+    @Published var itemsMap: [UUID: [FocusTask]] = [:]
+    @Published var expandedLists: Set<UUID> = []
+    @Published var isLoadingItems: Set<UUID> = []
+
+    // Done subsection state per list
+    @Published var doneSectionCollapsed: [UUID: Bool] = [:]
+
+    // Detail drawers
+    @Published var selectedListForDetails: FocusTask?
+    @Published var selectedItemForDetails: FocusTask?
+
+    // Category filter
     @Published var categories: [Category] = []
     @Published var selectedCategoryId: UUID? = nil
+
+    // Commitment filter
     @Published var commitmentFilter: CommitmentFilter? = nil
     @Published var committedTaskIds: Set<UUID> = []
+
+    // Edit mode
     @Published var isEditMode: Bool = false
     @Published var selectedListIds: Set<UUID> = []
-    @Published var showingAddList: Bool = false
 
     // Batch operation triggers
     @Published var showBatchDeleteConfirmation: Bool = false
     @Published var showBatchMovePicker: Bool = false
     @Published var showBatchCommitSheet: Bool = false
 
+    // Add list
+    @Published var showingAddList: Bool = false
+
     // Search
     @Published var searchText: String = ""
 
+    private let repository: TaskRepository
     private let categoryRepository: CategoryRepository
     private let commitmentRepository: CommitmentRepository
     private let authService: AuthService
 
-    init(categoryRepository: CategoryRepository = CategoryRepository(),
+    init(repository: TaskRepository = TaskRepository(),
+         categoryRepository: CategoryRepository = CategoryRepository(),
          commitmentRepository: CommitmentRepository = CommitmentRepository(),
          authService: AuthService) {
+        self.repository = repository
         self.categoryRepository = categoryRepository
         self.commitmentRepository = commitmentRepository
         self.authService = authService
@@ -55,7 +83,14 @@ class ListsViewModel: ObservableObject, LibraryFilterable {
 
     var selectedCount: Int { selectedListIds.count }
 
-    var allUncompletedSelected: Bool { false }
+    var allUncompletedSelected: Bool {
+        let allIds = Set(filteredLists.map { $0.id })
+        return !allIds.isEmpty && allIds.isSubset(of: selectedListIds)
+    }
+
+    var selectedItems: [FocusTask] {
+        lists.filter { selectedListIds.contains($0.id) }
+    }
 
     func selectCategory(_ categoryId: UUID?) {
         selectedCategoryId = categoryId
@@ -77,7 +112,7 @@ class ListsViewModel: ObservableObject, LibraryFilterable {
             categories.append(created)
             selectedCategoryId = created.id
         } catch {
-            print("Error creating category: \(error)")
+            errorMessage = error.localizedDescription
         }
     }
 
@@ -97,8 +132,320 @@ class ListsViewModel: ObservableObject, LibraryFilterable {
         }
     }
 
+    // MARK: - Computed Properties
+
+    var filteredLists: [FocusTask] {
+        var filtered = lists
+        if let categoryId = selectedCategoryId {
+            filtered = filtered.filter { $0.categoryId == categoryId }
+        }
+        if let commitmentFilter = commitmentFilter {
+            switch commitmentFilter {
+            case .committed:
+                filtered = filtered.filter { committedTaskIds.contains($0.id) }
+            case .uncommitted:
+                filtered = filtered.filter { !committedTaskIds.contains($0.id) }
+            }
+        }
+        if !searchText.isEmpty {
+            filtered = filtered.filter {
+                $0.title.localizedCaseInsensitiveContains(searchText)
+            }
+        }
+        return filtered.sorted { $0.sortOrder < $1.sortOrder }
+    }
+
+    // MARK: - Data Fetching
+
+    func fetchLists() async {
+        isLoading = true
+        errorMessage = nil
+
+        do {
+            self.lists = try await repository.fetchTasks(ofType: .list)
+            self.categories = try await categoryRepository.fetchCategories(type: "list")
+            await fetchCommittedTaskIds()
+
+            // Pre-fetch items for all lists
+            for list in lists {
+                await fetchItems(for: list.id)
+            }
+
+            isLoading = false
+        } catch {
+            errorMessage = error.localizedDescription
+            isLoading = false
+        }
+    }
+
+    func fetchItems(for listId: UUID) async {
+        guard !isLoadingItems.contains(listId) else { return }
+        isLoadingItems.insert(listId)
+
+        do {
+            let items = try await repository.fetchSubtasks(parentId: listId)
+            itemsMap[listId] = items
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+
+        isLoadingItems.remove(listId)
+    }
+
+    func fetchCategories() async {
+        do {
+            self.categories = try await categoryRepository.fetchCategories(type: "list")
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    // MARK: - Expansion
+
+    func toggleExpanded(_ listId: UUID) async {
+        if expandedLists.contains(listId) {
+            expandedLists.remove(listId)
+        } else {
+            expandedLists.insert(listId)
+            if itemsMap[listId] == nil {
+                await fetchItems(for: listId)
+            }
+        }
+    }
+
+    func isExpanded(_ listId: UUID) -> Bool {
+        expandedLists.contains(listId)
+    }
+
+    // MARK: - Item Helpers
+
+    func getUncompletedItems(for listId: UUID) -> [FocusTask] {
+        (itemsMap[listId] ?? []).filter { !$0.isCompleted }.sorted { $0.sortOrder < $1.sortOrder }
+    }
+
+    func getCompletedItems(for listId: UUID) -> [FocusTask] {
+        (itemsMap[listId] ?? []).filter { $0.isCompleted }.sorted { $0.sortOrder < $1.sortOrder }
+    }
+
+    func isDoneSectionCollapsed(for listId: UUID) -> Bool {
+        doneSectionCollapsed[listId] ?? true
+    }
+
+    func toggleDoneSectionCollapsed(for listId: UUID) {
+        doneSectionCollapsed[listId] = !(doneSectionCollapsed[listId] ?? true)
+    }
+
+    // MARK: - Item Completion (NO parent auto-complete — lists are never "completed")
+
+    func toggleItemCompletion(_ item: FocusTask, listId: UUID) async {
+        do {
+            if item.isCompleted {
+                try await repository.uncompleteTask(id: item.id)
+            } else {
+                try await repository.completeTask(id: item.id)
+            }
+
+            if var items = itemsMap[listId],
+               let index = items.firstIndex(where: { $0.id == item.id }) {
+                items[index].isCompleted.toggle()
+                if items[index].isCompleted {
+                    items[index].completedDate = Date()
+                } else {
+                    items[index].completedDate = nil
+                }
+                itemsMap[listId] = items
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    // MARK: - List CRUD
+
+    func createList(title: String, categoryId: UUID? = nil) async {
+        guard let userId = authService.currentUser?.id else {
+            errorMessage = "No authenticated user"
+            return
+        }
+        let trimmed = title.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return }
+
+        do {
+            let newList = FocusTask(
+                userId: userId,
+                title: trimmed,
+                type: .list,
+                isCompleted: false,
+                sortOrder: 0,
+                categoryId: categoryId
+            )
+            let created = try await repository.createTask(newList)
+            lists.insert(created, at: 0)
+            itemsMap[created.id] = []
+
+            // Reassign sort orders
+            let sorted = lists.sorted { $0.sortOrder < $1.sortOrder }
+            var updates: [(id: UUID, sortOrder: Int)] = []
+            for (index, list) in sorted.enumerated() {
+                if let listIndex = lists.firstIndex(where: { $0.id == list.id }) {
+                    lists[listIndex].sortOrder = index
+                }
+                updates.append((id: list.id, sortOrder: index))
+            }
+            await persistSortOrders(updates)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func deleteList(_ list: FocusTask) async {
+        do {
+            // Delete all items under this list first
+            let items = itemsMap[list.id] ?? []
+            for item in items {
+                try await commitmentRepository.deleteCommitments(forTask: item.id)
+                try await repository.deleteTask(id: item.id)
+            }
+            // Delete commitments and the list itself
+            try await commitmentRepository.deleteCommitments(forTask: list.id)
+            try await repository.deleteTask(id: list.id)
+
+            lists.removeAll { $0.id == list.id }
+            itemsMap.removeValue(forKey: list.id)
+            expandedLists.remove(list.id)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    // MARK: - Item CRUD
+
+    func createItem(title: String, listId: UUID) async {
+        guard let userId = authService.currentUser?.id else {
+            errorMessage = "No authenticated user"
+            return
+        }
+        let trimmed = title.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return }
+
+        do {
+            let newItem = try await repository.createSubtask(
+                title: trimmed,
+                parentTaskId: listId,
+                userId: userId
+            )
+
+            if var items = itemsMap[listId] {
+                items.append(newItem)
+                itemsMap[listId] = items
+            } else {
+                itemsMap[listId] = [newItem]
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func deleteItem(_ item: FocusTask, listId: UUID) async {
+        do {
+            try await commitmentRepository.deleteCommitments(forTask: item.id)
+            try await repository.deleteTask(id: item.id)
+
+            if var items = itemsMap[listId] {
+                items.removeAll { $0.id == item.id }
+                itemsMap[listId] = items
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    // MARK: - Clear Done
+
+    func clearCompletedItems(for listId: UUID) async {
+        guard var items = itemsMap[listId] else { return }
+        let completedItems = items.filter { $0.isCompleted }
+
+        do {
+            for item in completedItems {
+                try await commitmentRepository.deleteCommitments(forTask: item.id)
+                try await repository.deleteTask(id: item.id)
+            }
+            items.removeAll { $0.isCompleted }
+            itemsMap[listId] = items
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    // MARK: - Reordering
+
+    func reorderList(droppedId: UUID, targetId: UUID) {
+        var sorted = lists.sorted { $0.sortOrder < $1.sortOrder }
+
+        guard let fromIndex = sorted.firstIndex(where: { $0.id == droppedId }),
+              let toIndex = sorted.firstIndex(where: { $0.id == targetId }),
+              fromIndex != toIndex else { return }
+
+        let moved = sorted.remove(at: fromIndex)
+        sorted.insert(moved, at: toIndex)
+
+        for (index, list) in sorted.enumerated() {
+            if let listsIndex = lists.firstIndex(where: { $0.id == list.id }) {
+                lists[listsIndex].sortOrder = index
+            }
+        }
+
+        let updates = sorted.enumerated().map { (index, list) in
+            (id: list.id, sortOrder: index)
+        }
+        _Concurrency.Task {
+            await persistSortOrders(updates)
+        }
+    }
+
+    func reorderItem(droppedId: UUID, targetId: UUID, listId: UUID) {
+        guard var allItems = itemsMap[listId] else { return }
+        var uncompleted = allItems.filter { !$0.isCompleted }.sorted { $0.sortOrder < $1.sortOrder }
+
+        guard let fromIndex = uncompleted.firstIndex(where: { $0.id == droppedId }),
+              let toIndex = uncompleted.firstIndex(where: { $0.id == targetId }),
+              fromIndex != toIndex else { return }
+
+        let moved = uncompleted.remove(at: fromIndex)
+        uncompleted.insert(moved, at: toIndex)
+
+        for (index, item) in uncompleted.enumerated() {
+            if let mapIndex = allItems.firstIndex(where: { $0.id == item.id }) {
+                allItems[mapIndex].sortOrder = index
+            }
+        }
+        itemsMap[listId] = allItems
+
+        let updates = uncompleted.enumerated().map { (index, item) in
+            (id: item.id, sortOrder: index)
+        }
+        _Concurrency.Task {
+            await persistSortOrders(updates)
+        }
+    }
+
+    private func persistSortOrders(_ updates: [(id: UUID, sortOrder: Int)]) async {
+        do {
+            try await repository.updateSortOrders(updates)
+        } catch {
+            errorMessage = "Failed to save order: \(error.localizedDescription)"
+        }
+    }
+
+    // MARK: - Edit Mode
+
     func enterEditMode() {
-        // Stub — no items to edit yet
+        withAnimation(.easeInOut(duration: 0.25)) {
+            isEditMode = true
+            selectedListIds = []
+            expandedLists.removeAll()
+        }
     }
 
     func exitEditMode() {
@@ -108,17 +455,165 @@ class ListsViewModel: ObservableObject, LibraryFilterable {
         }
     }
 
-    var selectedItems: [FocusTask] { [] }
-
-    func batchMoveToCategory(_ categoryId: UUID?) async {
-        // Stub — no items yet
+    func toggleListSelection(_ listId: UUID) {
+        if selectedListIds.contains(listId) {
+            selectedListIds.remove(listId)
+        } else {
+            selectedListIds.insert(listId)
+        }
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
     }
 
     func selectAllUncompleted() {
-        // Stub — no items yet
+        selectedListIds = Set(filteredLists.map { $0.id })
     }
 
     func deselectAll() {
         selectedListIds = []
+    }
+
+    func batchDeleteLists() async {
+        let idsToDelete = selectedListIds
+
+        do {
+            for listId in idsToDelete {
+                let items = itemsMap[listId] ?? []
+                for item in items {
+                    try await commitmentRepository.deleteCommitments(forTask: item.id)
+                    try await repository.deleteTask(id: item.id)
+                }
+                try await commitmentRepository.deleteCommitments(forTask: listId)
+                try await repository.deleteTask(id: listId)
+            }
+
+            lists.removeAll { idsToDelete.contains($0.id) }
+            for listId in idsToDelete {
+                itemsMap.removeValue(forKey: listId)
+                expandedLists.remove(listId)
+            }
+            exitEditMode()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func batchMoveToCategory(_ categoryId: UUID?) async {
+        do {
+            for listId in selectedListIds {
+                if let index = lists.firstIndex(where: { $0.id == listId }) {
+                    var updated = lists[index]
+                    updated.categoryId = categoryId
+                    updated.modifiedDate = Date()
+                    try await repository.updateTask(updated)
+                    lists[index].categoryId = categoryId
+                    lists[index].modifiedDate = Date()
+                }
+            }
+            exitEditMode()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    // MARK: - TaskEditingViewModel Conformance
+
+    func findTask(byId id: UUID) -> FocusTask? {
+        if let list = lists.first(where: { $0.id == id }) {
+            return list
+        }
+        for items in itemsMap.values {
+            if let item = items.first(where: { $0.id == id }) {
+                return item
+            }
+        }
+        return nil
+    }
+
+    func getSubtasks(for taskId: UUID) -> [FocusTask] {
+        getUncompletedItems(for: taskId) + getCompletedItems(for: taskId)
+    }
+
+    func updateTask(_ task: FocusTask, newTitle: String) async {
+        guard !newTitle.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+
+        do {
+            var updatedTask = task
+            updatedTask.title = newTitle
+            updatedTask.modifiedDate = Date()
+            try await repository.updateTask(updatedTask)
+
+            // Update in lists array
+            if let index = lists.firstIndex(where: { $0.id == task.id }) {
+                lists[index].title = newTitle
+                lists[index].modifiedDate = Date()
+            }
+
+            // Update in itemsMap
+            if let parentId = task.parentTaskId,
+               var items = itemsMap[parentId],
+               let index = items.firstIndex(where: { $0.id == task.id }) {
+                items[index].title = newTitle
+                items[index].modifiedDate = Date()
+                itemsMap[parentId] = items
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func deleteTask(_ task: FocusTask) async {
+        if task.type == .list {
+            await deleteList(task)
+        } else if let parentId = task.parentTaskId {
+            await deleteItem(task, listId: parentId)
+        }
+    }
+
+    func deleteSubtask(_ subtask: FocusTask, parentId: UUID) async {
+        await deleteItem(subtask, listId: parentId)
+    }
+
+    func toggleSubtaskCompletion(_ subtask: FocusTask, parentId: UUID) async {
+        await toggleItemCompletion(subtask, listId: parentId)
+    }
+
+    func createSubtask(title: String, parentId: UUID) async {
+        await createItem(title: title, listId: parentId)
+    }
+
+    func moveTaskToCategory(_ task: FocusTask, categoryId: UUID?) async {
+        do {
+            var updated = task
+            updated.categoryId = categoryId
+            updated.modifiedDate = Date()
+            try await repository.updateTask(updated)
+
+            if let index = lists.firstIndex(where: { $0.id == task.id }) {
+                lists[index].categoryId = categoryId
+                lists[index].modifiedDate = Date()
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func createCategoryAndMove(name: String, task: FocusTask) async {
+        guard let userId = authService.currentUser?.id else { return }
+        let trimmed = name.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return }
+
+        do {
+            let newCategory = Category(
+                userId: userId,
+                name: trimmed,
+                sortOrder: categories.count,
+                type: "list"
+            )
+            let created = try await categoryRepository.createCategory(newCategory)
+            categories.append(created)
+            await moveTaskToCategory(task, categoryId: created.id)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
     }
 }

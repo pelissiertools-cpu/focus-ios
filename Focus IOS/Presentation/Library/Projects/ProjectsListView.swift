@@ -109,6 +109,7 @@ struct ProjectsListView: View {
     private var projectList: some View {
         ScrollView {
             LazyVStack(spacing: 12) {
+                // Uncompleted projects — reorderable
                 ForEach(viewModel.filteredProjects) { project in
                     let isDragging = draggingProjectId == project.id
 
@@ -134,6 +135,17 @@ struct ProjectsListView: View {
                         if isDragging { t.animation = nil }
                     }
                 }
+
+                // Done section
+                if !viewModel.isEditMode && !viewModel.completedProjects.isEmpty {
+                    doneSectionHeader
+
+                    if !viewModel.isDoneCollapsed {
+                        ForEach(viewModel.completedProjects) { project in
+                            ProjectCard(project: project, viewModel: viewModel)
+                        }
+                    }
+                }
             }
             .padding(.horizontal)
             .padding(.top, 8)
@@ -143,6 +155,32 @@ struct ProjectsListView: View {
             }
         }
         .coordinateSpace(name: "projectList")
+    }
+
+    private var doneSectionHeader: some View {
+        Button {
+            viewModel.toggleDoneCollapsed()
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: viewModel.isDoneCollapsed ? "chevron.right" : "chevron.down")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+
+                Text("Done")
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                    .foregroundColor(.secondary)
+
+                Text("(\(viewModel.completedProjects.count))")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+
+                Spacer()
+            }
+            .padding(.vertical, 10)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 
     // MARK: - Drag Handlers

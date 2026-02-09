@@ -222,7 +222,10 @@ struct LibraryTabView: View {
 
     @ViewBuilder
     private var listTabBottomArea: some View {
-        if !listsVM.isEditMode {
+        if listsVM.isEditMode {
+            EditModeActionBar(viewModel: listsVM)
+                .transition(.scale.combined(with: .opacity))
+        } else {
             fabButton { listsVM.showingAddItem = true }
                 .transition(.scale.combined(with: .opacity))
         }

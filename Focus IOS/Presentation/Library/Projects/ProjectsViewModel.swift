@@ -48,6 +48,9 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LibraryFilterab
     // Search
     @Published var searchText: String = ""
 
+    // Done section
+    @Published var isDoneCollapsed: Bool = true
+
     private let repository: TaskRepository
     private let commitmentRepository: CommitmentRepository
     private let categoryRepository: CategoryRepository
@@ -84,13 +87,13 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LibraryFilterab
     var selectedCount: Int { selectedProjectIds.count }
 
     var allUncompletedSelected: Bool {
-        let uncompletedIds = Set(filteredProjects.filter { !$0.isCompleted }.map { $0.id })
+        let uncompletedIds = Set(filteredProjects.map { $0.id })
         return !uncompletedIds.isEmpty && uncompletedIds.isSubset(of: selectedProjectIds)
     }
 
     // MARK: - Computed Properties
 
-    var filteredProjects: [FocusTask] {
+    private var baseFilteredProjects: [FocusTask] {
         var filtered = projects
         if let categoryId = selectedCategoryId {
             filtered = filtered.filter { $0.categoryId == categoryId }
@@ -108,7 +111,19 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LibraryFilterab
                 $0.title.localizedCaseInsensitiveContains(searchText)
             }
         }
-        return filtered.sorted { $0.sortOrder < $1.sortOrder }
+        return filtered
+    }
+
+    var filteredProjects: [FocusTask] {
+        baseFilteredProjects.filter { !$0.isCompleted }.sorted { $0.sortOrder < $1.sortOrder }
+    }
+
+    var completedProjects: [FocusTask] {
+        baseFilteredProjects.filter { $0.isCompleted }
+    }
+
+    func toggleDoneCollapsed() {
+        isDoneCollapsed.toggle()
     }
 
     // MARK: - Project Expansion
@@ -401,6 +416,9 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LibraryFilterab
                     tasks[index].completedDate = nil
                 }
                 projectTasksMap[projectId] = tasks
+
+                // Auto-complete/uncomplete project based on task states
+                try await checkProjectAutoComplete(projectId: projectId)
             }
         } catch {
             errorMessage = error.localizedDescription
@@ -459,9 +477,37 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LibraryFilterab
                         }
                     }
                 }
+
+                // Auto-complete/uncomplete project after subtask→task cascade
+                if let projectId = projectTasksMap.first(where: { $0.value.contains(where: { $0.id == parentId }) })?.key {
+                    try await checkProjectAutoComplete(projectId: projectId)
+                }
             }
         } catch {
             errorMessage = error.localizedDescription
+        }
+    }
+
+    // MARK: - Project Auto-Complete
+
+    private func checkProjectAutoComplete(projectId: UUID) async throws {
+        let tasks = projectTasksMap[projectId] ?? []
+        guard !tasks.isEmpty else { return }
+
+        let allTasksComplete = tasks.allSatisfy { $0.isCompleted }
+
+        if allTasksComplete, let projectIndex = projects.firstIndex(where: { $0.id == projectId }),
+           !projects[projectIndex].isCompleted {
+            // All tasks done → complete the project
+            try await repository.completeTask(id: projectId)
+            projects[projectIndex].isCompleted = true
+            projects[projectIndex].completedDate = Date()
+        } else if !allTasksComplete, let projectIndex = projects.firstIndex(where: { $0.id == projectId }),
+                  projects[projectIndex].isCompleted {
+            // A task was uncompleted → uncomplete the project
+            try await repository.uncompleteTask(id: projectId)
+            projects[projectIndex].isCompleted = false
+            projects[projectIndex].completedDate = nil
         }
     }
 
@@ -555,7 +601,7 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LibraryFilterab
     }
 
     func selectAllUncompleted() {
-        selectedProjectIds = Set(filteredProjects.filter { !$0.isCompleted }.map { $0.id })
+        selectedProjectIds = Set(filteredProjects.map { $0.id })
     }
 
     func deselectAll() {

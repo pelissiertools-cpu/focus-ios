@@ -31,7 +31,7 @@ struct ProjectCard: View {
             projectHeader
 
             // Progress bar
-            if taskProgress.total > 0 {
+            if !project.isCompleted && taskProgress.total > 0 {
                 GeometryReader { geometry in
                     ZStack(alignment: .leading) {
                         Rectangle()
@@ -55,7 +55,7 @@ struct ProjectCard: View {
         }
         .background {
             RoundedRectangle(cornerRadius: 16)
-                .fill(Color(.secondarySystemBackground))
+                .fill(project.isCompleted ? Color(.systemGray3) : Color(.secondarySystemBackground))
         }
     }
 
@@ -66,13 +66,15 @@ struct ProjectCard: View {
             // Project icon
             Image(systemName: "archivebox.fill")
                 .font(.title3)
-                .foregroundColor(.orange)
+                .foregroundColor(project.isCompleted ? .secondary : .orange)
 
             // Title and progress
             VStack(alignment: .leading, spacing: 6) {
                 Text(project.title)
                     .font(.headline)
                     .lineLimit(1)
+                    .strikethrough(project.isCompleted)
+                    .foregroundColor(project.isCompleted ? .secondary : .primary)
 
                 HStack(spacing: 16) {
                     HStack(spacing: 4) {
@@ -95,8 +97,13 @@ struct ProjectCard: View {
 
             Spacer()
 
-            // Drag handle
-            if !viewModel.isEditMode, let onDragChanged, let onDragEnded {
+            if project.isCompleted {
+                // Blue checkmark for completed projects
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.title3)
+                    .foregroundColor(.blue)
+            } else if !viewModel.isEditMode, let onDragChanged, let onDragEnded {
+                // Drag handle
                 DragHandleView()
                     .contentShape(Rectangle())
                     .highPriorityGesture(

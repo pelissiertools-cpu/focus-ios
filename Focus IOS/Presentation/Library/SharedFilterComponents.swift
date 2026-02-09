@@ -1,14 +1,16 @@
 //
-//  CategoryFilterPill.swift
+//  SharedFilterComponents.swift
 //  Focus IOS
+//
+//  Generic filter components shared across all Library tabs.
 //
 
 import SwiftUI
 
-// MARK: - Category Filter Pill (just the button)
+// MARK: - Shared Category Filter Pill
 
-struct CategoryFilterPill: View {
-    @ObservedObject var viewModel: TaskListViewModel
+struct SharedCategoryFilterPill<VM: LibraryFilterable>: View {
+    @ObservedObject var viewModel: VM
     @Binding var showDropdown: Bool
 
     private var selectedCategoryName: String {
@@ -46,10 +48,10 @@ struct CategoryFilterPill: View {
     }
 }
 
-// MARK: - Category Dropdown Menu (floating overlay)
+// MARK: - Shared Category Dropdown Menu
 
-struct CategoryDropdownMenu: View {
-    @ObservedObject var viewModel: TaskListViewModel
+struct SharedCategoryDropdownMenu<VM: LibraryFilterable>: View {
+    @ObservedObject var viewModel: VM
     @Binding var showDropdown: Bool
     @State private var newCategoryName = ""
     @State private var isAddingCategory = false
@@ -202,9 +204,44 @@ struct CategoryDropdownMenu: View {
     private func submitNewCategory() {
         let name = newCategoryName.trimmingCharacters(in: .whitespaces)
         guard !name.isEmpty else { return }
-        Task {
+        _Concurrency.Task {
             await viewModel.createCategory(name: name)
         }
         closeDropdown()
+    }
+}
+
+// MARK: - Shared Commitment Filter Pills
+
+struct SharedCommitmentFilterPills<VM: LibraryFilterable>: View {
+    @ObservedObject var viewModel: VM
+
+    var body: some View {
+        HStack(spacing: 8) {
+            pillButton(label: "Committed", filter: .committed)
+            pillButton(label: "Uncommitted", filter: .uncommitted)
+        }
+    }
+
+    private func pillButton(label: String, filter: CommitmentFilter) -> some View {
+        let isActive = viewModel.commitmentFilter == filter
+
+        return Button {
+            withAnimation(.easeInOut(duration: 0.2)) {
+                viewModel.toggleCommitmentFilter(filter)
+            }
+        } label: {
+            Text(label)
+                .font(.subheadline.weight(.medium))
+                .lineLimit(1)
+                .foregroundColor(isActive ? .white : .secondary)
+                .padding(.horizontal, 20)
+                .padding(.vertical, 10)
+                .background(
+                    RoundedRectangle(cornerRadius: 14)
+                        .fill(isActive ? Color.blue : Color.secondary.opacity(0.15))
+                )
+        }
+        .buttonStyle(.plain)
     }
 }

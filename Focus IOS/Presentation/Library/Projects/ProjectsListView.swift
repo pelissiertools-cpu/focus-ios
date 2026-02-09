@@ -8,71 +8,26 @@
 import SwiftUI
 
 struct ProjectsListView: View {
-    @EnvironmentObject var authService: AuthService
-    @StateObject private var viewModel: ProjectsViewModel
+    @ObservedObject var viewModel: ProjectsViewModel
 
     let searchText: String
 
-    // Category dropdown state
-    @State private var showCategoryDropdown = false
-
-    init(searchText: String = "") {
+    init(viewModel: ProjectsViewModel, searchText: String = "") {
+        self.viewModel = viewModel
         self.searchText = searchText
-        _viewModel = StateObject(wrappedValue: ProjectsViewModel(authService: AuthService()))
     }
 
     var body: some View {
-        ZStack(alignment: .topLeading) {
-            // Main content
-            ZStack {
-                if viewModel.isLoading {
-                    ProgressView("Loading projects...")
-                } else if viewModel.projects.isEmpty {
-                    emptyState
-                } else {
-                    projectList
-                }
-
-                // FAB button
-                VStack {
-                    Spacer()
-                    HStack {
-                        Spacer()
-                        Button {
-                            viewModel.showingAddProject = true
-                        } label: {
-                            Image(systemName: "plus")
-                                .font(.title2)
-                                .fontWeight(.semibold)
-                                .foregroundColor(.white)
-                                .frame(width: 56, height: 56)
-                                .glassEffect(.regular.tint(.blue).interactive(), in: .circle)
-                                .shadow(radius: 4, y: 2)
-                        }
-                        .padding(.trailing, 20)
-                        .padding(.bottom, 20)
-                    }
-                }
-                .transition(.scale.combined(with: .opacity))
-            }
-            .padding(.top, 44)
-
-            // Filter pills row (floats on top)
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    ProjectCategoryFilterPill(viewModel: viewModel, showDropdown: $showCategoryDropdown)
-                }
-                .padding(.leading)
-            }
-            .padding(.top, 4)
-            .zIndex(10)
-
-            // Floating category dropdown
-            if showCategoryDropdown {
-                ProjectCategoryDropdownMenu(viewModel: viewModel, showDropdown: $showCategoryDropdown)
-                    .zIndex(20)
+        ZStack {
+            if viewModel.isLoading {
+                ProgressView("Loading projects...")
+            } else if viewModel.projects.isEmpty {
+                emptyState
+            } else {
+                projectList
             }
         }
+        .padding(.top, 44)
         .sheet(isPresented: $viewModel.showingAddProject) {
             AddProjectSheet(viewModel: viewModel)
         }
@@ -90,6 +45,23 @@ struct ProjectsListView: View {
             if let error = viewModel.errorMessage {
                 Text(error)
             }
+        }
+        // Batch delete confirmation
+        .alert("Delete \(viewModel.selectedCount) project\(viewModel.selectedCount == 1 ? "" : "s")?", isPresented: $viewModel.showBatchDeleteConfirmation) {
+            Button("Cancel", role: .cancel) { }
+            Button("Delete", role: .destructive) {
+                _Concurrency.Task { await viewModel.batchDeleteProjects() }
+            }
+        } message: {
+            Text("This will permanently delete the selected projects and their commitments.")
+        }
+        // Batch move category sheet
+        .sheet(isPresented: $viewModel.showBatchMovePicker) {
+            BatchMoveCategorySheet(viewModel: viewModel)
+        }
+        // Batch commit sheet
+        .sheet(isPresented: $viewModel.showBatchCommitSheet) {
+            BatchCommitSheet(viewModel: viewModel)
         }
         .task {
             if viewModel.projects.isEmpty && !viewModel.isLoading {
@@ -136,6 +108,6 @@ struct ProjectsListView: View {
 }
 
 #Preview {
-    ProjectsListView()
+    ProjectsListView(viewModel: ProjectsViewModel(authService: AuthService()))
         .environmentObject(AuthService())
 }

@@ -7,8 +7,8 @@
 
 import SwiftUI
 
-struct BatchMoveCategorySheet: View {
-    @ObservedObject var viewModel: TaskListViewModel
+struct BatchMoveCategorySheet<VM: LibraryFilterable>: View {
+    @ObservedObject var viewModel: VM
     @Environment(\.dismiss) private var dismiss
     @State private var showingNewCategoryAlert = false
     @State private var newCategoryName = ""
@@ -27,7 +27,7 @@ struct BatchMoveCategorySheet: View {
 
                 List {
                 Button {
-                    Task {
+                    _Concurrency.Task {
                         await viewModel.batchMoveToCategory(nil)
                         dismiss()
                     }
@@ -38,7 +38,7 @@ struct BatchMoveCategorySheet: View {
 
                 ForEach(viewModel.categories) { category in
                     Button {
-                        Task {
+                        _Concurrency.Task {
                             await viewModel.batchMoveToCategory(category.id)
                             dismiss()
                         }
@@ -56,7 +56,7 @@ struct BatchMoveCategorySheet: View {
                 }
             }
             }
-            .navigationTitle("Move \(viewModel.selectedCount) Tasks")
+            .navigationTitle("Move \(viewModel.selectedCount) Items")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
@@ -69,7 +69,7 @@ struct BatchMoveCategorySheet: View {
                 Button("Create") {
                     let name = newCategoryName
                     newCategoryName = ""
-                    Task {
+                    _Concurrency.Task {
                         await viewModel.createCategory(name: name)
                         if let created = viewModel.categories.last {
                             await viewModel.batchMoveToCategory(created.id)

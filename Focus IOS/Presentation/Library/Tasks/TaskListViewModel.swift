@@ -139,6 +139,10 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LibraryFilterab
         set { selectedTaskIds = newValue }
     }
 
+    var selectedItems: [FocusTask] {
+        tasks.filter { selectedTaskIds.contains($0.id) }
+    }
+
     // MARK: - Computed Properties
 
     /// Uncompleted top-level tasks sorted by sortOrder, filtered by category, commitment status, and search text

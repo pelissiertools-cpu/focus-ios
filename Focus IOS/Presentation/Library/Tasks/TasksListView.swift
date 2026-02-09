@@ -19,23 +19,10 @@ struct RowFramePreference: PreferenceKey {
 // MARK: - Tasks List View
 
 struct TasksListView: View {
-    @EnvironmentObject var authService: AuthService
-    @StateObject private var viewModel: TaskListViewModel
+    @ObservedObject var viewModel: TaskListViewModel
 
     let searchText: String
     @Binding var isSearchFocused: Bool
-
-    // Category dropdown state
-    @State private var showCategoryDropdown = false
-
-    // Batch operation states
-    @State private var showBatchDeleteConfirmation = false
-    @State private var showBatchMovePicker = false
-    @State private var showBatchCommitSheet = false
-    @State private var showCreateProjectAlert = false
-    @State private var showCreateListAlert = false
-    @State private var newProjectTitle = ""
-    @State private var newListTitle = ""
 
     // Drag state
     @State private var draggingTaskId: UUID?
@@ -47,133 +34,32 @@ struct TasksListView: View {
     @State private var lastReorderTime: Date = .distantPast
     @State private var rowFrames: [UUID: CGRect] = [:]
 
-    init(searchText: String = "", isSearchFocused: Binding<Bool> = .constant(false)) {
+    init(viewModel: TaskListViewModel, searchText: String = "", isSearchFocused: Binding<Bool> = .constant(false)) {
+        self.viewModel = viewModel
         self.searchText = searchText
         self._isSearchFocused = isSearchFocused
-        _viewModel = StateObject(wrappedValue: TaskListViewModel(authService: AuthService()))
     }
 
     var body: some View {
-        ZStack(alignment: .topLeading) {
-            // Main content
-            ZStack {
-                if viewModel.isLoading {
-                    ProgressView("Loading tasks...")
-                } else if viewModel.tasks.isEmpty {
-                    emptyState
-                } else {
-                    taskList
-                }
-
-                // Tap-to-dismiss overlay when search is focused
-                if isSearchFocused {
-                    Color.clear
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            isSearchFocused = false
-                        }
-                }
-
-                // Floating button area (hidden when search keyboard is active)
-                if !isSearchFocused {
-                    if viewModel.isEditMode {
-                        EditModeActionBar(
-                            viewModel: viewModel,
-                            showBatchMovePicker: $showBatchMovePicker,
-                            showBatchCommitSheet: $showBatchCommitSheet,
-                            showCreateProjectAlert: $showCreateProjectAlert,
-                            showCreateListAlert: $showCreateListAlert,
-                            showBatchDeleteConfirmation: $showBatchDeleteConfirmation
-                        )
-                        .transition(.scale.combined(with: .opacity))
-                    } else {
-                        VStack {
-                            Spacer()
-                            HStack {
-                                Spacer()
-                                Button {
-                                    viewModel.showingAddTask = true
-                                } label: {
-                                    Image(systemName: "plus")
-                                        .font(.title2)
-                                        .fontWeight(.semibold)
-                                        .foregroundColor(.white)
-                                        .frame(width: 56, height: 56)
-                                        .glassEffect(.regular.tint(.blue).interactive(), in: .circle)
-                                        .shadow(radius: 4, y: 2)
-                                }
-                                .padding(.trailing, 20)
-                                .padding(.bottom, 20)
-                            }
-                        }
-                        .transition(.scale.combined(with: .opacity))
-                    }
-                }
+        ZStack {
+            if viewModel.isLoading {
+                ProgressView("Loading tasks...")
+            } else if viewModel.tasks.isEmpty {
+                emptyState
+            } else {
+                taskList
             }
-            .padding(.top, 44)
 
-            // Filter pills row / Edit mode controls (floats on top)
-            HStack(spacing: 0) {
-                if viewModel.isEditMode {
-                    // Edit mode: Select All + count
-                    HStack(spacing: 12) {
-                        Button {
-                            if viewModel.allUncompletedSelected {
-                                viewModel.deselectAll()
-                            } else {
-                                viewModel.selectAllUncompleted()
-                            }
-                        } label: {
-                            Text(viewModel.allUncompletedSelected ? "Deselect All" : "Select All")
-                                .font(.subheadline.weight(.medium))
-                                .foregroundColor(.blue)
-                        }
-                        .buttonStyle(.plain)
-
-                        Text("\(viewModel.selectedCount) selected")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
+            // Tap-to-dismiss overlay when search is focused
+            if isSearchFocused {
+                Color.clear
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        isSearchFocused = false
                     }
-                    .padding(.leading)
-                } else {
-                    // Normal mode: filter pills
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 8) {
-                            CategoryFilterPill(viewModel: viewModel, showDropdown: $showCategoryDropdown)
-                            CommitmentFilterPills(viewModel: viewModel)
-                        }
-                        .padding(.leading)
-                    }
-                }
-
-                Spacer()
-
-                // Edit / Done button
-                Button {
-                    if viewModel.isEditMode {
-                        viewModel.exitEditMode()
-                    } else {
-                        viewModel.enterEditMode()
-                    }
-                } label: {
-                    Text(viewModel.isEditMode ? "Done" : "Edit")
-                        .font(.subheadline.weight(.medium))
-                        .foregroundColor(.blue)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
-                }
-                .buttonStyle(.plain)
-                .padding(.trailing, 4)
-            }
-            .padding(.top, 4)
-            .zIndex(10)
-
-            // Floating category dropdown (rendered above everything)
-            if showCategoryDropdown {
-                CategoryDropdownMenu(viewModel: viewModel, showDropdown: $showCategoryDropdown)
-                    .zIndex(20)
             }
         }
+        .padding(.top, 44)
         .sheet(isPresented: $viewModel.showingAddTask) {
             AddTaskSheet(viewModel: viewModel)
                 .presentationDetents([.fraction(0.75)])
@@ -192,42 +78,20 @@ struct TasksListView: View {
             }
         }
         // Batch delete confirmation
-        .alert("Delete \(viewModel.selectedCount) task\(viewModel.selectedCount == 1 ? "" : "s")?", isPresented: $showBatchDeleteConfirmation) {
+        .alert("Delete \(viewModel.selectedCount) task\(viewModel.selectedCount == 1 ? "" : "s")?", isPresented: $viewModel.showBatchDeleteConfirmation) {
             Button("Cancel", role: .cancel) { }
             Button("Delete", role: .destructive) {
-                Task { await viewModel.batchDeleteTasks() }
+                _Concurrency.Task { await viewModel.batchDeleteTasks() }
             }
         } message: {
             Text("This will permanently delete the selected tasks and their commitments.")
         }
-        // Create Project alert
-        .alert("New Project", isPresented: $showCreateProjectAlert) {
-            TextField("Project name", text: $newProjectTitle)
-            Button("Cancel", role: .cancel) { newProjectTitle = "" }
-            Button("Create") {
-                Task { await viewModel.createProjectFromSelected(title: newProjectTitle) }
-                newProjectTitle = ""
-            }
-        } message: {
-            Text("\(viewModel.selectedCount) selected task\(viewModel.selectedCount == 1 ? "" : "s") for your new project")
-        }
-        // Create List alert
-        .alert("New List", isPresented: $showCreateListAlert) {
-            TextField("List name", text: $newListTitle)
-            Button("Cancel", role: .cancel) { newListTitle = "" }
-            Button("Create") {
-                Task { await viewModel.createListFromSelected(title: newListTitle) }
-                newListTitle = ""
-            }
-        } message: {
-            Text("The \(viewModel.selectedCount) selected task\(viewModel.selectedCount == 1 ? "" : "s") will become items in this list.")
-        }
         // Batch move category sheet
-        .sheet(isPresented: $showBatchMovePicker) {
+        .sheet(isPresented: $viewModel.showBatchMovePicker) {
             BatchMoveCategorySheet(viewModel: viewModel)
         }
         // Batch commit sheet
-        .sheet(isPresented: $showBatchCommitSheet) {
+        .sheet(isPresented: $viewModel.showBatchCommitSheet) {
             BatchCommitSheet(viewModel: viewModel)
         }
         .task {
@@ -966,7 +830,7 @@ struct DraftSubtaskEntry: Identifiable {
 
 #Preview {
     NavigationView {
-        TasksListView()
+        TasksListView(viewModel: TaskListViewModel(authService: AuthService()))
             .environmentObject(AuthService())
     }
 }

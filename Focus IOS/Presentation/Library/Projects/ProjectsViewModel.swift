@@ -9,7 +9,7 @@ import SwiftUI
 import Auth
 
 @MainActor
-class ProjectsViewModel: ObservableObject, TaskEditingViewModel {
+class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LibraryFilterable {
     // MARK: - Published Properties
     @Published var projects: [FocusTask] = []
     @Published var isLoading = false
@@ -32,19 +32,60 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel {
     @Published var categories: [Category] = []
     @Published var selectedCategoryId: UUID? = nil
 
+    // Commitment filter
+    @Published var commitmentFilter: CommitmentFilter? = nil
+    @Published var committedTaskIds: Set<UUID> = []
+
+    // Edit mode
+    @Published var isEditMode: Bool = false
+    @Published var selectedProjectIds: Set<UUID> = []
+
+    // Batch operation triggers
+    @Published var showBatchDeleteConfirmation: Bool = false
+    @Published var showBatchMovePicker: Bool = false
+    @Published var showBatchCommitSheet: Bool = false
+
     // Search
     @Published var searchText: String = ""
 
     private let repository: TaskRepository
+    private let commitmentRepository: CommitmentRepository
     private let categoryRepository: CategoryRepository
     let authService: AuthService
 
     init(repository: TaskRepository = TaskRepository(),
+         commitmentRepository: CommitmentRepository = CommitmentRepository(),
          categoryRepository: CategoryRepository = CategoryRepository(),
          authService: AuthService) {
         self.repository = repository
+        self.commitmentRepository = commitmentRepository
         self.categoryRepository = categoryRepository
         self.authService = authService
+    }
+
+    // MARK: - LibraryFilterable Conformance
+
+    var categoryType: String { "project" }
+
+    var showingAddItem: Bool {
+        get { showingAddProject }
+        set { showingAddProject = newValue }
+    }
+
+    var selectedItemIds: Set<UUID> {
+        get { selectedProjectIds }
+        set { selectedProjectIds = newValue }
+    }
+
+    var selectedItems: [FocusTask] {
+        projects.filter { selectedProjectIds.contains($0.id) }
+    }
+
+    var selectedCount: Int { selectedProjectIds.count }
+
+    var allUncompletedSelected: Bool {
+        let uncompletedIds = Set(filteredProjects.filter { !$0.isCompleted }.map { $0.id })
+        return !uncompletedIds.isEmpty && uncompletedIds.isSubset(of: selectedProjectIds)
     }
 
     // MARK: - Computed Properties
@@ -53,6 +94,14 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel {
         var filtered = projects
         if let categoryId = selectedCategoryId {
             filtered = filtered.filter { $0.categoryId == categoryId }
+        }
+        if let commitmentFilter = commitmentFilter {
+            switch commitmentFilter {
+            case .committed:
+                filtered = filtered.filter { committedTaskIds.contains($0.id) }
+            case .uncommitted:
+                filtered = filtered.filter { !committedTaskIds.contains($0.id) }
+            }
         }
         if !searchText.isEmpty {
             filtered = filtered.filter {
@@ -106,6 +155,7 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel {
         do {
             self.projects = try await repository.fetchProjects()
             self.categories = try await categoryRepository.fetchCategories(type: "project")
+            await fetchCommittedTaskIds()
 
             // Pre-fetch task counts for all projects
             for project in projects {
@@ -455,6 +505,96 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel {
                 subtasks.removeAll { $0.id == subtask.id }
                 subtasksMap[parentId] = subtasks
             }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    // MARK: - Commitment Filter
+
+    func fetchCommittedTaskIds() async {
+        do {
+            committedTaskIds = try await commitmentRepository.fetchCommittedTaskIds()
+        } catch {
+            print("Error fetching committed task IDs: \(error)")
+        }
+    }
+
+    func toggleCommitmentFilter(_ filter: CommitmentFilter) {
+        if commitmentFilter == filter {
+            commitmentFilter = nil
+        } else {
+            commitmentFilter = filter
+        }
+    }
+
+    // MARK: - Edit Mode
+
+    func enterEditMode() {
+        withAnimation(.easeInOut(duration: 0.25)) {
+            isEditMode = true
+            selectedProjectIds = []
+            expandedProjects.removeAll()
+        }
+    }
+
+    func exitEditMode() {
+        withAnimation(.easeInOut(duration: 0.25)) {
+            isEditMode = false
+            selectedProjectIds = []
+        }
+    }
+
+    func toggleProjectSelection(_ projectId: UUID) {
+        if selectedProjectIds.contains(projectId) {
+            selectedProjectIds.remove(projectId)
+        } else {
+            selectedProjectIds.insert(projectId)
+        }
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+    }
+
+    func selectAllUncompleted() {
+        selectedProjectIds = Set(filteredProjects.filter { !$0.isCompleted }.map { $0.id })
+    }
+
+    func deselectAll() {
+        selectedProjectIds = []
+    }
+
+    func batchDeleteProjects() async {
+        let idsToDelete = selectedProjectIds
+
+        do {
+            for projectId in idsToDelete {
+                try await commitmentRepository.deleteCommitments(forTask: projectId)
+                try await repository.deleteTask(id: projectId)
+            }
+
+            projects.removeAll { idsToDelete.contains($0.id) }
+            for projectId in idsToDelete {
+                projectTasksMap.removeValue(forKey: projectId)
+                expandedProjects.remove(projectId)
+            }
+            exitEditMode()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func batchMoveToCategory(_ categoryId: UUID?) async {
+        do {
+            for projectId in selectedProjectIds {
+                if let index = projects.firstIndex(where: { $0.id == projectId }) {
+                    var updated = projects[index]
+                    updated.categoryId = categoryId
+                    updated.modifiedDate = Date()
+                    try await repository.updateTask(updated)
+                    projects[index].categoryId = categoryId
+                    projects[index].modifiedDate = Date()
+                }
+            }
+            exitEditMode()
         } catch {
             errorMessage = error.localizedDescription
         }

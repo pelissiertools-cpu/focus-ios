@@ -7,15 +7,12 @@
 
 import SwiftUI
 
-struct EditModeActionBar: View {
-    @ObservedObject var viewModel: TaskListViewModel
-    @Binding var showBatchMovePicker: Bool
-    @Binding var showBatchCommitSheet: Bool
-    @Binding var showCreateProjectAlert: Bool
-    @Binding var showCreateListAlert: Bool
-    @Binding var showBatchDeleteConfirmation: Bool
+struct EditModeActionBar<VM: LibraryFilterable>: View {
+    @ObservedObject var viewModel: VM
+    var showCreateProjectAlert: Binding<Bool>?
+    var showCreateListAlert: Binding<Bool>?
 
-    private var hasSelection: Bool { !viewModel.selectedTaskIds.isEmpty }
+    private var hasSelection: Bool { !viewModel.selectedItemIds.isEmpty }
 
     private struct ActionItem: Identifiable {
         let id = UUID()
@@ -26,23 +23,31 @@ struct EditModeActionBar: View {
     }
 
     private var actions: [ActionItem] {
-        [
+        var items: [ActionItem] = [
             ActionItem(icon: "trash", label: "Delete", isDestructive: true) {
-                showBatchDeleteConfirmation = true
+                viewModel.showBatchDeleteConfirmation = true
             },
             ActionItem(icon: "arrow.right", label: "Move", isDestructive: false) {
-                showBatchMovePicker = true
+                viewModel.showBatchMovePicker = true
             },
             ActionItem(icon: "calendar", label: "Commit", isDestructive: false) {
-                showBatchCommitSheet = true
-            },
-            ActionItem(icon: "folder.badge.plus", label: "Project", isDestructive: false) {
-                showCreateProjectAlert = true
-            },
-            ActionItem(icon: "list.bullet", label: "List", isDestructive: false) {
-                showCreateListAlert = true
+                viewModel.showBatchCommitSheet = true
             },
         ]
+
+        if let projectBinding = showCreateProjectAlert {
+            items.append(ActionItem(icon: "folder.badge.plus", label: "Project", isDestructive: false) {
+                projectBinding.wrappedValue = true
+            })
+        }
+
+        if let listBinding = showCreateListAlert {
+            items.append(ActionItem(icon: "list.bullet", label: "List", isDestructive: false) {
+                listBinding.wrappedValue = true
+            })
+        }
+
+        return items
     }
 
     var body: some View {
@@ -67,7 +72,7 @@ struct EditModeActionBar: View {
                         }
                     }
 
-                    // Vertical glass capsule with icons (~20% larger)
+                    // Vertical glass capsule with icons
                     VStack(spacing: 0) {
                         ForEach(Array(actions.reversed().enumerated()), id: \.element.id) { index, item in
                             Button {
@@ -95,7 +100,7 @@ struct EditModeActionBar: View {
                 .padding(.trailing, 20)
                 .padding(.bottom, 20)
             }
-            // Block all taps from passing through to task list
+            // Block all taps from passing through to list
             .contentShape(Rectangle())
         }
     }

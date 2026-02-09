@@ -8,9 +8,11 @@
 import SwiftUI
 
 struct ListsView: View {
+    @ObservedObject var viewModel: ListsViewModel
     let searchText: String
 
-    init(searchText: String = "") {
+    init(viewModel: ListsViewModel, searchText: String = "") {
+        self.viewModel = viewModel
         self.searchText = searchText
     }
 
@@ -26,9 +28,10 @@ struct ListsView: View {
             }
             .padding(.bottom, 100)
         }
+        .padding(.top, 44)
     }
 }
 
 #Preview {
-    ListsView()
+    ListsView(viewModel: ListsViewModel(authService: AuthService()))
 }

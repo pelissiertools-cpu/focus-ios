@@ -38,4 +38,6 @@ protocol LibraryFilterable: ObservableObject {
     var showBatchDeleteConfirmation: Bool { get set }
     var showBatchMovePicker: Bool { get set }
     var showBatchCommitSheet: Bool { get set }
+    var selectedItems: [FocusTask] { get }
+    func batchMoveToCategory(_ categoryId: UUID?) async
 }

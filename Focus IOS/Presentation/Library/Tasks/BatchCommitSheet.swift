@@ -7,8 +7,8 @@
 
 import SwiftUI
 
-struct BatchCommitSheet: View {
-    @ObservedObject var viewModel: TaskListViewModel
+struct BatchCommitSheet<VM: LibraryFilterable>: View {
+    @ObservedObject var viewModel: VM
     @EnvironmentObject var focusViewModel: FocusTabViewModel
     @Environment(\.dismiss) var dismiss
 
@@ -22,8 +22,8 @@ struct BatchCommitSheet: View {
     var body: some View {
         NavigationView {
             Form {
-                SwiftUI.Section("Tasks") {
-                    Text("\(viewModel.selectedCount) task\(viewModel.selectedCount == 1 ? "" : "s") selected")
+                SwiftUI.Section("Items") {
+                    Text("\(viewModel.selectedCount) item\(viewModel.selectedCount == 1 ? "" : "s") selected")
                         .font(.headline)
                 }
 
@@ -42,7 +42,7 @@ struct BatchCommitSheet: View {
                     )
                 }
             }
-            .navigationTitle("Commit Tasks")
+            .navigationTitle("Commit Items")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
@@ -50,7 +50,7 @@ struct BatchCommitSheet: View {
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Save") {
-                        Task { await saveCommitments() }
+                        _Concurrency.Task { await saveCommitments() }
                     }
                     .disabled(selectedDates.isEmpty || isSaving)
                     .fontWeight(.semibold)
@@ -67,14 +67,14 @@ struct BatchCommitSheet: View {
     private func saveCommitments() async {
         isSaving = true
         let commitmentRepository = CommitmentRepository()
-        let tasks = viewModel.selectedTasks
+        let items = viewModel.selectedItems
 
         do {
-            for task in tasks {
+            for item in items {
                 for date in selectedDates {
                     let commitment = Commitment(
-                        userId: task.userId,
-                        taskId: task.id,
+                        userId: item.userId,
+                        taskId: item.id,
                         timeframe: selectedTimeframe,
                         section: selectedSection,
                         commitmentDate: Calendar.current.startOfDay(for: date),

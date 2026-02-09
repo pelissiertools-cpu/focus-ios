@@ -28,7 +28,7 @@ struct CommitmentFilterPills: View {
                 .lineLimit(1)
                 .foregroundColor(isActive ? .white : .secondary)
                 .padding(.horizontal, 20)
-                .padding(.vertical, 12)
+                .padding(.vertical, 10)
                 .background(
                     RoundedRectangle(cornerRadius: 14)
                         .fill(isActive ? Color.blue : Color.secondary.opacity(0.15))

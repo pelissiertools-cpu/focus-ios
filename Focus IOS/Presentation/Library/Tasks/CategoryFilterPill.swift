@@ -34,7 +34,7 @@ struct CategoryFilterPill: View {
             }
             .foregroundColor(viewModel.selectedCategoryId != nil ? .white : .secondary)
             .padding(.horizontal, 20)
-            .padding(.vertical, 12)
+            .padding(.vertical, 10)
         }
         .buttonStyle(.plain)
         .background {
@@ -82,7 +82,7 @@ struct CategoryDropdownMenu: View {
                 }
                 .foregroundColor(.secondary)
                 .padding(.horizontal, 20)
-                .padding(.vertical, 12)
+                .padding(.vertical, 10)
                 .contentShape(Rectangle())
                 .onTapGesture { closeDropdown() }
 

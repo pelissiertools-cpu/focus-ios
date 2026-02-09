@@ -5,9 +5,52 @@
 
 import SwiftUI
 
+// MARK: - Category Filter Pill (just the button)
+
 struct CategoryFilterPill: View {
     @ObservedObject var viewModel: TaskListViewModel
-    @State private var showDropdown = false
+    @Binding var showDropdown: Bool
+
+    private var selectedCategoryName: String {
+        if let id = viewModel.selectedCategoryId,
+           let category = viewModel.categories.first(where: { $0.id == id }) {
+            return category.name
+        }
+        return "All"
+    }
+
+    var body: some View {
+        Button {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                showDropdown.toggle()
+            }
+        } label: {
+            HStack(spacing: 6) {
+                Text(selectedCategoryName)
+                    .font(.subheadline.weight(.medium))
+                    .lineLimit(1)
+                Image(systemName: showDropdown ? "chevron.up" : "chevron.down")
+                    .font(.caption)
+            }
+            .foregroundColor(viewModel.selectedCategoryId != nil ? .white : .secondary)
+            .padding(.horizontal, 20)
+            .padding(.vertical, 12)
+        }
+        .buttonStyle(.plain)
+        .background {
+            RoundedRectangle(cornerRadius: 14)
+                .fill(viewModel.selectedCategoryId != nil
+                      ? Color.blue
+                      : Color.secondary.opacity(0.15))
+        }
+    }
+}
+
+// MARK: - Category Dropdown Menu (floating overlay)
+
+struct CategoryDropdownMenu: View {
+    @ObservedObject var viewModel: TaskListViewModel
+    @Binding var showDropdown: Bool
     @State private var newCategoryName = ""
     @State private var isAddingCategory = false
     @FocusState private var isTextFieldFocused: Bool
@@ -22,54 +65,63 @@ struct CategoryFilterPill: View {
 
     var body: some View {
         ZStack(alignment: .topLeading) {
-            // Dismiss layer when expanded
-            if showDropdown {
-                Color.black.opacity(0.001)
-                    .ignoresSafeArea()
-                    .onTapGesture { closeDropdown() }
-                    .zIndex(5)
-            }
+            // Dismiss layer
+            Color.black.opacity(0.001)
+                .ignoresSafeArea()
+                .onTapGesture { closeDropdown() }
 
-            // Unified expandable container
+            // Floating dropdown menu
             VStack(alignment: .leading, spacing: 0) {
-                // Header row (always visible)
+                // Header row (mirrors the pill appearance)
+                HStack(spacing: 6) {
+                    Text(selectedCategoryName)
+                        .font(.subheadline.weight(.medium))
+                        .lineLimit(1)
+                    Image(systemName: "chevron.up")
+                        .font(.caption)
+                }
+                .foregroundColor(.secondary)
+                .padding(.horizontal, 20)
+                .padding(.vertical, 12)
+                .contentShape(Rectangle())
+                .onTapGesture { closeDropdown() }
+
+                Divider()
+                    .padding(.horizontal, 16)
+
+                // "All" option
                 Button {
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                        showDropdown.toggle()
-                    }
-                    if !showDropdown {
-                        isAddingCategory = false
-                        newCategoryName = ""
-                    }
+                    viewModel.selectCategory(nil)
+                    closeDropdown()
                 } label: {
-                    HStack(spacing: 6) {
-                        Text(selectedCategoryName)
-                            .font(.subheadline.weight(.medium))
-                            .lineLimit(1)
-                        Image(systemName: showDropdown ? "chevron.up" : "chevron.down")
-                            .font(.caption)
+                    HStack {
+                        Text("All")
+                            .font(.body)
+                        Spacer()
+                        if viewModel.selectedCategoryId == nil {
+                            Image(systemName: "checkmark")
+                                .font(.body)
+                                .foregroundColor(.blue)
+                        }
                     }
-                    .foregroundColor(viewModel.selectedCategoryId != nil ? .white : .secondary)
                     .padding(.horizontal, 20)
                     .padding(.vertical, 12)
+                    .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
 
-                // Expanded content
-                if showDropdown {
-                    Divider()
-                        .padding(.horizontal, 16)
-
-                    // "All" option
+                // Category list
+                ForEach(viewModel.categories) { category in
                     Button {
-                        viewModel.selectCategory(nil)
+                        viewModel.selectCategory(category.id)
                         closeDropdown()
                     } label: {
                         HStack {
-                            Text("All")
+                            Text(category.name)
                                 .font(.body)
+                                .lineLimit(1)
                             Spacer()
-                            if viewModel.selectedCategoryId == nil {
+                            if viewModel.selectedCategoryId == category.id {
                                 Image(systemName: "checkmark")
                                     .font(.body)
                                     .foregroundColor(.blue)
@@ -80,91 +132,60 @@ struct CategoryFilterPill: View {
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
+                }
 
-                    // Category list
-                    ForEach(viewModel.categories) { category in
+                Divider()
+                    .padding(.horizontal, 16)
+
+                // Add new category
+                if isAddingCategory {
+                    HStack(spacing: 8) {
+                        TextField("Category name", text: $newCategoryName)
+                            .font(.body)
+                            .focused($isTextFieldFocused)
+                            .onSubmit { submitNewCategory() }
                         Button {
-                            viewModel.selectCategory(category.id)
-                            closeDropdown()
+                            submitNewCategory()
                         } label: {
-                            HStack {
-                                Text(category.name)
-                                    .font(.body)
-                                    .lineLimit(1)
-                                Spacer()
-                                if viewModel.selectedCategoryId == category.id {
-                                    Image(systemName: "checkmark")
-                                        .font(.body)
-                                        .foregroundColor(.blue)
-                                }
-                            }
-                            .padding(.horizontal, 20)
-                            .padding(.vertical, 12)
-                            .contentShape(Rectangle())
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.body)
+                                .foregroundColor(
+                                    newCategoryName.trimmingCharacters(in: .whitespaces).isEmpty
+                                    ? .gray : .blue
+                                )
                         }
                         .buttonStyle(.plain)
+                        .disabled(newCategoryName.trimmingCharacters(in: .whitespaces).isEmpty)
                     }
-
-                    Divider()
-                        .padding(.horizontal, 16)
-
-                    // Add new category
-                    if isAddingCategory {
-                        HStack(spacing: 8) {
-                            TextField("Category name", text: $newCategoryName)
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 12)
+                } else {
+                    Button {
+                        isAddingCategory = true
+                        isTextFieldFocused = true
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "plus")
                                 .font(.body)
-                                .focused($isTextFieldFocused)
-                                .onSubmit { submitNewCategory() }
-                            Button {
-                                submitNewCategory()
-                            } label: {
-                                Image(systemName: "checkmark.circle.fill")
-                                    .font(.body)
-                                    .foregroundColor(
-                                        newCategoryName.trimmingCharacters(in: .whitespaces).isEmpty
-                                        ? .gray : .blue
-                                    )
-                            }
-                            .buttonStyle(.plain)
-                            .disabled(newCategoryName.trimmingCharacters(in: .whitespaces).isEmpty)
+                            Text("New Category")
+                                .font(.body)
                         }
+                        .foregroundColor(.blue)
                         .padding(.horizontal, 20)
                         .padding(.vertical, 12)
-                    } else {
-                        Button {
-                            isAddingCategory = true
-                            isTextFieldFocused = true
-                        } label: {
-                            HStack(spacing: 6) {
-                                Image(systemName: "plus")
-                                    .font(.body)
-                                Text("New Category")
-                                    .font(.body)
-                            }
-                            .foregroundColor(.blue)
-                            .padding(.horizontal, 20)
-                            .padding(.vertical, 12)
-                        }
-                        .buttonStyle(.plain)
                     }
+                    .buttonStyle(.plain)
                 }
             }
             .background {
-                if showDropdown {
-                    RoundedRectangle(cornerRadius: 14)
-                        .fill(.regularMaterial)
-                } else {
-                    RoundedRectangle(cornerRadius: 14)
-                        .fill(viewModel.selectedCategoryId != nil
-                              ? Color.blue
-                              : Color.secondary.opacity(0.15))
-                }
+                RoundedRectangle(cornerRadius: 14)
+                    .fill(.regularMaterial)
             }
-            .shadow(color: showDropdown ? .black.opacity(0.2) : .clear,
-                    radius: 12, x: 0, y: 6)
-            .fixedSize(horizontal: !showDropdown, vertical: true)
-            .frame(minWidth: showDropdown ? 200 : nil)
-            .zIndex(10)
+            .shadow(color: .black.opacity(0.2), radius: 12, x: 0, y: 6)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(minWidth: 200)
+            .padding(.leading, 16)
+            .padding(.top, 4)
         }
     }
 

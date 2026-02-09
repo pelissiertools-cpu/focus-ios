@@ -23,6 +23,10 @@ struct TasksListView: View {
     @StateObject private var viewModel: TaskListViewModel
 
     let searchText: String
+    @Binding var isSearchFocused: Bool
+
+    // Category dropdown state
+    @State private var showCategoryDropdown = false
 
     // Drag state
     @State private var draggingTaskId: UUID?
@@ -34,8 +38,9 @@ struct TasksListView: View {
     @State private var lastReorderTime: Date = .distantPast
     @State private var rowFrames: [UUID: CGRect] = [:]
 
-    init(searchText: String = "") {
+    init(searchText: String = "", isSearchFocused: Binding<Bool> = .constant(false)) {
         self.searchText = searchText
+        self._isSearchFocused = isSearchFocused
         _viewModel = StateObject(wrappedValue: TaskListViewModel(authService: AuthService()))
     }
 
@@ -51,25 +56,36 @@ struct TasksListView: View {
                     taskList
                 }
 
-                // Floating add button
-                VStack {
-                    Spacer()
-                    HStack {
-                        Spacer()
-                        Button {
-                            viewModel.showingAddTask = true
-                        } label: {
-                            Image(systemName: "plus")
-                                .font(.title2)
-                                .fontWeight(.semibold)
-                                .foregroundColor(.white)
-                                .frame(width: 56, height: 56)
-                                .background(Color.blue)
-                                .clipShape(Circle())
-                                .shadow(radius: 4, y: 2)
+                // Tap-to-dismiss overlay when search is focused
+                if isSearchFocused {
+                    Color.clear
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            isSearchFocused = false
                         }
-                        .padding(.trailing, 20)
-                        .padding(.bottom, 20)
+                }
+
+                // Floating add button (hidden when search keyboard is active)
+                if !isSearchFocused {
+                    VStack {
+                        Spacer()
+                        HStack {
+                            Spacer()
+                            Button {
+                                viewModel.showingAddTask = true
+                            } label: {
+                                Image(systemName: "plus")
+                                    .font(.title2)
+                                    .fontWeight(.semibold)
+                                    .foregroundColor(.white)
+                                    .frame(width: 56, height: 56)
+                                    .background(Color.blue)
+                                    .clipShape(Circle())
+                                    .shadow(radius: 4, y: 2)
+                            }
+                            .padding(.trailing, 20)
+                            .padding(.bottom, 20)
+                        }
                     }
                 }
             }
@@ -78,13 +94,19 @@ struct TasksListView: View {
             // Filter pills row (floats on top)
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
-                    CategoryFilterPill(viewModel: viewModel)
+                    CategoryFilterPill(viewModel: viewModel, showDropdown: $showCategoryDropdown)
                     CommitmentFilterPills(viewModel: viewModel)
                 }
                 .padding(.horizontal)
             }
             .padding(.top, 4)
             .zIndex(10)
+
+            // Floating category dropdown (rendered above everything)
+            if showCategoryDropdown {
+                CategoryDropdownMenu(viewModel: viewModel, showDropdown: $showCategoryDropdown)
+                    .zIndex(20)
+            }
         }
         .sheet(isPresented: $viewModel.showingAddTask) {
             AddTaskSheet(viewModel: viewModel)

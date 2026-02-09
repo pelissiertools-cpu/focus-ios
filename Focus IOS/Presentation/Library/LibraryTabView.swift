@@ -10,7 +10,8 @@ import SwiftUI
 struct LibraryTabView: View {
     @State private var selectedTab = 0
     @State private var searchText = ""
-    @FocusState private var isSearchFocused: Bool
+    @FocusState private var isSearchFieldFocused: Bool
+    @State private var isSearchFocused: Bool = false
 
     var body: some View {
         NavigationView {
@@ -22,7 +23,7 @@ struct LibraryTabView: View {
                     TextField("Search", text: $searchText)
                         .textFieldStyle(.plain)
                         .autocorrectionDisabled()
-                        .focused($isSearchFocused)
+                        .focused($isSearchFieldFocused)
                     if !searchText.isEmpty {
                         Button {
                             searchText = ""
@@ -54,7 +55,7 @@ struct LibraryTabView: View {
                 Group {
                     switch selectedTab {
                     case 0:
-                        TasksListView(searchText: searchText)
+                        TasksListView(searchText: searchText, isSearchFocused: $isSearchFocused)
                     case 1:
                         ProjectsListView(searchText: searchText)
                     case 2:
@@ -64,13 +65,17 @@ struct LibraryTabView: View {
                     }
                 }
                 .frame(maxHeight: .infinity)
-                .onTapGesture {
-                    isSearchFocused = false
-                }
             }
             .onChange(of: selectedTab) { _, _ in
                 searchText = ""
+                isSearchFieldFocused = false
                 isSearchFocused = false
+            }
+            .onChange(of: isSearchFieldFocused) { _, newValue in
+                isSearchFocused = newValue
+            }
+            .onChange(of: isSearchFocused) { _, newValue in
+                isSearchFieldFocused = newValue
             }
         }
     }

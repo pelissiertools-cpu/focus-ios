@@ -63,7 +63,6 @@ struct TasksListView: View {
         .padding(.top, 44)
         .sheet(isPresented: $viewModel.showingAddTask) {
             AddTaskSheet(viewModel: viewModel)
-                .drawerStyle()
         }
         .sheet(item: $viewModel.selectedTaskForDetails) { task in
             TaskDetailsDrawer(task: task, viewModel: viewModel, categories: viewModel.categories)

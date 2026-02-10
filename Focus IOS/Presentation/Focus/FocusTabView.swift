@@ -169,7 +169,6 @@ struct FocusTabView: View {
                     section: viewModel.addTaskSection,
                     viewModel: viewModel
                 )
-                .drawerStyle()
             }
         }
     }
@@ -506,21 +505,87 @@ struct AddTaskToFocusSheet: View {
     @Environment(\.dismiss) var dismiss
 
     @State private var taskTitle = ""
-    @FocusState private var isFocused: Bool
-    @State private var isSaving = false
+    @State private var draftSubtasks: [DraftSubtaskEntry] = []
+    @FocusState private var titleFocused: Bool
 
     var body: some View {
         NavigationView {
-            VStack(spacing: 20) {
-                TextField("Task title", text: $taskTitle)
-                    .textFieldStyle(.roundedBorder)
-                    .focused($isFocused)
-                    .padding()
-                    .onSubmit {
-                        saveTask()
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    // Task title
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Task")
+                            .font(.subheadline.weight(.medium))
+                            .foregroundColor(.secondary)
+
+                        TextField("What do you need to do?", text: $taskTitle)
+                            .textFieldStyle(.roundedBorder)
+                            .focused($titleFocused)
                     }
 
-                Spacer()
+                    // Subtasks
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Subtasks")
+                            .font(.subheadline.weight(.medium))
+                            .foregroundColor(.secondary)
+
+                        ForEach(Array(draftSubtasks.enumerated()), id: \.element.id) { index, _ in
+                            HStack(spacing: 8) {
+                                Image(systemName: "circle")
+                                    .font(.caption)
+                                    .foregroundColor(.gray.opacity(0.5))
+
+                                TextField("Subtask title", text: $draftSubtasks[index].title)
+                                    .font(.subheadline)
+
+                                Button {
+                                    draftSubtasks.remove(at: index)
+                                } label: {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .font(.subheadline)
+                                        .foregroundColor(.secondary)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                            .padding(.leading, 4)
+                        }
+
+                        Button {
+                            draftSubtasks.append(DraftSubtaskEntry())
+                        } label: {
+                            HStack(spacing: 6) {
+                                Image(systemName: "plus")
+                                    .font(.subheadline)
+                                Text("Add subtask")
+                                    .font(.subheadline)
+                            }
+                            .foregroundColor(.blue)
+                        }
+                        .buttonStyle(.plain)
+                        .padding(.leading, 4)
+                    }
+
+                    // Add Task button
+                    Button {
+                        saveTask()
+                    } label: {
+                        Text("Add Task")
+                            .font(.headline)
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                            .background(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(taskTitle.trimmingCharacters(in: .whitespaces).isEmpty
+                                          ? Color.blue.opacity(0.5)
+                                          : Color.blue)
+                            )
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(taskTitle.trimmingCharacters(in: .whitespaces).isEmpty)
+                    .padding(.top, 8)
+                }
+                .padding()
             }
             .navigationTitle("New Task")
             .navigationBarTitleDisplayMode(.inline)
@@ -528,20 +593,30 @@ struct AddTaskToFocusSheet: View {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("Cancel") { dismiss() }
                 }
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Add") { saveTask() }
-                        .disabled(taskTitle.trimmingCharacters(in: .whitespaces).isEmpty || isSaving)
-                }
             }
-            .onAppear { isFocused = true }
+            .onAppear {
+                titleFocused = true
+            }
         }
     }
 
     private func saveTask() {
-        guard !taskTitle.trimmingCharacters(in: .whitespaces).isEmpty else { return }
-        isSaving = true
-        Task {
-            await viewModel.createTaskWithCommitment(title: taskTitle, section: section)
+        let title = taskTitle.trimmingCharacters(in: .whitespaces)
+        guard !title.isEmpty else { return }
+
+        let subtasksToCreate = draftSubtasks
+            .map { $0.title.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+
+        _Concurrency.Task { @MainActor in
+            guard let result = await viewModel.createTaskWithCommitment(title: title, section: section) else {
+                return
+            }
+
+            for subtaskTitle in subtasksToCreate {
+                await viewModel.createSubtask(title: subtaskTitle, parentId: result.taskId, parentCommitment: result.commitment)
+            }
+
             dismiss()
         }
     }

@@ -729,20 +729,21 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
     }
 
     /// Create a new task and immediately commit it to the current timeframe/date/section
-    func createTaskWithCommitment(title: String, section: Section) async {
+    @discardableResult
+    func createTaskWithCommitment(title: String, section: Section) async -> (taskId: UUID, commitment: Commitment)? {
         guard let userId = authService.currentUser?.id else {
             errorMessage = "No authenticated user"
-            return
+            return nil
         }
 
         guard !title.trimmingCharacters(in: .whitespaces).isEmpty else {
-            return
+            return nil
         }
 
         // Check section limits for Focus
         if section == .focus && !canAddTask(to: .focus) {
             errorMessage = "Focus section is full"
-            return
+            return nil
         }
 
         do {
@@ -775,8 +776,11 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
             // Update local state
             tasksMap[createdTask.id] = createdTask
             commitments.append(createdCommitment)
+
+            return (taskId: createdTask.id, commitment: createdCommitment)
         } catch {
             errorMessage = error.localizedDescription
+            return nil
         }
     }
 

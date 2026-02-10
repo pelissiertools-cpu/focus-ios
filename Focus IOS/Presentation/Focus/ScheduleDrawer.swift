@@ -60,7 +60,7 @@ struct ScheduleDrawer: View {
 
             // Add a task row
             Button {
-                viewModel.addTaskSection = .focus
+                viewModel.addTaskSection = .extra
                 viewModel.showAddTaskSheet = true
             } label: {
                 HStack(spacing: 12) {

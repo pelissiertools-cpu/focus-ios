@@ -147,7 +147,7 @@ class ListsViewModel: ObservableObject, LibraryFilterable, TaskEditingViewModel 
                 userId: userId,
                 name: trimmed,
                 sortOrder: categories.count,
-                type: "list"
+                type: .list
             )
             let created = try await categoryRepository.createCategory(newCategory)
             categories.append(created)
@@ -204,7 +204,7 @@ class ListsViewModel: ObservableObject, LibraryFilterable, TaskEditingViewModel 
 
         do {
             self.lists = try await repository.fetchTasks(ofType: .list)
-            self.categories = try await categoryRepository.fetchCategories(type: "list")
+            self.categories = try await categoryRepository.fetchCategories(type: .list)
             await fetchCommittedTaskIds()
 
             // Pre-fetch items for all lists
@@ -235,7 +235,7 @@ class ListsViewModel: ObservableObject, LibraryFilterable, TaskEditingViewModel 
 
     func fetchCategories() async {
         do {
-            self.categories = try await categoryRepository.fetchCategories(type: "list")
+            self.categories = try await categoryRepository.fetchCategories(type: .list)
         } catch {
             if !Task.isCancelled { errorMessage = error.localizedDescription }
         }
@@ -661,7 +661,7 @@ class ListsViewModel: ObservableObject, LibraryFilterable, TaskEditingViewModel 
                 userId: userId,
                 name: trimmed,
                 sortOrder: categories.count,
-                type: "list"
+                type: .list
             )
             let created = try await categoryRepository.createCategory(newCategory)
             categories.append(created)

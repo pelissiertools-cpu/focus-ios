@@ -28,12 +28,12 @@ class CategoryRepository {
         return categories
     }
 
-    /// Fetch categories filtered by type (e.g. "task" or "project")
-    func fetchCategories(type: String) async throws -> [Category] {
+    /// Fetch categories filtered by type
+    func fetchCategories(type: TaskType) async throws -> [Category] {
         let categories: [Category] = try await supabase
             .from("categories")
             .select()
-            .eq("type", value: type)
+            .eq("type", value: type.rawValue)
             .order("sort_order", ascending: true)
             .execute()
             .value

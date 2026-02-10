@@ -654,7 +654,7 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LibraryFilterab
 
     func fetchCategories() async {
         do {
-            self.categories = try await categoryRepository.fetchCategories(type: "task")
+            self.categories = try await categoryRepository.fetchCategories(type: .task)
         } catch {
             if !Task.isCancelled { errorMessage = error.localizedDescription }
         }

@@ -38,3 +38,10 @@ protocol TaskEditingViewModel: ObservableObject {
     /// Create a new category and move the task to it
     func createCategoryAndMove(name: String, task: FocusTask) async
 }
+
+// Default empty implementations for category operations.
+// ViewModels that don't support categories (e.g. FocusTabViewModel) get these for free.
+extension TaskEditingViewModel {
+    func moveTaskToCategory(_ task: FocusTask, categoryId: UUID?) async {}
+    func createCategoryAndMove(name: String, task: FocusTask) async {}
+}

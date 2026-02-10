@@ -220,7 +220,7 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LibraryFilterab
 
         do {
             self.projects = try await repository.fetchProjects()
-            self.categories = try await categoryRepository.fetchCategories(type: "project")
+            self.categories = try await categoryRepository.fetchCategories(type: .project)
             await fetchCommittedTaskIds()
 
             // Pre-fetch task counts for all projects
@@ -716,7 +716,7 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LibraryFilterab
                 userId: userId,
                 name: trimmed,
                 sortOrder: categories.count,
-                type: "project"
+                type: .project
             )
             let created = try await categoryRepository.createCategory(newCategory)
             categories.append(created)
@@ -855,7 +855,7 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LibraryFilterab
                 userId: userId,
                 name: trimmed,
                 sortOrder: categories.count,
-                type: "project"
+                type: .project
             )
             let created = try await categoryRepository.createCategory(newCategory)
             categories.append(created)

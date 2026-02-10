@@ -671,11 +671,11 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
             }
         }
 
-        // Persist in background
-        let allUpdates = sourceList.enumerated().map { (i, c) in (id: c.id, sortOrder: i) }
-            + targetList.enumerated().map { (i, c) in (id: c.id, sortOrder: i) }
-        Task {
-            await persistCommitmentSortOrders(allUpdates)
+        // Persist in background (include section so cross-section moves are saved)
+        let allUpdates = sourceList.enumerated().map { (i, c) in (id: c.id, sortOrder: i, section: commitment.section) }
+            + targetList.enumerated().map { (i, c) in (id: c.id, sortOrder: i, section: targetSection) }
+        _Concurrency.Task { @MainActor in
+            await persistCommitmentSortOrdersAndSections(allUpdates)
         }
     }
 
@@ -683,6 +683,15 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
     private func persistCommitmentSortOrders(_ updates: [(id: UUID, sortOrder: Int)]) async {
         do {
             try await commitmentRepository.updateCommitmentSortOrders(updates)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    /// Persist commitment sort orders and sections to database
+    private func persistCommitmentSortOrdersAndSections(_ updates: [(id: UUID, sortOrder: Int, section: Section)]) async {
+        do {
+            try await commitmentRepository.updateCommitmentSortOrdersAndSections(updates)
         } catch {
             errorMessage = error.localizedDescription
         }

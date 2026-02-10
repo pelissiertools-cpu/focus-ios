@@ -38,6 +38,7 @@ struct FocusTabView: View {
     @State private var rowFrames: [UUID: CGRect] = [:]
     @State private var sectionFrames: [String: CGRect] = [:]
     @State private var targetedSection: Section?
+    @State private var showScheduleDrawer = false
 
     var body: some View {
         NavigationView {
@@ -153,7 +154,23 @@ struct FocusTabView: View {
                     }
                 } else {
                     // MARK: - Schedule Mode Content
-                    CalendarTimelineView(viewModel: viewModel)
+                    ZStack(alignment: .bottomTrailing) {
+                        CalendarTimelineView(viewModel: viewModel)
+
+                        Button {
+                            showScheduleDrawer = true
+                        } label: {
+                            Image(systemName: "plus")
+                                .font(.title2)
+                                .fontWeight(.semibold)
+                                .foregroundColor(.white)
+                                .frame(width: 56, height: 56)
+                                .glassEffect(.regular.tint(.blue).interactive(), in: .circle)
+                                .shadow(radius: 4, y: 2)
+                        }
+                        .padding(.trailing, 20)
+                        .padding(.bottom, 20)
+                    }
                 }
             }
             .task {
@@ -210,6 +227,9 @@ struct FocusTabView: View {
                     section: viewModel.addTaskSection,
                     viewModel: viewModel
                 )
+            }
+            .sheet(isPresented: $showScheduleDrawer) {
+                ScheduleDrawer(viewModel: viewModel)
             }
         }
     }

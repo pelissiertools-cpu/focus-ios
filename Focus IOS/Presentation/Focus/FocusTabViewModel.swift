@@ -33,7 +33,7 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
     @Published var showSubtaskCommitSheet = false
 
     // Section collapse and add task state
-    @Published var isExtraSectionCollapsed: Bool = false
+    @Published var isExtraSectionCollapsed: Bool = true
     @Published var isDoneSubsectionCollapsed: Bool = true  // Closed by default
     @Published var showAddTaskSheet: Bool = false
     @Published var addTaskSection: Section = .extra

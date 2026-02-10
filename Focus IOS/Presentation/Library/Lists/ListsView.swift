@@ -342,7 +342,7 @@ struct ListRow: View {
             .frame(maxWidth: .infinity, alignment: .leading)
 
         }
-        .padding(.vertical, 12)
+        .frame(minHeight: 70)
         .contentShape(Rectangle())
         .onTapGesture {
             if isEditMode {
@@ -421,17 +421,6 @@ struct ListItemRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            // Drag handle (uncompleted only)
-            if !item.isCompleted && onDragChanged != nil {
-                DragHandleView()
-                    .contentShape(Rectangle())
-                    .highPriorityGesture(
-                        DragGesture(minimumDistance: 5, coordinateSpace: .named("listsList"))
-                            .onChanged { value in onDragChanged?(value) }
-                            .onEnded { _ in onDragEnded?() }
-                    )
-            }
-
             Text(item.title)
                 .font(.subheadline)
                 .strikethrough(item.isCompleted)
@@ -451,11 +440,29 @@ struct ListItemRow: View {
             }
             .buttonStyle(.plain)
         }
-        .padding(.vertical, 6)
+        .padding(.vertical, 12)
         .contentShape(Rectangle())
-        .onLongPressGesture {
+        .onTapGesture {
             viewModel.selectedItemForDetails = item
         }
+        .gesture(
+            LongPressGesture(minimumDuration: 0.3)
+                .sequenced(before: DragGesture(minimumDistance: 0, coordinateSpace: .named("listsList")))
+                .onChanged { value in
+                    switch value {
+                    case .second(true, let drag):
+                        if let drag = drag {
+                            onDragChanged?(drag)
+                        }
+                    default:
+                        break
+                    }
+                }
+                .onEnded { _ in
+                    onDragEnded?()
+                },
+            isEnabled: !item.isCompleted && onDragChanged != nil
+        )
     }
 }
 
@@ -588,8 +595,14 @@ struct InlineAddItemRow: View {
                 Spacer()
             }
         }
-        .padding(.vertical, 6)
+        .padding(.vertical, 12)
         .padding(.leading, 32)
+        .onChange(of: isFocused) { _, focused in
+            if !focused {
+                isEditing = false
+                newItemTitle = ""
+            }
+        }
     }
 
     private func submitItem() {

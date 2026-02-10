@@ -198,10 +198,21 @@ struct TasksListView: View {
             }
             .padding(.horizontal)
             .padding(.bottom, 100)
+            .background(
+                Color.clear
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        UIApplication.shared.sendAction(
+                            #selector(UIResponder.resignFirstResponder),
+                            to: nil, from: nil, for: nil
+                        )
+                    }
+            )
             .onPreferenceChange(RowFramePreference.self) { frames in
                 rowFrames = frames
             }
         }
+        .scrollDismissesKeyboard(.interactively)
         .coordinateSpace(name: "taskList")
         .refreshable {
             await withCheckedContinuation { continuation in
@@ -464,7 +475,7 @@ struct ExpandableTaskRow: View {
                 .buttonStyle(.plain)
             }
         }
-        .padding(.vertical, 12)
+        .frame(minHeight: 70)
         .contentShape(Rectangle())
         .onTapGesture {
             if isEditMode && !task.isCompleted {
@@ -549,17 +560,6 @@ struct SubtaskRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            // Drag handle (only for uncompleted subtasks with drag enabled)
-            if !subtask.isCompleted && onDragChanged != nil {
-                DragHandleView()
-                    .contentShape(Rectangle())
-                    .highPriorityGesture(
-                        DragGesture(minimumDistance: 5, coordinateSpace: .named("taskList"))
-                            .onChanged { value in onDragChanged?(value) }
-                            .onEnded { _ in onDragEnded?() }
-                    )
-            }
-
             Text(subtask.title)
                 .font(.subheadline)
                 .strikethrough(subtask.isCompleted)
@@ -579,11 +579,29 @@ struct SubtaskRow: View {
             }
             .buttonStyle(.plain)
         }
-        .padding(.vertical, 6)
+        .padding(.vertical, 12)
         .contentShape(Rectangle())
-        .onLongPressGesture {
+        .onTapGesture {
             viewModel.selectedTaskForDetails = subtask
         }
+        .gesture(
+            LongPressGesture(minimumDuration: 0.3)
+                .sequenced(before: DragGesture(minimumDistance: 0, coordinateSpace: .named("taskList")))
+                .onChanged { value in
+                    switch value {
+                    case .second(true, let drag):
+                        if let drag = drag {
+                            onDragChanged?(drag)
+                        }
+                    default:
+                        break
+                    }
+                }
+                .onEnded { _ in
+                    onDragEnded?()
+                },
+            isEnabled: !subtask.isCompleted && onDragChanged != nil
+        )
     }
 }
 
@@ -629,8 +647,14 @@ struct InlineAddSubtaskRow: View {
                 Spacer()
             }
         }
-        .padding(.vertical, 6)
+        .padding(.vertical, 12)
         .padding(.leading, 32)
+        .onChange(of: isFocused) { _, focused in
+            if !focused {
+                isEditing = false
+                newSubtaskTitle = ""
+            }
+        }
     }
 
     private func submitSubtask() {

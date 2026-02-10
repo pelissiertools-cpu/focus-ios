@@ -35,8 +35,8 @@ struct LibraryTabView: View {
                     HStack(spacing: 12) {
                         Picker("Library Type", selection: $selectedTab) {
                             Text("Tasks").tag(0)
-                            Text("Projects").tag(1)
-                            Text("Lists").tag(2)
+                            Text("Lists").tag(1)
+                            Text("Projects").tag(2)
                         }
                         .pickerStyle(.segmented)
 
@@ -52,11 +52,11 @@ struct LibraryTabView: View {
                                 .opacity(selectedTab == 0 ? 1 : 0)
                                 .allowsHitTesting(selectedTab == 0)
 
-                            ProjectsListView(viewModel: projectsVM, searchText: searchText)
+                            ListsView(viewModel: listsVM, searchText: searchText)
                                 .opacity(selectedTab == 1 ? 1 : 0)
                                 .allowsHitTesting(selectedTab == 1)
 
-                            ListsView(viewModel: listsVM, searchText: searchText)
+                            ProjectsListView(viewModel: projectsVM, searchText: searchText)
                                 .opacity(selectedTab == 2 ? 1 : 0)
                                 .allowsHitTesting(selectedTab == 2)
                         }
@@ -209,9 +209,9 @@ struct LibraryTabView: View {
         case 0:
             LibraryFilterBar(viewModel: taskListVM, showCategoryDropdown: $showCategoryDropdown)
         case 1:
-            LibraryFilterBar(viewModel: projectsVM, showCategoryDropdown: $showCategoryDropdown)
-        case 2:
             LibraryFilterBar(viewModel: listsVM, showCategoryDropdown: $showCategoryDropdown)
+        case 2:
+            LibraryFilterBar(viewModel: projectsVM, showCategoryDropdown: $showCategoryDropdown)
         default:
             EmptyView()
         }
@@ -226,9 +226,9 @@ struct LibraryTabView: View {
             case 0:
                 SharedCategoryDropdownMenu(viewModel: taskListVM, showDropdown: $showCategoryDropdown)
             case 1:
-                SharedCategoryDropdownMenu(viewModel: projectsVM, showDropdown: $showCategoryDropdown)
-            case 2:
                 SharedCategoryDropdownMenu(viewModel: listsVM, showDropdown: $showCategoryDropdown)
+            case 2:
+                SharedCategoryDropdownMenu(viewModel: projectsVM, showDropdown: $showCategoryDropdown)
             default:
                 EmptyView()
             }
@@ -243,9 +243,9 @@ struct LibraryTabView: View {
         case 0:
             taskTabBottomArea
         case 1:
-            projectTabBottomArea
-        case 2:
             listTabBottomArea
+        case 2:
+            projectTabBottomArea
         default:
             EmptyView()
         }

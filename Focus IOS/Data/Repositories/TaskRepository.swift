@@ -190,21 +190,6 @@ class TaskRepository {
             .execute()
     }
 
-    /// Uncomplete all subtasks of a parent task
-    func uncompleteSubtasks(parentId: UUID) async throws {
-        let update = TaskUpdate(
-            isCompleted: false,
-            completedDate: nil,
-            modifiedDate: Date()
-        )
-
-        try await supabase
-            .from("tasks")
-            .update(update)
-            .eq("parent_task_id", value: parentId.uuidString)
-            .execute()
-    }
-
     /// Update sort orders for multiple tasks
     func updateSortOrders(_ updates: [(id: UUID, sortOrder: Int)]) async throws {
         let now = Date()

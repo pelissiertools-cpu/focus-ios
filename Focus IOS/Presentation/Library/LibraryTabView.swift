@@ -10,8 +10,8 @@ import SwiftUI
 struct LibraryTabView: View {
     @State private var selectedTab = 0
     @State private var searchText = ""
+    @State private var isSearchActive = false
     @FocusState private var isSearchFieldFocused: Bool
-    @State private var isSearchFocused: Bool = false
 
     // Shared filter state
     @State private var showCategoryDropdown = false
@@ -29,90 +29,79 @@ struct LibraryTabView: View {
 
     var body: some View {
         NavigationView {
-            VStack(spacing: 0) {
-                // Search bar
-                HStack {
-                    Image(systemName: "magnifyingglass")
-                        .foregroundColor(.secondary)
-                    TextField("Search", text: $searchText)
-                        .textFieldStyle(.plain)
-                        .autocorrectionDisabled()
-                        .focused($isSearchFieldFocused)
-                    if !searchText.isEmpty {
-                        Button {
-                            searchText = ""
-                        } label: {
-                            Image(systemName: "xmark.circle.fill")
-                                .foregroundColor(.secondary)
+            ZStack(alignment: .bottom) {
+                VStack(spacing: 0) {
+                    // Picker row with search pill
+                    HStack(spacing: 12) {
+                        Picker("Library Type", selection: $selectedTab) {
+                            Text("Tasks").tag(0)
+                            Text("Projects").tag(1)
+                            Text("Lists").tag(2)
                         }
-                        .buttonStyle(.plain)
+                        .pickerStyle(.segmented)
+
+                        searchPillButton
                     }
-                }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-                .background(Color(.systemGray6))
-                .cornerRadius(8)
-                .shadow(color: .black.opacity(0.1), radius: 3, x: 0, y: 1)
-                .padding(.horizontal)
-                .padding(.top, 8)
+                    .padding()
 
-                // Picker for Tasks/Projects/Lists
-                Picker("Library Type", selection: $selectedTab) {
-                    Text("Tasks").tag(0)
-                    Text("Projects").tag(1)
-                    Text("Lists").tag(2)
-                }
-                .pickerStyle(.segmented)
-                .padding()
+                    // Tab content with shared controls overlay
+                    ZStack(alignment: .topLeading) {
+                        // Tab content — all views stay alive to preserve scroll/state
+                        ZStack {
+                            TasksListView(viewModel: taskListVM, searchText: searchText, isSearchFocused: .constant(false))
+                                .opacity(selectedTab == 0 ? 1 : 0)
+                                .allowsHitTesting(selectedTab == 0)
 
-                // Tab content with shared controls overlay
-                ZStack(alignment: .topLeading) {
-                    // Tab content — all views stay alive to preserve scroll/state
-                    ZStack {
-                        TasksListView(viewModel: taskListVM, searchText: searchText, isSearchFocused: $isSearchFocused)
-                            .opacity(selectedTab == 0 ? 1 : 0)
-                            .allowsHitTesting(selectedTab == 0)
+                            ProjectsListView(viewModel: projectsVM, searchText: searchText)
+                                .opacity(selectedTab == 1 ? 1 : 0)
+                                .allowsHitTesting(selectedTab == 1)
 
-                        ProjectsListView(viewModel: projectsVM, searchText: searchText)
-                            .opacity(selectedTab == 1 ? 1 : 0)
-                            .allowsHitTesting(selectedTab == 1)
+                            ListsView(viewModel: listsVM, searchText: searchText)
+                                .opacity(selectedTab == 2 ? 1 : 0)
+                                .allowsHitTesting(selectedTab == 2)
+                        }
 
-                        ListsView(viewModel: listsVM, searchText: searchText)
-                            .opacity(selectedTab == 2 ? 1 : 0)
-                            .allowsHitTesting(selectedTab == 2)
-                    }
+                        // Shared filter bar (floats on top)
+                        filterBar
+                            .zIndex(10)
 
-                    // Shared filter bar (floats on top)
-                    filterBar
-                        .zIndex(10)
+                        // Shared category dropdown overlay
+                        categoryDropdown
+                            .zIndex(20)
 
-                    // Shared category dropdown overlay
-                    categoryDropdown
-                        .zIndex(20)
-
-                    // Shared floating bottom area (FAB or EditModeActionBar)
-                    if !isSearchFocused {
+                        // Shared floating bottom area (FAB or EditModeActionBar)
                         floatingBottomArea
+                            .opacity(isSearchActive ? 0 : 1)
+                            .allowsHitTesting(!isSearchActive)
+                            .animation(.none, value: isSearchActive)
                             .zIndex(5)
                     }
+                    .frame(maxHeight: .infinity)
                 }
-                .frame(maxHeight: .infinity)
+
+                // Tap-to-dismiss overlay when search is active
+                if isSearchActive {
+                    Color.clear
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                                dismissSearch()
+                            }
+                        }
+                        .zIndex(50)
+
+                    searchBarOverlay
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                        .zIndex(100)
+                }
             }
             .onChange(of: selectedTab) { _, _ in
-                searchText = ""
-                isSearchFieldFocused = false
-                isSearchFocused = false
+                dismissSearch()
                 showCategoryDropdown = false
                 // Exit edit mode on all VMs
                 taskListVM.exitEditMode()
                 projectsVM.exitEditMode()
                 listsVM.exitEditMode()
-            }
-            .onChange(of: isSearchFieldFocused) { _, newValue in
-                isSearchFocused = newValue
-            }
-            .onChange(of: isSearchFocused) { _, newValue in
-                isSearchFieldFocused = newValue
             }
             // Batch create project alert (Tasks tab)
             .alert("Create Project", isPresented: $showCreateProjectAlert) {
@@ -143,6 +132,73 @@ struct LibraryTabView: View {
                 Text("Enter a name for the new list")
             }
         }
+    }
+
+    // MARK: - Search Pill Button
+
+    private var searchPillButton: some View {
+        Button {
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                isSearchActive = true
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                isSearchFieldFocused = true
+            }
+        } label: {
+            Image(systemName: "magnifyingglass")
+                .font(.body.weight(.medium))
+                .foregroundColor(.secondary)
+                .frame(width: 36, height: 36)
+                .background(Color(.systemGray5))
+                .clipShape(Circle())
+        }
+    }
+
+    // MARK: - Search Bar Overlay (Above Keyboard)
+
+    private var searchBarOverlay: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "magnifyingglass")
+                .foregroundColor(.secondary)
+
+            TextField("Search", text: $searchText)
+                .textFieldStyle(.plain)
+                .autocorrectionDisabled()
+                .focused($isSearchFieldFocused)
+
+            if !searchText.isEmpty {
+                Button {
+                    searchText = ""
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundColor(.secondary)
+                }
+                .buttonStyle(.plain)
+            }
+
+            Button {
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                    dismissSearch()
+                }
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.body.weight(.medium))
+                    .foregroundColor(.secondary)
+                    .frame(width: 30, height: 30)
+                    .background(Color(.systemGray5))
+                    .clipShape(Circle())
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .glassEffect(.regular.interactive(), in: .capsule)
+        .padding(.horizontal)
+    }
+
+    private func dismissSearch() {
+        searchText = ""
+        isSearchActive = false
+        isSearchFieldFocused = false
     }
 
     // MARK: - Shared Filter Bar

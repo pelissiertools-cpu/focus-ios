@@ -131,18 +131,6 @@ class CommitmentRepository {
             .execute()
     }
 
-    /// Fetch all commitments for a specific timeframe (all dates)
-    func fetchAllCommitments(timeframe: Timeframe) async throws -> [Commitment] {
-        let commitments: [Commitment] = try await supabase
-            .from("commitments")
-            .select()
-            .eq("timeframe", value: timeframe.rawValue)
-            .execute()
-            .value
-
-        return commitments
-    }
-
     // MARK: - Committed Task IDs
 
     private struct TaskIdRow: Decodable {
@@ -221,17 +209,6 @@ class CommitmentRepository {
         }
     }
 
-    /// Count child commitments for a parent
-    func countChildCommitments(parentId: UUID) async throws -> Int {
-        let commitments: [Commitment] = try await supabase
-            .from("commitments")
-            .select()
-            .eq("parent_commitment_id", value: parentId.uuidString)
-            .execute()
-            .value
-
-        return commitments.count
-    }
 }
 
 /// Errors for commitment operations

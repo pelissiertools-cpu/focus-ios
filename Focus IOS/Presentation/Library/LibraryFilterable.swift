@@ -41,3 +41,18 @@ protocol LibraryFilterable: ObservableObject {
     var selectedItems: [FocusTask] { get }
     func batchMoveToCategory(_ categoryId: UUID?) async
 }
+
+// Default implementations for trivial methods identical across all Library ViewModels.
+extension LibraryFilterable {
+    func selectCategory(_ categoryId: UUID?) {
+        selectedCategoryId = categoryId
+    }
+
+    func toggleCommitmentFilter(_ filter: CommitmentFilter) {
+        if commitmentFilter == filter {
+            commitmentFilter = nil
+        } else {
+            commitmentFilter = filter
+        }
+    }
+}

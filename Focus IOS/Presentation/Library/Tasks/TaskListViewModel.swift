@@ -540,58 +540,18 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LibraryFilterab
 
     /// Reorder a task by placing the dragged task at the target task's position
     func reorderTask(droppedId: UUID, targetId: UUID) {
-        var uncompleted = tasks.filter { !$0.isCompleted }.sorted { $0.sortOrder < $1.sortOrder }
-
-        guard let fromIndex = uncompleted.firstIndex(where: { $0.id == droppedId }),
-              let toIndex = uncompleted.firstIndex(where: { $0.id == targetId }),
-              fromIndex != toIndex else { return }
-
-        let moved = uncompleted.remove(at: fromIndex)
-        uncompleted.insert(moved, at: toIndex)
-
-        // Reassign sort orders in the main tasks array
-        for (index, task) in uncompleted.enumerated() {
-            if let tasksIndex = tasks.firstIndex(where: { $0.id == task.id }) {
-                tasks[tasksIndex].sortOrder = index
-            }
-        }
-
-        // Persist in background
-        let updates = uncompleted.enumerated().map { (index, task) in
-            (id: task.id, sortOrder: index)
-        }
-        Task {
-            await persistSortOrders(updates)
-        }
+        guard let updates = ReorderUtility.reorderItems(
+            &tasks, droppedId: droppedId, targetId: targetId
+        ) else { return }
+        Task { await persistSortOrders(updates) }
     }
 
     /// Reorder a subtask by placing the dragged subtask at the target subtask's position
     func reorderSubtask(droppedId: UUID, targetId: UUID, parentId: UUID) {
-        guard var allSubtasks = subtasksMap[parentId] else { return }
-        var uncompleted = allSubtasks.filter { !$0.isCompleted }.sorted { $0.sortOrder < $1.sortOrder }
-
-        guard let fromIndex = uncompleted.firstIndex(where: { $0.id == droppedId }),
-              let toIndex = uncompleted.firstIndex(where: { $0.id == targetId }),
-              fromIndex != toIndex else { return }
-
-        let moved = uncompleted.remove(at: fromIndex)
-        uncompleted.insert(moved, at: toIndex)
-
-        // Reassign sort orders
-        for (index, subtask) in uncompleted.enumerated() {
-            if let mapIndex = allSubtasks.firstIndex(where: { $0.id == subtask.id }) {
-                allSubtasks[mapIndex].sortOrder = index
-            }
-        }
-        subtasksMap[parentId] = allSubtasks
-
-        // Persist in background
-        let updates = uncompleted.enumerated().map { (index, subtask) in
-            (id: subtask.id, sortOrder: index)
-        }
-        Task {
-            await persistSortOrders(updates)
-        }
+        guard let updates = ReorderUtility.reorderChildItems(
+            in: &subtasksMap, parentId: parentId, droppedId: droppedId, targetId: targetId
+        ) else { return }
+        Task { await persistSortOrders(updates) }
     }
 
     /// Persist sort order changes to Supabase
@@ -682,10 +642,6 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LibraryFilterab
         }
     }
 
-    func selectCategory(_ categoryId: UUID?) {
-        selectedCategoryId = categoryId
-    }
-
     // MARK: - Commitment Filter
 
     func fetchCommittedTaskIds() async {
@@ -693,14 +649,6 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LibraryFilterab
             committedTaskIds = try await commitmentRepository.fetchCommittedTaskIds()
         } catch {
             print("Error fetching committed task IDs: \(error)")
-        }
-    }
-
-    func toggleCommitmentFilter(_ filter: CommitmentFilter) {
-        if commitmentFilter == filter {
-            commitmentFilter = nil
-        } else {
-            commitmentFilter = filter
         }
     }
 

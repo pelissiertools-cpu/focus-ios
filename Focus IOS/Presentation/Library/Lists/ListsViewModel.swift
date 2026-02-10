@@ -133,10 +133,6 @@ class ListsViewModel: ObservableObject, LibraryFilterable, TaskEditingViewModel 
         lists.filter { selectedListIds.contains($0.id) }
     }
 
-    func selectCategory(_ categoryId: UUID?) {
-        selectedCategoryId = categoryId
-    }
-
     func createCategory(name: String) async {
         guard let userId = authService.currentUser?.id else { return }
         let trimmed = name.trimmingCharacters(in: .whitespaces)
@@ -154,14 +150,6 @@ class ListsViewModel: ObservableObject, LibraryFilterable, TaskEditingViewModel 
             selectedCategoryId = created.id
         } catch {
             errorMessage = error.localizedDescription
-        }
-    }
-
-    func toggleCommitmentFilter(_ filter: CommitmentFilter) {
-        if commitmentFilter == filter {
-            commitmentFilter = nil
-        } else {
-            commitmentFilter = filter
         }
     }
 
@@ -435,53 +423,18 @@ class ListsViewModel: ObservableObject, LibraryFilterable, TaskEditingViewModel 
     // MARK: - Reordering
 
     func reorderList(droppedId: UUID, targetId: UUID) {
-        var sorted = lists.sorted { $0.sortOrder < $1.sortOrder }
-
-        guard let fromIndex = sorted.firstIndex(where: { $0.id == droppedId }),
-              let toIndex = sorted.firstIndex(where: { $0.id == targetId }),
-              fromIndex != toIndex else { return }
-
-        let moved = sorted.remove(at: fromIndex)
-        sorted.insert(moved, at: toIndex)
-
-        for (index, list) in sorted.enumerated() {
-            if let listsIndex = lists.firstIndex(where: { $0.id == list.id }) {
-                lists[listsIndex].sortOrder = index
-            }
-        }
-
-        let updates = sorted.enumerated().map { (index, list) in
-            (id: list.id, sortOrder: index)
-        }
-        _Concurrency.Task {
-            await persistSortOrders(updates)
-        }
+        guard let updates = ReorderUtility.reorderItems(
+            &lists, droppedId: droppedId, targetId: targetId,
+            filterCompleted: false
+        ) else { return }
+        _Concurrency.Task { await persistSortOrders(updates) }
     }
 
     func reorderItem(droppedId: UUID, targetId: UUID, listId: UUID) {
-        guard var allItems = itemsMap[listId] else { return }
-        var uncompleted = allItems.filter { !$0.isCompleted }.sorted { $0.sortOrder < $1.sortOrder }
-
-        guard let fromIndex = uncompleted.firstIndex(where: { $0.id == droppedId }),
-              let toIndex = uncompleted.firstIndex(where: { $0.id == targetId }),
-              fromIndex != toIndex else { return }
-
-        let moved = uncompleted.remove(at: fromIndex)
-        uncompleted.insert(moved, at: toIndex)
-
-        for (index, item) in uncompleted.enumerated() {
-            if let mapIndex = allItems.firstIndex(where: { $0.id == item.id }) {
-                allItems[mapIndex].sortOrder = index
-            }
-        }
-        itemsMap[listId] = allItems
-
-        let updates = uncompleted.enumerated().map { (index, item) in
-            (id: item.id, sortOrder: index)
-        }
-        _Concurrency.Task {
-            await persistSortOrders(updates)
-        }
+        guard let updates = ReorderUtility.reorderChildItems(
+            in: &itemsMap, parentId: listId, droppedId: droppedId, targetId: targetId
+        ) else { return }
+        _Concurrency.Task { await persistSortOrders(updates) }
     }
 
     private func persistSortOrders(_ updates: [(id: UUID, sortOrder: Int)]) async {

@@ -617,14 +617,6 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LibraryFilterab
         }
     }
 
-    func toggleCommitmentFilter(_ filter: CommitmentFilter) {
-        if commitmentFilter == filter {
-            commitmentFilter = nil
-        } else {
-            commitmentFilter = filter
-        }
-    }
-
     // MARK: - Edit Mode
 
     func enterEditMode() {
@@ -699,10 +691,6 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LibraryFilterab
 
     // MARK: - Category
 
-    func selectCategory(_ categoryId: UUID?) {
-        selectedCategoryId = categoryId
-    }
-
     func createCategory(name: String) async {
         guard let userId = authService.currentUser?.id else {
             errorMessage = "No authenticated user"
@@ -729,27 +717,10 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LibraryFilterab
     // MARK: - Reordering
 
     func reorderProject(droppedId: UUID, targetId: UUID) {
-        var uncompleted = projects.filter { !$0.isCompleted }.sorted { $0.sortOrder < $1.sortOrder }
-
-        guard let fromIndex = uncompleted.firstIndex(where: { $0.id == droppedId }),
-              let toIndex = uncompleted.firstIndex(where: { $0.id == targetId }),
-              fromIndex != toIndex else { return }
-
-        let moved = uncompleted.remove(at: fromIndex)
-        uncompleted.insert(moved, at: toIndex)
-
-        for (index, project) in uncompleted.enumerated() {
-            if let projectsIndex = projects.firstIndex(where: { $0.id == project.id }) {
-                projects[projectsIndex].sortOrder = index
-            }
-        }
-
-        let updates = uncompleted.enumerated().map { (index, project) in
-            (id: project.id, sortOrder: index)
-        }
-        _Concurrency.Task {
-            await persistSortOrders(updates)
-        }
+        guard let updates = ReorderUtility.reorderItems(
+            &projects, droppedId: droppedId, targetId: targetId
+        ) else { return }
+        _Concurrency.Task { await persistSortOrders(updates) }
     }
 
     private func persistSortOrders(_ updates: [(id: UUID, sortOrder: Int)]) async {

@@ -7,6 +7,13 @@
 
 import SwiftUI
 
+// MARK: - Focus View Mode
+
+enum FocusViewMode: String, CaseIterable {
+    case focus
+    case schedule
+}
+
 // MARK: - Section Frame Preference Key
 
 struct SectionFramePreference: PreferenceKey {
@@ -20,6 +27,7 @@ struct FocusTabView: View {
     @EnvironmentObject var authService: AuthService
     @EnvironmentObject var viewModel: FocusTabViewModel
     @State private var showCalendarPicker = false
+    @State private var viewMode: FocusViewMode = .focus
 
     // Drag state
     @State private var draggingCommitmentId: UUID?
@@ -34,85 +42,118 @@ struct FocusTabView: View {
     var body: some View {
         NavigationView {
             VStack(spacing: 0) {
-                // Date Navigator (above timeframe toggle)
+                // Date Navigator with view mode toggle on the left
                 DateNavigator(
                     selectedDate: $viewModel.selectedDate,
-                    timeframe: viewModel.selectedTimeframe,
+                    timeframe: viewMode == .focus ? viewModel.selectedTimeframe : .daily,
+                    compact: viewMode == .schedule,
                     onTap: { showCalendarPicker = true }
-                )
+                ) {
+                    // View mode toggle icons
+                    HStack(spacing: 12) {
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                viewMode = .focus
+                            }
+                        } label: {
+                            Image(systemName: "target")
+                                .font(.title3)
+                                .foregroundColor(viewMode == .focus ? .blue : .secondary)
+                        }
+                        .buttonStyle(.plain)
+
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                viewMode = .schedule
+                            }
+                        } label: {
+                            Image(systemName: "calendar")
+                                .font(.title3)
+                                .foregroundColor(viewMode == .schedule ? .blue : .secondary)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
                 .onChange(of: viewModel.selectedDate) {
-                    Task {
+                    _Concurrency.Task { @MainActor in
                         await viewModel.fetchCommitments()
                     }
                 }
 
-                // Timeframe Picker
-                Picker("Timeframe", selection: $viewModel.selectedTimeframe) {
-                    Text("Daily").tag(Timeframe.daily)
-                    Text("Weekly").tag(Timeframe.weekly)
-                    Text("Monthly").tag(Timeframe.monthly)
-                    Text("Yearly").tag(Timeframe.yearly)
-                }
-                .pickerStyle(.segmented)
-                .padding()
-                .onChange(of: viewModel.selectedTimeframe) {
-                    Task {
-                        await viewModel.fetchCommitments()
+                if viewMode == .focus {
+                    // MARK: - Focus Mode Content
+
+                    // Timeframe Picker
+                    Picker("Timeframe", selection: $viewModel.selectedTimeframe) {
+                        Text("Daily").tag(Timeframe.daily)
+                        Text("Weekly").tag(Timeframe.weekly)
+                        Text("Monthly").tag(Timeframe.monthly)
+                        Text("Yearly").tag(Timeframe.yearly)
                     }
-                }
-
-                // Content
-                if viewModel.isLoading {
-                    ProgressView("Loading...")
-                        .frame(maxHeight: .infinity)
-                } else {
-                    ScrollView {
-                        VStack(spacing: 20) {
-                            // Focus Section
-                            SectionView(
-                                title: "Focus",
-                                section: .focus,
-                                viewModel: viewModel,
-                                draggingCommitmentId: draggingCommitmentId,
-                                dragTranslation: dragTranslation,
-                                dragReorderAdjustment: dragReorderAdjustment,
-                                targetedSection: targetedSection,
-                                onDragChanged: { id, value in handleCommitmentDrag(id, value) },
-                                onDragEnded: { handleCommitmentDragEnd() }
-                            )
-                            .zIndex(draggingCommitmentId != nil && viewModel.uncompletedCommitmentsForSection(.focus).contains(where: { $0.id == draggingCommitmentId }) ? 1 : 0)
-
-                            // Extra Section
-                            SectionView(
-                                title: "Extra",
-                                section: .extra,
-                                viewModel: viewModel,
-                                draggingCommitmentId: draggingCommitmentId,
-                                dragTranslation: dragTranslation,
-                                dragReorderAdjustment: dragReorderAdjustment,
-                                targetedSection: targetedSection,
-                                onDragChanged: { id, value in handleCommitmentDrag(id, value) },
-                                onDragEnded: { handleCommitmentDragEnd() }
-                            )
-                            .zIndex(draggingCommitmentId != nil && viewModel.uncompletedCommitmentsForSection(.extra).contains(where: { $0.id == draggingCommitmentId }) ? 1 : 0)
-                        }
-                        .padding()
-                        .onPreferenceChange(RowFramePreference.self) { frames in
-                            rowFrames = frames
-                        }
-                        .onPreferenceChange(SectionFramePreference.self) { frames in
-                            sectionFrames = frames
+                    .pickerStyle(.segmented)
+                    .padding()
+                    .onChange(of: viewModel.selectedTimeframe) {
+                        _Concurrency.Task { @MainActor in
+                            await viewModel.fetchCommitments()
                         }
                     }
-                    .coordinateSpace(name: "focusList")
-                    .refreshable {
-                        await withCheckedContinuation { continuation in
-                            _Concurrency.Task { @MainActor in
-                                await viewModel.fetchCommitments()
-                                continuation.resume()
+
+                    // Content
+                    if viewModel.isLoading {
+                        ProgressView("Loading...")
+                            .frame(maxHeight: .infinity)
+                    } else {
+                        ScrollView {
+                            VStack(spacing: 20) {
+                                // Focus Section
+                                SectionView(
+                                    title: "Focus",
+                                    section: .focus,
+                                    viewModel: viewModel,
+                                    draggingCommitmentId: draggingCommitmentId,
+                                    dragTranslation: dragTranslation,
+                                    dragReorderAdjustment: dragReorderAdjustment,
+                                    targetedSection: targetedSection,
+                                    onDragChanged: { id, value in handleCommitmentDrag(id, value) },
+                                    onDragEnded: { handleCommitmentDragEnd() }
+                                )
+                                .zIndex(draggingCommitmentId != nil && viewModel.uncompletedCommitmentsForSection(.focus).contains(where: { $0.id == draggingCommitmentId }) ? 1 : 0)
+
+                                // Extra Section
+                                SectionView(
+                                    title: "Extra",
+                                    section: .extra,
+                                    viewModel: viewModel,
+                                    draggingCommitmentId: draggingCommitmentId,
+                                    dragTranslation: dragTranslation,
+                                    dragReorderAdjustment: dragReorderAdjustment,
+                                    targetedSection: targetedSection,
+                                    onDragChanged: { id, value in handleCommitmentDrag(id, value) },
+                                    onDragEnded: { handleCommitmentDragEnd() }
+                                )
+                                .zIndex(draggingCommitmentId != nil && viewModel.uncompletedCommitmentsForSection(.extra).contains(where: { $0.id == draggingCommitmentId }) ? 1 : 0)
+                            }
+                            .padding()
+                            .onPreferenceChange(RowFramePreference.self) { frames in
+                                rowFrames = frames
+                            }
+                            .onPreferenceChange(SectionFramePreference.self) { frames in
+                                sectionFrames = frames
+                            }
+                        }
+                        .coordinateSpace(name: "focusList")
+                        .refreshable {
+                            await withCheckedContinuation { continuation in
+                                _Concurrency.Task { @MainActor in
+                                    await viewModel.fetchCommitments()
+                                    continuation.resume()
+                                }
                             }
                         }
                     }
+                } else {
+                    // MARK: - Schedule Mode Content
+                    CalendarTimelineView(viewModel: viewModel)
                 }
             }
             .task {

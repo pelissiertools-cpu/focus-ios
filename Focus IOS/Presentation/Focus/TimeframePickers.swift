@@ -8,10 +8,26 @@
 import SwiftUI
 
 /// Unified date navigator that adapts based on selected timeframe
-struct DateNavigator: View {
+struct DateNavigator<LeadingContent: View>: View {
     @Binding var selectedDate: Date
     let timeframe: Timeframe
+    let compact: Bool
     let onTap: () -> Void
+    let leadingContent: LeadingContent
+
+    init(
+        selectedDate: Binding<Date>,
+        timeframe: Timeframe,
+        compact: Bool = false,
+        onTap: @escaping () -> Void,
+        @ViewBuilder leadingContent: () -> LeadingContent
+    ) {
+        self._selectedDate = selectedDate
+        self.timeframe = timeframe
+        self.compact = compact
+        self.onTap = onTap
+        self.leadingContent = leadingContent()
+    }
 
     private var calendar: Calendar {
         var cal = Calendar.current
@@ -21,50 +37,66 @@ struct DateNavigator: View {
 
     var body: some View {
         HStack {
-            // Left chevron - navigate previous period
-            Button {
-                navigatePrevious()
-            } label: {
-                Image(systemName: "chevron.left")
-                    .font(.title3)
-                    .foregroundColor(.secondary)
-            }
-            .buttonStyle(.plain)
+            // Optional leading content (e.g. view mode toggle)
+            leadingContent
 
-            Spacer()
+            Spacer(minLength: 0)
+
+            if !compact {
+                // Left chevron - navigate previous period
+                Button {
+                    navigatePrevious()
+                } label: {
+                    Image(systemName: "chevron.left")
+                        .font(.title3)
+                        .foregroundColor(.secondary)
+                }
+                .buttonStyle(.plain)
+                .padding(.trailing, 12)
+            }
 
             // Center: tappable title/subtitle
             Button(action: onTap) {
-                VStack(spacing: 4) {
-                    Text(titleText)
-                        .font(.title)
+                if compact {
+                    Text(compactTitleText)
+                        .font(.title2)
                         .fontWeight(.bold)
                         .foregroundColor(.primary)
+                } else {
+                    VStack(spacing: 4) {
+                        Text(titleText)
+                            .font(.title)
+                            .fontWeight(.bold)
+                            .foregroundColor(.primary)
 
-                    if let subtitle = subtitleText {
-                        Text(subtitle)
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
-                            .background(Color(.secondarySystemBackground))
-                            .cornerRadius(16)
+                        if let subtitle = subtitleText {
+                            Text(subtitle)
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .background(Color(.secondarySystemBackground))
+                                .cornerRadius(16)
+                        }
                     }
                 }
             }
             .buttonStyle(.plain)
 
-            Spacer()
-
-            // Right chevron - navigate next period
-            Button {
-                navigateNext()
-            } label: {
-                Image(systemName: "chevron.right")
-                    .font(.title3)
-                    .foregroundColor(.secondary)
+            if !compact {
+                // Right chevron - navigate next period
+                Button {
+                    navigateNext()
+                } label: {
+                    Image(systemName: "chevron.right")
+                        .font(.title3)
+                        .foregroundColor(.secondary)
+                }
+                .buttonStyle(.plain)
+                .padding(.leading, 12)
             }
-            .buttonStyle(.plain)
+
+            Spacer(minLength: 0)
         }
         .padding(.horizontal)
         .padding(.vertical, 8)
@@ -92,6 +124,15 @@ struct DateNavigator: View {
         case .yearly: component = .year
         }
         selectedDate = calendar.date(byAdding: component, value: 1, to: selectedDate) ?? selectedDate
+    }
+
+    // MARK: - Compact Title (Schedule mode)
+
+    /// "Tue Feb 10" — abbreviated single-line format
+    private var compactTitleText: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "EEE MMM d"
+        return formatter.string(from: selectedDate)
     }
 
     // MARK: - Title Text
@@ -175,6 +216,20 @@ struct DateNavigator: View {
         case 2, 22: return "nd"
         case 3, 23: return "rd"
         default: return "th"
+        }
+    }
+}
+
+// Convenience init when no leading content is needed
+extension DateNavigator where LeadingContent == EmptyView {
+    init(
+        selectedDate: Binding<Date>,
+        timeframe: Timeframe,
+        compact: Bool = false,
+        onTap: @escaping () -> Void
+    ) {
+        self.init(selectedDate: selectedDate, timeframe: timeframe, compact: compact, onTap: onTap) {
+            EmptyView()
         }
     }
 }

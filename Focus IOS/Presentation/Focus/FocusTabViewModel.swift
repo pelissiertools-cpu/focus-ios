@@ -1211,18 +1211,18 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
     }
 
     /// Assign a scheduled time to an existing commitment
-    func scheduleCommitmentTime(_ commitmentId: UUID, at time: Date) async {
+    func scheduleCommitmentTime(_ commitmentId: UUID, at time: Date, durationMinutes: Int = 30) async {
         do {
             try await commitmentRepository.updateCommitmentTime(
                 id: commitmentId,
                 scheduledTime: time,
-                durationMinutes: 30
+                durationMinutes: durationMinutes
             )
 
             // Update local state
             if let index = commitments.firstIndex(where: { $0.id == commitmentId }) {
                 commitments[index].scheduledTime = time
-                commitments[index].durationMinutes = 30
+                commitments[index].durationMinutes = durationMinutes
             }
 
             await fetchTimedCommitments()
@@ -1296,8 +1296,9 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
 
         if contentY >= 0, let info = scheduleDragInfo, let commitmentId = info.commitmentId {
             let dropTime = timeFromYPosition(max(0, contentY), on: selectedDate)
+            let duration = timedCommitments.first(where: { $0.id == commitmentId })?.durationMinutes ?? 30
             _Concurrency.Task { @MainActor in
-                await scheduleCommitmentTime(commitmentId, at: dropTime)
+                await scheduleCommitmentTime(commitmentId, at: dropTime, durationMinutes: duration)
             }
         }
 
@@ -1475,7 +1476,8 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
 
             _Concurrency.Task { @MainActor in
                 if let commitmentId = info.commitmentId {
-                    await scheduleCommitmentTime(commitmentId, at: dropTime)
+                    let duration = timedCommitments.first(where: { $0.id == commitmentId })?.durationMinutes ?? 30
+                    await scheduleCommitmentTime(commitmentId, at: dropTime, durationMinutes: duration)
                 } else {
                     await createTimedCommitment(taskId: info.taskId, at: dropTime)
                 }

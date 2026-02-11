@@ -174,6 +174,20 @@ ALTER TABLE categories ADD COLUMN IF NOT EXISTS type TEXT DEFAULT 'task';
 CREATE INDEX IF NOT EXISTS idx_categories_type ON categories(type);
 
 -- ==============================================
+-- SCHEDULED TIME SUPPORT
+-- Time-of-day scheduling for calendar timeline
+-- ==============================================
+
+-- Add scheduled time and duration for timeline display
+ALTER TABLE commitments ADD COLUMN IF NOT EXISTS scheduled_time TIMESTAMPTZ;
+ALTER TABLE commitments ADD COLUMN IF NOT EXISTS duration_minutes INTEGER DEFAULT 30;
+
+-- Index for efficient timeline queries (fetching timed commitments for a day)
+CREATE INDEX IF NOT EXISTS idx_commitments_scheduled_time
+ON commitments(user_id, scheduled_time)
+WHERE scheduled_time IS NOT NULL;
+
+-- ==============================================
 -- VERIFICATION QUERIES
 -- Run these after migration to verify setup
 -- ==============================================

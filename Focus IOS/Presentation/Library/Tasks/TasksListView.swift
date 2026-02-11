@@ -679,6 +679,14 @@ struct AddTaskSheet: View {
     @State private var selectedCategoryId: UUID? = nil
     @State private var showNewCategory = false
     @State private var newCategoryName = ""
+    @State private var hasScheduledTime = false
+    @State private var scheduledTime: Date = {
+        let now = Date()
+        let calendar = Calendar.current
+        let minute = calendar.component(.minute, from: now)
+        let roundUp = ((minute / 15) + 1) * 15
+        return calendar.date(byAdding: .minute, value: roundUp - minute, to: now) ?? now
+    }()
     @FocusState private var titleFocused: Bool
 
     var body: some View {
@@ -782,6 +790,29 @@ struct AddTaskSheet: View {
                         }
                     }
 
+                    // Schedule time toggle
+                    VStack(alignment: .leading, spacing: 8) {
+                        Toggle(isOn: $hasScheduledTime) {
+                            HStack(spacing: 8) {
+                                Image(systemName: "clock")
+                                    .foregroundColor(.blue)
+                                Text("Schedule time")
+                                    .font(.subheadline.weight(.medium))
+                            }
+                        }
+                        .tint(.blue)
+
+                        if hasScheduledTime {
+                            DatePicker(
+                                "Time",
+                                selection: $scheduledTime,
+                                displayedComponents: .hourAndMinute
+                            )
+                            .datePickerStyle(.compact)
+                            .labelsHidden()
+                        }
+                    }
+
                     // Add Task button
                     Button {
                         addTask()
@@ -827,6 +858,8 @@ struct AddTaskSheet: View {
             .map { $0.title.trimmingCharacters(in: .whitespaces) }
             .filter { !$0.isEmpty }
         let categoryToAssign = selectedCategoryId
+        let shouldSchedule = hasScheduledTime
+        let timeToSchedule = scheduledTime
 
         _Concurrency.Task { @MainActor in
             guard let parentId = await viewModel.createTask(title: title, categoryId: categoryToAssign) else {
@@ -837,9 +870,14 @@ struct AddTaskSheet: View {
                 await viewModel.createSubtask(title: subtaskTitle, parentId: parentId)
             }
 
+            if shouldSchedule {
+                await viewModel.createTimedCommitment(taskId: parentId, at: timeToSchedule)
+            }
+
             // Reset fields for next task (keep category selection)
             taskTitle = ""
             draftSubtasks = []
+            hasScheduledTime = false
             titleFocused = true
         }
     }

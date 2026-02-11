@@ -66,12 +66,23 @@ struct ScheduleDrawer: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
+            // Drag handle indicator
+            HStack {
+                Spacer()
+                Capsule()
+                    .fill(Color(.systemGray3))
+                    .frame(width: 36, height: 5)
+                Spacer()
+            }
+            .padding(.top, 8)
+            .padding(.bottom, 4)
+
             // Title
             Text(titleText)
                 .font(.title2)
                 .fontWeight(.bold)
                 .padding(.horizontal)
-                .padding(.top, 16)
+                .padding(.top, 8)
                 .padding(.bottom, 12)
 
             // Add a task row
@@ -119,12 +130,16 @@ struct ScheduleDrawer: View {
             filterPills
                 .padding(.bottom, 8)
         }
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(Color(.systemBackground))
+                .shadow(color: .black.opacity(0.15), radius: 12, y: -4)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         .task {
             await fetchCategories()
             await fetchLibraryTasks()
         }
-        .presentationDetents([.medium])
-        .presentationDragIndicator(.visible)
     }
 
     // MARK: - Today Tasks List
@@ -175,10 +190,27 @@ struct ScheduleDrawer: View {
                             viewModel.selectedTaskForDetails = task
                         }
 
-                        Spacer()
+                        DragHandleView()
+                            .frame(width: 44, height: 44)
+                            .contentShape(Rectangle())
+                            .highPriorityGesture(
+                                DragGesture(minimumDistance: 5, coordinateSpace: .global)
+                                    .onChanged { value in
+                                        viewModel.handleScheduleDragChanged(
+                                            location: value.location,
+                                            taskId: task.id,
+                                            commitmentId: commitment.id,
+                                            taskTitle: task.title
+                                        )
+                                    }
+                                    .onEnded { value in
+                                        viewModel.handleScheduleDragEnded(location: value.location)
+                                    }
+                            )
                     }
                     .padding(.horizontal, 16)
                     .padding(.vertical, 14)
+                    .opacity(viewModel.scheduleDragInfo?.taskId == task.id ? 0.4 : 1.0)
 
                     // Subtasks (shown when expanded)
                     if isExpanded {
@@ -260,10 +292,27 @@ struct ScheduleDrawer: View {
                             }
                         }
 
-                        Spacer()
+                        DragHandleView()
+                            .frame(width: 44, height: 44)
+                            .contentShape(Rectangle())
+                            .highPriorityGesture(
+                                DragGesture(minimumDistance: 5, coordinateSpace: .global)
+                                    .onChanged { value in
+                                        viewModel.handleScheduleDragChanged(
+                                            location: value.location,
+                                            taskId: task.id,
+                                            commitmentId: nil,
+                                            taskTitle: task.title
+                                        )
+                                    }
+                                    .onEnded { value in
+                                        viewModel.handleScheduleDragEnded(location: value.location)
+                                    }
+                            )
                     }
                     .padding(.horizontal, 16)
                     .padding(.vertical, 14)
+                    .opacity(viewModel.scheduleDragInfo?.taskId == task.id ? 0.4 : 1.0)
 
                     if isExpanded {
                         VStack(spacing: 0) {

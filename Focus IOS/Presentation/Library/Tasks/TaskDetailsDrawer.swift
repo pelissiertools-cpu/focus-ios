@@ -221,6 +221,18 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                         }
                     }
 
+                    // Unschedule (remove from calendar timeline, keep commitment)
+                    if let commitment = commitment, commitment.scheduledTime != nil {
+                        Button {
+                            _Concurrency.Task { @MainActor in
+                                await focusViewModel.unscheduleCommitment(commitment.id)
+                                dismiss()
+                            }
+                        } label: {
+                            Label("Unschedule", systemImage: "calendar.badge.minus")
+                        }
+                    }
+
                     // Push to Next (any non-completed parent task in Focus view)
                     if let commitment = commitment, !isSubtask, !task.isCompleted {
                         Button {

@@ -30,6 +30,23 @@ class CommitmentRepository {
         }
     }
 
+    private struct CommitmentTimeUpdate: Encodable {
+        let scheduledTime: Date?
+        let durationMinutes: Int?
+
+        enum CodingKeys: String, CodingKey {
+            case scheduledTime = "scheduled_time"
+            case durationMinutes = "duration_minutes"
+        }
+
+        // Explicitly encode nil as null so Supabase sets columns to NULL
+        func encode(to encoder: Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encode(scheduledTime, forKey: .scheduledTime)
+            try container.encode(durationMinutes, forKey: .durationMinutes)
+        }
+    }
+
     init(supabase: SupabaseClient = SupabaseClientManager.shared.client) {
         self.supabase = supabase
     }
@@ -229,6 +246,38 @@ class CommitmentRepository {
                 .eq("id", value: update.id.uuidString)
                 .execute()
         }
+    }
+
+    // MARK: - Scheduled Time Methods
+
+    /// Update only the scheduled time and duration for a commitment
+    func updateCommitmentTime(id: UUID, scheduledTime: Date?, durationMinutes: Int?) async throws {
+        let update = CommitmentTimeUpdate(scheduledTime: scheduledTime, durationMinutes: durationMinutes)
+        try await supabase
+            .from("commitments")
+            .update(update)
+            .eq("id", value: id.uuidString)
+            .execute()
+    }
+
+    /// Fetch commitments that have a scheduled time for a given day
+    func fetchTimedCommitments(for date: Date) async throws -> [Commitment] {
+        let (startDate, endDate) = Self.dateRange(for: .daily, date: date)
+
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+
+        let commitments: [Commitment] = try await supabase
+            .from("commitments")
+            .select()
+            .not("scheduled_time", operator: .is, value: "null")
+            .gte("commitment_date", value: formatter.string(from: startDate))
+            .lt("commitment_date", value: formatter.string(from: endDate))
+            .order("scheduled_time", ascending: true)
+            .execute()
+            .value
+
+        return commitments
     }
 
 }

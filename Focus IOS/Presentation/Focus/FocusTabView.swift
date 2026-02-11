@@ -154,22 +154,60 @@ struct FocusTabView: View {
                     }
                 } else {
                     // MARK: - Schedule Mode Content
-                    ZStack(alignment: .bottomTrailing) {
-                        CalendarTimelineView(viewModel: viewModel)
+                    GeometryReader { geometry in
+                        ZStack(alignment: .bottom) {
+                            // Layer 0: Timeline (full area, tap-to-dismiss)
+                            CalendarTimelineView(viewModel: viewModel)
+                                .onTapGesture {
+                                    if showScheduleDrawer {
+                                        withAnimation(.easeInOut(duration: 0.25)) {
+                                            showScheduleDrawer = false
+                                        }
+                                    }
+                                }
 
-                        Button {
-                            showScheduleDrawer = true
-                        } label: {
-                            Image(systemName: "plus")
-                                .font(.title2)
-                                .fontWeight(.semibold)
-                                .foregroundColor(.white)
-                                .frame(width: 56, height: 56)
-                                .glassEffect(.regular.tint(.blue).interactive(), in: .circle)
-                                .shadow(radius: 4, y: 2)
+                            // Layer 2: Inline drawer (slides up from bottom)
+                            if showScheduleDrawer {
+                                ScheduleDrawer(viewModel: viewModel)
+                                    .frame(height: geometry.size.height * 0.5)
+                                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                            }
+
+                            // Layer 3: FAB (only when drawer is closed)
+                            if !showScheduleDrawer {
+                                VStack {
+                                    Spacer()
+                                    HStack {
+                                        Spacer()
+                                        Button {
+                                            withAnimation(.easeInOut(duration: 0.25)) {
+                                                showScheduleDrawer = true
+                                            }
+                                        } label: {
+                                            Image(systemName: "plus")
+                                                .font(.title2)
+                                                .fontWeight(.semibold)
+                                                .foregroundColor(.white)
+                                                .frame(width: 56, height: 56)
+                                                .glassEffect(.regular.tint(.blue).interactive(), in: .circle)
+                                                .shadow(radius: 4, y: 2)
+                                        }
+                                        .padding(.trailing, 20)
+                                        .padding(.bottom, 20)
+                                    }
+                                }
+                                .transition(.scale.combined(with: .opacity))
+                            }
+
+                            // Layer 4: Floating drag pill (follows finger during schedule drag)
+                            if let dragInfo = viewModel.scheduleDragInfo {
+                                let containerFrame = geometry.frame(in: .global)
+                                ScheduleDragPill(title: dragInfo.taskTitle)
+                                    .position(x: geometry.size.width / 2,
+                                              y: viewModel.scheduleDragLocation.y - containerFrame.minY - 30)
+                                    .allowsHitTesting(false)
+                            }
                         }
-                        .padding(.trailing, 20)
-                        .padding(.bottom, 20)
                     }
                 }
             }
@@ -227,9 +265,6 @@ struct FocusTabView: View {
                     section: viewModel.addTaskSection,
                     viewModel: viewModel
                 )
-            }
-            .sheet(isPresented: $showScheduleDrawer) {
-                ScheduleDrawer(viewModel: viewModel)
             }
         }
     }
@@ -567,6 +602,14 @@ struct AddTaskToFocusSheet: View {
 
     @State private var taskTitle = ""
     @State private var draftSubtasks: [DraftSubtaskEntry] = []
+    @State private var hasScheduledTime = false
+    @State private var scheduledTime: Date = {
+        let now = Date()
+        let calendar = Calendar.current
+        let minute = calendar.component(.minute, from: now)
+        let roundUp = ((minute / 15) + 1) * 15
+        return calendar.date(byAdding: .minute, value: roundUp - minute, to: now) ?? now
+    }()
     @FocusState private var titleFocused: Bool
 
     var body: some View {
@@ -626,6 +669,29 @@ struct AddTaskToFocusSheet: View {
                         .padding(.leading, 4)
                     }
 
+                    // Schedule time toggle
+                    VStack(alignment: .leading, spacing: 8) {
+                        Toggle(isOn: $hasScheduledTime) {
+                            HStack(spacing: 8) {
+                                Image(systemName: "clock")
+                                    .foregroundColor(.blue)
+                                Text("Schedule time")
+                                    .font(.subheadline.weight(.medium))
+                            }
+                        }
+                        .tint(.blue)
+
+                        if hasScheduledTime {
+                            DatePicker(
+                                "Time",
+                                selection: $scheduledTime,
+                                displayedComponents: .hourAndMinute
+                            )
+                            .datePickerStyle(.compact)
+                            .labelsHidden()
+                        }
+                    }
+
                     // Add Task button
                     Button {
                         saveTask()
@@ -669,6 +735,9 @@ struct AddTaskToFocusSheet: View {
             .map { $0.title.trimmingCharacters(in: .whitespaces) }
             .filter { !$0.isEmpty }
 
+        let shouldSchedule = hasScheduledTime
+        let timeToSchedule = scheduledTime
+
         _Concurrency.Task { @MainActor in
             guard let result = await viewModel.createTaskWithCommitment(title: title, section: section) else {
                 return
@@ -676,6 +745,10 @@ struct AddTaskToFocusSheet: View {
 
             for subtaskTitle in subtasksToCreate {
                 await viewModel.createSubtask(title: subtaskTitle, parentId: result.taskId, parentCommitment: result.commitment)
+            }
+
+            if shouldSchedule {
+                await viewModel.scheduleCommitmentTime(result.commitment.id, at: timeToSchedule)
             }
 
             dismiss()
@@ -939,6 +1012,31 @@ struct FocusInlineAddSubtaskRow: View {
             newSubtaskTitle = ""
             // Keep editing mode open for adding more subtasks
         }
+    }
+}
+
+// MARK: - Schedule Drag Pill
+
+struct ScheduleDragPill: View {
+    let title: String
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "clock")
+                .font(.caption)
+                .foregroundColor(.blue)
+            Text(title)
+                .font(.subheadline)
+                .fontWeight(.medium)
+                .lineLimit(1)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
+        .background(
+            Capsule()
+                .fill(Color(.systemBackground))
+                .shadow(color: .black.opacity(0.15), radius: 8, y: 2)
+        )
     }
 }
 

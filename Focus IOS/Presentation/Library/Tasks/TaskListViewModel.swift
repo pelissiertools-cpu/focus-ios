@@ -334,6 +334,27 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LibraryFilterab
         }
     }
 
+    /// Create a daily commitment with a scheduled time for a task (used when time toggle is on)
+    func createTimedCommitment(taskId: UUID, at scheduledTime: Date) async {
+        guard let userId = authService.currentUser?.id else { return }
+
+        do {
+            let commitment = Commitment(
+                userId: userId,
+                taskId: taskId,
+                timeframe: .daily,
+                section: .extra,
+                commitmentDate: Date(),
+                sortOrder: 0,
+                scheduledTime: scheduledTime,
+                durationMinutes: 30
+            )
+            _ = try await commitmentRepository.createCommitment(commitment)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
     /// Toggle parent task completion with cascade to subtasks
     func toggleCompletion(_ task: FocusTask) async {
         do {

@@ -22,6 +22,12 @@ struct Commitment: Codable, Identifiable {
     /// Parent commitment ID for trickle-down hierarchy (Year → Month → Week → Day)
     var parentCommitmentId: UUID?
 
+    /// Scheduled time for calendar timeline display (nil = unscheduled)
+    var scheduledTime: Date?
+
+    /// Duration in minutes for calendar timeline display (defaults to 30)
+    var durationMinutes: Int?
+
     // Coding keys to match Supabase snake_case
     enum CodingKeys: String, CodingKey {
         case id
@@ -33,6 +39,8 @@ struct Commitment: Codable, Identifiable {
         case sortOrder = "sort_order"
         case createdDate = "created_date"
         case parentCommitmentId = "parent_commitment_id"
+        case scheduledTime = "scheduled_time"
+        case durationMinutes = "duration_minutes"
     }
 
     /// Initializer for creating new commitments
@@ -45,7 +53,9 @@ struct Commitment: Codable, Identifiable {
         commitmentDate: Date,
         sortOrder: Int = 0,
         createdDate: Date = Date(),
-        parentCommitmentId: UUID? = nil
+        parentCommitmentId: UUID? = nil,
+        scheduledTime: Date? = nil,
+        durationMinutes: Int? = nil
     ) {
         self.id = id
         self.userId = userId
@@ -56,6 +66,8 @@ struct Commitment: Codable, Identifiable {
         self.sortOrder = sortOrder
         self.createdDate = createdDate
         self.parentCommitmentId = parentCommitmentId
+        self.scheduledTime = scheduledTime
+        self.durationMinutes = durationMinutes
     }
 
     /// Whether this commitment is a child (broken down from a parent)

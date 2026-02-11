@@ -5,7 +5,7 @@
 //  Created by Claude Code on 2026-02-06.
 //
 
-import Foundation
+import SwiftUI
 import Combine
 import Auth
 
@@ -37,6 +37,21 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
     @Published var isDoneSubsectionCollapsed: Bool = true  // Closed by default
     @Published var showAddTaskSheet: Bool = false
     @Published var addTaskSection: Section = .extra
+
+    // Timeline scheduled commitments
+    @Published var timedCommitments: [Commitment] = []
+
+    // Timeline schedule drag state (drawer-to-timeline drag)
+    @Published var scheduleDragInfo: ScheduleDragInfo? = nil
+    @Published var scheduleDragLocation: CGPoint = .zero
+    @Published var isTimelineDropTargeted: Bool = false
+    @Published var timelineDropPreviewY: CGFloat = 0
+    var timelineContentOriginY: CGFloat = 0  // Content ZStack origin in global coordinate space
+
+    // Timeline block interaction state (move/resize existing blocks)
+    @Published var timelineBlockDragId: UUID?  // commitment ID being moved
+    private var resizeOriginalDuration: Int?  // original duration before resize started
+    private var resizeOriginalTime: Date?  // original scheduledTime before top-resize started
 
     private let commitmentRepository: CommitmentRepository
     private let taskRepository: TaskRepository
@@ -189,6 +204,9 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
 
             // Fetch child commitments for trickle-down display
             await fetchChildCommitments()
+
+            // Fetch timed commitments for calendar timeline
+            await fetchTimedCommitments()
 
             hasLoadedInitialData = true
             isLoading = false
@@ -1169,4 +1187,287 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
 
         return slots.filter { !existingDates.contains(calendar.startOfDay(for: $0)) }
     }
+
+    // MARK: - Calendar Timeline Methods
+
+    /// Fetch commitments with a scheduled time for the selected date
+    func fetchTimedCommitments() async {
+        do {
+            timedCommitments = try await commitmentRepository.fetchTimedCommitments(for: selectedDate)
+
+            // Ensure tasks are loaded in tasksMap
+            let missingIds = timedCommitments.map { $0.taskId }.filter { tasksMap[$0] == nil }
+            if !missingIds.isEmpty {
+                let tasks = try await taskRepository.fetchTasksByIds(missingIds)
+                for task in tasks {
+                    tasksMap[task.id] = task
+                }
+            }
+        } catch {
+            print("Error fetching timed commitments: \(error)")
+        }
+    }
+
+    /// Assign a scheduled time to an existing commitment
+    func scheduleCommitmentTime(_ commitmentId: UUID, at time: Date) async {
+        do {
+            try await commitmentRepository.updateCommitmentTime(
+                id: commitmentId,
+                scheduledTime: time,
+                durationMinutes: 30
+            )
+
+            // Update local state
+            if let index = commitments.firstIndex(where: { $0.id == commitmentId }) {
+                commitments[index].scheduledTime = time
+                commitments[index].durationMinutes = 30
+            }
+
+            await fetchTimedCommitments()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    /// Create a new timed commitment for a library task dragged onto the timeline
+    func createTimedCommitment(taskId: UUID, at time: Date) async {
+        guard let userId = authService.currentUser?.id else {
+            errorMessage = "No authenticated user"
+            return
+        }
+
+        do {
+            let commitment = Commitment(
+                userId: userId,
+                taskId: taskId,
+                timeframe: .daily,
+                section: .extra,
+                commitmentDate: selectedDate,
+                sortOrder: 0,
+                scheduledTime: time,
+                durationMinutes: 30
+            )
+            let created = try await commitmentRepository.createCommitment(commitment)
+            commitments.append(created)
+            await fetchTimedCommitments()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    /// Convert a Y-position on the timeline to a Date with time, snapped to 15-min intervals
+    func timeFromYPosition(_ y: CGFloat, on date: Date) -> Date {
+        let hourHeight: CGFloat = 60  // matches TimelineGridView.hourHeight
+        let totalMinutes = (y / hourHeight) * 60
+        let snappedMinutes = (Int(totalMinutes) / 15) * 15
+        let hour = min(max(snappedMinutes / 60, 0), 23)
+        let minute = min(snappedMinutes % 60, 59)
+
+        let calendar = Calendar.current
+        var components = calendar.dateComponents([.year, .month, .day], from: date)
+        components.hour = hour
+        components.minute = minute
+        return calendar.date(from: components) ?? date
+    }
+
+    // MARK: - Timeline Block Move (long-press drag to reposition)
+
+    func handleTimelineBlockMoveChanged(globalLocation: CGPoint, commitment: Commitment, task: FocusTask) {
+        if timelineBlockDragId == nil {
+            timelineBlockDragId = commitment.id
+        }
+
+        // Reuse existing drag infrastructure for floating pill + drop preview
+        if scheduleDragInfo == nil {
+            scheduleDragInfo = ScheduleDragInfo(taskId: task.id, commitmentId: commitment.id, taskTitle: task.title)
+        }
+        scheduleDragLocation = globalLocation
+
+        let contentY = globalLocation.y - timelineContentOriginY
+        timelineDropPreviewY = max(0, contentY)
+        isTimelineDropTargeted = contentY >= 0
+    }
+
+    func handleTimelineBlockMoveEnded(globalLocation: CGPoint) {
+        let contentY = globalLocation.y - timelineContentOriginY
+
+        if contentY >= 0, let info = scheduleDragInfo, let commitmentId = info.commitmentId {
+            let dropTime = timeFromYPosition(max(0, contentY), on: selectedDate)
+            _Concurrency.Task { @MainActor in
+                await scheduleCommitmentTime(commitmentId, at: dropTime)
+            }
+        }
+
+        withAnimation(.easeInOut(duration: 0.15)) {
+            timelineBlockDragId = nil
+            scheduleDragInfo = nil
+            isTimelineDropTargeted = false
+        }
+        scheduleDragLocation = .zero
+    }
+
+    // MARK: - Timeline Block Resize (drag top/bottom handles)
+
+    private let hourHeight: CGFloat = 60  // matches TimelineGridView.hourHeight
+
+    /// Convert a vertical drag delta (points) to minutes, snapped to 15-min intervals
+    private func deltaToSnappedMinutes(_ delta: CGFloat) -> Int {
+        let rawMinutes = (delta / hourHeight) * 60
+        return (Int(rawMinutes) / 15) * 15
+    }
+
+    func handleTimelineBlockBottomResizeChanged(commitmentId: UUID, dragDelta: CGFloat) {
+        guard let index = timedCommitments.firstIndex(where: { $0.id == commitmentId }) else { return }
+
+        if resizeOriginalDuration == nil {
+            resizeOriginalDuration = timedCommitments[index].durationMinutes ?? 30
+            timelineBlockDragId = commitmentId
+        }
+
+        let deltaMinutes = deltaToSnappedMinutes(dragDelta)
+        let newDuration = max(15, (resizeOriginalDuration ?? 30) + deltaMinutes)
+        timedCommitments[index].durationMinutes = newDuration
+    }
+
+    func handleTimelineBlockBottomResizeEnded(commitmentId: UUID, dragDelta: CGFloat) {
+        guard let index = timedCommitments.firstIndex(where: { $0.id == commitmentId }) else {
+            resetResizeState()
+            return
+        }
+
+        let deltaMinutes = deltaToSnappedMinutes(dragDelta)
+        let newDuration = max(15, (resizeOriginalDuration ?? 30) + deltaMinutes)
+        timedCommitments[index].durationMinutes = newDuration
+
+        let scheduledTime = timedCommitments[index].scheduledTime
+        _Concurrency.Task { @MainActor in
+            do {
+                try await commitmentRepository.updateCommitmentTime(
+                    id: commitmentId, scheduledTime: scheduledTime, durationMinutes: newDuration
+                )
+            } catch {
+                errorMessage = "Failed to resize: \(error.localizedDescription)"
+                await fetchTimedCommitments()
+            }
+        }
+
+        resetResizeState()
+    }
+
+    func handleTimelineBlockTopResizeChanged(commitmentId: UUID, dragDelta: CGFloat) {
+        guard let index = timedCommitments.firstIndex(where: { $0.id == commitmentId }) else { return }
+
+        if resizeOriginalDuration == nil {
+            resizeOriginalDuration = timedCommitments[index].durationMinutes ?? 30
+            resizeOriginalTime = timedCommitments[index].scheduledTime
+            timelineBlockDragId = commitmentId
+        }
+
+        let deltaMinutes = deltaToSnappedMinutes(dragDelta)
+        let newDuration = max(15, (resizeOriginalDuration ?? 30) - deltaMinutes)
+        let newTime = resizeOriginalTime?.addingTimeInterval(Double(deltaMinutes) * 60)
+
+        timedCommitments[index].durationMinutes = newDuration
+        timedCommitments[index].scheduledTime = newTime
+    }
+
+    func handleTimelineBlockTopResizeEnded(commitmentId: UUID, dragDelta: CGFloat) {
+        guard let index = timedCommitments.firstIndex(where: { $0.id == commitmentId }) else {
+            resetResizeState()
+            return
+        }
+
+        let deltaMinutes = deltaToSnappedMinutes(dragDelta)
+        let newDuration = max(15, (resizeOriginalDuration ?? 30) - deltaMinutes)
+        let newTime = resizeOriginalTime?.addingTimeInterval(Double(deltaMinutes) * 60)
+
+        timedCommitments[index].durationMinutes = newDuration
+        timedCommitments[index].scheduledTime = newTime
+
+        _Concurrency.Task { @MainActor in
+            do {
+                try await commitmentRepository.updateCommitmentTime(
+                    id: commitmentId, scheduledTime: newTime, durationMinutes: newDuration
+                )
+            } catch {
+                errorMessage = "Failed to resize: \(error.localizedDescription)"
+                await fetchTimedCommitments()
+            }
+        }
+
+        resetResizeState()
+    }
+
+    private func resetResizeState() {
+        withAnimation(.easeInOut(duration: 0.15)) {
+            timelineBlockDragId = nil
+        }
+        resizeOriginalDuration = nil
+        resizeOriginalTime = nil
+    }
+
+    // MARK: - Unschedule (remove from timeline, keep commitment)
+
+    func unscheduleCommitment(_ commitmentId: UUID) async {
+        // Instant local UI update (optimistic)
+        timedCommitments.removeAll { $0.id == commitmentId }
+
+        if let index = commitments.firstIndex(where: { $0.id == commitmentId }) {
+            commitments[index].scheduledTime = nil
+            commitments[index].durationMinutes = nil
+        }
+
+        do {
+            try await commitmentRepository.updateCommitmentTime(
+                id: commitmentId, scheduledTime: nil, durationMinutes: nil
+            )
+        } catch {
+            errorMessage = "Failed to unschedule: \(error.localizedDescription)"
+            await fetchTimedCommitments() // rollback on error
+        }
+    }
+
+    // MARK: - Schedule Drag Helpers (drawer-to-timeline drag)
+
+    func handleScheduleDragChanged(location: CGPoint, taskId: UUID, commitmentId: UUID?, taskTitle: String) {
+        if scheduleDragInfo == nil {
+            scheduleDragInfo = ScheduleDragInfo(taskId: taskId, commitmentId: commitmentId, taskTitle: taskTitle)
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        }
+        scheduleDragLocation = location
+
+        let contentY = location.y - timelineContentOriginY
+        timelineDropPreviewY = max(0, contentY)
+        isTimelineDropTargeted = contentY >= 0
+    }
+
+    func handleScheduleDragEnded(location: CGPoint) {
+        let contentY = location.y - timelineContentOriginY
+
+        if contentY >= 0, let info = scheduleDragInfo {
+            let dropTime = timeFromYPosition(max(0, contentY), on: selectedDate)
+
+            _Concurrency.Task { @MainActor in
+                if let commitmentId = info.commitmentId {
+                    await scheduleCommitmentTime(commitmentId, at: dropTime)
+                } else {
+                    await createTimedCommitment(taskId: info.taskId, at: dropTime)
+                }
+            }
+        }
+
+        withAnimation(.easeInOut(duration: 0.15)) {
+            scheduleDragInfo = nil
+            isTimelineDropTargeted = false
+        }
+        scheduleDragLocation = .zero
+    }
+}
+
+// MARK: - Schedule Drag Info
+
+struct ScheduleDragInfo {
+    let taskId: UUID
+    let commitmentId: UUID?
+    let taskTitle: String
 }

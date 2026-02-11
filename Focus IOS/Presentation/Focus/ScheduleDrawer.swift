@@ -43,8 +43,12 @@ struct ScheduleDrawer: View {
         }
     }
 
+    private var scheduledTaskIds: Set<UUID> {
+        Set(viewModel.timedCommitments.map { $0.taskId })
+    }
+
     private var filteredLibraryTasks: [FocusTask] {
-        var filtered = libraryTasks.filter { !$0.isCompleted }
+        var filtered = libraryTasks.filter { !$0.isCompleted && !scheduledTaskIds.contains($0.id) }
 
         if case .category(let categoryId) = selectedFilter {
             filtered = filtered.filter { $0.categoryId == categoryId }
@@ -56,6 +60,8 @@ struct ScheduleDrawer: View {
     private var dailyCommitments: [Commitment] {
         viewModel.commitments.filter { commitment in
             commitment.timeframe == .daily &&
+            commitment.scheduledTime == nil &&
+            !scheduledTaskIds.contains(commitment.taskId) &&
             viewModel.isSameTimeframe(
                 commitment.commitmentDate,
                 timeframe: .daily,

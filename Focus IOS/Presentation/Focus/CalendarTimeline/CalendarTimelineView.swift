@@ -19,13 +19,6 @@ struct CalendarTimelineView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            Divider()
-
-            // Week day selector strip
-            WeekDaySelectorView(selectedDate: $viewModel.selectedDate)
-
-            Divider()
-
             // 24-hour scrollable timeline
             ScrollViewReader { proxy in
                 ScrollView(.vertical, showsIndicators: false) {

@@ -52,6 +52,7 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
     @Published var timelineBlockDragId: UUID?  // commitment ID being moved
     private var resizeOriginalDuration: Int?  // original duration before resize started
     private var resizeOriginalTime: Date?  // original scheduledTime before top-resize started
+    private var timelineCreatedCommitmentIds: Set<UUID> = []  // commitments created from library drag (no prior commitment)
 
     private let commitmentRepository: CommitmentRepository
     private let taskRepository: TaskRepository
@@ -486,6 +487,7 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
 
         // Remove from local state
         commitments.removeAll { $0.id == commitment.id }
+        timelineCreatedCommitmentIds.remove(commitment.id)
     }
 
     /// Remove commitment (cascades down to children, NOT up to parents)
@@ -1249,6 +1251,7 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
             )
             let created = try await commitmentRepository.createCommitment(commitment)
             commitments.append(created)
+            timelineCreatedCommitmentIds.insert(created.id)
             await fetchTimedCommitments()
         } catch {
             errorMessage = error.localizedDescription
@@ -1406,24 +1409,47 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
         resizeOriginalTime = nil
     }
 
-    // MARK: - Unschedule (remove from timeline, keep commitment)
+    // MARK: - Unschedule (remove from timeline)
 
     func unscheduleCommitment(_ commitmentId: UUID) async {
-        // Instant local UI update (optimistic)
+        // Optimistic: remove from timeline UI
         timedCommitments.removeAll { $0.id == commitmentId }
 
-        if let index = commitments.firstIndex(where: { $0.id == commitmentId }) {
-            commitments[index].scheduledTime = nil
-            commitments[index].durationMinutes = nil
-        }
+        if timelineCreatedCommitmentIds.contains(commitmentId) {
+            // Library-originated: delete the entire commitment (no prior commitment existed)
+            timelineCreatedCommitmentIds.remove(commitmentId)
 
-        do {
-            try await commitmentRepository.updateCommitmentTime(
-                id: commitmentId, scheduledTime: nil, durationMinutes: nil
-            )
-        } catch {
-            errorMessage = "Failed to unschedule: \(error.localizedDescription)"
-            await fetchTimedCommitments() // rollback on error
+            guard let commitment = commitments.first(where: { $0.id == commitmentId }) else {
+                do {
+                    try await commitmentRepository.deleteCommitment(id: commitmentId)
+                } catch {
+                    errorMessage = "Failed to unschedule: \(error.localizedDescription)"
+                    await fetchTimedCommitments()
+                }
+                return
+            }
+
+            do {
+                try await deleteCommitmentWithDescendants(commitment)
+            } catch {
+                errorMessage = "Failed to unschedule: \(error.localizedDescription)"
+                await fetchTimedCommitments()
+            }
+        } else {
+            // Focus-originated: just clear the time, keep commitment
+            if let index = commitments.firstIndex(where: { $0.id == commitmentId }) {
+                commitments[index].scheduledTime = nil
+                commitments[index].durationMinutes = nil
+            }
+
+            do {
+                try await commitmentRepository.updateCommitmentTime(
+                    id: commitmentId, scheduledTime: nil, durationMinutes: nil
+                )
+            } catch {
+                errorMessage = "Failed to unschedule: \(error.localizedDescription)"
+                await fetchTimedCommitments()
+            }
         }
     }
 

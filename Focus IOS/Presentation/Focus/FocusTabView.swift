@@ -43,39 +43,20 @@ struct FocusTabView: View {
     var body: some View {
         NavigationView {
             VStack(spacing: 0) {
-                // Date Navigator with view mode toggle on the left
+                // Date Navigator with integrated timeframe picker and pill row
                 DateNavigator(
                     selectedDate: $viewModel.selectedDate,
-                    timeframe: viewMode == .focus ? viewModel.selectedTimeframe : .daily,
+                    selectedTimeframe: $viewModel.selectedTimeframe,
+                    viewMode: $viewMode,
                     compact: viewMode == .schedule,
-                    onTap: { showCalendarPicker = true }
-                ) {
-                    // View mode toggle icons
-                    HStack(spacing: 12) {
-                        Button {
-                            withAnimation(.easeInOut(duration: 0.2)) {
-                                viewMode = .focus
-                            }
-                        } label: {
-                            Image(systemName: "target")
-                                .font(.title3)
-                                .foregroundColor(viewMode == .focus ? .blue : .secondary)
-                        }
-                        .buttonStyle(.plain)
-
-                        Button {
-                            withAnimation(.easeInOut(duration: 0.2)) {
-                                viewMode = .schedule
-                            }
-                        } label: {
-                            Image(systemName: "calendar")
-                                .font(.title3)
-                                .foregroundColor(viewMode == .schedule ? .blue : .secondary)
-                        }
-                        .buttonStyle(.plain)
+                    onCalendarTap: { showCalendarPicker = true }
+                )
+                .onChange(of: viewModel.selectedDate) {
+                    _Concurrency.Task { @MainActor in
+                        await viewModel.fetchCommitments()
                     }
                 }
-                .onChange(of: viewModel.selectedDate) {
+                .onChange(of: viewModel.selectedTimeframe) {
                     _Concurrency.Task { @MainActor in
                         await viewModel.fetchCommitments()
                     }
@@ -83,21 +64,6 @@ struct FocusTabView: View {
 
                 if viewMode == .focus {
                     // MARK: - Focus Mode Content
-
-                    // Timeframe Picker
-                    Picker("Timeframe", selection: $viewModel.selectedTimeframe) {
-                        Text("Daily").tag(Timeframe.daily)
-                        Text("Weekly").tag(Timeframe.weekly)
-                        Text("Monthly").tag(Timeframe.monthly)
-                        Text("Yearly").tag(Timeframe.yearly)
-                    }
-                    .pickerStyle(.segmented)
-                    .padding()
-                    .onChange(of: viewModel.selectedTimeframe) {
-                        _Concurrency.Task { @MainActor in
-                            await viewModel.fetchCommitments()
-                        }
-                    }
 
                     // Content
                     if viewModel.isLoading {

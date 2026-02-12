@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import UniformTypeIdentifiers
 import Auth
 
 // MARK: - Row Frame Preference Key
@@ -14,6 +15,50 @@ struct RowFramePreference: PreferenceKey {
     static let defaultValue: [UUID: CGRect] = [:]
     static func reduce(value: inout [UUID: CGRect], nextValue: () -> [UUID: CGRect]) {
         value.merge(nextValue()) { $1 }
+    }
+}
+
+// MARK: - Task Reorder Drop Delegate
+
+struct TaskReorderDropDelegate: DropDelegate {
+    let viewModel: TaskListViewModel
+    @Binding var draggingTaskId: UUID?
+    let rowFrames: [UUID: CGRect]
+
+    func dropUpdated(info: DropInfo) -> DropProposal? {
+        guard let dragId = draggingTaskId else { return DropProposal(operation: .cancel) }
+
+        let location = info.location
+        let uncompleted = viewModel.uncompletedTasks
+        guard let currentIdx = uncompleted.firstIndex(where: { $0.id == dragId }) else {
+            return DropProposal(operation: .move)
+        }
+
+        // Find which row the drop is over by checking midpoints
+        for (idx, task) in uncompleted.enumerated() where task.id != dragId {
+            guard let frame = rowFrames[task.id] else { continue }
+            // Only reorder when crossing the midpoint of an adjacent-ish row
+            let crossedDown = idx > currentIdx && location.y > frame.midY
+            let crossedUp = idx < currentIdx && location.y < frame.midY
+            if crossedDown || crossedUp {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    viewModel.reorderTask(droppedId: dragId, targetId: task.id)
+                }
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                break
+            }
+        }
+
+        return DropProposal(operation: .move)
+    }
+
+    func performDrop(info: DropInfo) -> Bool {
+        draggingTaskId = nil
+        return true
+    }
+
+    func dropExited(info: DropInfo) {
+        draggingTaskId = nil
     }
 }
 
@@ -149,8 +194,7 @@ struct TasksListView: View {
                         ExpandableTaskRow(
                             task: task,
                             viewModel: viewModel,
-                            onDragChanged: viewModel.isEditMode ? nil : { value in handleTaskDrag(task.id, value) },
-                            onDragEnded: viewModel.isEditMode ? nil : { handleTaskDragEnd() },
+                            draggingTaskId: $draggingTaskId,
                             isEditMode: viewModel.isEditMode,
                             isSelected: viewModel.selectedTaskIds.contains(task.id),
                             onSelectToggle: { viewModel.toggleTaskSelection(task.id) }
@@ -182,13 +226,7 @@ struct TasksListView: View {
                         }
                     )
                     .background(Color(.systemBackground))
-                    .offset(y: isDragging ? (dragTranslation + dragReorderAdjustment) : 0)
-                    .scaleEffect(isDragging ? 1.03 : 1.0)
-                    .shadow(color: .black.opacity(isDragging ? 0.15 : 0), radius: 8, y: 2)
-                    .zIndex(isDragging ? 1 : 0)
-                    .transaction { t in
-                        if isDragging { t.animation = nil }
-                    }
+                    .opacity(isDragging ? 0.3 : 1.0)
                 }
 
                 // Done pill (when there are completed tasks, hidden in edit mode)
@@ -212,6 +250,11 @@ struct TasksListView: View {
             .onPreferenceChange(RowFramePreference.self) { frames in
                 rowFrames = frames
             }
+            .onDrop(of: [.text], delegate: TaskReorderDropDelegate(
+                viewModel: viewModel,
+                draggingTaskId: $draggingTaskId,
+                rowFrames: rowFrames
+            ))
         }
         .scrollDismissesKeyboard(.interactively)
         .coordinateSpace(name: "taskList")
@@ -225,57 +268,6 @@ struct TasksListView: View {
                 }
             }
         }
-    }
-
-    // MARK: - Task Drag Handlers
-
-    private func handleTaskDrag(_ taskId: UUID, _ value: DragGesture.Value) {
-        // Don't start a task drag if a subtask drag is active
-        guard draggingSubtaskId == nil else { return }
-
-        if draggingTaskId == nil {
-            withAnimation(.easeInOut(duration: 0.15)) {
-                draggingTaskId = taskId
-            }
-            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-        }
-        dragTranslation = value.translation.height
-        dragFingerY = value.location.y
-
-        // Cooldown: prevent double-swaps during animation
-        guard Date().timeIntervalSince(lastReorderTime) > 0.25 else { return }
-
-        // Check midpoint crossings for reorder
-        let uncompleted = viewModel.uncompletedTasks
-        guard let currentIdx = uncompleted.firstIndex(where: { $0.id == taskId }) else { return }
-
-        for (idx, other) in uncompleted.enumerated() where other.id != taskId {
-            guard let frame = rowFrames[other.id] else { continue }
-            let crossedDown = idx > currentIdx && dragFingerY > frame.midY
-            let crossedUp = idx < currentIdx && dragFingerY < frame.midY
-            if crossedDown || crossedUp {
-                // Adjust offset to compensate for layout shift
-                let passedHeight = frame.height
-                dragReorderAdjustment += crossedDown ? -passedHeight : passedHeight
-
-                withAnimation(.easeInOut(duration: 0.2)) {
-                    viewModel.reorderTask(droppedId: taskId, targetId: other.id)
-                }
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                lastReorderTime = Date()
-                break
-            }
-        }
-    }
-
-    private func handleTaskDragEnd() {
-        withAnimation(.easeInOut(duration: 0.2)) {
-            draggingTaskId = nil
-            dragTranslation = 0
-            dragReorderAdjustment = 0
-            dragFingerY = 0
-        }
-        lastReorderTime = .distantPast
     }
 
     // MARK: - Subtask Drag Handlers
@@ -393,7 +385,7 @@ struct LibraryDonePillView: View {
                 ForEach(completedTasks) { task in
                     VStack(spacing: 0) {
                         Divider()
-                        ExpandableTaskRow(task: task, viewModel: viewModel)
+                        ExpandableTaskRow(task: task, viewModel: viewModel, draggingTaskId: .constant(nil))
 
                         if viewModel.isExpanded(task.id) {
                             SubtasksList(parentTask: task, viewModel: viewModel)
@@ -421,8 +413,7 @@ struct LibraryDonePillView: View {
 struct ExpandableTaskRow: View {
     let task: FocusTask
     @ObservedObject var viewModel: TaskListViewModel
-    var onDragChanged: ((DragGesture.Value) -> Void)? = nil
-    var onDragEnded: (() -> Void)? = nil
+    @Binding var draggingTaskId: UUID?
     var isEditMode: Bool = false
     var isSelected: Bool = false
     var onSelectToggle: (() -> Void)? = nil
@@ -434,15 +425,6 @@ struct ExpandableTaskRow: View {
                 Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
                     .font(.title3)
                     .foregroundColor(isSelected ? .blue : .gray)
-            } else if !task.isCompleted && onDragChanged != nil && !isEditMode {
-                // Drag handle (normal mode only)
-                DragHandleView()
-                    .contentShape(Rectangle())
-                    .highPriorityGesture(
-                        DragGesture(minimumDistance: 5, coordinateSpace: .named("taskList"))
-                            .onChanged { value in onDragChanged?(value) }
-                            .onEnded { _ in onDragEnded?() }
-                    )
             }
 
             // Task content
@@ -464,7 +446,7 @@ struct ExpandableTaskRow: View {
             // Completion button (hidden in edit mode)
             if !isEditMode {
                 Button {
-                    Task {
+                    _Concurrency.Task {
                         await viewModel.toggleCompletion(task)
                     }
                 } label: {
@@ -481,15 +463,72 @@ struct ExpandableTaskRow: View {
             if isEditMode && !task.isCompleted {
                 onSelectToggle?()
             } else if !isEditMode {
-                Task {
+                _Concurrency.Task {
                     await viewModel.toggleExpanded(task.id)
                 }
             }
         }
-        .onLongPressGesture {
-            if !isEditMode {
-                viewModel.selectedTaskForDetails = task
+        // Context menu: long-press shows quick actions
+        .contextMenu {
+            if !isEditMode && !task.isCompleted {
+                Button {
+                    viewModel.selectedTaskForDetails = task
+                } label: {
+                    Label("Edit Details", systemImage: "pencil")
+                }
+
+                // Move to category (parent tasks only, not committed)
+                if task.parentTaskId == nil {
+                    Menu {
+                        Button {
+                            _Concurrency.Task { await viewModel.moveTaskToCategory(task, categoryId: nil) }
+                        } label: {
+                            if task.categoryId == nil {
+                                Label("None", systemImage: "checkmark")
+                            } else {
+                                Text("None")
+                            }
+                        }
+                        ForEach(viewModel.categories) { category in
+                            Button {
+                                _Concurrency.Task { await viewModel.moveTaskToCategory(task, categoryId: category.id) }
+                            } label: {
+                                if task.categoryId == category.id {
+                                    Label(category.name, systemImage: "checkmark")
+                                } else {
+                                    Text(category.name)
+                                }
+                            }
+                        }
+                    } label: {
+                        Label("Move to Category", systemImage: "folder")
+                    }
+                }
+
+                Divider()
+
+                Button(role: .destructive) {
+                    _Concurrency.Task { await viewModel.deleteTask(task) }
+                } label: {
+                    Label("Delete", systemImage: "trash")
+                }
             }
+        }
+        // Drag: enables system drag + context-menu-to-drag handoff
+        .onDrag {
+            draggingTaskId = task.id
+            return NSItemProvider(object: task.id.uuidString as NSString)
+        } preview: {
+            HStack(spacing: 12) {
+                Text(task.title)
+                    .lineLimit(1)
+                Spacer()
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .frame(width: 280)
+            .background(.ultraThinMaterial)
+            .clipShape(RoundedRectangle(cornerRadius: 10))
         }
     }
 }

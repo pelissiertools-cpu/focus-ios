@@ -225,7 +225,7 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                     if let commitment = commitment, commitment.scheduledTime != nil {
                         Button {
                             _Concurrency.Task { @MainActor in
-                                await focusViewModel.unscheduleCommitment(commitment.id)
+                                await focusViewModel.timelineVM.unscheduleCommitment(commitment.id)
                                 dismiss()
                             }
                         } label: {

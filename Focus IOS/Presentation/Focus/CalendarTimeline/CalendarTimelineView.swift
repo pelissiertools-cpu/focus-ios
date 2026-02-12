@@ -15,7 +15,8 @@ struct TimelineContentOriginPreference: PreferenceKey {
 
 /// Apple Calendar-style daily timeline with week day selector and 24-hour scrollable grid
 struct CalendarTimelineView: View {
-    @ObservedObject var viewModel: FocusTabViewModel
+    @ObservedObject var timelineVM: TimelineViewModel
+    @ObservedObject var focusVM: FocusTabViewModel
 
     var body: some View {
         VStack(spacing: 0) {
@@ -35,49 +36,49 @@ struct CalendarTimelineView: View {
                             )
 
                         // Scheduled task blocks
-                        ForEach(viewModel.timedCommitments) { commitment in
-                            if let task = viewModel.tasksMap[commitment.taskId] {
+                        ForEach(timelineVM.timedCommitments) { commitment in
+                            if let task = focusVM.tasksMap[commitment.taskId] {
                                 TimelineTaskBlockView(
                                     commitment: commitment,
                                     task: task,
                                     hourHeight: TimelineGridView.hourHeight,
                                     labelWidth: TimelineGridView.labelWidth,
-                                    isBeingDragged: viewModel.timelineBlockDragId == commitment.id,
+                                    isBeingDragged: timelineVM.timelineBlockDragId == commitment.id,
                                     onTap: {
-                                        viewModel.selectedTaskForDetails = task
+                                        focusVM.selectedTaskForDetails = task
                                     },
                                     onMoveChanged: { translationHeight in
-                                        viewModel.handleTimelineBlockMoveChanged(
+                                        timelineVM.handleTimelineBlockMoveChanged(
                                             translationHeight: translationHeight,
                                             commitment: commitment,
                                             task: task
                                         )
                                     },
                                     onMoveEnded: { translationHeight in
-                                        viewModel.handleTimelineBlockMoveEnded(
+                                        timelineVM.handleTimelineBlockMoveEnded(
                                             translationHeight: translationHeight
                                         )
                                     },
                                     onTopResizeChanged: { delta in
-                                        viewModel.handleTimelineBlockTopResizeChanged(
+                                        timelineVM.handleTimelineBlockTopResizeChanged(
                                             commitmentId: commitment.id,
                                             dragDelta: delta
                                         )
                                     },
                                     onTopResizeEnded: { delta in
-                                        viewModel.handleTimelineBlockTopResizeEnded(
+                                        timelineVM.handleTimelineBlockTopResizeEnded(
                                             commitmentId: commitment.id,
                                             dragDelta: delta
                                         )
                                     },
                                     onBottomResizeChanged: { delta in
-                                        viewModel.handleTimelineBlockBottomResizeChanged(
+                                        timelineVM.handleTimelineBlockBottomResizeChanged(
                                             commitmentId: commitment.id,
                                             dragDelta: delta
                                         )
                                     },
                                     onBottomResizeEnded: { delta in
-                                        viewModel.handleTimelineBlockBottomResizeEnded(
+                                        timelineVM.handleTimelineBlockBottomResizeEnded(
                                             commitmentId: commitment.id,
                                             dragDelta: delta
                                         )
@@ -87,17 +88,17 @@ struct CalendarTimelineView: View {
                         }
 
                         // Drop preview during drag (inside ScrollView so position = time)
-                        if viewModel.isTimelineDropTargeted {
+                        if timelineVM.isTimelineDropTargeted {
                             TimelineDropPreviewView(
-                                yPosition: viewModel.timelineDropPreviewY,
+                                yPosition: timelineVM.timelineDropPreviewY,
                                 hourHeight: TimelineGridView.hourHeight,
                                 labelWidth: TimelineGridView.labelWidth,
-                                taskTitle: viewModel.scheduleDragInfo?.taskTitle ?? ""
+                                taskTitle: timelineVM.scheduleDragInfo?.taskTitle ?? ""
                             )
                         }
 
                         // Current time indicator (only for today)
-                        if Calendar.current.isDateInToday(viewModel.selectedDate) {
+                        if Calendar.current.isDateInToday(focusVM.selectedDate) {
                             CurrentTimeIndicatorView(
                                 hourHeight: TimelineGridView.hourHeight,
                                 labelWidth: TimelineGridView.labelWidth
@@ -107,18 +108,18 @@ struct CalendarTimelineView: View {
                     .padding(.top, 8)
                 }
                 .onPreferenceChange(TimelineContentOriginPreference.self) { origin in
-                    viewModel.timelineContentOriginY = origin
+                    timelineVM.timelineContentOriginY = origin
                 }
                 .onScrollGeometryChange(for: CGFloat.self) { geometry in
                     geometry.contentOffset.y
                 } action: { _, newOffset in
-                    viewModel.timelineScrollOffset = newOffset
+                    timelineVM.timelineScrollOffset = newOffset
                 }
                 .onAppear {
                     scrollToCurrentTime(proxy: proxy)
                 }
-                .onChange(of: viewModel.selectedDate) {
-                    if Calendar.current.isDateInToday(viewModel.selectedDate) {
+                .onChange(of: focusVM.selectedDate) {
+                    if Calendar.current.isDateInToday(focusVM.selectedDate) {
                         scrollToCurrentTime(proxy: proxy)
                     } else {
                         // Scroll to 8 AM for non-today dates

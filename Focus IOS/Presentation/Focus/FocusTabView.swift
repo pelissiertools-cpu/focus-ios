@@ -132,7 +132,7 @@ struct FocusTabView: View {
                     GeometryReader { geometry in
                         ZStack(alignment: .bottom) {
                             // Layer 0: Timeline (full area, tap-to-dismiss)
-                            CalendarTimelineView(viewModel: viewModel)
+                            CalendarTimelineView(timelineVM: viewModel.timelineVM, focusVM: viewModel)
                                 .onTapGesture {
                                     if showScheduleDrawer {
                                         withAnimation(.easeInOut(duration: 0.25)) {
@@ -143,7 +143,7 @@ struct FocusTabView: View {
 
                             // Layer 2: Inline drawer (slides up from bottom)
                             if showScheduleDrawer {
-                                ScheduleDrawer(viewModel: viewModel)
+                                ScheduleDrawer(viewModel: viewModel, timelineVM: viewModel.timelineVM)
                                     .frame(height: geometry.size.height * 0.5)
                                     .transition(.move(edge: .bottom).combined(with: .opacity))
                                     .background(
@@ -184,16 +184,16 @@ struct FocusTabView: View {
 
                         }
                         .onPreferenceChange(DrawerTopPreference.self) { top in
-                            viewModel.drawerTopGlobalY = top
+                            viewModel.timelineVM.drawerTopGlobalY = top
                         }
                         // Floating drag pill overlay (visible while finger is in drawer area)
                         .overlay {
-                            if let info = viewModel.scheduleDragInfo,
-                               viewModel.timelineBlockDragId == nil {
+                            if let info = viewModel.timelineVM.scheduleDragInfo,
+                               viewModel.timelineVM.timelineBlockDragId == nil {
                                 GeometryReader { overlayGeo in
                                     let origin = overlayGeo.frame(in: .global).origin
-                                    let localX = viewModel.scheduleDragLocation.x - origin.x
-                                    let localY = viewModel.scheduleDragLocation.y - origin.y
+                                    let localX = viewModel.timelineVM.scheduleDragLocation.x - origin.x
+                                    let localY = viewModel.timelineVM.scheduleDragLocation.y - origin.y
 
                                     Text(info.taskTitle)
                                         .font(.subheadline)
@@ -754,7 +754,7 @@ struct AddTaskToFocusSheet: View {
             }
 
             if shouldSchedule {
-                await viewModel.scheduleCommitmentTime(result.commitment.id, at: timeToSchedule)
+                await viewModel.timelineVM.scheduleCommitmentTime(result.commitment.id, at: timeToSchedule)
             }
 
             dismiss()

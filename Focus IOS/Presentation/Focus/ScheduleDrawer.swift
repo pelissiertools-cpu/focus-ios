@@ -17,6 +17,7 @@ enum ScheduleFilter: Equatable {
 
 struct ScheduleDrawer: View {
     @ObservedObject var viewModel: FocusTabViewModel
+    @ObservedObject var timelineVM: TimelineViewModel
     @State private var selectedFilter: ScheduleFilter = .today
     @State private var categories: [Category] = []
 
@@ -44,7 +45,7 @@ struct ScheduleDrawer: View {
     }
 
     private var scheduledTaskIds: Set<UUID> {
-        Set(viewModel.timedCommitments.map { $0.taskId })
+        Set(timelineVM.timedCommitments.map { $0.taskId })
     }
 
     private var filteredLibraryTasks: [FocusTask] {
@@ -202,7 +203,7 @@ struct ScheduleDrawer: View {
                             .highPriorityGesture(
                                 DragGesture(minimumDistance: 5, coordinateSpace: .global)
                                     .onChanged { value in
-                                        viewModel.handleScheduleDragChanged(
+                                        timelineVM.handleScheduleDragChanged(
                                             location: value.location,
                                             taskId: task.id,
                                             commitmentId: commitment.id,
@@ -210,13 +211,13 @@ struct ScheduleDrawer: View {
                                         )
                                     }
                                     .onEnded { value in
-                                        viewModel.handleScheduleDragEnded(location: value.location)
+                                        timelineVM.handleScheduleDragEnded(location: value.location)
                                     }
                             )
                     }
                     .padding(.horizontal, 16)
                     .padding(.vertical, 14)
-                    .opacity(viewModel.scheduleDragInfo?.taskId == task.id ? 0.4 : 1.0)
+                    .opacity(timelineVM.scheduleDragInfo?.taskId == task.id ? 0.4 : 1.0)
 
                     // Subtasks (shown when expanded)
                     if isExpanded {
@@ -304,7 +305,7 @@ struct ScheduleDrawer: View {
                             .highPriorityGesture(
                                 DragGesture(minimumDistance: 5, coordinateSpace: .global)
                                     .onChanged { value in
-                                        viewModel.handleScheduleDragChanged(
+                                        timelineVM.handleScheduleDragChanged(
                                             location: value.location,
                                             taskId: task.id,
                                             commitmentId: nil,
@@ -312,13 +313,13 @@ struct ScheduleDrawer: View {
                                         )
                                     }
                                     .onEnded { value in
-                                        viewModel.handleScheduleDragEnded(location: value.location)
+                                        timelineVM.handleScheduleDragEnded(location: value.location)
                                     }
                             )
                     }
                     .padding(.horizontal, 16)
                     .padding(.vertical, 14)
-                    .opacity(viewModel.scheduleDragInfo?.taskId == task.id ? 0.4 : 1.0)
+                    .opacity(timelineVM.scheduleDragInfo?.taskId == task.id ? 0.4 : 1.0)
 
                     if isExpanded {
                         VStack(spacing: 0) {

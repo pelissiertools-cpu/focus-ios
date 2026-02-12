@@ -109,6 +109,11 @@ struct CalendarTimelineView: View {
                 .onPreferenceChange(TimelineContentOriginPreference.self) { origin in
                     viewModel.timelineContentOriginY = origin
                 }
+                .onScrollGeometryChange(for: CGFloat.self) { geometry in
+                    geometry.contentOffset.y
+                } action: { _, newOffset in
+                    viewModel.timelineScrollOffset = newOffset
+                }
                 .onAppear {
                     scrollToCurrentTime(proxy: proxy)
                 }

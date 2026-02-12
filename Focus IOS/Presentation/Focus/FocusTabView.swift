@@ -23,6 +23,15 @@ struct SectionFramePreference: PreferenceKey {
     }
 }
 
+// MARK: - Drawer Top Preference Key
+
+struct DrawerTopPreference: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
+    }
+}
+
 struct FocusTabView: View {
     @EnvironmentObject var authService: AuthService
     @EnvironmentObject var viewModel: FocusTabViewModel
@@ -137,6 +146,14 @@ struct FocusTabView: View {
                                 ScheduleDrawer(viewModel: viewModel)
                                     .frame(height: geometry.size.height * 0.5)
                                     .transition(.move(edge: .bottom).combined(with: .opacity))
+                                    .background(
+                                        GeometryReader { drawerGeo in
+                                            Color.clear.preference(
+                                                key: DrawerTopPreference.self,
+                                                value: drawerGeo.frame(in: .global).minY
+                                            )
+                                        }
+                                    )
                             }
 
                             // Layer 3: FAB (only when drawer is closed)
@@ -165,6 +182,35 @@ struct FocusTabView: View {
                                 .transition(.scale.combined(with: .opacity))
                             }
 
+                        }
+                        .onPreferenceChange(DrawerTopPreference.self) { top in
+                            viewModel.drawerTopGlobalY = top
+                        }
+                        // Floating drag pill overlay (visible while finger is in drawer area)
+                        .overlay {
+                            if let info = viewModel.scheduleDragInfo,
+                               viewModel.timelineBlockDragId == nil {
+                                GeometryReader { overlayGeo in
+                                    let origin = overlayGeo.frame(in: .global).origin
+                                    let localX = viewModel.scheduleDragLocation.x - origin.x
+                                    let localY = viewModel.scheduleDragLocation.y - origin.y
+
+                                    Text(info.taskTitle)
+                                        .font(.subheadline)
+                                        .fontWeight(.medium)
+                                        .foregroundColor(.white)
+                                        .lineLimit(1)
+                                        .padding(.horizontal, 16)
+                                        .padding(.vertical, 10)
+                                        .background(
+                                            Capsule()
+                                                .fill(Color.blue.opacity(0.85))
+                                        )
+                                        .shadow(color: .black.opacity(0.2), radius: 8, y: 2)
+                                        .position(x: localX, y: localY - 40)
+                                }
+                                .allowsHitTesting(false)
+                            }
                         }
                     }
                 }

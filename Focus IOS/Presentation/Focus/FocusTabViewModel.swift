@@ -47,6 +47,8 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
     @Published var isTimelineDropTargeted: Bool = false
     @Published var timelineDropPreviewY: CGFloat = 0
     var timelineContentOriginY: CGFloat = 0  // Content ZStack origin in global coordinate space
+    var timelineScrollOffset: CGFloat = 0    // ScrollView contentOffset.y (for future use)
+    var drawerTopGlobalY: CGFloat = 0        // Drawer top edge in global coords (for future use)
 
     // Timeline block interaction state (move/resize existing blocks)
     @Published var timelineBlockDragId: UUID?  // commitment ID being moved

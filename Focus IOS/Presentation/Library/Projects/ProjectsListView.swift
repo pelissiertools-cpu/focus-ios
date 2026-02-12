@@ -19,6 +19,7 @@ struct ProjectsListView: View {
     @State private var dragReorderAdjustment: CGFloat = 0
     @State private var lastReorderTime: Date = .distantPast
     @State private var rowFrames: [UUID: CGRect] = [:]
+    @State private var showClearCompletedConfirmation = false
 
     init(viewModel: ProjectsViewModel, searchText: String = "") {
         self.viewModel = viewModel
@@ -169,29 +170,58 @@ struct ProjectsListView: View {
     }
 
     private var doneSectionHeader: some View {
-        Button {
-            viewModel.toggleDoneCollapsed()
-        } label: {
-            HStack(spacing: 8) {
-                Image(systemName: viewModel.isDoneCollapsed ? "chevron.right" : "chevron.down")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+        HStack(spacing: 8) {
+            Button {
+                viewModel.toggleDoneCollapsed()
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: viewModel.isDoneCollapsed ? "chevron.right" : "chevron.down")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
 
-                Text("Done")
-                    .font(.subheadline)
-                    .fontWeight(.medium)
-                    .foregroundColor(.secondary)
+                    Text("Completed")
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                        .foregroundColor(.secondary)
 
-                Text("(\(viewModel.completedProjects.count))")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-
-                Spacer()
+                    Text("(\(viewModel.completedProjects.count))")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+                .contentShape(Rectangle())
             }
-            .padding(.vertical, 10)
-            .contentShape(Rectangle())
+            .buttonStyle(.plain)
+
+            if !viewModel.isDoneCollapsed {
+                Button {
+                    showClearCompletedConfirmation = true
+                } label: {
+                    Text("Clear list")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 4)
+                        .background(
+                            Capsule()
+                                .fill(Color.secondary.opacity(0.15))
+                        )
+                }
+                .buttonStyle(.plain)
+            }
+
+            Spacer()
         }
-        .buttonStyle(.plain)
+        .padding(.vertical, 10)
+        .alert("Clear completed projects?", isPresented: $showClearCompletedConfirmation) {
+            Button("Cancel", role: .cancel) { }
+            Button("Clear", role: .destructive) {
+                _Concurrency.Task {
+                    await viewModel.clearCompletedProjects()
+                }
+            }
+        } message: {
+            Text("This will permanently delete \(viewModel.completedProjects.count) completed project\(viewModel.completedProjects.count == 1 ? "" : "s").")
+        }
     }
 
     // MARK: - Drag Handlers

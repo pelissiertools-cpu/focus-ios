@@ -504,8 +504,6 @@ struct ListDoneSection: View {
                             .font(.subheadline)
                             .foregroundColor(.secondary)
 
-                        Spacer()
-
                         if isExpanded {
                             Button {
                                 showClearConfirmation = true
@@ -522,6 +520,8 @@ struct ListDoneSection: View {
                             }
                             .buttonStyle(.plain)
                         }
+
+                        Spacer()
                     }
                     .padding(.vertical, 10)
                     .contentShape(Rectangle())

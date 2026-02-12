@@ -177,6 +177,23 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LibraryFilterab
         isDoneCollapsed.toggle()
     }
 
+    func clearCompletedProjects() async {
+        let completedIds = completedProjects.map { $0.id }
+        do {
+            for projectId in completedIds {
+                try await commitmentRepository.deleteCommitments(forTask: projectId)
+                try await repository.deleteTask(id: projectId)
+            }
+            projects.removeAll { completedIds.contains($0.id) }
+            for projectId in completedIds {
+                projectTasksMap.removeValue(forKey: projectId)
+                expandedProjects.remove(projectId)
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
     // MARK: - Project Expansion
 
     func toggleExpanded(_ projectId: UUID) async {

@@ -354,7 +354,7 @@ struct LibraryDonePillView: View {
                         .font(.caption)
                         .foregroundColor(.secondary)
 
-                    Text("Done")
+                    Text("Completed")
                         .font(.subheadline)
                         .fontWeight(.medium)
                         .foregroundColor(.secondary)
@@ -363,9 +363,6 @@ struct LibraryDonePillView: View {
                         .font(.subheadline)
                         .foregroundColor(.secondary)
 
-                    Spacer()
-
-                    // Clear list pill button (only visible when expanded)
                     if isExpanded {
                         Button {
                             showClearConfirmation = true
@@ -382,6 +379,8 @@ struct LibraryDonePillView: View {
                         }
                         .buttonStyle(.plain)
                     }
+
+                    Spacer()
                 }
                 .padding(.vertical, 10)
                 .contentShape(Rectangle())

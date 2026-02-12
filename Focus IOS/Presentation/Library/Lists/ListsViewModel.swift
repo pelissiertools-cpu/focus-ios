@@ -54,7 +54,7 @@ class ListsViewModel: ObservableObject, LibraryFilterable, TaskEditingViewModel 
 
     private let repository: TaskRepository
     private let categoryRepository: CategoryRepository
-    private let commitmentRepository: CommitmentRepository
+    let commitmentRepository: CommitmentRepository
     private let authService: AuthService
     private var cancellables = Set<AnyCancellable>()
 
@@ -150,14 +150,6 @@ class ListsViewModel: ObservableObject, LibraryFilterable, TaskEditingViewModel 
             selectedCategoryId = created.id
         } catch {
             errorMessage = error.localizedDescription
-        }
-    }
-
-    func fetchCommittedTaskIds() async {
-        do {
-            committedTaskIds = try await commitmentRepository.fetchCommittedTaskIds()
-        } catch {
-            print("Error fetching committed task IDs: \(error)")
         }
     }
 

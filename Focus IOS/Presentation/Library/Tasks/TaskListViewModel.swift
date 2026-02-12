@@ -47,7 +47,7 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LibraryFilterab
     @Published var showBatchCommitSheet: Bool = false
 
     private let repository: TaskRepository
-    private let commitmentRepository: CommitmentRepository
+    let commitmentRepository: CommitmentRepository
     private let categoryRepository: CategoryRepository
     private let authService: AuthService
     private var cancellables = Set<AnyCancellable>()
@@ -664,14 +664,6 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LibraryFilterab
     }
 
     // MARK: - Commitment Filter
-
-    func fetchCommittedTaskIds() async {
-        do {
-            committedTaskIds = try await commitmentRepository.fetchCommittedTaskIds()
-        } catch {
-            print("Error fetching committed task IDs: \(error)")
-        }
-    }
 
     func moveTaskToCategory(_ task: FocusTask, categoryId: UUID?) async {
         do {

@@ -33,16 +33,6 @@ enum Timeframe: String, Codable, CaseIterable {
         }
     }
 
-    /// The parent timeframe (inverse of childTimeframe)
-    var parentTimeframe: Timeframe? {
-        switch self {
-        case .daily: return .weekly
-        case .weekly: return .monthly
-        case .monthly: return .yearly
-        case .yearly: return nil
-        }
-    }
-
     /// All timeframes this can break down to (not just the immediate child)
     var availableBreakdownTimeframes: [Timeframe] {
         switch self {

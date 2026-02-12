@@ -17,7 +17,8 @@ protocol LibraryFilterable: ObservableObject {
 
     // MARK: - Commitment filter
     var commitmentFilter: CommitmentFilter? { get set }
-    var committedTaskIds: Set<UUID> { get }
+    var committedTaskIds: Set<UUID> { get set }
+    var commitmentRepository: CommitmentRepository { get }
     func toggleCommitmentFilter(_ filter: CommitmentFilter)
     func fetchCommittedTaskIds() async
 
@@ -53,6 +54,14 @@ extension LibraryFilterable {
             commitmentFilter = nil
         } else {
             commitmentFilter = filter
+        }
+    }
+
+    func fetchCommittedTaskIds() async {
+        do {
+            committedTaskIds = try await commitmentRepository.fetchCommittedTaskIds()
+        } catch {
+            print("Error fetching committed task IDs: \(error)")
         }
     }
 }

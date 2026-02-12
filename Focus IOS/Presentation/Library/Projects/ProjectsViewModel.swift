@@ -52,7 +52,7 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LibraryFilterab
     @Published var isDoneCollapsed: Bool = true
 
     private let repository: TaskRepository
-    private let commitmentRepository: CommitmentRepository
+    let commitmentRepository: CommitmentRepository
     private let categoryRepository: CategoryRepository
     let authService: AuthService
     private var cancellables = Set<AnyCancellable>()
@@ -604,16 +604,6 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LibraryFilterab
             }
         } catch {
             errorMessage = error.localizedDescription
-        }
-    }
-
-    // MARK: - Commitment Filter
-
-    func fetchCommittedTaskIds() async {
-        do {
-            committedTaskIds = try await commitmentRepository.fetchCommittedTaskIds()
-        } catch {
-            print("Error fetching committed task IDs: \(error)")
         }
     }
 

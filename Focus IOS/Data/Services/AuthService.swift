@@ -96,9 +96,4 @@ class AuthService: ObservableObject {
             throw error
         }
     }
-
-    /// Clear any error messages
-    func clearError() {
-        errorMessage = nil
-    }
 }

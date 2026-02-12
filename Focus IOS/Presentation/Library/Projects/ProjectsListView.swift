@@ -135,6 +135,7 @@ struct ProjectsListView: View {
                     .transaction { t in
                         if isDragging { t.animation = nil }
                     }
+                    .id("active-\(project.id)")
                 }
 
                 // Done section
@@ -144,6 +145,7 @@ struct ProjectsListView: View {
                     if !viewModel.isDoneCollapsed {
                         ForEach(viewModel.completedProjects) { project in
                             ProjectCard(project: project, viewModel: viewModel)
+                                .id("done-\(project.id)")
                         }
                     }
                 }

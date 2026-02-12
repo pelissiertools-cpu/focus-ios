@@ -13,6 +13,8 @@ struct ScheduleDragInfo {
     let taskId: UUID
     let commitmentId: UUID?
     let taskTitle: String
+    let isCompleted: Bool
+    let subtaskText: String?
 }
 
 // MARK: - Timeline ViewModel
@@ -30,9 +32,12 @@ class TimelineViewModel: ObservableObject {
     @Published var scheduleDragLocation: CGPoint = .zero
     @Published var isTimelineDropTargeted: Bool = false
     @Published var timelineDropPreviewY: CGFloat = 0
+    @Published var isDrawerRetractedForDrag: Bool = false
+    @Published var isDragOverCancelZone: Bool = false
+    var cancelZoneGlobalMinY: CGFloat = 0    // Cancel bar top edge in global coords
     var timelineContentOriginY: CGFloat = 0  // Content ZStack origin in global coordinate space
     var timelineScrollOffset: CGFloat = 0    // ScrollView contentOffset.y (for future use)
-    var drawerTopGlobalY: CGFloat = 0        // Drawer top edge in global coords (for future use)
+    var drawerTopGlobalY: CGFloat = 0        // Drawer top edge in global coords
 
     // Timeline block interaction state (move/resize existing blocks)
     @Published var timelineBlockDragId: UUID?  // commitment ID being moved
@@ -161,7 +166,7 @@ class TimelineViewModel: ObservableObject {
 
         // Reuse existing drag infrastructure for drop preview
         if scheduleDragInfo == nil {
-            scheduleDragInfo = ScheduleDragInfo(taskId: task.id, commitmentId: commitment.id, taskTitle: task.title)
+            scheduleDragInfo = ScheduleDragInfo(taskId: task.id, commitmentId: commitment.id, taskTitle: task.title, isCompleted: task.isCompleted, subtaskText: nil)
         }
 
         let newY = (blockMoveOriginalY ?? 0) + translationHeight
@@ -332,38 +337,67 @@ class TimelineViewModel: ObservableObject {
 
     // MARK: - Schedule Drag Helpers (drawer-to-timeline drag)
 
-    func handleScheduleDragChanged(location: CGPoint, taskId: UUID, commitmentId: UUID?, taskTitle: String) {
+    func handleScheduleDragChanged(location: CGPoint, taskId: UUID, commitmentId: UUID?, taskTitle: String, isCompleted: Bool = false, subtaskText: String? = nil) {
         if scheduleDragInfo == nil {
-            scheduleDragInfo = ScheduleDragInfo(taskId: taskId, commitmentId: commitmentId, taskTitle: taskTitle)
+            scheduleDragInfo = ScheduleDragInfo(taskId: taskId, commitmentId: commitmentId, taskTitle: taskTitle, isCompleted: isCompleted, subtaskText: subtaskText)
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
         }
         scheduleDragLocation = location
 
+        // Retract drawer when drag crosses above its top edge
+        let shouldRetract = location.y < drawerTopGlobalY
+        if shouldRetract != isDrawerRetractedForDrag {
+            withAnimation(.easeInOut(duration: 0.25)) {
+                isDrawerRetractedForDrag = shouldRetract
+            }
+        }
+
+        // Check if over cancel zone (the retracted bar at bottom)
+        if isDrawerRetractedForDrag && cancelZoneGlobalMinY > 0 {
+            let overCancel = location.y >= cancelZoneGlobalMinY
+            if overCancel != isDragOverCancelZone {
+                isDragOverCancelZone = overCancel
+                if overCancel {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                }
+            }
+        } else {
+            isDragOverCancelZone = false
+        }
+
         let contentY = location.y - timelineContentOriginY
         timelineDropPreviewY = max(0, contentY)
-        isTimelineDropTargeted = contentY >= 0
+        isTimelineDropTargeted = contentY >= 0 && !isDragOverCancelZone
     }
 
     func handleScheduleDragEnded(location: CGPoint) {
-        let contentY = location.y - timelineContentOriginY
+        // If dropped on cancel zone, just cancel — don't schedule
+        let cancelled = isDragOverCancelZone
 
-        if contentY >= 0, let info = scheduleDragInfo {
-            let dropTime = timeFromYPosition(max(0, contentY), on: parent.selectedDate)
+        if !cancelled {
+            let contentY = location.y - timelineContentOriginY
 
-            _Concurrency.Task { @MainActor in
-                if let commitmentId = info.commitmentId {
-                    let duration = timedCommitments.first(where: { $0.id == commitmentId })?.durationMinutes ?? 30
-                    await scheduleCommitmentTime(commitmentId, at: dropTime, durationMinutes: duration)
-                } else {
-                    await createTimedCommitment(taskId: info.taskId, at: dropTime)
+            if contentY >= 0, let info = scheduleDragInfo {
+                let dropTime = timeFromYPosition(max(0, contentY), on: parent.selectedDate)
+
+                _Concurrency.Task { @MainActor in
+                    if let commitmentId = info.commitmentId {
+                        let duration = timedCommitments.first(where: { $0.id == commitmentId })?.durationMinutes ?? 30
+                        await scheduleCommitmentTime(commitmentId, at: dropTime, durationMinutes: duration)
+                    } else {
+                        await createTimedCommitment(taskId: info.taskId, at: dropTime)
+                    }
                 }
             }
         }
 
-        withAnimation(.easeInOut(duration: 0.15)) {
+        withAnimation(.easeInOut(duration: 0.25)) {
             scheduleDragInfo = nil
             isTimelineDropTargeted = false
+            isDrawerRetractedForDrag = false
+            isDragOverCancelZone = false
         }
         scheduleDragLocation = .zero
+        cancelZoneGlobalMinY = 0
     }
 }

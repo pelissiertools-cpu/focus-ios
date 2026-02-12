@@ -141,10 +141,12 @@ struct FocusTabView: View {
                                     }
                                 }
 
-                            // Layer 2: Inline drawer (slides up from bottom)
+                            // Layer 2: Inline drawer (stays in tree to preserve DragGesture)
                             if showScheduleDrawer {
                                 ScheduleDrawer(viewModel: viewModel, timelineVM: viewModel.timelineVM)
                                     .frame(height: geometry.size.height * 0.5)
+                                    .opacity(viewModel.timelineVM.isDrawerRetractedForDrag ? 0 : 1)
+                                    .allowsHitTesting(!viewModel.timelineVM.isDrawerRetractedForDrag)
                                     .transition(.move(edge: .bottom).combined(with: .opacity))
                                     .background(
                                         GeometryReader { drawerGeo in
@@ -154,6 +156,23 @@ struct FocusTabView: View {
                                             )
                                         }
                                     )
+
+                                // Cancel bar appears when drawer is retracted during drag
+                                if viewModel.timelineVM.isDrawerRetractedForDrag {
+                                    DragCancelBar(isHighlighted: viewModel.timelineVM.isDragOverCancelZone)
+                                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                                        .background(
+                                            GeometryReader { cancelGeo in
+                                                Color.clear
+                                                    .onAppear {
+                                                        viewModel.timelineVM.cancelZoneGlobalMinY = cancelGeo.frame(in: .global).minY
+                                                    }
+                                                    .onChange(of: cancelGeo.frame(in: .global).minY) { _, newY in
+                                                        viewModel.timelineVM.cancelZoneGlobalMinY = newY
+                                                    }
+                                            }
+                                        )
+                                }
                             }
 
                             // Layer 3: FAB (only when drawer is closed)
@@ -186,28 +205,20 @@ struct FocusTabView: View {
                         .onPreferenceChange(DrawerTopPreference.self) { top in
                             viewModel.timelineVM.drawerTopGlobalY = top
                         }
-                        // Floating drag pill overlay (visible while finger is in drawer area)
+                        // Floating drag preview overlay (visible during drawer-to-timeline drag)
                         .overlay {
                             if let info = viewModel.timelineVM.scheduleDragInfo,
                                viewModel.timelineVM.timelineBlockDragId == nil {
                                 GeometryReader { overlayGeo in
                                     let origin = overlayGeo.frame(in: .global).origin
-                                    let localX = viewModel.timelineVM.scheduleDragLocation.x - origin.x
                                     let localY = viewModel.timelineVM.scheduleDragLocation.y - origin.y
 
-                                    Text(info.taskTitle)
-                                        .font(.subheadline)
-                                        .fontWeight(.medium)
-                                        .foregroundColor(.white)
-                                        .lineLimit(1)
-                                        .padding(.horizontal, 16)
-                                        .padding(.vertical, 10)
-                                        .background(
-                                            Capsule()
-                                                .fill(Color.blue.opacity(0.85))
-                                        )
-                                        .shadow(color: .black.opacity(0.2), radius: 8, y: 2)
-                                        .position(x: localX, y: localY - 40)
+                                    ScheduleDragPreviewRow(
+                                        info: info,
+                                        isOverCancelZone: viewModel.timelineVM.isDragOverCancelZone
+                                    )
+                                    .frame(width: min(overlayGeo.size.width - 32, 340))
+                                    .position(x: overlayGeo.size.width / 2, y: localY)
                                 }
                                 .allowsHitTesting(false)
                             }
@@ -217,6 +228,7 @@ struct FocusTabView: View {
             }
             .toolbar(showScheduleDrawer && viewMode == .schedule ? .hidden : .visible, for: .tabBar)
             .animation(.easeInOut(duration: 0.25), value: showScheduleDrawer)
+            .animation(.easeInOut(duration: 0.25), value: viewModel.timelineVM.isDrawerRetractedForDrag)
             .task {
                 if !viewModel.hasLoadedInitialData {
                     await viewModel.fetchCommitments()
@@ -1018,6 +1030,77 @@ struct FocusInlineAddSubtaskRow: View {
             newSubtaskTitle = ""
             // Keep editing mode open for adding more subtasks
         }
+    }
+}
+
+// MARK: - Drag Cancel Bar
+
+private struct DragCancelBar: View {
+    let isHighlighted: Bool
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "xmark.circle.fill")
+                .font(.title3)
+                .foregroundColor(isHighlighted ? .white : .secondary)
+
+            Text("Drop to cancel")
+                .font(.subheadline)
+                .fontWeight(.medium)
+                .foregroundColor(isHighlighted ? .white : .secondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 16)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(isHighlighted ? Color.red.opacity(0.85) : Color(.systemBackground))
+                .shadow(color: .black.opacity(0.15), radius: 12, y: -4)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .animation(.easeInOut(duration: 0.15), value: isHighlighted)
+    }
+}
+
+// MARK: - Schedule Drag Preview Row
+
+private struct ScheduleDragPreviewRow: View {
+    let info: ScheduleDragInfo
+    var isOverCancelZone: Bool = false
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: info.isCompleted ? "checkmark.circle.fill" : "circle")
+                .font(.title3)
+                .foregroundColor(info.isCompleted ? .green : .gray)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(info.taskTitle)
+                    .font(.body)
+                    .strikethrough(info.isCompleted)
+                    .foregroundColor(info.isCompleted ? .secondary : .primary)
+                    .lineLimit(1)
+
+                if let subtaskText = info.subtaskText {
+                    Text(subtaskText)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            DragHandleView()
+                .frame(width: 44, height: 44)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color(.secondarySystemBackground))
+        )
+        .opacity(isOverCancelZone ? 0.5 : 1.0)
+        .shadow(color: .black.opacity(0.2), radius: 12, y: 4)
+        .scaleEffect(isOverCancelZone ? 0.95 : 1.03)
+        .animation(.easeInOut(duration: 0.15), value: isOverCancelZone)
     }
 }
 

@@ -58,6 +58,12 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
             taskRepository: taskRepository,
             authService: authService
         )
+        // Forward timelineVM changes so FocusTabView re-renders on drag state updates
+        timelineVM.objectWillChange
+            .sink { [weak self] _ in
+                self?.objectWillChange.send()
+            }
+            .store(in: &cancellables)
         setupNotificationObserver()
     }
 

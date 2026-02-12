@@ -203,11 +203,16 @@ struct ScheduleDrawer: View {
                             .highPriorityGesture(
                                 DragGesture(minimumDistance: 5, coordinateSpace: .global)
                                     .onChanged { value in
+                                        let subtaskLabel: String? = hasSubtasks
+                                            ? "\(subtasks.filter { $0.isCompleted }.count)/\(subtasks.count) subtasks"
+                                            : nil
                                         timelineVM.handleScheduleDragChanged(
                                             location: value.location,
                                             taskId: task.id,
                                             commitmentId: commitment.id,
-                                            taskTitle: task.title
+                                            taskTitle: task.title,
+                                            isCompleted: task.isCompleted,
+                                            subtaskText: subtaskLabel
                                         )
                                     }
                                     .onEnded { value in
@@ -305,11 +310,16 @@ struct ScheduleDrawer: View {
                             .highPriorityGesture(
                                 DragGesture(minimumDistance: 5, coordinateSpace: .global)
                                     .onChanged { value in
+                                        let subtaskLabel: String? = hasSubtasks
+                                            ? "\(subtasks.filter { $0.isCompleted }.count)/\(subtasks.count) subtasks"
+                                            : nil
                                         timelineVM.handleScheduleDragChanged(
                                             location: value.location,
                                             taskId: task.id,
                                             commitmentId: nil,
-                                            taskTitle: task.title
+                                            taskTitle: task.title,
+                                            isCompleted: task.isCompleted,
+                                            subtaskText: subtaskLabel
                                         )
                                     }
                                     .onEnded { value in

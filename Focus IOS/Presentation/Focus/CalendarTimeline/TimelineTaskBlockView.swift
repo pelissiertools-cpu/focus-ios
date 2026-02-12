@@ -16,8 +16,8 @@ struct TimelineTaskBlockView: View {
 
     // Callbacks
     var onTap: () -> Void = {}
-    var onMoveChanged: (CGPoint) -> Void = { _ in }
-    var onMoveEnded: (CGPoint) -> Void = { _ in }
+    var onMoveChanged: (CGFloat) -> Void = { _ in }
+    var onMoveEnded: (CGFloat) -> Void = { _ in }
     var onTopResizeChanged: (CGFloat) -> Void = { _ in }
     var onTopResizeEnded: (CGFloat) -> Void = { _ in }
     var onBottomResizeChanged: (CGFloat) -> Void = { _ in }
@@ -108,7 +108,7 @@ struct TimelineTaskBlockView: View {
             }
             .simultaneousGesture(
                 LongPressGesture(minimumDuration: 0.3)
-                    .sequenced(before: DragGesture(minimumDistance: 0, coordinateSpace: .global))
+                    .sequenced(before: DragGesture(minimumDistance: 0))
                     .onChanged { value in
                         switch value {
                         case .first(true):
@@ -118,7 +118,7 @@ struct TimelineTaskBlockView: View {
                             }
                         case .second(true, let drag):
                             if let drag = drag {
-                                onMoveChanged(drag.location)
+                                onMoveChanged(drag.translation.height)
                             }
                         default:
                             break
@@ -128,7 +128,7 @@ struct TimelineTaskBlockView: View {
                         switch value {
                         case .second(true, let drag):
                             if let drag = drag {
-                                onMoveEnded(drag.location)
+                                onMoveEnded(drag.translation.height)
                             }
                         default:
                             break

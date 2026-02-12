@@ -165,18 +165,12 @@ struct FocusTabView: View {
                                 .transition(.scale.combined(with: .opacity))
                             }
 
-                            // Layer 4: Floating drag pill (follows finger during schedule drag)
-                            if let dragInfo = viewModel.scheduleDragInfo {
-                                let containerFrame = geometry.frame(in: .global)
-                                ScheduleDragPill(title: dragInfo.taskTitle)
-                                    .position(x: geometry.size.width / 2,
-                                              y: viewModel.scheduleDragLocation.y - containerFrame.minY - 30)
-                                    .allowsHitTesting(false)
-                            }
                         }
                     }
                 }
             }
+            .toolbar(showScheduleDrawer && viewMode == .schedule ? .hidden : .visible, for: .tabBar)
+            .animation(.easeInOut(duration: 0.25), value: showScheduleDrawer)
             .task {
                 if !viewModel.hasLoadedInitialData {
                     await viewModel.fetchCommitments()
@@ -978,31 +972,6 @@ struct FocusInlineAddSubtaskRow: View {
             newSubtaskTitle = ""
             // Keep editing mode open for adding more subtasks
         }
-    }
-}
-
-// MARK: - Schedule Drag Pill
-
-struct ScheduleDragPill: View {
-    let title: String
-
-    var body: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "clock")
-                .font(.caption)
-                .foregroundColor(.blue)
-            Text(title)
-                .font(.subheadline)
-                .fontWeight(.medium)
-                .lineLimit(1)
-        }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 8)
-        .background(
-            Capsule()
-                .fill(Color(.systemBackground))
-                .shadow(color: .black.opacity(0.15), radius: 8, y: 2)
-        )
     }
 }
 

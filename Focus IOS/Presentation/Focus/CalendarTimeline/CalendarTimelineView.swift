@@ -23,17 +23,16 @@ struct CalendarTimelineView: View {
             ScrollViewReader { proxy in
                 ScrollView(.vertical, showsIndicators: false) {
                     ZStack(alignment: .topLeading) {
-                        // Invisible anchor to track content origin in global space
-                        GeometryReader { geo in
-                            Color.clear.preference(
-                                key: TimelineContentOriginPreference.self,
-                                value: geo.frame(in: .global).minY
-                            )
-                        }
-                        .frame(height: 0)
-
                         // Hour grid background
                         TimelineGridView()
+                            .background(
+                                GeometryReader { geo in
+                                    Color.clear.preference(
+                                        key: TimelineContentOriginPreference.self,
+                                        value: geo.frame(in: .global).minY
+                                    )
+                                }
+                            )
 
                         // Scheduled task blocks
                         ForEach(viewModel.timedCommitments) { commitment in
@@ -47,16 +46,16 @@ struct CalendarTimelineView: View {
                                     onTap: {
                                         viewModel.selectedTaskForDetails = task
                                     },
-                                    onMoveChanged: { globalPoint in
+                                    onMoveChanged: { translationHeight in
                                         viewModel.handleTimelineBlockMoveChanged(
-                                            globalLocation: globalPoint,
+                                            translationHeight: translationHeight,
                                             commitment: commitment,
                                             task: task
                                         )
                                     },
-                                    onMoveEnded: { globalPoint in
+                                    onMoveEnded: { translationHeight in
                                         viewModel.handleTimelineBlockMoveEnded(
-                                            globalLocation: globalPoint
+                                            translationHeight: translationHeight
                                         )
                                     },
                                     onTopResizeChanged: { delta in
@@ -87,12 +86,13 @@ struct CalendarTimelineView: View {
                             }
                         }
 
-                        // Drop preview during drag hover
+                        // Drop preview during drag (inside ScrollView so position = time)
                         if viewModel.isTimelineDropTargeted {
                             TimelineDropPreviewView(
                                 yPosition: viewModel.timelineDropPreviewY,
                                 hourHeight: TimelineGridView.hourHeight,
-                                labelWidth: TimelineGridView.labelWidth
+                                labelWidth: TimelineGridView.labelWidth,
+                                taskTitle: viewModel.scheduleDragInfo?.taskTitle ?? ""
                             )
                         }
 

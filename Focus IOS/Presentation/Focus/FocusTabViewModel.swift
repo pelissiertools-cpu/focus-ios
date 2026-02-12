@@ -50,6 +50,7 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
 
     // Timeline block interaction state (move/resize existing blocks)
     @Published var timelineBlockDragId: UUID?  // commitment ID being moved
+    private var blockMoveOriginalY: CGFloat?  // original Y position of block being moved
     private var resizeOriginalDuration: Int?  // original duration before resize started
     private var resizeOriginalTime: Date?  // original scheduledTime before top-resize started
     private var timelineCreatedCommitmentIds: Set<UUID> = []  // commitments created from library drag (no prior commitment)
@@ -1262,7 +1263,7 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
     func timeFromYPosition(_ y: CGFloat, on date: Date) -> Date {
         let hourHeight: CGFloat = 60  // matches TimelineGridView.hourHeight
         let totalMinutes = (y / hourHeight) * 60
-        let snappedMinutes = (Int(totalMinutes) / 15) * 15
+        let snappedMinutes = Int((totalMinutes / 15.0).rounded()) * 15
         let hour = min(max(snappedMinutes / 60, 0), 23)
         let minute = min(snappedMinutes % 60, 59)
 
@@ -1275,27 +1276,39 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
 
     // MARK: - Timeline Block Move (long-press drag to reposition)
 
-    func handleTimelineBlockMoveChanged(globalLocation: CGPoint, commitment: Commitment, task: FocusTask) {
+    /// Convert a scheduled time to its Y position on the timeline grid
+    private func yPositionFromTime(_ time: Date) -> CGFloat {
+        let calendar = Calendar.current
+        let hour = calendar.component(.hour, from: time)
+        let minute = calendar.component(.minute, from: time)
+        return CGFloat(hour) * hourHeight + CGFloat(minute) * (hourHeight / 60.0)
+    }
+
+    func handleTimelineBlockMoveChanged(translationHeight: CGFloat, commitment: Commitment, task: FocusTask) {
         if timelineBlockDragId == nil {
             timelineBlockDragId = commitment.id
         }
 
-        // Reuse existing drag infrastructure for floating pill + drop preview
+        // Capture original Y position on drag start
+        if blockMoveOriginalY == nil, let time = commitment.scheduledTime {
+            blockMoveOriginalY = yPositionFromTime(time)
+        }
+
+        // Reuse existing drag infrastructure for drop preview
         if scheduleDragInfo == nil {
             scheduleDragInfo = ScheduleDragInfo(taskId: task.id, commitmentId: commitment.id, taskTitle: task.title)
         }
-        scheduleDragLocation = globalLocation
 
-        let contentY = globalLocation.y - timelineContentOriginY
-        timelineDropPreviewY = max(0, contentY)
-        isTimelineDropTargeted = contentY >= 0
+        let newY = (blockMoveOriginalY ?? 0) + translationHeight
+        timelineDropPreviewY = max(0, newY)
+        isTimelineDropTargeted = true
     }
 
-    func handleTimelineBlockMoveEnded(globalLocation: CGPoint) {
-        let contentY = globalLocation.y - timelineContentOriginY
+    func handleTimelineBlockMoveEnded(translationHeight: CGFloat) {
+        let finalY = max(0, (blockMoveOriginalY ?? 0) + translationHeight)
 
-        if contentY >= 0, let info = scheduleDragInfo, let commitmentId = info.commitmentId {
-            let dropTime = timeFromYPosition(max(0, contentY), on: selectedDate)
+        if let info = scheduleDragInfo, let commitmentId = info.commitmentId {
+            let dropTime = timeFromYPosition(finalY, on: selectedDate)
             let duration = timedCommitments.first(where: { $0.id == commitmentId })?.durationMinutes ?? 30
             _Concurrency.Task { @MainActor in
                 await scheduleCommitmentTime(commitmentId, at: dropTime, durationMinutes: duration)
@@ -1307,7 +1320,7 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
             scheduleDragInfo = nil
             isTimelineDropTargeted = false
         }
-        scheduleDragLocation = .zero
+        blockMoveOriginalY = nil
     }
 
     // MARK: - Timeline Block Resize (drag top/bottom handles)

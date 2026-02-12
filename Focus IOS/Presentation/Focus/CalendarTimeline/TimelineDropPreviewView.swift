@@ -5,11 +5,13 @@
 
 import SwiftUI
 
-/// Semi-transparent dashed-border preview block shown during drag hover over the timeline
+/// Dashed-border preview block shown on the timeline grid during drag-to-schedule.
+/// Lives inside the ScrollView content — its position on the grid IS its time.
 struct TimelineDropPreviewView: View {
     let yPosition: CGFloat
     let hourHeight: CGFloat
     let labelWidth: CGFloat
+    let taskTitle: String
 
     private var blockHeight: CGFloat {
         30.0 * (hourHeight / 60.0)  // 30-minute default duration
@@ -46,17 +48,24 @@ struct TimelineDropPreviewView: View {
             Spacer().frame(width: labelWidth + 8)
 
             RoundedRectangle(cornerRadius: 6)
-                .fill(Color.blue.opacity(0.08))
+                .fill(Color.blue.opacity(0.15))
                 .overlay(
                     RoundedRectangle(cornerRadius: 6)
-                        .strokeBorder(Color.blue.opacity(0.5), style: StrokeStyle(lineWidth: 1.5, dash: [5]))
+                        .strokeBorder(Color.blue, style: StrokeStyle(lineWidth: 1.5, dash: [5]))
                 )
                 .overlay(
-                    Text(timeLabel)
-                        .font(.caption2)
-                        .foregroundColor(.blue.opacity(0.6))
-                        .padding(.horizontal, 8)
-                        .padding(.top, 4),
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(taskTitle)
+                            .font(.caption)
+                            .fontWeight(.medium)
+                            .foregroundColor(.blue)
+                            .lineLimit(1)
+                        Text(timeLabel)
+                            .font(.caption2)
+                            .foregroundColor(.blue.opacity(0.6))
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.top, 4),
                     alignment: .topLeading
                 )
                 .frame(height: blockHeight)

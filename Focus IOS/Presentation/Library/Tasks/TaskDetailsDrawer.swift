@@ -298,9 +298,6 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                     }
                 }
             }
-            .onAppear {
-                isFocused = true
-            }
             .alert("New Category", isPresented: $showingNewCategoryAlert) {
                 TextField("Category name", text: $newCategoryName)
                 Button("Cancel", role: .cancel) { newCategoryName = "" }

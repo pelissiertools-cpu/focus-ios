@@ -4,6 +4,7 @@
 //
 
 import SwiftUI
+import Auth
 
 // MARK: - Project Card
 
@@ -453,15 +454,31 @@ struct InlineAddSubtaskForProjectRow: View {
 
 struct AddProjectSheet: View {
     @ObservedObject var viewModel: ProjectsViewModel
+    @EnvironmentObject var focusViewModel: FocusTabViewModel
+    @EnvironmentObject var authService: AuthService
     @State private var projectTitle = ""
     @State private var selectedCategoryId: UUID? = nil
     @State private var draftTasks: [DraftTask] = []
     @State private var showNewCategory = false
     @State private var newCategoryName = ""
+    @State private var commitAfterCreate = false
+    @State private var selectedTimeframe: Timeframe = .daily
+    @State private var selectedSection: Section = .focus
+    @State private var selectedDates: Set<Date> = []
+    @State private var hasScheduledTime = false
+    @State private var scheduledTime: Date = {
+        let now = Date()
+        let calendar = Calendar.current
+        let minute = calendar.component(.minute, from: now)
+        let roundUp = ((minute / 15) + 1) * 15
+        return calendar.date(byAdding: .minute, value: roundUp - minute, to: now) ?? now
+    }()
+    @State private var sheetDetent: PresentationDetent = .fraction(0.75)
     @FocusState private var titleFocused: Bool
 
     var body: some View {
         NavigationView {
+            ScrollViewReader { proxy in
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
                     // Project name
@@ -550,15 +567,19 @@ struct AddProjectSheet: View {
                         .buttonStyle(.plain)
                     }
 
+                    // Commit & schedule toggles
+                    CommitScheduleSection(
+                        commitAfterCreate: $commitAfterCreate,
+                        selectedTimeframe: $selectedTimeframe,
+                        selectedSection: $selectedSection,
+                        selectedDates: $selectedDates,
+                        hasScheduledTime: $hasScheduledTime,
+                        scheduledTime: $scheduledTime
+                    )
+
                     // Create button
                     Button {
-                        _Concurrency.Task {
-                            await viewModel.saveNewProject(
-                                title: projectTitle,
-                                categoryId: selectedCategoryId,
-                                draftTasks: draftTasks
-                            )
-                        }
+                        createProject()
                     } label: {
                         Text("Create Project")
                             .font(.headline)
@@ -575,9 +596,26 @@ struct AddProjectSheet: View {
                     .buttonStyle(.plain)
                     .disabled(projectTitle.trimmingCharacters(in: .whitespaces).isEmpty)
                     .padding(.top, 8)
+                    .id("createProjectButton")
                 }
                 .padding()
             }
+            .onChange(of: commitAfterCreate) { _, isOn in
+                if isOn {
+                    titleFocused = false
+                }
+                withAnimation {
+                    sheetDetent = isOn ? .large : .fraction(0.75)
+                }
+                if isOn {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        withAnimation {
+                            proxy.scrollTo("createProjectButton", anchor: .bottom)
+                        }
+                    }
+                }
+            }
+            } // ScrollViewReader
             .navigationTitle("New Project")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -590,6 +628,42 @@ struct AddProjectSheet: View {
             .onAppear {
                 titleFocused = true
             }
+            .presentationDetents([.fraction(0.75), .large], selection: $sheetDetent)
+            .presentationDragIndicator(.visible)
+            .presentationContentInteraction(.scrolls)
+        }
+    }
+
+    private func createProject() {
+        _Concurrency.Task { @MainActor in
+            guard let projectId = await viewModel.saveNewProject(
+                title: projectTitle,
+                categoryId: selectedCategoryId,
+                draftTasks: draftTasks
+            ) else { return }
+
+            // Create commitments if commit toggle is on and dates selected
+            if commitAfterCreate && !selectedDates.isEmpty {
+                guard let userId = authService.currentUser?.id else { return }
+                let commitmentRepository = CommitmentRepository()
+                for date in selectedDates {
+                    let commitment = Commitment(
+                        userId: userId,
+                        taskId: projectId,
+                        timeframe: selectedTimeframe,
+                        section: selectedSection,
+                        commitmentDate: date,
+                        sortOrder: 0,
+                        scheduledTime: hasScheduledTime ? scheduledTime : nil,
+                        durationMinutes: hasScheduledTime ? 30 : nil
+                    )
+                    _ = try? await commitmentRepository.createCommitment(commitment)
+                }
+                await focusViewModel.fetchCommitments()
+                await viewModel.fetchCommittedTaskIds()
+            }
+
+            viewModel.showingAddProject = false
         }
     }
 

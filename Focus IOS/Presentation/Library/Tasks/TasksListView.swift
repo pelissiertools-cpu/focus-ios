@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import Auth
 
 // MARK: - Row Frame Preference Key
 
@@ -673,11 +674,17 @@ struct InlineAddSubtaskRow: View {
 
 struct AddTaskSheet: View {
     @ObservedObject var viewModel: TaskListViewModel
+    @EnvironmentObject var focusViewModel: FocusTabViewModel
+    @EnvironmentObject var authService: AuthService
     @State private var taskTitle = ""
     @State private var draftSubtasks: [DraftSubtaskEntry] = []
     @State private var selectedCategoryId: UUID? = nil
     @State private var showNewCategory = false
     @State private var newCategoryName = ""
+    @State private var commitAfterCreate = false
+    @State private var selectedTimeframe: Timeframe = .daily
+    @State private var selectedSection: Section = .focus
+    @State private var selectedDates: Set<Date> = []
     @State private var hasScheduledTime = false
     @State private var scheduledTime: Date = {
         let now = Date()
@@ -686,10 +693,12 @@ struct AddTaskSheet: View {
         let roundUp = ((minute / 15) + 1) * 15
         return calendar.date(byAdding: .minute, value: roundUp - minute, to: now) ?? now
     }()
+    @State private var sheetDetent: PresentationDetent = .fraction(0.75)
     @FocusState private var titleFocused: Bool
 
     var body: some View {
         NavigationView {
+            ScrollViewReader { proxy in
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
                     // Task title
@@ -789,28 +798,15 @@ struct AddTaskSheet: View {
                         }
                     }
 
-                    // Schedule time toggle
-                    VStack(alignment: .leading, spacing: 8) {
-                        Toggle(isOn: $hasScheduledTime) {
-                            HStack(spacing: 8) {
-                                Image(systemName: "clock")
-                                    .foregroundColor(.blue)
-                                Text("Schedule time")
-                                    .font(.subheadline.weight(.medium))
-                            }
-                        }
-                        .tint(.blue)
-
-                        if hasScheduledTime {
-                            DatePicker(
-                                "Time",
-                                selection: $scheduledTime,
-                                displayedComponents: .hourAndMinute
-                            )
-                            .datePickerStyle(.compact)
-                            .labelsHidden()
-                        }
-                    }
+                    // Commit & schedule toggles
+                    CommitScheduleSection(
+                        commitAfterCreate: $commitAfterCreate,
+                        selectedTimeframe: $selectedTimeframe,
+                        selectedSection: $selectedSection,
+                        selectedDates: $selectedDates,
+                        hasScheduledTime: $hasScheduledTime,
+                        scheduledTime: $scheduledTime
+                    )
 
                     // Add Task button
                     Button {
@@ -831,9 +827,26 @@ struct AddTaskSheet: View {
                     .buttonStyle(.plain)
                     .disabled(taskTitle.trimmingCharacters(in: .whitespaces).isEmpty)
                     .padding(.top, 8)
+                    .id("addTaskButton")
                 }
                 .padding()
             }
+            .onChange(of: commitAfterCreate) { _, isOn in
+                if isOn {
+                    titleFocused = false
+                }
+                withAnimation {
+                    sheetDetent = isOn ? .large : .fraction(0.75)
+                }
+                if isOn {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        withAnimation {
+                            proxy.scrollTo("addTaskButton", anchor: .bottom)
+                        }
+                    }
+                }
+            }
+            } // ScrollViewReader
             .navigationTitle("New Task")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -846,6 +859,9 @@ struct AddTaskSheet: View {
             .onAppear {
                 titleFocused = true
             }
+            .presentationDetents([.fraction(0.75), .large], selection: $sheetDetent)
+            .presentationDragIndicator(.visible)
+            .presentationContentInteraction(.scrolls)
         }
     }
 
@@ -857,8 +873,6 @@ struct AddTaskSheet: View {
             .map { $0.title.trimmingCharacters(in: .whitespaces) }
             .filter { !$0.isEmpty }
         let categoryToAssign = selectedCategoryId
-        let shouldSchedule = hasScheduledTime
-        let timeToSchedule = scheduledTime
 
         _Concurrency.Task { @MainActor in
             guard let parentId = await viewModel.createTask(title: title, categoryId: categoryToAssign) else {
@@ -869,14 +883,33 @@ struct AddTaskSheet: View {
                 await viewModel.createSubtask(title: subtaskTitle, parentId: parentId)
             }
 
-            if shouldSchedule {
-                await viewModel.createTimedCommitment(taskId: parentId, at: timeToSchedule)
+            // Create commitments if commit toggle is on and dates selected
+            if commitAfterCreate && !selectedDates.isEmpty {
+                guard let userId = authService.currentUser?.id else { return }
+                let commitmentRepository = CommitmentRepository()
+                for date in selectedDates {
+                    let commitment = Commitment(
+                        userId: userId,
+                        taskId: parentId,
+                        timeframe: selectedTimeframe,
+                        section: selectedSection,
+                        commitmentDate: date,
+                        sortOrder: 0,
+                        scheduledTime: hasScheduledTime ? scheduledTime : nil,
+                        durationMinutes: hasScheduledTime ? 30 : nil
+                    )
+                    _ = try? await commitmentRepository.createCommitment(commitment)
+                }
+                await focusViewModel.fetchCommitments()
+                await viewModel.fetchCommittedTaskIds()
             }
 
             // Reset fields for next task (keep category selection)
             taskTitle = ""
             draftSubtasks = []
+            commitAfterCreate = false
             hasScheduledTime = false
+            selectedDates = []
             titleFocused = true
         }
     }

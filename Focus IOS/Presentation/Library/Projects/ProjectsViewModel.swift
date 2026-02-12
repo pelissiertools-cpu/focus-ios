@@ -324,14 +324,15 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LibraryFilterab
 
     // MARK: - Project CRUD
 
-    func saveNewProject(title: String, categoryId: UUID?, draftTasks: [DraftTask]) async {
+    @discardableResult
+    func saveNewProject(title: String, categoryId: UUID?, draftTasks: [DraftTask]) async -> UUID? {
         guard let userId = authService.currentUser?.id else {
             errorMessage = "No authenticated user"
-            return
+            return nil
         }
 
         let trimmedTitle = title.trimmingCharacters(in: .whitespaces)
-        guard !trimmedTitle.isEmpty else { return }
+        guard !trimmedTitle.isEmpty else { return nil }
 
         do {
             // 1. Create the project
@@ -373,9 +374,10 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LibraryFilterab
             // 3. Refresh projects list
             projects.insert(project, at: 0)
             await fetchProjectTasks(for: project.id)
-            showingAddProject = false
+            return project.id
         } catch {
             errorMessage = error.localizedDescription
+            return nil
         }
     }
 

@@ -633,6 +633,14 @@ struct AddListSheet: View {
     @State private var selectedTimeframe: Timeframe = .daily
     @State private var selectedSection: Section = .focus
     @State private var selectedDates: Set<Date> = []
+    @State private var hasScheduledTime = false
+    @State private var scheduledTime: Date = {
+        let now = Date()
+        let calendar = Calendar.current
+        let minute = calendar.component(.minute, from: now)
+        let roundUp = ((minute / 15) + 1) * 15
+        return calendar.date(byAdding: .minute, value: roundUp - minute, to: now) ?? now
+    }()
     @State private var sheetDetent: PresentationDetent = .fraction(0.75)
     @EnvironmentObject var focusViewModel: FocusTabViewModel
     @FocusState private var titleFocused: Bool
@@ -747,27 +755,15 @@ struct AddListSheet: View {
                         }
                     }
 
-                    // Commit to Focus toggle
-                    VStack(alignment: .leading, spacing: 12) {
-                        Toggle(isOn: $commitAfterCreate.animation(.easeInOut(duration: 0.2))) {
-                            Label("Commit to Focus", systemImage: "arrow.right.circle")
-                                .font(.subheadline.weight(.medium))
-                        }
-                        .tint(.blue)
-
-                        if commitAfterCreate {
-                            Picker("Section", selection: $selectedSection) {
-                                Text("Focus").tag(Section.focus)
-                                Text("Extra").tag(Section.extra)
-                            }
-                            .pickerStyle(.segmented)
-
-                            UnifiedCalendarPicker(
-                                selectedDates: $selectedDates,
-                                selectedTimeframe: $selectedTimeframe
-                            )
-                        }
-                    }
+                    // Commit & schedule toggles
+                    CommitScheduleSection(
+                        commitAfterCreate: $commitAfterCreate,
+                        selectedTimeframe: $selectedTimeframe,
+                        selectedSection: $selectedSection,
+                        selectedDates: $selectedDates,
+                        hasScheduledTime: $hasScheduledTime,
+                        scheduledTime: $scheduledTime
+                    )
 
                     // Create button
                     Button {
@@ -854,7 +850,9 @@ struct AddListSheet: View {
                             timeframe: selectedTimeframe,
                             section: selectedSection,
                             commitmentDate: date,
-                            sortOrder: 0
+                            sortOrder: 0,
+                            scheduledTime: hasScheduledTime ? scheduledTime : nil,
+                            durationMinutes: hasScheduledTime ? 30 : nil
                         )
                         _ = try? await commitmentRepository.createCommitment(commitment)
                     }

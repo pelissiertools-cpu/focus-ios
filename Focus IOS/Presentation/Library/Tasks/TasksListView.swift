@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-import UniformTypeIdentifiers
 import Auth
 
 // MARK: - Row Frame Preference Key
@@ -18,50 +17,6 @@ struct RowFramePreference: PreferenceKey {
     }
 }
 
-// MARK: - Task Reorder Drop Delegate
-
-struct TaskReorderDropDelegate: DropDelegate {
-    let viewModel: TaskListViewModel
-    @Binding var draggingTaskId: UUID?
-    let rowFrames: [UUID: CGRect]
-
-    func dropUpdated(info: DropInfo) -> DropProposal? {
-        guard let dragId = draggingTaskId else { return DropProposal(operation: .cancel) }
-
-        let location = info.location
-        let uncompleted = viewModel.uncompletedTasks
-        guard let currentIdx = uncompleted.firstIndex(where: { $0.id == dragId }) else {
-            return DropProposal(operation: .move)
-        }
-
-        // Find which row the drop is over by checking midpoints
-        for (idx, task) in uncompleted.enumerated() where task.id != dragId {
-            guard let frame = rowFrames[task.id] else { continue }
-            // Only reorder when crossing the midpoint of an adjacent-ish row
-            let crossedDown = idx > currentIdx && location.y > frame.midY
-            let crossedUp = idx < currentIdx && location.y < frame.midY
-            if crossedDown || crossedUp {
-                withAnimation(.easeInOut(duration: 0.2)) {
-                    viewModel.reorderTask(droppedId: dragId, targetId: task.id)
-                }
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                break
-            }
-        }
-
-        return DropProposal(operation: .move)
-    }
-
-    func performDrop(info: DropInfo) -> Bool {
-        draggingTaskId = nil
-        return true
-    }
-
-    func dropExited(info: DropInfo) {
-        draggingTaskId = nil
-    }
-}
-
 // MARK: - Tasks List View
 
 struct TasksListView: View {
@@ -69,16 +24,6 @@ struct TasksListView: View {
 
     let searchText: String
     @Binding var isSearchFocused: Bool
-
-    // Drag state
-    @State private var draggingTaskId: UUID?
-    @State private var draggingSubtaskId: UUID?
-    @State private var draggingSubtaskParentId: UUID?
-    @State private var dragFingerY: CGFloat = 0          // finger Y in coordinate space (for reorder checks)
-    @State private var dragTranslation: CGFloat = 0       // raw finger delta from start
-    @State private var dragReorderAdjustment: CGFloat = 0 // compensates for layout shifts on reorder
-    @State private var lastReorderTime: Date = .distantPast
-    @State private var rowFrames: [UUID: CGRect] = [:]
 
     init(viewModel: TaskListViewModel, searchText: String = "", isSearchFocused: Binding<Bool> = .constant(false)) {
         self.viewModel = viewModel
@@ -181,83 +126,40 @@ struct TasksListView: View {
     }
 
     private var taskList: some View {
-        ScrollView {
-            VStack(spacing: 0) {
-                // Uncompleted tasks — reorderable via handle drag
-                ForEach(Array(viewModel.uncompletedTasks.enumerated()), id: \.element.id) { index, task in
-                    let isDragging = draggingTaskId == task.id
-
-                    VStack(spacing: 0) {
-                        if index > 0 {
-                            Divider()
-                        }
-                        ExpandableTaskRow(
-                            task: task,
-                            viewModel: viewModel,
-                            draggingTaskId: $draggingTaskId,
-                            isEditMode: viewModel.isEditMode,
-                            isSelected: viewModel.selectedTaskIds.contains(task.id),
-                            onSelectToggle: { viewModel.toggleTaskSelection(task.id) }
-                        )
-
-                        if !viewModel.isEditMode && viewModel.isExpanded(task.id) {
-                            SubtasksList(
-                                parentTask: task,
-                                viewModel: viewModel,
-                                draggingSubtaskId: draggingSubtaskId,
-                                dragTranslation: dragTranslation,
-                                dragReorderAdjustment: dragReorderAdjustment,
-                                dragFingerY: dragFingerY,
-                                rowFrames: rowFrames,
-                                onSubtaskDragChanged: { subtaskId, value in
-                                    handleSubtaskDrag(subtaskId, parentId: task.id, value)
-                                },
-                                onSubtaskDragEnded: { handleSubtaskDragEnd() }
-                            )
-                            InlineAddSubtaskRow(parentId: task.id, viewModel: viewModel)
-                        }
-                    }
-                    .background(
-                        GeometryReader { geo in
-                            Color.clear.preference(
-                                key: RowFramePreference.self,
-                                value: [task.id: geo.frame(in: .named("taskList"))]
-                            )
-                        }
+        List {
+            // Uncompleted tasks — reorderable via List's native drag
+            ForEach(viewModel.uncompletedTasks) { task in
+                VStack(spacing: 0) {
+                    ExpandableTaskRow(
+                        task: task,
+                        viewModel: viewModel,
+                        isEditMode: viewModel.isEditMode,
+                        isSelected: viewModel.selectedTaskIds.contains(task.id),
+                        onSelectToggle: { viewModel.toggleTaskSelection(task.id) }
                     )
-                    .background(Color(.systemBackground))
-                    .opacity(isDragging ? 0.3 : 1.0)
-                }
 
-                // Done pill (when there are completed tasks, hidden in edit mode)
-                if !viewModel.isEditMode && !viewModel.completedTasks.isEmpty {
-                    Divider()
-                    LibraryDonePillView(completedTasks: viewModel.completedTasks, viewModel: viewModel)
-                }
-            }
-            .padding(.horizontal)
-            .padding(.bottom, 100)
-            .background(
-                Color.clear
-                    .contentShape(Rectangle())
-                    .onTapGesture {
-                        UIApplication.shared.sendAction(
-                            #selector(UIResponder.resignFirstResponder),
-                            to: nil, from: nil, for: nil
-                        )
+                    if !viewModel.isEditMode && viewModel.isExpanded(task.id) {
+                        SubtasksList(parentTask: task, viewModel: viewModel)
+                        InlineAddSubtaskRow(parentId: task.id, viewModel: viewModel)
                     }
-            )
-            .onPreferenceChange(RowFramePreference.self) { frames in
-                rowFrames = frames
+                }
+                .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+                .listRowBackground(Color(.systemBackground))
             }
-            .onDrop(of: [.text], delegate: TaskReorderDropDelegate(
-                viewModel: viewModel,
-                draggingTaskId: $draggingTaskId,
-                rowFrames: rowFrames
-            ))
+            .onMove { from, to in
+                viewModel.moveTask(from: from, to: to)
+            }
+
+            // Done pill (when there are completed tasks, hidden in edit mode)
+            if !viewModel.isEditMode && !viewModel.completedTasks.isEmpty {
+                LibraryDonePillView(completedTasks: viewModel.completedTasks, viewModel: viewModel)
+                    .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color(.systemBackground))
+            }
         }
+        .listStyle(.plain)
         .scrollDismissesKeyboard(.interactively)
-        .coordinateSpace(name: "taskList")
         .refreshable {
             await withCheckedContinuation { continuation in
                 _Concurrency.Task { @MainActor in
@@ -270,57 +172,6 @@ struct TasksListView: View {
         }
     }
 
-    // MARK: - Subtask Drag Handlers
-
-    private func handleSubtaskDrag(_ subtaskId: UUID, parentId: UUID, _ value: DragGesture.Value) {
-        // Don't start a subtask drag if a task drag is active
-        guard draggingTaskId == nil else { return }
-
-        if draggingSubtaskId == nil {
-            withAnimation(.easeInOut(duration: 0.15)) {
-                draggingSubtaskId = subtaskId
-                draggingSubtaskParentId = parentId
-            }
-            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-        }
-        dragTranslation = value.translation.height
-        dragFingerY = value.location.y
-
-        // Cooldown: prevent double-swaps during animation
-        guard Date().timeIntervalSince(lastReorderTime) > 0.25 else { return }
-
-        let uncompleted = viewModel.getUncompletedSubtasks(for: parentId)
-        guard let currentIdx = uncompleted.firstIndex(where: { $0.id == subtaskId }) else { return }
-
-        for (idx, other) in uncompleted.enumerated() where other.id != subtaskId {
-            guard let frame = rowFrames[other.id] else { continue }
-            let crossedDown = idx > currentIdx && dragFingerY > frame.midY
-            let crossedUp = idx < currentIdx && dragFingerY < frame.midY
-            if crossedDown || crossedUp {
-                // Adjust offset to compensate for layout shift
-                let passedHeight = frame.height
-                dragReorderAdjustment += crossedDown ? -passedHeight : passedHeight
-
-                withAnimation(.easeInOut(duration: 0.2)) {
-                    viewModel.reorderSubtask(droppedId: subtaskId, targetId: other.id, parentId: parentId)
-                }
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                lastReorderTime = Date()
-                break
-            }
-        }
-    }
-
-    private func handleSubtaskDragEnd() {
-        withAnimation(.easeInOut(duration: 0.2)) {
-            draggingSubtaskId = nil
-            draggingSubtaskParentId = nil
-            dragTranslation = 0
-            dragReorderAdjustment = 0
-            dragFingerY = 0
-        }
-        lastReorderTime = .distantPast
-    }
 }
 
 // MARK: - Library Done Pill View
@@ -385,7 +236,7 @@ struct LibraryDonePillView: View {
                 ForEach(completedTasks) { task in
                     VStack(spacing: 0) {
                         Divider()
-                        ExpandableTaskRow(task: task, viewModel: viewModel, draggingTaskId: .constant(nil))
+                        ExpandableTaskRow(task: task, viewModel: viewModel)
 
                         if viewModel.isExpanded(task.id) {
                             SubtasksList(parentTask: task, viewModel: viewModel)
@@ -413,7 +264,6 @@ struct LibraryDonePillView: View {
 struct ExpandableTaskRow: View {
     let task: FocusTask
     @ObservedObject var viewModel: TaskListViewModel
-    @Binding var draggingTaskId: UUID?
     var isEditMode: Bool = false
     var isSelected: Bool = false
     var onSelectToggle: (() -> Void)? = nil
@@ -514,22 +364,6 @@ struct ExpandableTaskRow: View {
                 }
             }
         }
-        // Drag: enables system drag + context-menu-to-drag handoff
-        .onDrag {
-            draggingTaskId = task.id
-            return NSItemProvider(object: task.id.uuidString as NSString)
-        } preview: {
-            HStack(spacing: 12) {
-                Text(task.title)
-                    .lineLimit(1)
-                Spacer()
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-            .frame(width: 280)
-            .background(.ultraThinMaterial)
-            .clipShape(RoundedRectangle(cornerRadius: 10))
-        }
     }
 }
 
@@ -538,48 +372,13 @@ struct ExpandableTaskRow: View {
 struct SubtasksList: View {
     let parentTask: FocusTask
     @ObservedObject var viewModel: TaskListViewModel
-    var draggingSubtaskId: UUID? = nil
-    var dragTranslation: CGFloat = 0
-    var dragReorderAdjustment: CGFloat = 0
-    var dragFingerY: CGFloat = 0
-    var rowFrames: [UUID: CGRect] = [:]
-    var onSubtaskDragChanged: ((UUID, DragGesture.Value) -> Void)? = nil
-    var onSubtaskDragEnded: (() -> Void)? = nil
 
     var body: some View {
         VStack(spacing: 0) {
-            // Uncompleted subtasks — reorderable via handle drag
             ForEach(viewModel.getUncompletedSubtasks(for: parentTask.id)) { subtask in
-                let isDragging = draggingSubtaskId == subtask.id
-
-                SubtaskRow(
-                    subtask: subtask,
-                    parentId: parentTask.id,
-                    viewModel: viewModel,
-                    onDragChanged: onSubtaskDragChanged != nil
-                        ? { value in onSubtaskDragChanged?(subtask.id, value) }
-                        : nil,
-                    onDragEnded: onSubtaskDragEnded
-                )
-                .background(
-                    GeometryReader { geo in
-                        Color.clear.preference(
-                            key: RowFramePreference.self,
-                            value: [subtask.id: geo.frame(in: .named("taskList"))]
-                        )
-                    }
-                )
-                .background(Color(.systemBackground))
-                .offset(y: isDragging ? (dragTranslation + dragReorderAdjustment) : 0)
-                .scaleEffect(isDragging ? 1.03 : 1.0)
-                .shadow(color: .black.opacity(isDragging ? 0.15 : 0), radius: 8, y: 2)
-                .zIndex(isDragging ? 1 : 0)
-                .transaction { t in
-                    if isDragging { t.animation = nil }
-                }
+                SubtaskRow(subtask: subtask, parentId: parentTask.id, viewModel: viewModel)
             }
 
-            // Completed subtasks — not draggable
             ForEach(viewModel.getCompletedSubtasks(for: parentTask.id)) { subtask in
                 SubtaskRow(subtask: subtask, parentId: parentTask.id, viewModel: viewModel)
             }
@@ -594,8 +393,6 @@ struct SubtaskRow: View {
     let subtask: FocusTask
     let parentId: UUID
     @ObservedObject var viewModel: TaskListViewModel
-    var onDragChanged: ((DragGesture.Value) -> Void)? = nil
-    var onDragEnded: (() -> Void)? = nil
 
     var body: some View {
         HStack(spacing: 12) {
@@ -623,24 +420,6 @@ struct SubtaskRow: View {
         .onTapGesture {
             viewModel.selectedTaskForDetails = subtask
         }
-        .gesture(
-            LongPressGesture(minimumDuration: 0.3)
-                .sequenced(before: DragGesture(minimumDistance: 0, coordinateSpace: .named("taskList")))
-                .onChanged { value in
-                    switch value {
-                    case .second(true, let drag):
-                        if let drag = drag {
-                            onDragChanged?(drag)
-                        }
-                    default:
-                        break
-                    }
-                }
-                .onEnded { _ in
-                    onDragEnded?()
-                },
-            isEnabled: !subtask.isCompleted && onDragChanged != nil
-        )
     }
 }
 

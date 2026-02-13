@@ -77,13 +77,14 @@ struct DateNavigator: View {
                 .pickerStyle(.segmented)
                 .frame(height: 32)
                 .padding(.horizontal)
-                .padding(.vertical, 8)
+                .padding(.top, 40)
+                .padding(.bottom, 14)
 
                 Divider()
 
                 // Row 2: Horizontal scrollable pills with edge fade (fixed height)
                 timeframePillRow
-                    .frame(height: 56)
+                    .frame(height: 64)
                     .mask(
                         HStack(spacing: 0) {
                             LinearGradient(colors: [.clear, .black], startPoint: .leading, endPoint: .trailing)
@@ -94,7 +95,8 @@ struct DateNavigator: View {
                         }
                     )
                     .padding(.horizontal)
-                    .padding(.vertical, 8)
+                    .padding(.top, 12)
+                    .padding(.bottom, 12)
 
                 Divider()
 
@@ -435,13 +437,11 @@ struct DateNavigator: View {
         switch selectedTimeframe {
         case .daily:
             let formatter = DateFormatter()
-            formatter.dateFormat = "EEEE"
-            let dayName = formatter.string(from: selectedDate)
-            return "\(dayName) – \(formattedDateWithOrdinal(selectedDate))"
+            formatter.dateFormat = "EEE MMM d, yyyy"
+            return formatter.string(from: selectedDate)
 
         case .weekly:
-            let weekNum = calendar.component(.weekOfYear, from: selectedDate)
-            return "Week \(weekNum) – \(weekRangeText)"
+            return weekRangeText
 
         case .monthly:
             let formatter = DateFormatter()
@@ -478,7 +478,7 @@ struct DateNavigator: View {
         let endFormatter = DateFormatter()
         endFormatter.dateFormat = "MMM d, yyyy"
 
-        return "\(startFormatter.string(from: weekStart)) – \(endFormatter.string(from: weekEnd))"
+        return "\(startFormatter.string(from: weekStart)) - \(endFormatter.string(from: weekEnd))"
     }
 
     private func formattedDateWithOrdinal(_ date: Date) -> String {

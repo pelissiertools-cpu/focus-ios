@@ -518,7 +518,10 @@ struct SectionView: View {
                 } label: {
                     Image(systemName: "plus")
                         .font(.body)
+                        .fontWeight(.semibold)
                         .foregroundColor(.blue)
+                        .frame(width: 32, height: 32)
+                        .glassEffect(.regular.interactive(), in: .circle)
                 }
                 .buttonStyle(.plain)
                 .disabled(section == .focus && !viewModel.canAddTask(to: .focus))
@@ -538,11 +541,11 @@ struct SectionView: View {
                     // Empty state centered in the focus zone
                     VStack {
                         Spacer(minLength: 0)
-                        Text("No to-dos yet. Tap + to add one.")
+                        Text("No task yet. Tap + to add one.")
                             .foregroundColor(.secondary)
                         Spacer(minLength: 0)
                     }
-                    .frame(minHeight: section == .focus ? 150 : nil)
+                    .frame(maxWidth: .infinity, minHeight: section == .focus ? 180 : nil)
                 } else {
                     VStack(spacing: 0) {
                         // Centering zone for uncompleted tasks
@@ -590,10 +593,15 @@ struct SectionView: View {
                                                 )
                                             }
                                         )
-                                        .background(Color(.secondarySystemBackground))
+                                        .background(
+                                            isDragging
+                                                ? AnyShapeStyle(.regularMaterial)
+                                                : AnyShapeStyle(.clear),
+                                            in: .rect(cornerRadius: 10)
+                                        )
+                                        .shadow(color: .black.opacity(isDragging ? 0.15 : 0), radius: 8, y: 2)
                                         .offset(y: isDragging ? (dragTranslation + dragReorderAdjustment) : 0)
                                         .scaleEffect(isDragging ? 1.03 : 1.0)
-                                        .shadow(color: .black.opacity(isDragging ? 0.15 : 0), radius: 8, y: 2)
                                         .zIndex(isDragging ? 1 : 0)
                                         .transaction { t in
                                             if isDragging { t.animation = nil }
@@ -643,11 +651,9 @@ struct SectionView: View {
                 }
             }
         }
-        .padding()
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color(.secondarySystemBackground))
-        )
+        .padding(.vertical)
+        .padding(.horizontal, 8)
+        .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 12))
         .overlay(
             RoundedRectangle(cornerRadius: 12)
                 .stroke(targetedSection == section ? Color.accentColor : Color.clear, lineWidth: 2)
@@ -1001,6 +1007,8 @@ struct CommitmentRow: View {
                 .buttonStyle(.plain)
             }
             .padding(.vertical, verticalPaddingOverride ?? (section == .focus ? 14 : 8))
+            .padding(.leading, 8)
+            .padding(.trailing, 12)
 
             // Subtasks and add row (shown when expanded)
             if isExpanded {

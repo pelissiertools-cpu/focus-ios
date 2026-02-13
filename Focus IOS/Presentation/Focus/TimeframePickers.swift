@@ -27,15 +27,11 @@ struct DateNavigator: View {
         if compact {
             // Schedule mode: same day pill row, no segmented picker
             VStack(spacing: 0) {
-                // Row 1: Just view mode icons (no timeframe picker)
-                // Fixed height matches focus mode Row 1 so pill row stays aligned
-                HStack {
-                    viewModeIcons
-                    Spacer()
-                }
-                .frame(height: 32)
-                .padding(.horizontal)
-                .padding(.vertical, 8)
+                // Row 1: (compact mode — currently unreachable, schedule hidden)
+                EmptyView()
+                    .frame(height: 32)
+                    .padding(.horizontal)
+                    .padding(.vertical, 8)
 
                 Divider()
 
@@ -70,19 +66,14 @@ struct DateNavigator: View {
         } else {
             // Focus mode: full 3-row layout with dividers
             VStack(spacing: 0) {
-                // Row 1: View mode icons + Segmented timeframe picker
-                // Fixed height matches compact mode Row 1 so pill row stays aligned
-                HStack {
-                    viewModeIcons
-                    Spacer(minLength: 16)
-                    Picker("Timeframe", selection: $selectedTimeframe) {
-                        Text("Daily").tag(Timeframe.daily)
-                        Text("Weekly").tag(Timeframe.weekly)
-                        Text("Monthly").tag(Timeframe.monthly)
-                        Text("Yearly").tag(Timeframe.yearly)
-                    }
-                    .pickerStyle(.segmented)
+                // Row 1: Segmented timeframe picker
+                Picker("Timeframe", selection: $selectedTimeframe) {
+                    Text("Daily").tag(Timeframe.daily)
+                    Text("Weekly").tag(Timeframe.weekly)
+                    Text("Monthly").tag(Timeframe.monthly)
+                    Text("Yearly").tag(Timeframe.yearly)
                 }
+                .pickerStyle(.segmented)
                 .frame(height: 32)
                 .padding(.horizontal)
                 .padding(.vertical, 8)
@@ -120,32 +111,11 @@ struct DateNavigator: View {
         }
     }
 
-    // MARK: - View Mode Toggle Icons
+    // MARK: - View Mode Toggle Icons (Schedule mode hidden)
+    // To re-enable schedule mode, restore the HStack with focus/calendar toggle buttons below.
 
     private var viewModeIcons: some View {
-        HStack(spacing: 12) {
-            Button {
-                withAnimation(.easeInOut(duration: 0.2)) {
-                    viewMode = .focus
-                }
-            } label: {
-                Image(systemName: "target")
-                    .font(.title3)
-                    .foregroundColor(viewMode == .focus ? .blue : .secondary)
-            }
-            .buttonStyle(.plain)
-
-            Button {
-                withAnimation(.easeInOut(duration: 0.2)) {
-                    viewMode = .schedule
-                }
-            } label: {
-                Image(systemName: "calendar")
-                    .font(.title3)
-                    .foregroundColor(viewMode == .schedule ? .blue : .secondary)
-            }
-            .buttonStyle(.plain)
-        }
+        EmptyView()
     }
 
     // MARK: - Pill Row (switches on timeframe)

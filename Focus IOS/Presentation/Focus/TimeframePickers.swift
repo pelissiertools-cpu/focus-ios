@@ -47,6 +47,7 @@ struct DateNavigator: View {
                                 .frame(width: 24)
                         }
                     )
+                    .padding(.horizontal)
                     .padding(.vertical, 8)
 
                 Divider()
@@ -92,6 +93,7 @@ struct DateNavigator: View {
                                 .frame(width: 24)
                         }
                     )
+                    .padding(.horizontal)
                     .padding(.vertical, 8)
 
                 Divider()
@@ -174,7 +176,7 @@ struct DateNavigator: View {
                                     .font(.body)
                                     .fontWeight(isSelected || isToday ? .bold : .regular)
                                     .foregroundColor(isSelected ? .white : (isToday ? .blue : .primary))
-                                    .frame(width: 36, height: 36)
+                                    .frame(width: 40, height: 40)
                                     .background(
                                         Circle()
                                             .fill(isSelected ? Color.blue : Color.clear)
@@ -184,6 +186,7 @@ struct DateNavigator: View {
                                             .stroke(isToday && !isSelected ? Color.blue : Color.clear, lineWidth: 2)
                                     )
                             }
+                            .frame(width: 44)
                         }
                         .buttonStyle(.plain)
                         .id(dayPillId(for: date))
@@ -266,7 +269,7 @@ struct DateNavigator: View {
                                     .font(.caption2)
                             }
                             .foregroundColor(isSelected ? .white : .primary)
-                            .frame(width: 56, height: 48)
+                            .frame(width: 68, height: 48)
                             .background(
                                 RoundedRectangle(cornerRadius: 12)
                                     .fill(isSelected ? Color.blue : Color(.secondarySystemBackground))
@@ -342,7 +345,7 @@ struct DateNavigator: View {
                                 .font(.subheadline)
                                 .fontWeight(.medium)
                                 .foregroundColor(isSelected ? .white : .primary)
-                                .frame(width: 52, height: 40)
+                                .frame(width: 64, height: 40)
                                 .background(
                                     RoundedRectangle(cornerRadius: 10)
                                         .fill(isSelected ? Color.blue : Color(.secondarySystemBackground))
@@ -397,7 +400,7 @@ struct DateNavigator: View {
                                 .font(.subheadline)
                                 .fontWeight(.medium)
                                 .foregroundColor(isSelected ? .white : .primary)
-                                .frame(width: 56, height: 40)
+                                .frame(width: 64, height: 40)
                                 .background(
                                     RoundedRectangle(cornerRadius: 10)
                                         .fill(isSelected ? Color.blue : Color(.secondarySystemBackground))

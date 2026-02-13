@@ -378,6 +378,17 @@ struct FocusTabView: View {
     }
 }
 
+// MARK: - Focus Section Config
+
+private struct FocusSectionConfig {
+    let taskFont: Font
+    let verticalPadding: CGFloat
+    let containerMinHeight: CGFloat
+    let completedTaskFont: Font
+    let completedVerticalPadding: CGFloat
+    let completedOpacity: Double
+}
+
 // MARK: - Section View
 
 struct SectionView: View {
@@ -410,6 +421,62 @@ struct SectionView: View {
 
     var completedCommitments: [Commitment] {
         viewModel.completedCommitmentsForSection(section)
+    }
+
+    private var focusConfig: FocusSectionConfig {
+        guard section == .focus else {
+            return FocusSectionConfig(
+                taskFont: .body,
+                verticalPadding: 8,
+                containerMinHeight: 0,
+                completedTaskFont: .body,
+                completedVerticalPadding: 6,
+                completedOpacity: 0.5
+            )
+        }
+
+        // Yearly supports up to 10 tasks — use compact layout, no scaling
+        guard viewModel.selectedTimeframe != .yearly else {
+            return FocusSectionConfig(
+                taskFont: .body,
+                verticalPadding: 10,
+                containerMinHeight: 0,
+                completedTaskFont: .footnote,
+                completedVerticalPadding: 6,
+                completedOpacity: 0.45
+            )
+        }
+
+        let count = uncompletedCommitments.count
+        switch count {
+        case 0, 1:
+            return FocusSectionConfig(
+                taskFont: .title,
+                verticalPadding: 24,
+                containerMinHeight: 150,
+                completedTaskFont: .subheadline,
+                completedVerticalPadding: 6,
+                completedOpacity: 0.45
+            )
+        case 2:
+            return FocusSectionConfig(
+                taskFont: .title2,
+                verticalPadding: 18,
+                containerMinHeight: 150,
+                completedTaskFont: .subheadline,
+                completedVerticalPadding: 6,
+                completedOpacity: 0.45
+            )
+        default:
+            return FocusSectionConfig(
+                taskFont: .title3,
+                verticalPadding: 14,
+                containerMinHeight: 0,
+                completedTaskFont: .subheadline,
+                completedVerticalPadding: 6,
+                completedOpacity: 0.45
+            )
+        }
     }
 
     var body: some View {
@@ -467,55 +534,95 @@ struct SectionView: View {
 
             // Committed Tasks (hidden when collapsed)
             if !viewModel.isSectionCollapsed(section) {
-                if sectionCommitments.isEmpty {
-                    Text("No to-dos yet. Tap + to add one.")
-                        .foregroundColor(.secondary)
-                        .padding(.vertical, 8)
+                if sectionCommitments.isEmpty && completedCommitments.isEmpty {
+                    // Empty state centered in the focus zone
+                    VStack {
+                        Spacer(minLength: 0)
+                        Text("No to-dos yet. Tap + to add one.")
+                            .foregroundColor(.secondary)
+                        Spacer(minLength: 0)
+                    }
+                    .frame(minHeight: section == .focus ? 150 : nil)
                 } else {
                     VStack(spacing: 0) {
-                        // Uncompleted commitments — draggable with floating pill
-                        ForEach(Array(uncompletedCommitments.enumerated()), id: \.element.id) { index, commitment in
-                            if let task = viewModel.tasksMap[commitment.taskId] {
-                                let isDragging = draggingCommitmentId == commitment.id
+                        // Centering zone for uncompleted tasks
+                        VStack(spacing: 0) {
+                            if section == .focus && focusConfig.containerMinHeight > 0 {
+                                Spacer(minLength: 0)
+                            }
 
-                                VStack(spacing: 0) {
-                                    if index > 0 {
-                                        Divider()
+                            if uncompletedCommitments.isEmpty && !completedCommitments.isEmpty && section == .focus {
+                                // All-done state
+                                VStack(spacing: 8) {
+                                    Image(systemName: "checkmark.circle")
+                                        .font(.largeTitle)
+                                        .foregroundColor(.green.opacity(0.6))
+                                    Text("All done!")
+                                        .font(.title3)
+                                        .foregroundColor(.secondary)
+                                }
+                            } else {
+                                // Uncompleted commitments — draggable with floating pill
+                                ForEach(Array(uncompletedCommitments.enumerated()), id: \.element.id) { index, commitment in
+                                    if let task = viewModel.tasksMap[commitment.taskId] {
+                                        let isDragging = draggingCommitmentId == commitment.id
+
+                                        VStack(spacing: 0) {
+                                            if index > 0 {
+                                                Divider()
+                                            }
+                                            CommitmentRow(
+                                                commitment: commitment,
+                                                task: task,
+                                                section: section,
+                                                viewModel: viewModel,
+                                                onDragChanged: { value in onDragChanged?(commitment.id, value) },
+                                                onDragEnded: { onDragEnded?() },
+                                                fontOverride: section == .focus ? focusConfig.taskFont : nil,
+                                                verticalPaddingOverride: section == .focus ? focusConfig.verticalPadding : nil
+                                            )
+                                        }
+                                        .background(
+                                            GeometryReader { geo in
+                                                Color.clear.preference(
+                                                    key: RowFramePreference.self,
+                                                    value: [commitment.id: geo.frame(in: .named("focusList"))]
+                                                )
+                                            }
+                                        )
+                                        .background(Color(.secondarySystemBackground))
+                                        .offset(y: isDragging ? (dragTranslation + dragReorderAdjustment) : 0)
+                                        .scaleEffect(isDragging ? 1.03 : 1.0)
+                                        .shadow(color: .black.opacity(isDragging ? 0.15 : 0), radius: 8, y: 2)
+                                        .zIndex(isDragging ? 1 : 0)
+                                        .transaction { t in
+                                            if isDragging { t.animation = nil }
+                                        }
                                     }
+                                }
+                            }
+
+                            if section == .focus && focusConfig.containerMinHeight > 0 {
+                                Spacer(minLength: 0)
+                            }
+                        }
+                        .frame(minHeight: focusConfig.containerMinHeight > 0 ? focusConfig.containerMinHeight : nil)
+                        .animation(.easeInOut(duration: 0.3), value: uncompletedCommitments.count)
+
+                        // Completed commitments — below the centering zone for Focus, Done pill for Extra
+                        if section == .focus && !completedCommitments.isEmpty {
+                            ForEach(Array(completedCommitments.enumerated()), id: \.element.id) { index, commitment in
+                                if let task = viewModel.tasksMap[commitment.taskId] {
+                                    Divider()
                                     CommitmentRow(
                                         commitment: commitment,
                                         task: task,
                                         section: section,
                                         viewModel: viewModel,
-                                        onDragChanged: { value in onDragChanged?(commitment.id, value) },
-                                        onDragEnded: { onDragEnded?() }
+                                        fontOverride: focusConfig.completedTaskFont,
+                                        verticalPaddingOverride: focusConfig.completedVerticalPadding
                                     )
-                                }
-                                .background(
-                                    GeometryReader { geo in
-                                        Color.clear.preference(
-                                            key: RowFramePreference.self,
-                                            value: [commitment.id: geo.frame(in: .named("focusList"))]
-                                        )
-                                    }
-                                )
-                                .background(Color(.secondarySystemBackground))
-                                .offset(y: isDragging ? (dragTranslation + dragReorderAdjustment) : 0)
-                                .scaleEffect(isDragging ? 1.03 : 1.0)
-                                .shadow(color: .black.opacity(isDragging ? 0.15 : 0), radius: 8, y: 2)
-                                .zIndex(isDragging ? 1 : 0)
-                                .transaction { t in
-                                    if isDragging { t.animation = nil }
-                                }
-                            }
-                        }
-
-                        // Completed commitments — inline below for Focus, Done pill for Extra
-                        if section == .focus && !completedCommitments.isEmpty {
-                            ForEach(Array(completedCommitments.enumerated()), id: \.element.id) { index, commitment in
-                                if let task = viewModel.tasksMap[commitment.taskId] {
-                                    Divider()
-                                    CommitmentRow(commitment: commitment, task: task, section: section, viewModel: viewModel)
+                                    .opacity(focusConfig.completedOpacity)
                                 }
                             }
                         }
@@ -783,6 +890,8 @@ struct CommitmentRow: View {
     @ObservedObject var viewModel: FocusTabViewModel
     var onDragChanged: ((DragGesture.Value) -> Void)? = nil
     var onDragEnded: (() -> Void)? = nil
+    var fontOverride: Font? = nil
+    var verticalPaddingOverride: CGFloat? = nil
 
     private var subtasks: [FocusTask] {
         viewModel.getSubtasks(for: task.id)
@@ -830,12 +939,12 @@ struct CommitmentRow: View {
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 6) {
                         Text(task.title)
-                            .font(section == .focus ? .title3 : .body)
+                            .font(fontOverride ?? (section == .focus ? .title3 : .body))
                             .strikethrough(task.isCompleted)
                             .foregroundColor(task.isCompleted ? .secondary : .primary)
                         if task.type == .list {
                             Image(systemName: "list.bullet")
-                                .font(section == .focus ? .subheadline : .caption)
+                                .font(fontOverride != nil ? .subheadline : (section == .focus ? .subheadline : .caption))
                                 .foregroundColor(.blue)
                         }
                     }
@@ -891,7 +1000,7 @@ struct CommitmentRow: View {
                 }
                 .buttonStyle(.plain)
             }
-            .padding(.vertical, section == .focus ? 14 : 8)
+            .padding(.vertical, verticalPaddingOverride ?? (section == .focus ? 14 : 8))
 
             // Subtasks and add row (shown when expanded)
             if isExpanded {

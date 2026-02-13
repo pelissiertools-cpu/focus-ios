@@ -21,7 +21,7 @@ struct MainTabView: View {
 
             LibraryTabView()
                 .tabItem {
-                    Label("Library", systemImage: "books.vertical")
+                    Label("Library", systemImage: "tray.full")
                 }
                 .environmentObject(focusViewModel)
         }

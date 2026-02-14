@@ -22,10 +22,32 @@ struct LogTabView: View {
     @State private var newProjectTitle = ""
     @State private var newListTitle = ""
 
+    // Compact add-task bar state
+    @State private var addTaskTitle = ""
+    @State private var addTaskSubtasks: [DraftSubtaskEntry] = []
+    @State private var addTaskCategoryId: UUID? = nil
+    @State private var addTaskCommitEnabled = false
+    @State private var addTaskTimeframe: Timeframe = .daily
+    @State private var addTaskSection: Section = .focus
+    @State private var addTaskDates: Set<Date> = []
+    @State private var addTaskHasScheduledTime = false
+    @State private var addTaskScheduledTime: Date = {
+        let now = Date()
+        let calendar = Calendar.current
+        let minute = calendar.component(.minute, from: now)
+        let roundUp = ((minute / 15) + 1) * 15
+        return calendar.date(byAdding: .minute, value: roundUp - minute, to: now) ?? now
+    }()
+    @FocusState private var isAddTaskFieldFocused: Bool
+    @FocusState private var focusedSubtaskId: UUID?
+
     // View models — owned here, passed to child views
     @StateObject private var taskListVM = TaskListViewModel(authService: AuthService())
     @StateObject private var projectsVM = ProjectsViewModel(authService: AuthService())
     @StateObject private var listsVM = ListsViewModel(authService: AuthService())
+
+    // Focus view model for refreshing commitments after commit creation
+    @EnvironmentObject var focusViewModel: FocusTabViewModel
 
     var body: some View {
         NavigationView {
@@ -42,7 +64,9 @@ struct LogTabView: View {
 
                         searchPillButton
                     }
-                    .padding()
+                    .padding(.horizontal)
+                    .padding(.top, 40)
+                    .padding(.bottom, 14)
 
                     // Tab content with shared controls overlay
                     ZStack(alignment: .topLeading) {
@@ -94,7 +118,31 @@ struct LogTabView: View {
                         .transition(.move(edge: .bottom).combined(with: .opacity))
                         .zIndex(100)
                 }
+
+                // Add-task scrim + bar (Tasks tab only)
+                if taskListVM.showingAddTask && selectedTab == 0 {
+                    Color.black.opacity(0.15)
+                        .ignoresSafeArea()
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                                dismissAddTask()
+                            }
+                        }
+                        .allowsHitTesting(true)
+                        .zIndex(50)
+
+                    VStack {
+                        Spacer()
+                        logAddTaskBar
+                            .padding(.vertical, 8)
+                            .contentShape(Rectangle())
+                    }
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .zIndex(100)
+                }
             }
+            .animation(.spring(response: 0.35, dampingFraction: 0.85), value: taskListVM.showingAddTask)
             .onChange(of: selectedTab) { _, _ in
                 dismissSearch()
                 showCategoryDropdown = false
@@ -102,6 +150,28 @@ struct LogTabView: View {
                 taskListVM.exitEditMode()
                 projectsVM.exitEditMode()
                 listsVM.exitEditMode()
+                // Dismiss add task bar if open
+                if taskListVM.showingAddTask {
+                    dismissAddTask()
+                }
+            }
+            .onChange(of: taskListVM.showingAddTask) { _, isShowing in
+                if isShowing && selectedTab == 0 {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        isAddTaskFieldFocused = true
+                    }
+                }
+            }
+            .onChange(of: addTaskCommitEnabled) { _, isOn in
+                if isOn {
+                    // Dismiss keyboard when expanding commit section
+                    isAddTaskFieldFocused = false
+                    focusedSubtaskId = nil
+                }
+                if !isOn {
+                    addTaskHasScheduledTime = false
+                    addTaskDates = []
+                }
             }
             // Batch create project alert (Tasks tab)
             .alert("Create Project", isPresented: $showCreateProjectAlert) {
@@ -260,7 +330,7 @@ struct LogTabView: View {
                 showCreateListAlert: $showCreateListAlert
             )
             .transition(.scale.combined(with: .opacity))
-        } else {
+        } else if !taskListVM.showingAddTask {
             fabButton { taskListVM.showingAddItem = true }
                 .transition(.scale.combined(with: .opacity))
         }
@@ -308,6 +378,309 @@ struct LogTabView: View {
                 .padding(.bottom, 20)
             }
         }
+    }
+
+    // MARK: - Compact Add Task Bar
+
+    private var logAddTaskBar: some View {
+        VStack(spacing: 0) {
+            // Task title row
+            TextField("Add new task.", text: $addTaskTitle)
+                .font(.title3)
+                .textFieldStyle(.plain)
+                .focused($isAddTaskFieldFocused)
+                .submitLabel(.return)
+                .onSubmit {
+                    saveLogTask()
+                }
+                .padding(.horizontal, 14)
+                .padding(.top, 20)
+                .padding(.bottom, 10)
+
+            // Subtasks (expand when present)
+            if !addTaskSubtasks.isEmpty {
+                Divider()
+                    .padding(.horizontal, 14)
+
+                VStack(spacing: 8) {
+                    ForEach(addTaskSubtasks) { subtask in
+                        HStack(spacing: 8) {
+                            Image(systemName: "circle")
+                                .font(.caption2)
+                                .foregroundColor(.secondary.opacity(0.5))
+
+                            TextField("Subtask", text: subtaskBinding(for: subtask.id), axis: .vertical)
+                                .font(.subheadline)
+                                .textFieldStyle(.plain)
+                                .focused($focusedSubtaskId, equals: subtask.id)
+                                .lineLimit(1)
+                                .onChange(of: subtaskBinding(for: subtask.id).wrappedValue) { _, newValue in
+                                    if newValue.contains("\n") {
+                                        if let idx = addTaskSubtasks.firstIndex(where: { $0.id == subtask.id }) {
+                                            addTaskSubtasks[idx].title = newValue.replacingOccurrences(of: "\n", with: "")
+                                        }
+                                        addNewSubtask()
+                                    }
+                                }
+
+                            Button {
+                                removeSubtask(id: subtask.id)
+                            } label: {
+                                Image(systemName: "xmark.circle.fill")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+                .padding(.horizontal, 14)
+                .padding(.top, 10)
+                .padding(.bottom, 10)
+            }
+
+            // Commit expansion (when toggle is ON)
+            if addTaskCommitEnabled {
+                Divider()
+                    .padding(.horizontal, 14)
+
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 12) {
+                        // Section picker
+                        Picker("Section", selection: $addTaskSection) {
+                            Text("Focus").tag(Section.focus)
+                            Text("Extra").tag(Section.extra)
+                        }
+                        .pickerStyle(.segmented)
+
+                        // Calendar picker
+                        UnifiedCalendarPicker(
+                            selectedDates: $addTaskDates,
+                            selectedTimeframe: $addTaskTimeframe
+                        )
+
+                        // Time toggle + picker
+                        Toggle(isOn: $addTaskHasScheduledTime.animation(.easeInOut(duration: 0.2))) {
+                            HStack(spacing: 8) {
+                                Image(systemName: "clock")
+                                    .foregroundColor(.blue)
+                                Text("Select a time")
+                                    .font(.subheadline.weight(.medium))
+                            }
+                        }
+                        .tint(.blue)
+
+                        if addTaskHasScheduledTime {
+                            DatePicker(
+                                "Time",
+                                selection: $addTaskScheduledTime,
+                                displayedComponents: .hourAndMinute
+                            )
+                            .datePickerStyle(.compact)
+                            .labelsHidden()
+                        }
+                    }
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 10)
+                }
+                .frame(maxHeight: 350)
+            }
+
+            // Bottom row: [Sub-task] ... [Category pill] [Commit pill] [Checkmark]
+            HStack(spacing: 8) {
+                // Add sub-task button
+                Button {
+                    addNewSubtask()
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "plus")
+                            .font(.caption)
+                        Text("Sub-task")
+                            .font(.caption)
+                    }
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .glassEffect(.regular.tint(.black).interactive(), in: .capsule)
+                }
+                .buttonStyle(.plain)
+
+                Spacer()
+
+                // Category pill
+                Menu {
+                    Button {
+                        addTaskCategoryId = nil
+                    } label: {
+                        if addTaskCategoryId == nil {
+                            Label("None", systemImage: "checkmark")
+                        } else {
+                            Text("None")
+                        }
+                    }
+                    ForEach(taskListVM.categories) { category in
+                        Button {
+                            addTaskCategoryId = category.id
+                        } label: {
+                            if addTaskCategoryId == category.id {
+                                Label(category.name, systemImage: "checkmark")
+                            } else {
+                                Text(category.name)
+                            }
+                        }
+                    }
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "folder")
+                            .font(.caption)
+                        Text(categoryPillLabel)
+                            .font(.caption)
+                    }
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .glassEffect(.regular.tint(addTaskCategoryId != nil ? .blue : .black).interactive(), in: .capsule)
+                }
+
+                // Commit toggle pill
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        addTaskCommitEnabled.toggle()
+                    }
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "arrow.right.circle")
+                            .font(.caption)
+                        Text("Commit")
+                            .font(.caption)
+                    }
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .glassEffect(.regular.tint(addTaskCommitEnabled ? .blue : .black).interactive(), in: .capsule)
+                }
+                .buttonStyle(.plain)
+
+                // Submit button (checkmark)
+                Button {
+                    saveLogTask()
+                } label: {
+                    Image(systemName: "checkmark")
+                        .font(.body.weight(.semibold))
+                        .foregroundColor(addTaskTitle.trimmingCharacters(in: .whitespaces).isEmpty ? .secondary : .white)
+                        .frame(width: 36, height: 36)
+                        .background(
+                            addTaskTitle.trimmingCharacters(in: .whitespaces).isEmpty
+                                ? Color(.systemGray4)
+                                : Color.blue,
+                            in: Circle()
+                        )
+                }
+                .buttonStyle(.plain)
+                .disabled(addTaskTitle.trimmingCharacters(in: .whitespaces).isEmpty)
+            }
+            .padding(.horizontal, 14)
+            .padding(.bottom, 20)
+        }
+        .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 20))
+        .padding(.horizontal)
+    }
+
+    // MARK: - Add Task Helpers
+
+    private var categoryPillLabel: String {
+        if let categoryId = addTaskCategoryId,
+           let category = taskListVM.categories.first(where: { $0.id == categoryId }) {
+            return category.name
+        }
+        return "Category"
+    }
+
+    private func saveLogTask() {
+        let title = addTaskTitle.trimmingCharacters(in: .whitespaces)
+        guard !title.isEmpty else { return }
+
+        let subtasksToCreate = addTaskSubtasks
+            .map { $0.title.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+        let categoryId = addTaskCategoryId
+        let commitEnabled = addTaskCommitEnabled
+        let timeframe = addTaskTimeframe
+        let section = addTaskSection
+        let dates = addTaskDates
+        let hasTime = addTaskHasScheduledTime
+        let time = addTaskScheduledTime
+
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+
+        // Transfer focus to title before removing subtask fields
+        isAddTaskFieldFocused = true
+        focusedSubtaskId = nil
+
+        // Clear fields for rapid entry (keep category + commit settings)
+        addTaskTitle = ""
+        addTaskSubtasks = []
+        addTaskDates = []
+
+        _Concurrency.Task { @MainActor in
+            await taskListVM.createTaskWithCommitments(
+                title: title,
+                categoryId: categoryId,
+                subtaskTitles: subtasksToCreate,
+                commitAfterCreate: commitEnabled,
+                selectedTimeframe: timeframe,
+                selectedSection: section,
+                selectedDates: dates,
+                hasScheduledTime: hasTime,
+                scheduledTime: hasTime ? time : nil
+            )
+
+            // Refresh focus view if commitments were created
+            if commitEnabled && !dates.isEmpty {
+                await focusViewModel.fetchCommitments()
+            }
+        }
+    }
+
+    private func subtaskBinding(for id: UUID) -> Binding<String> {
+        Binding(
+            get: { addTaskSubtasks.first(where: { $0.id == id })?.title ?? "" },
+            set: { newValue in
+                if let idx = addTaskSubtasks.firstIndex(where: { $0.id == id }) {
+                    addTaskSubtasks[idx].title = newValue
+                }
+            }
+        )
+    }
+
+    private func addNewSubtask() {
+        isAddTaskFieldFocused = true
+        let newEntry = DraftSubtaskEntry()
+        withAnimation(.easeInOut(duration: 0.15)) {
+            addTaskSubtasks.append(newEntry)
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            focusedSubtaskId = newEntry.id
+        }
+    }
+
+    private func removeSubtask(id: UUID) {
+        isAddTaskFieldFocused = true
+        withAnimation(.easeInOut(duration: 0.15)) {
+            addTaskSubtasks.removeAll { $0.id == id }
+        }
+    }
+
+    private func dismissAddTask() {
+        addTaskTitle = ""
+        addTaskSubtasks = []
+        addTaskCategoryId = nil
+        addTaskCommitEnabled = false
+        addTaskDates = []
+        addTaskHasScheduledTime = false
+        taskListVM.showingAddTask = false
+        isAddTaskFieldFocused = false
+        focusedSubtaskId = nil
     }
 }
 

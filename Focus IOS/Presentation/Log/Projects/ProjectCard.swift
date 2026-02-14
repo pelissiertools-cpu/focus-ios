@@ -54,10 +54,8 @@ struct ProjectCard: View {
                 expandedContent
             }
         }
-        .background {
-            RoundedRectangle(cornerRadius: 16)
-                .fill(project.isCompleted ? Color(.systemGray3) : Color(.secondarySystemBackground))
-        }
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 16))
     }
 
     // MARK: - Header

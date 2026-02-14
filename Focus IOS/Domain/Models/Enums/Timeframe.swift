@@ -23,6 +23,26 @@ enum Timeframe: String, Codable, CaseIterable {
         }
     }
 
+    /// Label for "Push to Next" context menu action
+    var nextTimeframeLabel: String {
+        switch self {
+        case .daily: return "Tomorrow"
+        case .weekly: return "Next Week"
+        case .monthly: return "Next Month"
+        case .yearly: return "Next Year"
+        }
+    }
+
+    /// Label for "Remove from" context menu action
+    var removeLabel: String {
+        switch self {
+        case .daily: return "Remove from today"
+        case .weekly: return "Remove from this week"
+        case .monthly: return "Remove from this month"
+        case .yearly: return "Remove from this year"
+        }
+    }
+
     /// The next lower timeframe for trickle-down breakdown
     var childTimeframe: Timeframe? {
         switch self {

@@ -627,6 +627,53 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
         }
     }
 
+    // MARK: - Atomic Task Creation (with subtasks + commitments)
+
+    /// Create a task with optional subtasks, category, and commitments atomically
+    @discardableResult
+    func createTaskWithCommitments(
+        title: String,
+        categoryId: UUID?,
+        subtaskTitles: [String],
+        commitAfterCreate: Bool,
+        selectedTimeframe: Timeframe,
+        selectedSection: Section,
+        selectedDates: Set<Date>,
+        hasScheduledTime: Bool,
+        scheduledTime: Date?
+    ) async -> UUID? {
+        // 1. Create the task
+        guard let parentId = await createTask(title: title, categoryId: categoryId) else {
+            return nil
+        }
+
+        // 2. Create subtasks
+        for subtaskTitle in subtaskTitles {
+            await createSubtask(title: subtaskTitle, parentId: parentId)
+        }
+
+        // 3. Create commitments if enabled
+        if commitAfterCreate && !selectedDates.isEmpty {
+            guard let userId = authService.currentUser?.id else { return parentId }
+            for date in selectedDates {
+                let commitment = Commitment(
+                    userId: userId,
+                    taskId: parentId,
+                    timeframe: selectedTimeframe,
+                    section: selectedSection,
+                    commitmentDate: date,
+                    sortOrder: 0,
+                    scheduledTime: hasScheduledTime ? scheduledTime : nil,
+                    durationMinutes: hasScheduledTime ? 30 : nil
+                )
+                _ = try? await commitmentRepository.createCommitment(commitment)
+            }
+            await fetchCommittedTaskIds()
+        }
+
+        return parentId
+    }
+
     // MARK: - Categories
 
     func fetchCategories() async {

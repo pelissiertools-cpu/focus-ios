@@ -61,15 +61,15 @@ struct FocusTabView: View {
             ZStack(alignment: .bottom) {
             VStack(spacing: 0) {
                 // Date Navigator with integrated timeframe picker and pill row
-                if !viewModel.showAddTaskSheet {
-                    DateNavigator(
-                        selectedDate: $viewModel.selectedDate,
-                        selectedTimeframe: $viewModel.selectedTimeframe,
-                        viewMode: $viewMode,
-                        compact: viewMode == .schedule,
-                        onCalendarTap: { showCalendarPicker = true }
-                    )
-                }
+                DateNavigator(
+                    selectedDate: $viewModel.selectedDate,
+                    selectedTimeframe: $viewModel.selectedTimeframe,
+                    viewMode: $viewMode,
+                    compact: viewMode == .schedule,
+                    onCalendarTap: { showCalendarPicker = true }
+                )
+                .opacity(viewModel.showAddTaskSheet ? 0 : 1)
+                .allowsHitTesting(!viewModel.showAddTaskSheet)
                 Color.clear.frame(height: 0)
                 .onChange(of: viewModel.selectedDate) {
                     _Concurrency.Task { @MainActor in
@@ -89,9 +89,6 @@ struct FocusTabView: View {
                     if viewModel.isLoading {
                         ProgressView("Loading...")
                             .frame(maxHeight: .infinity)
-                    } else if viewModel.showAddTaskSheet {
-                        // Placeholder to maintain VStack layout; actual section is in the ZStack above the scrim
-                        Color.clear
                     } else {
                         ScrollViewReader { proxy in
                             ScrollView {
@@ -145,6 +142,8 @@ struct FocusTabView: View {
                             }
                             .onAppear { scrollProxy = proxy }
                         }
+                        .opacity(viewModel.showAddTaskSheet ? 0 : 1)
+                        .allowsHitTesting(!viewModel.showAddTaskSheet)
                     }
                 } else {
                     // MARK: - Schedule Mode Content
@@ -268,6 +267,13 @@ struct FocusTabView: View {
                     .environmentObject(viewModel)
                     .drawerStyle()
             }
+            .sheet(item: $viewModel.taskForEditing) { task in
+                let commitment = viewModel.commitments.first { $0.taskId == task.id }
+                TaskDetailsDrawer(task: task, viewModel: viewModel, commitment: commitment)
+                    .environmentObject(viewModel)
+                    .presentationDetents([.large])
+                    .presentationDragIndicator(.visible)
+            }
             .sheet(isPresented: $viewModel.showCommitSheet) {
                 if let commitment = viewModel.selectedCommitmentForCommit,
                    let task = viewModel.tasksMap[commitment.taskId] {
@@ -290,6 +296,12 @@ struct FocusTabView: View {
                     .drawerStyle()
                 }
             }
+            .sheet(isPresented: $viewModel.showRescheduleSheet) {
+                if let commitment = viewModel.selectedCommitmentForReschedule {
+                    RescheduleSheet(commitment: commitment, focusViewModel: viewModel)
+                        .drawerStyle()
+                }
+            }
             .sheet(isPresented: $showCalendarPicker) {
                 SingleSelectCalendarPicker(
                     selectedDate: $viewModel.selectedDate,
@@ -303,9 +315,7 @@ struct FocusTabView: View {
                     if viewModel.addTaskSection == .extra && viewModel.isSectionCollapsed(.extra) {
                         viewModel.isExtraSectionCollapsed = false
                     }
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                        isAddTaskFieldFocused = true
-                    }
+                    isAddTaskFieldFocused = true
                 }
             }
 
@@ -748,45 +758,45 @@ struct SectionView: View {
                 Spacer()
 
                 // Add button (far right) - hidden when adding task
-                if !viewModel.showAddTaskSheet {
-                    Button {
-                        if section == .focus && !viewModel.canAddTask(to: .focus) {
-                            showCapacityPopover = true
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                                showCapacityPopover = false
-                            }
-                        } else {
-                            viewModel.addTaskSection = section
-                            viewModel.showAddTaskSheet = true
+                Button {
+                    if section == .focus && !viewModel.canAddTask(to: .focus) {
+                        showCapacityPopover = true
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                            showCapacityPopover = false
                         }
-                    } label: {
-                        Image(systemName: "plus")
-                            .font(.body)
-                            .fontWeight(.semibold)
-                            .foregroundColor(.blue)
-                            .frame(width: 32, height: 32)
-                            .glassEffect(.regular.interactive(), in: .circle)
+                    } else {
+                        viewModel.addTaskSection = section
+                        viewModel.showAddTaskSheet = true
                     }
-                    .buttonStyle(.plain)
-                    .popover(isPresented: $showCapacityPopover) {
-                        let current = viewModel.taskCount(for: .focus)
-                        let max = Section.focus.maxTasks(for: viewModel.selectedTimeframe) ?? 0
-                        VStack(spacing: 4) {
-                            Text("Focus section")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                            Text("Section full")
-                                .font(.subheadline)
-                                .fontWeight(.semibold)
-                            Text("\(current)/\(max)")
-                                .font(.title3)
-                                .fontWeight(.bold)
-                                .foregroundStyle(.blue)
-                        }
-                        .padding()
-                        .presentationCompactAdaptation(.popover)
-                    }
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.body)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.blue)
+                        .frame(width: 32, height: 32)
+                        .glassEffect(.regular.interactive(), in: .circle)
                 }
+                .buttonStyle(.plain)
+                .popover(isPresented: $showCapacityPopover) {
+                    let current = viewModel.taskCount(for: .focus)
+                    let max = Section.focus.maxTasks(for: viewModel.selectedTimeframe) ?? 0
+                    VStack(spacing: 4) {
+                        Text("Focus section")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Text("Section full")
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+                        Text("\(current)/\(max)")
+                            .font(.title3)
+                            .fontWeight(.bold)
+                            .foregroundStyle(.blue)
+                    }
+                    .padding()
+                    .presentationCompactAdaptation(.popover)
+                }
+                .opacity(viewModel.showAddTaskSheet ? 0 : 1)
+                .allowsHitTesting(!viewModel.showAddTaskSheet)
             }
             .contentShape(Rectangle())
             .onTapGesture {
@@ -912,7 +922,7 @@ struct SectionView: View {
                 }
             }
         }
-        .frame(maxHeight: viewModel.showAddTaskSheet && viewModel.addTaskSection == section ? .infinity : nil)
+        .frame(maxHeight: viewModel.showAddTaskSheet && viewModel.addTaskSection == section ? .infinity : nil, alignment: .top)
         .padding(.vertical)
         .padding(.horizontal, 8)
         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
@@ -1077,8 +1087,49 @@ struct CommitmentRow: View {
                         viewModel.toggleExpanded(task.id)
                     }
                 }
-                .onLongPressGesture {
-                    viewModel.selectedTaskForDetails = task
+                .contextMenu {
+                    Button {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                            viewModel.taskForEditing = task
+                        }
+                    } label: {
+                        Label("Edit", systemImage: "pencil")
+                    }
+
+                    Button(role: .destructive) {
+                        _Concurrency.Task { @MainActor in
+                            await viewModel.removeCommitment(commitment)
+                        }
+                    } label: {
+                        Label(commitment.timeframe.removeLabel, systemImage: "minus.circle")
+                    }
+
+                    if !task.isCompleted {
+                        Button {
+                            viewModel.selectedCommitmentForReschedule = commitment
+                            viewModel.showRescheduleSheet = true
+                        } label: {
+                            Label("Reschedule", systemImage: "calendar")
+                        }
+
+                        Button {
+                            _Concurrency.Task { @MainActor in
+                                await viewModel.pushCommitmentToNext(commitment)
+                            }
+                        } label: {
+                            Label("Push to \(commitment.timeframe.nextTimeframeLabel)", systemImage: "arrow.turn.right.down")
+                        }
+                    }
+
+                    Divider()
+
+                    Button(role: .destructive) {
+                        _Concurrency.Task { @MainActor in
+                            await viewModel.permanentlyDeleteTask(task)
+                        }
+                    } label: {
+                        Label("Delete Task", systemImage: "trash")
+                    }
                 }
 
                 // Commit button (for non-daily commitments)
@@ -1186,8 +1237,24 @@ struct FocusSubtaskRow: View {
         }
         .padding(.vertical, 6)
         .contentShape(Rectangle())
-        .onLongPressGesture {
-            viewModel.selectedTaskForDetails = subtask
+        .contextMenu {
+            Button {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    viewModel.taskForEditing = subtask
+                }
+            } label: {
+                Label("Edit", systemImage: "pencil")
+            }
+
+            Divider()
+
+            Button(role: .destructive) {
+                _Concurrency.Task { @MainActor in
+                    await viewModel.deleteSubtask(subtask, parentId: parentId)
+                }
+            } label: {
+                Label("Delete Subtask", systemImage: "trash")
+            }
         }
     }
 }

@@ -21,11 +21,16 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
     @Published var hasLoadedInitialData = false
     @Published var errorMessage: String?
     @Published var selectedTaskForDetails: FocusTask?
+    @Published var taskForEditing: FocusTask?
 
     // Trickle-down state
     @Published var childCommitmentsMap: [UUID: [Commitment]] = [:]  // parentId -> children
     @Published var showCommitSheet = false
     @Published var selectedCommitmentForCommit: Commitment?
+
+    // Reschedule state (triggered from context menu)
+    @Published var selectedCommitmentForReschedule: Commitment?
+    @Published var showRescheduleSheet = false
 
     // Subtask commit state (for committing subtasks that don't have their own commitment)
     @Published var selectedSubtaskForCommit: FocusTask?

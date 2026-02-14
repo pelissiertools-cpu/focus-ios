@@ -72,6 +72,11 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                         .onSubmit {
                             saveTitle()
                         }
+                        .onAppear {
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                                isFocused = true
+                            }
+                        }
                 }
 
                 // Info Section - shows parent or subtask count

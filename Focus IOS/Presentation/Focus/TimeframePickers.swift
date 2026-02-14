@@ -57,7 +57,7 @@ struct DateNavigator: View {
                     Text(compactSubtitleText)
                         .font(.subheadline)
                         .fontWeight(.medium)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(.black)
                 }
                 .buttonStyle(.plain)
                 .padding(.vertical, 8)
@@ -105,7 +105,7 @@ struct DateNavigator: View {
                     Text(subtitleText)
                         .font(.subheadline)
                         .fontWeight(.medium)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(.black)
                 }
                 .buttonStyle(.plain)
                 .padding(.vertical, 8)

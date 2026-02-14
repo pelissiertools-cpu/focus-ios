@@ -54,19 +54,23 @@ struct FocusTabView: View {
     @State private var addTaskSubtasks: [DraftSubtaskEntry] = []
     @FocusState private var isAddTaskFieldFocused: Bool
     @FocusState private var focusedSubtaskId: UUID?
+    @State private var scrollProxy: ScrollViewProxy?
 
     var body: some View {
         NavigationView {
             ZStack(alignment: .bottom) {
             VStack(spacing: 0) {
                 // Date Navigator with integrated timeframe picker and pill row
-                DateNavigator(
-                    selectedDate: $viewModel.selectedDate,
-                    selectedTimeframe: $viewModel.selectedTimeframe,
-                    viewMode: $viewMode,
-                    compact: viewMode == .schedule,
-                    onCalendarTap: { showCalendarPicker = true }
-                )
+                if !viewModel.showAddTaskSheet {
+                    DateNavigator(
+                        selectedDate: $viewModel.selectedDate,
+                        selectedTimeframe: $viewModel.selectedTimeframe,
+                        viewMode: $viewMode,
+                        compact: viewMode == .schedule,
+                        onCalendarTap: { showCalendarPicker = true }
+                    )
+                }
+                Color.clear.frame(height: 0)
                 .onChange(of: viewModel.selectedDate) {
                     _Concurrency.Task { @MainActor in
                         await viewModel.fetchCommitments()
@@ -85,53 +89,61 @@ struct FocusTabView: View {
                     if viewModel.isLoading {
                         ProgressView("Loading...")
                             .frame(maxHeight: .infinity)
+                    } else if viewModel.showAddTaskSheet {
+                        // Placeholder to maintain VStack layout; actual section is in the ZStack above the scrim
+                        Color.clear
                     } else {
-                        ScrollView {
-                            VStack(spacing: 20) {
-                                // Focus Section
-                                SectionView(
-                                    title: "Focus",
-                                    section: .focus,
-                                    viewModel: viewModel,
-                                    draggingCommitmentId: draggingCommitmentId,
-                                    dragTranslation: dragTranslation,
-                                    dragReorderAdjustment: dragReorderAdjustment,
-                                    targetedSection: targetedSection,
-                                    onDragChanged: { id, value in handleCommitmentDrag(id, value) },
-                                    onDragEnded: { handleCommitmentDragEnd() }
-                                )
-                                .zIndex(draggingCommitmentId != nil && viewModel.uncompletedCommitmentsForSection(.focus).contains(where: { $0.id == draggingCommitmentId }) ? 1 : 0)
+                        ScrollViewReader { proxy in
+                            ScrollView {
+                                VStack(spacing: 20) {
+                                    // Focus Section
+                                    SectionView(
+                                        title: "Focus",
+                                        section: .focus,
+                                        viewModel: viewModel,
+                                        draggingCommitmentId: draggingCommitmentId,
+                                        dragTranslation: dragTranslation,
+                                        dragReorderAdjustment: dragReorderAdjustment,
+                                        targetedSection: targetedSection,
+                                        onDragChanged: { id, value in handleCommitmentDrag(id, value) },
+                                        onDragEnded: { handleCommitmentDragEnd() }
+                                    )
+                                    .id("section-focus")
+                                    .zIndex(draggingCommitmentId != nil && viewModel.uncompletedCommitmentsForSection(.focus).contains(where: { $0.id == draggingCommitmentId }) ? 1 : 0)
 
-                                // Extra Section
-                                SectionView(
-                                    title: "Extra",
-                                    section: .extra,
-                                    viewModel: viewModel,
-                                    draggingCommitmentId: draggingCommitmentId,
-                                    dragTranslation: dragTranslation,
-                                    dragReorderAdjustment: dragReorderAdjustment,
-                                    targetedSection: targetedSection,
-                                    onDragChanged: { id, value in handleCommitmentDrag(id, value) },
-                                    onDragEnded: { handleCommitmentDragEnd() }
-                                )
-                                .zIndex(draggingCommitmentId != nil && viewModel.uncompletedCommitmentsForSection(.extra).contains(where: { $0.id == draggingCommitmentId }) ? 1 : 0)
-                            }
-                            .padding()
-                            .onPreferenceChange(RowFramePreference.self) { frames in
-                                rowFrames = frames
-                            }
-                            .onPreferenceChange(SectionFramePreference.self) { frames in
-                                sectionFrames = frames
-                            }
-                        }
-                        .coordinateSpace(name: "focusList")
-                        .refreshable {
-                            await withCheckedContinuation { continuation in
-                                _Concurrency.Task { @MainActor in
-                                    await viewModel.fetchCommitments()
-                                    continuation.resume()
+                                    // Extra Section
+                                    SectionView(
+                                        title: "Extra",
+                                        section: .extra,
+                                        viewModel: viewModel,
+                                        draggingCommitmentId: draggingCommitmentId,
+                                        dragTranslation: dragTranslation,
+                                        dragReorderAdjustment: dragReorderAdjustment,
+                                        targetedSection: targetedSection,
+                                        onDragChanged: { id, value in handleCommitmentDrag(id, value) },
+                                        onDragEnded: { handleCommitmentDragEnd() }
+                                    )
+                                    .id("section-extra")
+                                    .zIndex(draggingCommitmentId != nil && viewModel.uncompletedCommitmentsForSection(.extra).contains(where: { $0.id == draggingCommitmentId }) ? 1 : 0)
+                                }
+                                .padding()
+                                .onPreferenceChange(RowFramePreference.self) { frames in
+                                    rowFrames = frames
+                                }
+                                .onPreferenceChange(SectionFramePreference.self) { frames in
+                                    sectionFrames = frames
                                 }
                             }
+                            .coordinateSpace(name: "focusList")
+                            .refreshable {
+                                await withCheckedContinuation { continuation in
+                                    _Concurrency.Task { @MainActor in
+                                        await viewModel.fetchCommitments()
+                                        continuation.resume()
+                                    }
+                                }
+                            }
+                            .onAppear { scrollProxy = proxy }
                         }
                     }
                 } else {
@@ -287,6 +299,10 @@ struct FocusTabView: View {
             }
             .onChange(of: viewModel.showAddTaskSheet) { _, isShowing in
                 if isShowing {
+                    // Auto-expand Extra section if collapsed
+                    if viewModel.addTaskSection == .extra && viewModel.isSectionCollapsed(.extra) {
+                        viewModel.isExtraSectionCollapsed = false
+                    }
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                         isAddTaskFieldFocused = true
                     }
@@ -295,7 +311,8 @@ struct FocusTabView: View {
 
                 // Tap-to-dismiss overlay when add task bar is active
                 if viewModel.showAddTaskSheet {
-                    Color.clear
+                    Color.black.opacity(0.15)
+                        .ignoresSafeArea()
                         .contentShape(Rectangle())
                         .onTapGesture {
                             withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
@@ -304,6 +321,26 @@ struct FocusTabView: View {
                         }
                         .allowsHitTesting(true)
                         .zIndex(50)
+
+                    // Centered target section floating above the scrim
+                    GeometryReader { geo in
+                        let availableHeight = geo.size.height - 140
+                        let sectionHeight = availableHeight * 0.5
+                        VStack {
+                            Spacer()
+                            SectionView(
+                                title: viewModel.addTaskSection == .focus ? "Focus" : "Extra",
+                                section: viewModel.addTaskSection,
+                                viewModel: viewModel
+                            )
+                            .padding(.horizontal)
+                            .frame(minHeight: sectionHeight, alignment: .top)
+                            Spacer()
+                        }
+                        .frame(height: availableHeight)
+                    }
+                    .allowsHitTesting(false)
+                    .zIndex(75)
 
                     VStack {
                         Spacer()
@@ -438,13 +475,19 @@ struct FocusTabView: View {
                                 .font(.caption2)
                                 .foregroundColor(.secondary.opacity(0.5))
 
-                            TextField("Subtask", text: subtaskBinding(for: subtask.id))
+                            TextField("Subtask", text: subtaskBinding(for: subtask.id), axis: .vertical)
                                 .font(.subheadline)
                                 .textFieldStyle(.plain)
                                 .focused($focusedSubtaskId, equals: subtask.id)
-                                .submitLabel(.return)
-                                .onSubmit {
-                                    addNewSubtask()
+                                .lineLimit(1)
+                                .onChange(of: subtaskBinding(for: subtask.id).wrappedValue) { _, newValue in
+                                    if newValue.contains("\n") {
+                                        // Strip the newline and add a new subtask
+                                        if let idx = addTaskSubtasks.firstIndex(where: { $0.id == subtask.id }) {
+                                            addTaskSubtasks[idx].title = newValue.replacingOccurrences(of: "\n", with: "")
+                                        }
+                                        addNewSubtask()
+                                    }
                                 }
 
                             Button {
@@ -521,24 +564,16 @@ struct FocusTabView: View {
         // Haptic feedback
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
 
+        // Transfer focus to title BEFORE removing subtask fields to prevent keyboard bounce
+        isAddTaskFieldFocused = true
+        focusedSubtaskId = nil
+
         // Clear fields immediately for rapid entry
         addTaskTitle = ""
         addTaskSubtasks = []
 
         _Concurrency.Task { @MainActor in
-            guard let result = await viewModel.createTaskWithCommitment(title: title, section: section) else {
-                return
-            }
-
-            for subtaskTitle in subtasksToCreate {
-                await viewModel.createPlainSubtask(title: subtaskTitle, parentId: result.taskId)
-            }
-        }
-
-        // Re-focus for next task (delay to override SwiftUI's default keyboard dismiss)
-        focusedSubtaskId = nil
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-            isAddTaskFieldFocused = true
+            await viewModel.createTaskWithSubtasks(title: title, section: section, subtaskTitles: subtasksToCreate)
         }
     }
 
@@ -848,7 +883,6 @@ struct SectionView: View {
                             }
                         }
                         .frame(minHeight: focusConfig.containerMinHeight > 0 ? focusConfig.containerMinHeight : nil)
-                        .animation(.easeInOut(duration: 0.3), value: uncompletedCommitments.count)
 
                         // Completed commitments — below the centering zone for Focus, Done pill for Extra
                         if section == .focus && !completedCommitments.isEmpty {
@@ -884,8 +918,10 @@ struct SectionView: View {
                 }
             }
         }
+        .frame(maxHeight: viewModel.showAddTaskSheet && viewModel.addTaskSection == section ? .infinity : nil)
         .padding(.vertical)
         .padding(.horizontal, 8)
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 12))
         .overlay(
             RoundedRectangle(cornerRadius: 12)

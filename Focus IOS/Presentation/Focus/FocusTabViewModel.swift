@@ -423,6 +423,39 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
         }
     }
 
+    /// Batch-create plain subtasks, updating the view once at the end
+    func createPlainSubtasks(titles: [String], parentId: UUID) async {
+        guard let userId = authService.currentUser?.id else {
+            errorMessage = "No authenticated user"
+            return
+        }
+
+        var created: [FocusTask] = []
+        for title in titles {
+            guard !title.trimmingCharacters(in: .whitespaces).isEmpty else { continue }
+            do {
+                let newSubtask = try await taskRepository.createSubtask(
+                    title: title,
+                    parentTaskId: parentId,
+                    userId: userId
+                )
+                created.append(newSubtask)
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+        }
+
+        // Single batch update — one view re-render
+        if !created.isEmpty {
+            var existing = subtasksMap[parentId] ?? []
+            existing.append(contentsOf: created)
+            subtasksMap[parentId] = existing
+            for subtask in created {
+                tasksMap[subtask.id] = subtask
+            }
+        }
+    }
+
     /// Create a new subtask with a commitment at the parent's timeframe (breakdown use case)
     func createSubtask(title: String, parentId: UUID, parentCommitment: Commitment) async {
         guard let userId = authService.currentUser?.id else {
@@ -863,6 +896,74 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
         } catch {
             errorMessage = error.localizedDescription
             return nil
+        }
+    }
+
+    /// Create task + commitment + subtasks atomically, updating view state once at the end
+    func createTaskWithSubtasks(title: String, section: Section, subtaskTitles: [String]) async {
+        guard let userId = authService.currentUser?.id else {
+            errorMessage = "No authenticated user"
+            return
+        }
+
+        guard !title.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+
+        if section == .focus && !canAddTask(to: .focus) {
+            errorMessage = "Focus section is full"
+            return
+        }
+
+        do {
+            // 1. Create task
+            let newTask = FocusTask(
+                userId: userId,
+                title: title,
+                type: .task,
+                isCompleted: false,
+                isInLog: true
+            )
+            let createdTask = try await taskRepository.createTask(newTask)
+
+            // 2. Create commitment
+            let maxSort = commitments
+                .filter { $0.section == section &&
+                    isSameTimeframe($0.commitmentDate, timeframe: selectedTimeframe, selectedDate: selectedDate) }
+                .map { $0.sortOrder }
+                .max() ?? -1
+            let commitment = Commitment(
+                userId: userId,
+                taskId: createdTask.id,
+                timeframe: selectedTimeframe,
+                section: section,
+                commitmentDate: selectedDate,
+                sortOrder: maxSort + 1
+            )
+            let createdCommitment = try await commitmentRepository.createCommitment(commitment)
+
+            // 3. Create subtasks (all via repository, no view updates yet)
+            var createdSubtasks: [FocusTask] = []
+            for subtaskTitle in subtaskTitles where !subtaskTitle.isEmpty {
+                let subtask = try await taskRepository.createSubtask(
+                    title: subtaskTitle,
+                    parentTaskId: createdTask.id,
+                    userId: userId
+                )
+                createdSubtasks.append(subtask)
+            }
+
+            // 4. Single batch view update — one coordinated animation
+            withAnimation(.easeInOut(duration: 0.3)) {
+                tasksMap[createdTask.id] = createdTask
+                commitments.append(createdCommitment)
+                if !createdSubtasks.isEmpty {
+                    subtasksMap[createdTask.id] = createdSubtasks
+                    for subtask in createdSubtasks {
+                        tasksMap[subtask.id] = subtask
+                    }
+                }
+            }
+        } catch {
+            errorMessage = error.localizedDescription
         }
     }
 

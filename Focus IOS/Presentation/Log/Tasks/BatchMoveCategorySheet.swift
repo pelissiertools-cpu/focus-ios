@@ -7,7 +7,7 @@
 
 import SwiftUI
 
-struct BatchMoveCategorySheet<VM: LibraryFilterable>: View {
+struct BatchMoveCategorySheet<VM: LogFilterable>: View {
     @ObservedObject var viewModel: VM
     @Environment(\.dismiss) private var dismiss
     @State private var showingNewCategoryAlert = false

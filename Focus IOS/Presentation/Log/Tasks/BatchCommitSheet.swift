@@ -7,7 +7,7 @@
 
 import SwiftUI
 
-struct BatchCommitSheet<VM: LibraryFilterable>: View {
+struct BatchCommitSheet<VM: LogFilterable>: View {
     @ObservedObject var viewModel: VM
     @EnvironmentObject var focusViewModel: FocusTabViewModel
     @Environment(\.dismiss) var dismiss

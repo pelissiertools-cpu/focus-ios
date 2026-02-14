@@ -152,7 +152,7 @@ struct TasksListView: View {
 
             // Done pill (when there are completed tasks, hidden in edit mode)
             if !viewModel.isEditMode && !viewModel.completedTasks.isEmpty {
-                LibraryDonePillView(completedTasks: viewModel.completedTasks, viewModel: viewModel)
+                LogDonePillView(completedTasks: viewModel.completedTasks, viewModel: viewModel)
                     .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
                     .listRowSeparator(.hidden)
                     .listRowBackground(Color(.systemBackground))
@@ -174,9 +174,9 @@ struct TasksListView: View {
 
 }
 
-// MARK: - Library Done Pill View
+// MARK: - Log Done Pill View
 
-struct LibraryDonePillView: View {
+struct LogDonePillView: View {
     let completedTasks: [FocusTask]
     @ObservedObject var viewModel: TaskListViewModel
     @State private var showClearConfirmation = false

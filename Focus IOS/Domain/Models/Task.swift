@@ -20,7 +20,7 @@ struct FocusTask: Codable, Identifiable {
     let createdDate: Date
     var modifiedDate: Date
     var sortOrder: Int
-    var isInLibrary: Bool
+    var isInLog: Bool
     var previousCompletionState: [Bool]?
 
     // Foreign keys
@@ -40,7 +40,7 @@ struct FocusTask: Codable, Identifiable {
         case createdDate = "created_date"
         case modifiedDate = "modified_date"
         case sortOrder = "sort_order"
-        case isInLibrary = "is_in_library"
+        case isInLog = "is_in_library"
         case previousCompletionState = "previous_completion_state"
         case categoryId = "category_id"
         case projectId = "project_id"
@@ -59,7 +59,7 @@ struct FocusTask: Codable, Identifiable {
         createdDate: Date = Date(),
         modifiedDate: Date = Date(),
         sortOrder: Int = 0,
-        isInLibrary: Bool = true,
+        isInLog: Bool = true,
         previousCompletionState: [Bool]? = nil,
         categoryId: UUID? = nil,
         projectId: UUID? = nil,
@@ -75,7 +75,7 @@ struct FocusTask: Codable, Identifiable {
         self.createdDate = createdDate
         self.modifiedDate = modifiedDate
         self.sortOrder = sortOrder
-        self.isInLibrary = isInLibrary
+        self.isInLog = isInLog
         self.previousCompletionState = previousCompletionState
         self.categoryId = categoryId
         self.projectId = projectId

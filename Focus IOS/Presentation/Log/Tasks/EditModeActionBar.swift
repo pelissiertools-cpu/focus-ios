@@ -7,7 +7,7 @@
 
 import SwiftUI
 
-struct EditModeActionBar<VM: LibraryFilterable>: View {
+struct EditModeActionBar<VM: LogFilterable>: View {
     @ObservedObject var viewModel: VM
     var showCreateProjectAlert: Binding<Bool>?
     var showCreateListAlert: Binding<Bool>?

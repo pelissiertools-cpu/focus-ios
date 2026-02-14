@@ -19,9 +19,9 @@ struct MainTabView: View {
                 }
                 .environmentObject(focusViewModel)
 
-            LibraryTabView()
+            LogTabView()
                 .tabItem {
-                    Label("Library", systemImage: "tray.full")
+                    Label("Log", systemImage: "tray.full")
                 }
                 .environmentObject(focusViewModel)
         }

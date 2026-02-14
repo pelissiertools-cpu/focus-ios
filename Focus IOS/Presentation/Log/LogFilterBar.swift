@@ -1,13 +1,13 @@
 //
-//  LibraryFilterBar.swift
+//  LogFilterBar.swift
 //  Focus IOS
 //
-//  Shared filter bar rendered by LibraryTabView across all tabs.
+//  Shared filter bar rendered by LogTabView across all tabs.
 //
 
 import SwiftUI
 
-struct LibraryFilterBar<VM: LibraryFilterable>: View {
+struct LogFilterBar<VM: LogFilterable>: View {
     @ObservedObject var viewModel: VM
     @Binding var showCategoryDropdown: Bool
 

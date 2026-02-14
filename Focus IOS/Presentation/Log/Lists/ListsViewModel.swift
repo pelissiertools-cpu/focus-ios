@@ -9,7 +9,7 @@ import SwiftUI
 import Auth
 
 @MainActor
-class ListsViewModel: ObservableObject, LibraryFilterable, TaskEditingViewModel {
+class ListsViewModel: ObservableObject, LogFilterable, TaskEditingViewModel {
     // MARK: - Published Properties
 
     // Lists data
@@ -108,7 +108,7 @@ class ListsViewModel: ObservableObject, LibraryFilterable, TaskEditingViewModel 
         }
     }
 
-    // MARK: - LibraryFilterable Conformance
+    // MARK: - LogFilterable Conformance
 
     var categoryType: String { "list" }
 
@@ -284,7 +284,7 @@ class ListsViewModel: ObservableObject, LibraryFilterable, TaskEditingViewModel 
                         TaskNotificationKeys.taskId: item.id,
                         TaskNotificationKeys.isCompleted: items[index].isCompleted,
                         TaskNotificationKeys.completedDate: items[index].completedDate as Any,
-                        TaskNotificationKeys.source: TaskNotificationSource.library.rawValue,
+                        TaskNotificationKeys.source: TaskNotificationSource.log.rawValue,
                         TaskNotificationKeys.subtasksChanged: false
                     ]
                 )

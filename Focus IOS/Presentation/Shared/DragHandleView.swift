@@ -7,7 +7,7 @@
 
 import SwiftUI
 
-/// Shared drag handle icon used across all sections (Focus, Library).
+/// Shared drag handle icon used across all sections (Focus, Log).
 /// Visual-only — attach `.onDrag` or `.onMove` at the call site.
 struct DragHandleView: View {
     var body: some View {

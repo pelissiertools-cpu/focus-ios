@@ -9,7 +9,7 @@ import SwiftUI
 import Auth
 
 @MainActor
-class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LibraryFilterable {
+class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
     // MARK: - Published Properties
     @Published var projects: [FocusTask] = []
     @Published var isLoading = false
@@ -117,7 +117,7 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LibraryFilterab
         }
     }
 
-    // MARK: - LibraryFilterable Conformance
+    // MARK: - LogFilterable Conformance
 
     var categoryType: String { "project" }
 

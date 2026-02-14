@@ -796,7 +796,7 @@ struct AddTaskToFocusSheet: View {
                                     .font(.caption)
                                     .foregroundColor(.gray.opacity(0.5))
 
-                                TextField("Subtask title", text: $draftSubtasks[index].title)
+                                TextField("Subtask", text: $draftSubtasks[index].title)
                                     .font(.subheadline)
 
                                 Button {
@@ -1128,7 +1128,7 @@ struct FocusInlineAddSubtaskRow: View {
     var body: some View {
         HStack(spacing: 12) {
             if isEditing {
-                TextField("Subtask title", text: $newSubtaskTitle)
+                TextField("Subtask", text: $newSubtaskTitle)
                     .font(.subheadline)
                     .focused($isFocused)
                     .onSubmit {
@@ -1148,7 +1148,7 @@ struct FocusInlineAddSubtaskRow: View {
                     HStack(spacing: 8) {
                         Image(systemName: "plus")
                             .font(.subheadline)
-                        Text("Add")
+                        Text("Add subtask")
                             .font(.subheadline)
                     }
                     .foregroundColor(.secondary)
@@ -1171,7 +1171,7 @@ struct FocusInlineAddSubtaskRow: View {
         Task {
             await viewModel.createSubtask(title: title, parentId: parentId)
             newSubtaskTitle = ""
-            // Keep editing mode open for adding more subtasks
+            isFocused = true
         }
     }
 }

@@ -11,7 +11,7 @@ import SwiftUI
 import Auth
 
 @MainActor
-class TaskListViewModel: ObservableObject, TaskEditingViewModel, LibraryFilterable {
+class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
     @Published var tasks: [FocusTask] = []
     @Published var isLoading = false
     @Published var errorMessage: String?
@@ -119,13 +119,13 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LibraryFilterab
                 TaskNotificationKeys.taskId: taskId,
                 TaskNotificationKeys.isCompleted: isCompleted,
                 TaskNotificationKeys.completedDate: completedDate as Any,
-                TaskNotificationKeys.source: TaskNotificationSource.library.rawValue,
+                TaskNotificationKeys.source: TaskNotificationSource.log.rawValue,
                 TaskNotificationKeys.subtasksChanged: subtasksChanged
             ]
         )
     }
 
-    // MARK: - LibraryFilterable Conformance
+    // MARK: - LogFilterable Conformance
 
     var categoryType: String { "task" }
 
@@ -471,7 +471,7 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LibraryFilterab
         }
     }
 
-    /// Delete a task (hard delete from Library - also cleans up all commitments)
+    /// Delete a task (hard delete from Log - also cleans up all commitments)
     func deleteTask(_ task: FocusTask) async {
         do {
             // Clean up all commitments for this task first
@@ -485,7 +485,7 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LibraryFilterab
         }
     }
 
-    /// Clear all completed tasks from the library
+    /// Clear all completed tasks from the log
     func clearCompletedTasks() async {
         let completedTaskIds = tasks.filter { $0.isCompleted }.map { $0.id }
 
@@ -774,7 +774,7 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LibraryFilterab
                 type: .project,
                 isCompleted: false,
                 sortOrder: 0,
-                isInLibrary: true
+                isInLog: true
             )
             let createdProject = try await repository.createTask(projectTask)
 
@@ -810,7 +810,7 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LibraryFilterab
                 type: .list,
                 isCompleted: false,
                 sortOrder: 0,
-                isInLibrary: true
+                isInLog: true
             )
             let createdList = try await repository.createTask(listTask)
 

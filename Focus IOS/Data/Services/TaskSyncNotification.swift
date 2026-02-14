@@ -24,5 +24,5 @@ enum TaskNotificationKeys {
 /// Source identifiers to prevent notification echo
 enum TaskNotificationSource: String {
     case focus = "focus"
-    case library = "library"
+    case log = "log"
 }

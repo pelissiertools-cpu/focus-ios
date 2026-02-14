@@ -1,5 +1,5 @@
 //
-//  LibraryFilterable.swift
+//  LogFilterable.swift
 //  Focus IOS
 //
 
@@ -7,7 +7,7 @@ import Foundation
 import Combine
 
 @MainActor
-protocol LibraryFilterable: ObservableObject {
+protocol LogFilterable: ObservableObject {
     // MARK: - Category filter
     var categories: [Category] { get }
     var selectedCategoryId: UUID? { get set }
@@ -43,8 +43,8 @@ protocol LibraryFilterable: ObservableObject {
     func batchMoveToCategory(_ categoryId: UUID?) async
 }
 
-// Default implementations for trivial methods identical across all Library ViewModels.
-extension LibraryFilterable {
+// Default implementations for trivial methods identical across all Log ViewModels.
+extension LogFilterable {
     func selectCategory(_ categoryId: UUID?) {
         selectedCategoryId = categoryId
     }

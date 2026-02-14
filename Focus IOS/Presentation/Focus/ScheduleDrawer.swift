@@ -21,10 +21,10 @@ struct ScheduleDrawer: View {
     @State private var selectedFilter: ScheduleFilter = .today
     @State private var categories: [Category] = []
 
-    // Library task state (for All / Category filters)
-    @State private var libraryTasks: [FocusTask] = []
-    @State private var librarySubtasksMap: [UUID: [FocusTask]] = [:]
-    @State private var libraryExpandedTasks: Set<UUID> = []
+    // Log task state (for All / Category filters)
+    @State private var logTasks: [FocusTask] = []
+    @State private var logSubtasksMap: [UUID: [FocusTask]] = [:]
+    @State private var logExpandedTasks: Set<UUID> = []
 
     private let categoryRepository = CategoryRepository()
     private let taskRepository = TaskRepository()
@@ -48,8 +48,8 @@ struct ScheduleDrawer: View {
         Set(timelineVM.timedCommitments.map { $0.taskId })
     }
 
-    private var filteredLibraryTasks: [FocusTask] {
-        var filtered = libraryTasks.filter { !$0.isCompleted && !scheduledTaskIds.contains($0.id) }
+    private var filteredLogTasks: [FocusTask] {
+        var filtered = logTasks.filter { !$0.isCompleted && !scheduledTaskIds.contains($0.id) }
 
         if case .category(let categoryId) = selectedFilter {
             filtered = filtered.filter { $0.categoryId == categoryId }
@@ -125,7 +125,7 @@ struct ScheduleDrawer: View {
                     if selectedFilter == .today {
                         todayTasksList
                     } else {
-                        libraryTasksList
+                        logTasksList
                     }
                 }
                 .padding(.horizontal)
@@ -145,7 +145,7 @@ struct ScheduleDrawer: View {
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         .task {
             await fetchCategories()
-            await fetchLibraryTasks()
+            await fetchLogTasks()
         }
     }
 
@@ -255,26 +255,26 @@ struct ScheduleDrawer: View {
         }
     }
 
-    // MARK: - Library Tasks List
+    // MARK: - Log Tasks List
 
     @ViewBuilder
-    private var libraryTasksList: some View {
-        if filteredLibraryTasks.isEmpty {
+    private var logTasksList: some View {
+        if filteredLogTasks.isEmpty {
             Text("No tasks")
                 .foregroundColor(.secondary)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 20)
         } else {
-            ForEach(filteredLibraryTasks) { task in
-                let subtasks = getLibrarySubtasks(for: task.id)
+            ForEach(filteredLogTasks) { task in
+                let subtasks = getLogSubtasks(for: task.id)
                 let hasSubtasks = !subtasks.isEmpty
-                let isExpanded = libraryExpandedTasks.contains(task.id)
+                let isExpanded = logExpandedTasks.contains(task.id)
 
                 VStack(spacing: 0) {
                     HStack(spacing: 12) {
                         Button {
                             _Concurrency.Task { @MainActor in
-                                await toggleLibraryTaskCompletion(task)
+                                await toggleLogTaskCompletion(task)
                             }
                         } label: {
                             Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
@@ -300,7 +300,7 @@ struct ScheduleDrawer: View {
                         .contentShape(Rectangle())
                         .onTapGesture {
                             withAnimation(.easeInOut(duration: 0.2)) {
-                                toggleLibraryExpanded(task.id)
+                                toggleLogExpanded(task.id)
                             }
                         }
 
@@ -334,7 +334,7 @@ struct ScheduleDrawer: View {
                     if isExpanded {
                         VStack(spacing: 0) {
                             ForEach(Array(subtasks.enumerated()), id: \.element.id) { index, subtask in
-                                librarySubtaskRow(subtask: subtask, parentId: task.id)
+                                logSubtaskRow(subtask: subtask, parentId: task.id)
 
                                 if index < subtasks.count - 1 {
                                     Divider()
@@ -355,7 +355,7 @@ struct ScheduleDrawer: View {
     }
 
     @ViewBuilder
-    private func librarySubtaskRow(subtask: FocusTask, parentId: UUID) -> some View {
+    private func logSubtaskRow(subtask: FocusTask, parentId: UUID) -> some View {
         HStack(spacing: 12) {
             Text(subtask.title)
                 .font(.subheadline)
@@ -366,7 +366,7 @@ struct ScheduleDrawer: View {
 
             Button {
                 _Concurrency.Task { @MainActor in
-                    await toggleLibrarySubtaskCompletion(subtask, parentId: parentId)
+                    await toggleLogSubtaskCompletion(subtask, parentId: parentId)
                 }
             } label: {
                 Image(systemName: subtask.isCompleted ? "checkmark.circle.fill" : "circle")
@@ -378,22 +378,22 @@ struct ScheduleDrawer: View {
         .padding(.vertical, 6)
     }
 
-    // MARK: - Library Task Helpers
+    // MARK: - Log Task Helpers
 
-    private func getLibrarySubtasks(for taskId: UUID) -> [FocusTask] {
-        let subtasks = librarySubtasksMap[taskId] ?? []
+    private func getLogSubtasks(for taskId: UUID) -> [FocusTask] {
+        let subtasks = logSubtasksMap[taskId] ?? []
         return subtasks.sorted { !$0.isCompleted && $1.isCompleted }
     }
 
-    private func toggleLibraryExpanded(_ taskId: UUID) {
-        if libraryExpandedTasks.contains(taskId) {
-            libraryExpandedTasks.remove(taskId)
+    private func toggleLogExpanded(_ taskId: UUID) {
+        if logExpandedTasks.contains(taskId) {
+            logExpandedTasks.remove(taskId)
         } else {
-            libraryExpandedTasks.insert(taskId)
+            logExpandedTasks.insert(taskId)
         }
     }
 
-    private func toggleLibraryTaskCompletion(_ task: FocusTask) async {
+    private func toggleLogTaskCompletion(_ task: FocusTask) async {
         do {
             if task.isCompleted {
                 try await taskRepository.uncompleteTask(id: task.id)
@@ -401,9 +401,9 @@ struct ScheduleDrawer: View {
                 try await taskRepository.completeTask(id: task.id)
             }
 
-            if let index = libraryTasks.firstIndex(where: { $0.id == task.id }) {
-                libraryTasks[index].isCompleted.toggle()
-                libraryTasks[index].completedDate = libraryTasks[index].isCompleted ? Date() : nil
+            if let index = logTasks.firstIndex(where: { $0.id == task.id }) {
+                logTasks[index].isCompleted.toggle()
+                logTasks[index].completedDate = logTasks[index].isCompleted ? Date() : nil
             }
 
             NotificationCenter.default.post(
@@ -413,7 +413,7 @@ struct ScheduleDrawer: View {
                     TaskNotificationKeys.taskId: task.id,
                     TaskNotificationKeys.isCompleted: !task.isCompleted,
                     TaskNotificationKeys.completedDate: (task.isCompleted ? nil : Date()) as Any,
-                    TaskNotificationKeys.source: TaskNotificationSource.library.rawValue
+                    TaskNotificationKeys.source: TaskNotificationSource.log.rawValue
                 ]
             )
         } catch {
@@ -421,7 +421,7 @@ struct ScheduleDrawer: View {
         }
     }
 
-    private func toggleLibrarySubtaskCompletion(_ subtask: FocusTask, parentId: UUID) async {
+    private func toggleLogSubtaskCompletion(_ subtask: FocusTask, parentId: UUID) async {
         do {
             if subtask.isCompleted {
                 try await taskRepository.uncompleteTask(id: subtask.id)
@@ -429,11 +429,11 @@ struct ScheduleDrawer: View {
                 try await taskRepository.completeTask(id: subtask.id)
             }
 
-            if var subtasks = librarySubtasksMap[parentId],
+            if var subtasks = logSubtasksMap[parentId],
                let index = subtasks.firstIndex(where: { $0.id == subtask.id }) {
                 subtasks[index].isCompleted.toggle()
                 subtasks[index].completedDate = subtasks[index].isCompleted ? Date() : nil
-                librarySubtasksMap[parentId] = subtasks
+                logSubtasksMap[parentId] = subtasks
             }
 
             NotificationCenter.default.post(
@@ -443,7 +443,7 @@ struct ScheduleDrawer: View {
                     TaskNotificationKeys.taskId: subtask.id,
                     TaskNotificationKeys.isCompleted: !subtask.isCompleted,
                     TaskNotificationKeys.completedDate: (subtask.isCompleted ? nil : Date()) as Any,
-                    TaskNotificationKeys.source: TaskNotificationSource.library.rawValue
+                    TaskNotificationKeys.source: TaskNotificationSource.log.rawValue
                 ]
             )
         } catch {
@@ -487,16 +487,16 @@ struct ScheduleDrawer: View {
         }
     }
 
-    private func fetchLibraryTasks() async {
+    private func fetchLogTasks() async {
         do {
             let allTasks = try await taskRepository.fetchTasks(ofType: .task)
-            libraryTasks = allTasks.filter { $0.parentTaskId == nil }
+            logTasks = allTasks.filter { $0.parentTaskId == nil }
 
             var newSubtasksMap: [UUID: [FocusTask]] = [:]
             for task in allTasks where task.parentTaskId != nil {
                 newSubtasksMap[task.parentTaskId!, default: []].append(task)
             }
-            librarySubtasksMap = newSubtasksMap
+            logSubtasksMap = newSubtasksMap
         } catch {
             // Silent fail
         }

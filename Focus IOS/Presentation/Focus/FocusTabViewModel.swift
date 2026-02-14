@@ -81,7 +81,7 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
               let taskId = userInfo[TaskNotificationKeys.taskId] as? UUID,
               let isCompleted = userInfo[TaskNotificationKeys.isCompleted] as? Bool,
               let source = userInfo[TaskNotificationKeys.source] as? String,
-              source == TaskNotificationSource.library.rawValue else {
+              source == TaskNotificationSource.log.rawValue else {
             return
         }
 
@@ -291,11 +291,11 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
         }
     }
 
-    /// Delete a task - only hard-deletes if task originated in Focus (not Library)
+    /// Delete a task - only hard-deletes if task originated in Focus (not Log)
     func deleteTask(_ task: FocusTask) async {
-        // For Library-origin tasks, use removeCommitment() instead
+        // For Log-origin tasks, use removeCommitment() instead
         // This method should only hard-delete Focus-origin tasks
-        guard !task.isInLibrary else {
+        guard !task.isInLog else {
             return
         }
 
@@ -772,7 +772,7 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
                 title: title,
                 type: .task,
                 isCompleted: false,
-                isInLibrary: true
+                isInLog: true
             )
             let createdTask = try await taskRepository.createTask(newTask)
 

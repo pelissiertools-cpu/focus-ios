@@ -2,14 +2,14 @@
 //  SharedFilterComponents.swift
 //  Focus IOS
 //
-//  Generic filter components shared across all Library tabs.
+//  Generic filter components shared across all Log tabs.
 //
 
 import SwiftUI
 
 // MARK: - Shared Category Filter Pill
 
-struct SharedCategoryFilterPill<VM: LibraryFilterable>: View {
+struct SharedCategoryFilterPill<VM: LogFilterable>: View {
     @ObservedObject var viewModel: VM
     @Binding var showDropdown: Bool
 
@@ -50,7 +50,7 @@ struct SharedCategoryFilterPill<VM: LibraryFilterable>: View {
 
 // MARK: - Shared Category Dropdown Menu
 
-struct SharedCategoryDropdownMenu<VM: LibraryFilterable>: View {
+struct SharedCategoryDropdownMenu<VM: LogFilterable>: View {
     @ObservedObject var viewModel: VM
     @Binding var showDropdown: Bool
     @State private var newCategoryName = ""
@@ -213,7 +213,7 @@ struct SharedCategoryDropdownMenu<VM: LibraryFilterable>: View {
 
 // MARK: - Shared Commitment Filter Pills
 
-struct SharedCommitmentFilterPills<VM: LibraryFilterable>: View {
+struct SharedCommitmentFilterPills<VM: LogFilterable>: View {
     @ObservedObject var viewModel: VM
 
     var body: some View {

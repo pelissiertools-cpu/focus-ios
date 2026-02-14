@@ -44,7 +44,7 @@ class TimelineViewModel: ObservableObject {
     private var blockMoveOriginalY: CGFloat?  // original Y position of block being moved
     private var resizeOriginalDuration: Int?  // original duration before resize started
     private var resizeOriginalTime: Date?  // original scheduledTime before top-resize started
-    var timelineCreatedCommitmentIds: Set<UUID> = []  // commitments created from library drag (no prior commitment)
+    var timelineCreatedCommitmentIds: Set<UUID> = []  // commitments created from log drag (no prior commitment)
 
     private let commitmentRepository: CommitmentRepository
     private let taskRepository: TaskRepository
@@ -103,7 +103,7 @@ class TimelineViewModel: ObservableObject {
         }
     }
 
-    /// Create a new timed commitment for a library task dragged onto the timeline
+    /// Create a new timed commitment for a log task dragged onto the timeline
     func createTimedCommitment(taskId: UUID, at time: Date) async {
         guard let userId = authService.currentUser?.id else {
             parent.errorMessage = "No authenticated user"
@@ -298,7 +298,7 @@ class TimelineViewModel: ObservableObject {
         timedCommitments.removeAll { $0.id == commitmentId }
 
         if timelineCreatedCommitmentIds.contains(commitmentId) {
-            // Library-originated: delete the entire commitment (no prior commitment existed)
+            // Log-originated: delete the entire commitment (no prior commitment existed)
             timelineCreatedCommitmentIds.remove(commitmentId)
 
             guard let commitment = parent.commitments.first(where: { $0.id == commitmentId }) else {

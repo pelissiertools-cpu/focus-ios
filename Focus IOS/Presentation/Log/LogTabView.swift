@@ -1,5 +1,5 @@
 //
-//  LibraryTabView.swift
+//  LogTabView.swift
 //  Focus IOS
 //
 //  Created by Claude Code on 2026-02-05.
@@ -7,7 +7,7 @@
 
 import SwiftUI
 
-struct LibraryTabView: View {
+struct LogTabView: View {
     @State private var selectedTab = 0
     @State private var searchText = ""
     @State private var isSearchActive = false
@@ -33,7 +33,7 @@ struct LibraryTabView: View {
                 VStack(spacing: 0) {
                     // Picker row with search pill
                     HStack(spacing: 12) {
-                        Picker("Library Type", selection: $selectedTab) {
+                        Picker("Log Type", selection: $selectedTab) {
                             Text("Tasks").tag(0)
                             Text("Lists").tag(1)
                             Text("Projects").tag(2)
@@ -207,11 +207,11 @@ struct LibraryTabView: View {
     private var filterBar: some View {
         switch selectedTab {
         case 0:
-            LibraryFilterBar(viewModel: taskListVM, showCategoryDropdown: $showCategoryDropdown)
+            LogFilterBar(viewModel: taskListVM, showCategoryDropdown: $showCategoryDropdown)
         case 1:
-            LibraryFilterBar(viewModel: listsVM, showCategoryDropdown: $showCategoryDropdown)
+            LogFilterBar(viewModel: listsVM, showCategoryDropdown: $showCategoryDropdown)
         case 2:
-            LibraryFilterBar(viewModel: projectsVM, showCategoryDropdown: $showCategoryDropdown)
+            LogFilterBar(viewModel: projectsVM, showCategoryDropdown: $showCategoryDropdown)
         default:
             EmptyView()
         }
@@ -312,5 +312,5 @@ struct LibraryTabView: View {
 }
 
 #Preview {
-    LibraryTabView()
+    LogTabView()
 }

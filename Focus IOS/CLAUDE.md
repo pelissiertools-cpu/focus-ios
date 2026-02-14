@@ -54,8 +54,8 @@ Focus IOS/
     │   ├── CommitmentSelectionSheet.swift
     │   ├── TimeframePickers.swift
     │   └── UnifiedCalendarPicker.swift
-    └── Library/                # Task library management
-        ├── LibraryTabView.swift
+    └── Log/                    # Task log management
+        ├── LogTabView.swift
         ├── Tasks/
         │   ├── TasksListView.swift
         │   ├── TaskListViewModel.swift

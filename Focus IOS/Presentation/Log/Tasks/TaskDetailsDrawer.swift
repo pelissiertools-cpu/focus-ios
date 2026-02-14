@@ -119,7 +119,7 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
 
                 // Actions Section
                 SwiftUI.Section {
-                    // Move to category (only for parent tasks in Library view)
+                    // Move to category (only for parent tasks in Log view)
                     if !isSubtask && commitment == nil {
                         Menu {
                             Button {
@@ -250,9 +250,9 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
 
                     // Delete - only show for:
                     // 1. Subtasks (always deletable)
-                    // 2. Tasks in Library view (no commitment)
-                    // 3. Focus-origin tasks (not from Library)
-                    // Do NOT show for Library-origin tasks when viewing in Focus (use Remove from Focus instead)
+                    // 2. Tasks in Log view (no commitment)
+                    // 3. Focus-origin tasks (not from Log)
+                    // Do NOT show for Log-origin tasks when viewing in Focus (use Remove from Focus instead)
                     if isSubtask {
                         Button(role: .destructive) {
                             Task {
@@ -265,7 +265,7 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                             Label("Delete Subtask", systemImage: "trash")
                         }
                     } else if commitment == nil {
-                        // Library view - can delete task
+                        // Log view - can delete task
                         Button(role: .destructive) {
                             Task {
                                 await viewModel.deleteTask(task)
@@ -274,7 +274,7 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                         } label: {
                             Label("Delete Task", systemImage: "trash")
                         }
-                    } else if !task.isInLibrary {
+                    } else if !task.isInLog {
                         // Focus-origin task - can delete
                         Button(role: .destructive) {
                             Task {
@@ -285,7 +285,7 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                             Label("Delete Task", systemImage: "trash")
                         }
                     }
-                    // Note: Library-origin tasks in Focus view only see "Remove from Focus"
+                    // Note: Log-origin tasks in Focus view only see "Remove from Focus"
                 }
             }
             .navigationTitle(isSubtask ? "Subtask Details" : "Task Details")

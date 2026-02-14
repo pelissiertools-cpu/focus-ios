@@ -404,6 +404,8 @@ struct SectionView: View {
     var onDragChanged: ((UUID, DragGesture.Value) -> Void)? = nil
     var onDragEnded: (() -> Void)? = nil
 
+    @State private var showCapacityPopover = false
+
     var sectionCommitments: [Commitment] {
         viewModel.commitments.filter { commitment in
             commitment.section == section &&
@@ -513,8 +515,15 @@ struct SectionView: View {
 
                 // Add button (far right)
                 Button {
-                    viewModel.addTaskSection = section
-                    viewModel.showAddTaskSheet = true
+                    if section == .focus && !viewModel.canAddTask(to: .focus) {
+                        showCapacityPopover = true
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                            showCapacityPopover = false
+                        }
+                    } else {
+                        viewModel.addTaskSection = section
+                        viewModel.showAddTaskSheet = true
+                    }
                 } label: {
                     Image(systemName: "plus")
                         .font(.body)
@@ -524,7 +533,24 @@ struct SectionView: View {
                         .glassEffect(.regular.interactive(), in: .circle)
                 }
                 .buttonStyle(.plain)
-                .disabled(section == .focus && !viewModel.canAddTask(to: .focus))
+                .popover(isPresented: $showCapacityPopover) {
+                    let current = viewModel.taskCount(for: .focus)
+                    let max = Section.focus.maxTasks(for: viewModel.selectedTimeframe) ?? 0
+                    VStack(spacing: 4) {
+                        Text("Focus section")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Text("Section full")
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+                        Text("\(current)/\(max)")
+                            .font(.title3)
+                            .fontWeight(.bold)
+                            .foregroundStyle(.blue)
+                    }
+                    .padding()
+                    .presentationCompactAdaptation(.popover)
+                }
             }
             .contentShape(Rectangle())
             .onTapGesture {

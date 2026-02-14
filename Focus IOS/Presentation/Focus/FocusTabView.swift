@@ -1124,6 +1124,7 @@ struct CommitmentRow: View {
                     FocusInlineAddSubtaskRow(parentId: task.id, viewModel: viewModel)
                 }
                 .padding(.leading, 32)
+                .padding(.trailing, 12)
             }
         }
     }
@@ -1179,6 +1180,7 @@ struct FocusSubtaskRow: View {
                 Image(systemName: subtask.isCompleted ? "checkmark.circle.fill" : "circle")
                     .font(.subheadline)
                     .foregroundColor(subtask.isCompleted ? .green : .gray)
+                    .frame(width: 22, alignment: .center)
             }
             .buttonStyle(.plain)
         }
@@ -1214,6 +1216,7 @@ struct FocusInlineAddSubtaskRow: View {
                 Image(systemName: "circle")
                     .font(.subheadline)
                     .foregroundColor(.gray.opacity(0.5))
+                    .frame(width: 22, alignment: .center)
             } else {
                 Button {
                     isEditing = true

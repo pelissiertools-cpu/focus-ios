@@ -176,7 +176,16 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                                 dismiss()
                             }
                         } label: {
-                            Label("Remove from Focus", systemImage: "minus.circle")
+                            Label {
+                                switch commitment.timeframe {
+                                case .daily: Text("Remove from today")
+                                case .weekly: Text("Remove from this week")
+                                case .monthly: Text("Remove from this month")
+                                case .yearly: Text("Remove from this year")
+                                }
+                            } icon: {
+                                Image(systemName: "minus.circle")
+                            }
                         }
                     }
 

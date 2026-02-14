@@ -383,7 +383,7 @@ struct LogTabView: View {
                         .fontWeight(.semibold)
                         .foregroundColor(.white)
                         .frame(width: 56, height: 56)
-                        .glassEffect(.regular.tint(.blue).interactive(), in: .circle)
+                        .background(Color.black, in: Circle())
                         .shadow(radius: 4, y: 2)
                 }
                 .padding(.trailing, 20)

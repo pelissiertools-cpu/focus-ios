@@ -66,7 +66,7 @@ struct LogFilterBar<VM: LogFilterable>: View {
                         .font(.body.weight(.semibold))
                         .foregroundColor(.primary)
                         .frame(width: 36, height: 36)
-                        .glassEffect(.regular.interactive(), in: .circle)
+                        .background(Color(.systemGray5), in: Circle())
                 }
             }
             .buttonStyle(.plain)

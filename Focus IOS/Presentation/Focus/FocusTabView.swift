@@ -415,7 +415,7 @@ struct FocusTabView: View {
         VStack(spacing: 0) {
             // Task title row
             TextField("Add new task.", text: $addTaskTitle)
-                .font(.body)
+                .font(.title3)
                 .textFieldStyle(.plain)
                 .focused($isAddTaskFieldFocused)
                 .submitLabel(.return)
@@ -423,15 +423,15 @@ struct FocusTabView: View {
                     saveCompactTask()
                 }
                 .padding(.horizontal, 14)
-                .padding(.top, 16)
-                .padding(.bottom, 8)
+                .padding(.top, 20)
+                .padding(.bottom, 10)
 
             // Sub-tasks (expand downward when present)
             if !addTaskSubtasks.isEmpty {
                 Divider()
                     .padding(.horizontal, 14)
 
-                VStack(spacing: 6) {
+                VStack(spacing: 8) {
                     ForEach(addTaskSubtasks) { subtask in
                         HStack(spacing: 8) {
                             Image(systemName: "circle")
@@ -442,6 +442,10 @@ struct FocusTabView: View {
                                 .font(.subheadline)
                                 .textFieldStyle(.plain)
                                 .focused($focusedSubtaskId, equals: subtask.id)
+                                .submitLabel(.return)
+                                .onSubmit {
+                                    addNewSubtask()
+                                }
 
                             Button {
                                 removeSubtask(id: subtask.id)
@@ -455,21 +459,15 @@ struct FocusTabView: View {
                     }
                 }
                 .padding(.horizontal, 14)
-                .padding(.top, 8)
-                .padding(.bottom, 8)
+                .padding(.top, 10)
+                .padding(.bottom, 10)
             }
 
             // Bottom row: left space for future buttons, right side checkmark
             HStack(spacing: 8) {
                 // Add sub-task button
                 Button {
-                    let newEntry = DraftSubtaskEntry()
-                    withAnimation(.easeInOut(duration: 0.15)) {
-                        addTaskSubtasks.append(newEntry)
-                    }
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                        focusedSubtaskId = newEntry.id
-                    }
+                    addNewSubtask()
                 } label: {
                     HStack(spacing: 4) {
                         Image(systemName: "plus")
@@ -477,10 +475,10 @@ struct FocusTabView: View {
                         Text("Sub-task")
                             .font(.caption)
                     }
-                    .foregroundColor(.secondary)
+                    .foregroundColor(.white)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
-                    .background(.ultraThinMaterial, in: Capsule())
+                    .glassEffect(.regular.tint(.black).interactive(), in: .capsule)
                 }
                 .buttonStyle(.plain)
 
@@ -505,7 +503,7 @@ struct FocusTabView: View {
                 .disabled(addTaskTitle.trimmingCharacters(in: .whitespaces).isEmpty)
             }
             .padding(.horizontal, 14)
-            .padding(.bottom, 16)
+            .padding(.bottom, 20)
         }
         .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 20))
         .padding(.horizontal)
@@ -533,7 +531,7 @@ struct FocusTabView: View {
             }
 
             for subtaskTitle in subtasksToCreate {
-                await viewModel.createSubtask(title: subtaskTitle, parentId: result.taskId, parentCommitment: result.commitment)
+                await viewModel.createPlainSubtask(title: subtaskTitle, parentId: result.taskId)
             }
         }
 
@@ -553,6 +551,19 @@ struct FocusTabView: View {
                 }
             }
         )
+    }
+
+    private func addNewSubtask() {
+        // Hold focus on title to prevent keyboard drop during transition
+        isAddTaskFieldFocused = true
+
+        let newEntry = DraftSubtaskEntry()
+        withAnimation(.easeInOut(duration: 0.15)) {
+            addTaskSubtasks.append(newEntry)
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            focusedSubtaskId = newEntry.id
+        }
     }
 
     private func removeSubtask(id: UUID) {

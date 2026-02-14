@@ -317,6 +317,36 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
         }
     }
 
+    /// Permanently delete a task regardless of origin (Log or Focus).
+    /// Removes ALL commitments for this task and its subtasks, then hard-deletes everything.
+    func permanentlyDeleteTask(_ task: FocusTask) async {
+        do {
+            // Delete subtask commitments and subtasks
+            let subtasks = subtasksMap[task.id] ?? []
+            for subtask in subtasks {
+                try await commitmentRepository.deleteCommitments(forTask: subtask.id)
+                try await taskRepository.deleteTask(id: subtask.id)
+            }
+
+            // Delete ALL commitments for this task (covers all timeframes)
+            try await commitmentRepository.deleteCommitments(forTask: task.id)
+
+            // Delete the task itself
+            try await taskRepository.deleteTask(id: task.id)
+
+            // Clean up local state
+            tasksMap.removeValue(forKey: task.id)
+            subtasksMap.removeValue(forKey: task.id)
+            for subtask in subtasks {
+                tasksMap.removeValue(forKey: subtask.id)
+            }
+            let deletedTaskIds = Set([task.id] + subtasks.map { $0.id })
+            commitments.removeAll { deletedTaskIds.contains($0.taskId) }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
     /// Delete a subtask
     func deleteSubtask(_ subtask: FocusTask, parentId: UUID) async {
         do {
@@ -362,7 +392,38 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
         }
     }
 
-    /// Create a new subtask with a commitment at the parent's timeframe (Focus view use case)
+    /// Create a plain subtask (no child commitment — just a task-level child)
+    func createPlainSubtask(title: String, parentId: UUID) async {
+        guard let userId = authService.currentUser?.id else {
+            errorMessage = "No authenticated user"
+            return
+        }
+
+        guard !title.trimmingCharacters(in: .whitespaces).isEmpty else {
+            return
+        }
+
+        do {
+            let newSubtask = try await taskRepository.createSubtask(
+                title: title,
+                parentTaskId: parentId,
+                userId: userId
+            )
+
+            if var subtasks = subtasksMap[parentId] {
+                subtasks.append(newSubtask)
+                subtasksMap[parentId] = subtasks
+            } else {
+                subtasksMap[parentId] = [newSubtask]
+            }
+
+            tasksMap[newSubtask.id] = newSubtask
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    /// Create a new subtask with a commitment at the parent's timeframe (breakdown use case)
     func createSubtask(title: String, parentId: UUID, parentCommitment: Commitment) async {
         guard let userId = authService.currentUser?.id else {
             errorMessage = "No authenticated user"
@@ -603,6 +664,7 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
         commitments
             .filter { commitment in
                 commitment.section == section &&
+                commitment.parentCommitmentId == nil &&
                 isSameTimeframe(commitment.commitmentDate, timeframe: selectedTimeframe, selectedDate: selectedDate) &&
                 !(tasksMap[commitment.taskId]?.isCompleted ?? false)
             }
@@ -614,6 +676,7 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
         commitments
             .filter { commitment in
                 commitment.section == section &&
+                commitment.parentCommitmentId == nil &&
                 isSameTimeframe(commitment.commitmentDate, timeframe: selectedTimeframe, selectedDate: selectedDate) &&
                 (tasksMap[commitment.taskId]?.isCompleted ?? false)
             }

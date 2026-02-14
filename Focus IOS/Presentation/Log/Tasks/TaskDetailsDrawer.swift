@@ -19,6 +19,7 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
     @State private var showingNewCategoryAlert = false
     @State private var newCategoryName = ""
     @State private var newSubtaskTitle: String = ""
+    @State private var showingDeleteConfirmation = false
     @FocusState private var isFocused: Bool
     @FocusState private var isNewSubtaskFocused: Bool
     @Environment(\.dismiss) private var dismiss
@@ -248,11 +249,7 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                         }
                     }
 
-                    // Delete - only show for:
-                    // 1. Subtasks (always deletable)
-                    // 2. Tasks in Log view (no commitment)
-                    // 3. Focus-origin tasks (not from Log)
-                    // Do NOT show for Log-origin tasks when viewing in Focus (use Remove from Focus instead)
+                    // Delete
                     if isSubtask {
                         Button(role: .destructive) {
                             Task {
@@ -264,18 +261,15 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                         } label: {
                             Label("Delete Subtask", systemImage: "trash")
                         }
-                    } else if commitment == nil {
-                        // Log view - can delete task
+                    } else if commitment != nil {
+                        // Focus view - permanent delete with confirmation
                         Button(role: .destructive) {
-                            Task {
-                                await viewModel.deleteTask(task)
-                                dismiss()
-                            }
+                            showingDeleteConfirmation = true
                         } label: {
                             Label("Delete Task", systemImage: "trash")
                         }
-                    } else if !task.isInLog {
-                        // Focus-origin task - can delete
+                    } else {
+                        // Log view - delete task
                         Button(role: .destructive) {
                             Task {
                                 await viewModel.deleteTask(task)
@@ -285,7 +279,6 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                             Label("Delete Task", systemImage: "trash")
                         }
                     }
-                    // Note: Log-origin tasks in Focus view only see "Remove from Focus"
                 }
             }
             .navigationTitle(isSubtask ? "Subtask Details" : "Task Details")
@@ -314,6 +307,17 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                     RescheduleSheet(commitment: commitment, focusViewModel: focusViewModel)
                         .drawerStyle()
                 }
+            }
+            .alert("Delete task?", isPresented: $showingDeleteConfirmation) {
+                Button("Cancel", role: .cancel) { }
+                Button("Delete", role: .destructive) {
+                    _Concurrency.Task { @MainActor in
+                        await focusViewModel.permanentlyDeleteTask(task)
+                        dismiss()
+                    }
+                }
+            } message: {
+                Text("This will permanently delete this task and all its commitments.")
             }
         }
     }

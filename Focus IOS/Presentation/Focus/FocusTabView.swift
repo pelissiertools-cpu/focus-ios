@@ -49,8 +49,15 @@ struct FocusTabView: View {
     @State private var targetedSection: Section?
     @State private var showScheduleDrawer = false
 
+    // Compact add-task bar state
+    @State private var addTaskTitle = ""
+    @State private var addTaskSubtasks: [DraftSubtaskEntry] = []
+    @FocusState private var isAddTaskFieldFocused: Bool
+    @FocusState private var focusedSubtaskId: UUID?
+
     var body: some View {
         NavigationView {
+            ZStack(alignment: .bottom) {
             VStack(spacing: 0) {
                 // Date Navigator with integrated timeframe picker and pill row
                 DateNavigator(
@@ -278,12 +285,37 @@ struct FocusTabView: View {
                 )
                 .drawerStyle()
             }
-            .sheet(isPresented: $viewModel.showAddTaskSheet) {
-                AddTaskToFocusSheet(
-                    section: viewModel.addTaskSection,
-                    viewModel: viewModel
-                )
+            .onChange(of: viewModel.showAddTaskSheet) { _, isShowing in
+                if isShowing {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        isAddTaskFieldFocused = true
+                    }
+                }
             }
+
+                // Tap-to-dismiss overlay when add task bar is active
+                if viewModel.showAddTaskSheet {
+                    Color.clear
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                                dismissAddTask()
+                            }
+                        }
+                        .allowsHitTesting(true)
+                        .zIndex(50)
+
+                    VStack {
+                        Spacer()
+                        addTaskBarOverlay
+                            .padding(.vertical, 8)
+                            .contentShape(Rectangle())
+                    }
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .zIndex(100)
+                }
+            } // ZStack
+            .animation(.spring(response: 0.35, dampingFraction: 0.85), value: viewModel.showAddTaskSheet)
         }
     }
 
@@ -375,6 +407,170 @@ struct FocusTabView: View {
             targetedSection = nil
         }
         lastReorderTime = .distantPast
+    }
+
+    // MARK: - Compact Add Task Bar
+
+    private var addTaskBarOverlay: some View {
+        VStack(spacing: 0) {
+            // Task title row
+            TextField("Add new task.", text: $addTaskTitle)
+                .font(.body)
+                .textFieldStyle(.plain)
+                .focused($isAddTaskFieldFocused)
+                .submitLabel(.return)
+                .onSubmit {
+                    saveCompactTask()
+                }
+                .padding(.horizontal, 14)
+                .padding(.top, 16)
+                .padding(.bottom, 8)
+
+            // Sub-tasks (expand downward when present)
+            if !addTaskSubtasks.isEmpty {
+                Divider()
+                    .padding(.horizontal, 14)
+
+                VStack(spacing: 6) {
+                    ForEach(addTaskSubtasks) { subtask in
+                        HStack(spacing: 8) {
+                            Image(systemName: "circle")
+                                .font(.caption2)
+                                .foregroundColor(.secondary.opacity(0.5))
+
+                            TextField("Subtask", text: subtaskBinding(for: subtask.id))
+                                .font(.subheadline)
+                                .textFieldStyle(.plain)
+                                .focused($focusedSubtaskId, equals: subtask.id)
+
+                            Button {
+                                removeSubtask(id: subtask.id)
+                            } label: {
+                                Image(systemName: "xmark.circle.fill")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+                .padding(.horizontal, 14)
+                .padding(.top, 8)
+                .padding(.bottom, 8)
+            }
+
+            // Bottom row: left space for future buttons, right side checkmark
+            HStack(spacing: 8) {
+                // Add sub-task button
+                Button {
+                    let newEntry = DraftSubtaskEntry()
+                    withAnimation(.easeInOut(duration: 0.15)) {
+                        addTaskSubtasks.append(newEntry)
+                    }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        focusedSubtaskId = newEntry.id
+                    }
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "plus")
+                            .font(.caption)
+                        Text("Sub-task")
+                            .font(.caption)
+                    }
+                    .foregroundColor(.secondary)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(.ultraThinMaterial, in: Capsule())
+                }
+                .buttonStyle(.plain)
+
+                Spacer()
+
+                // Submit button
+                Button {
+                    saveCompactTask()
+                } label: {
+                    Image(systemName: "checkmark")
+                        .font(.body.weight(.semibold))
+                        .foregroundColor(addTaskTitle.trimmingCharacters(in: .whitespaces).isEmpty ? .secondary : .white)
+                        .frame(width: 36, height: 36)
+                        .background(
+                            addTaskTitle.trimmingCharacters(in: .whitespaces).isEmpty
+                                ? Color(.systemGray4)
+                                : Color.blue,
+                            in: Circle()
+                        )
+                }
+                .buttonStyle(.plain)
+                .disabled(addTaskTitle.trimmingCharacters(in: .whitespaces).isEmpty)
+            }
+            .padding(.horizontal, 14)
+            .padding(.bottom, 16)
+        }
+        .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 20))
+        .padding(.horizontal)
+    }
+
+    private func saveCompactTask() {
+        let title = addTaskTitle.trimmingCharacters(in: .whitespaces)
+        guard !title.isEmpty else { return }
+
+        let subtasksToCreate = addTaskSubtasks
+            .map { $0.title.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+        let section = viewModel.addTaskSection
+
+        // Haptic feedback
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+
+        // Clear fields immediately for rapid entry
+        addTaskTitle = ""
+        addTaskSubtasks = []
+
+        _Concurrency.Task { @MainActor in
+            guard let result = await viewModel.createTaskWithCommitment(title: title, section: section) else {
+                return
+            }
+
+            for subtaskTitle in subtasksToCreate {
+                await viewModel.createSubtask(title: subtaskTitle, parentId: result.taskId, parentCommitment: result.commitment)
+            }
+        }
+
+        // Re-focus for next task (delay to override SwiftUI's default keyboard dismiss)
+        focusedSubtaskId = nil
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+            isAddTaskFieldFocused = true
+        }
+    }
+
+    private func subtaskBinding(for id: UUID) -> Binding<String> {
+        Binding(
+            get: { addTaskSubtasks.first(where: { $0.id == id })?.title ?? "" },
+            set: { newValue in
+                if let idx = addTaskSubtasks.firstIndex(where: { $0.id == id }) {
+                    addTaskSubtasks[idx].title = newValue
+                }
+            }
+        )
+    }
+
+    private func removeSubtask(id: UUID) {
+        // Move focus to title — SwiftUI auto-clears subtask focus
+        isAddTaskFieldFocused = true
+
+        // Remove the subtask entry
+        withAnimation(.easeInOut(duration: 0.15)) {
+            addTaskSubtasks.removeAll { $0.id == id }
+        }
+    }
+
+    private func dismissAddTask() {
+        addTaskTitle = ""
+        addTaskSubtasks = []
+        viewModel.showAddTaskSheet = false
+        isAddTaskFieldFocused = false
+        focusedSubtaskId = nil
     }
 }
 
@@ -746,169 +942,6 @@ struct DonePillView: View {
                     }
                 }
             }
-        }
-    }
-}
-
-// MARK: - Add Task Sheet
-
-struct AddTaskToFocusSheet: View {
-    let section: Section
-    @ObservedObject var viewModel: FocusTabViewModel
-    @Environment(\.dismiss) var dismiss
-
-    @State private var taskTitle = ""
-    @State private var draftSubtasks: [DraftSubtaskEntry] = []
-    @State private var hasScheduledTime = false
-    @State private var scheduledTime: Date = {
-        let now = Date()
-        let calendar = Calendar.current
-        let minute = calendar.component(.minute, from: now)
-        let roundUp = ((minute / 15) + 1) * 15
-        return calendar.date(byAdding: .minute, value: roundUp - minute, to: now) ?? now
-    }()
-    @FocusState private var titleFocused: Bool
-
-    var body: some View {
-        NavigationView {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    // Task title
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Task")
-                            .font(.subheadline.weight(.medium))
-                            .foregroundColor(.secondary)
-
-                        TextField("What do you need to do?", text: $taskTitle)
-                            .textFieldStyle(.roundedBorder)
-                            .focused($titleFocused)
-                    }
-
-                    // Subtasks
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Subtasks")
-                            .font(.subheadline.weight(.medium))
-                            .foregroundColor(.secondary)
-
-                        ForEach(Array(draftSubtasks.enumerated()), id: \.element.id) { index, _ in
-                            HStack(spacing: 8) {
-                                Image(systemName: "circle")
-                                    .font(.caption)
-                                    .foregroundColor(.gray.opacity(0.5))
-
-                                TextField("Subtask", text: $draftSubtasks[index].title)
-                                    .font(.subheadline)
-
-                                Button {
-                                    draftSubtasks.remove(at: index)
-                                } label: {
-                                    Image(systemName: "xmark.circle.fill")
-                                        .font(.subheadline)
-                                        .foregroundColor(.secondary)
-                                }
-                                .buttonStyle(.plain)
-                            }
-                            .padding(.leading, 4)
-                        }
-
-                        Button {
-                            draftSubtasks.append(DraftSubtaskEntry())
-                        } label: {
-                            HStack(spacing: 6) {
-                                Image(systemName: "plus")
-                                    .font(.subheadline)
-                                Text("Add subtask")
-                                    .font(.subheadline)
-                            }
-                            .foregroundColor(.blue)
-                        }
-                        .buttonStyle(.plain)
-                        .padding(.leading, 4)
-                    }
-
-                    // Schedule time toggle
-                    VStack(alignment: .leading, spacing: 8) {
-                        Toggle(isOn: $hasScheduledTime) {
-                            HStack(spacing: 8) {
-                                Image(systemName: "clock")
-                                    .foregroundColor(.blue)
-                                Text("Schedule time")
-                                    .font(.subheadline.weight(.medium))
-                            }
-                        }
-                        .tint(.blue)
-
-                        if hasScheduledTime {
-                            DatePicker(
-                                "Time",
-                                selection: $scheduledTime,
-                                displayedComponents: .hourAndMinute
-                            )
-                            .datePickerStyle(.compact)
-                            .labelsHidden()
-                        }
-                    }
-
-                    // Add Task button
-                    Button {
-                        saveTask()
-                    } label: {
-                        Text("Add Task")
-                            .font(.headline)
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 14)
-                            .background(
-                                RoundedRectangle(cornerRadius: 12)
-                                    .fill(taskTitle.trimmingCharacters(in: .whitespaces).isEmpty
-                                          ? Color.blue.opacity(0.5)
-                                          : Color.blue)
-                            )
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(taskTitle.trimmingCharacters(in: .whitespaces).isEmpty)
-                    .padding(.top, 8)
-                }
-                .padding()
-            }
-            .navigationTitle("New Task")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Cancel") { dismiss() }
-                }
-            }
-            .onAppear {
-                titleFocused = true
-            }
-        }
-    }
-
-    private func saveTask() {
-        let title = taskTitle.trimmingCharacters(in: .whitespaces)
-        guard !title.isEmpty else { return }
-
-        let subtasksToCreate = draftSubtasks
-            .map { $0.title.trimmingCharacters(in: .whitespaces) }
-            .filter { !$0.isEmpty }
-
-        let shouldSchedule = hasScheduledTime
-        let timeToSchedule = scheduledTime
-
-        _Concurrency.Task { @MainActor in
-            guard let result = await viewModel.createTaskWithCommitment(title: title, section: section) else {
-                return
-            }
-
-            for subtaskTitle in subtasksToCreate {
-                await viewModel.createSubtask(title: subtaskTitle, parentId: result.taskId, parentCommitment: result.commitment)
-            }
-
-            if shouldSchedule {
-                await viewModel.timelineVM.scheduleCommitmentTime(result.commitment.id, at: timeToSchedule)
-            }
-
-            dismiss()
         }
     }
 }

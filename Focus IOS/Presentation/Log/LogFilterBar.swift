@@ -55,14 +55,22 @@ struct LogFilterBar<VM: LogFilterable>: View {
                     viewModel.enterEditMode()
                 }
             } label: {
-                Text(viewModel.isEditMode ? "Done" : "Edit")
-                    .font(.subheadline.weight(.medium))
-                    .foregroundColor(.blue)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 8)
+                if viewModel.isEditMode {
+                    Text("Done")
+                        .font(.subheadline.weight(.medium))
+                        .foregroundColor(.blue)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                } else {
+                    Image(systemName: "ellipsis")
+                        .font(.body.weight(.semibold))
+                        .foregroundColor(.primary)
+                        .frame(width: 36, height: 36)
+                        .glassEffect(.regular.interactive(), in: .circle)
+                }
             }
             .buttonStyle(.plain)
-            .padding(.trailing, 4)
+            .padding(.trailing, viewModel.isEditMode ? 4 : 12)
         }
         .padding(.top, 4)
     }

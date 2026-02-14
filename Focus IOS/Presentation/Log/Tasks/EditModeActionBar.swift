@@ -100,8 +100,6 @@ struct EditModeActionBar<VM: LogFilterable>: View {
                 .padding(.trailing, 20)
                 .padding(.bottom, 20)
             }
-            // Block all taps from passing through to list
-            .contentShape(Rectangle())
         }
     }
 }

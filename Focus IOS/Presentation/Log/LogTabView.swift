@@ -26,18 +26,10 @@ struct LogTabView: View {
     @State private var addTaskTitle = ""
     @State private var addTaskSubtasks: [DraftSubtaskEntry] = []
     @State private var addTaskCategoryId: UUID? = nil
-    @State private var addTaskCommitEnabled = false
+    @State private var addTaskCommitExpanded = false
     @State private var addTaskTimeframe: Timeframe = .daily
     @State private var addTaskSection: Section = .focus
     @State private var addTaskDates: Set<Date> = []
-    @State private var addTaskHasScheduledTime = false
-    @State private var addTaskScheduledTime: Date = {
-        let now = Date()
-        let calendar = Calendar.current
-        let minute = calendar.component(.minute, from: now)
-        let roundUp = ((minute / 15) + 1) * 15
-        return calendar.date(byAdding: .minute, value: roundUp - minute, to: now) ?? now
-    }()
     @FocusState private var isAddTaskFieldFocused: Bool
     @FocusState private var focusedSubtaskId: UUID?
 
@@ -48,6 +40,11 @@ struct LogTabView: View {
 
     // Focus view model for refreshing commitments after commit creation
     @EnvironmentObject var focusViewModel: FocusTabViewModel
+
+    // Pre-computed title emptiness check
+    private var isAddTaskTitleEmpty: Bool {
+        addTaskTitle.trimmingCharacters(in: .whitespaces).isEmpty
+    }
 
     var body: some View {
         NavigationView {
@@ -142,7 +139,6 @@ struct LogTabView: View {
                     .zIndex(100)
                 }
             }
-            .animation(.spring(response: 0.35, dampingFraction: 0.85), value: taskListVM.showingAddTask)
             .onChange(of: selectedTab) { _, _ in
                 dismissSearch()
                 showCategoryDropdown = false
@@ -162,15 +158,27 @@ struct LogTabView: View {
                     }
                 }
             }
-            .onChange(of: addTaskCommitEnabled) { _, isOn in
-                if isOn {
-                    // Dismiss keyboard when expanding commit section
+            .onChange(of: addTaskCommitExpanded) { _, isExpanded in
+                if isExpanded {
+                    // Calendar showing — dismiss keyboard
                     isAddTaskFieldFocused = false
                     focusedSubtaskId = nil
                 }
-                if !isOn {
-                    addTaskHasScheduledTime = false
-                    addTaskDates = []
+            }
+            .onChange(of: isAddTaskFieldFocused) { _, isFocused in
+                if isFocused && addTaskCommitExpanded {
+                    // Title tapped — collapse calendar, keep dates
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        addTaskCommitExpanded = false
+                    }
+                }
+            }
+            .onChange(of: focusedSubtaskId) { _, subtaskId in
+                if subtaskId != nil && addTaskCommitExpanded {
+                    // Subtask tapped — collapse calendar, keep dates
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        addTaskCommitExpanded = false
+                    }
                 }
             }
             // Batch create project alert (Tasks tab)
@@ -331,8 +339,12 @@ struct LogTabView: View {
             )
             .transition(.scale.combined(with: .opacity))
         } else if !taskListVM.showingAddTask {
-            fabButton { taskListVM.showingAddItem = true }
-                .transition(.scale.combined(with: .opacity))
+            fabButton {
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                    taskListVM.showingAddItem = true
+                }
+            }
+            .transition(.opacity)
         }
     }
 
@@ -439,8 +451,8 @@ struct LogTabView: View {
                 .padding(.bottom, 10)
             }
 
-            // Commit expansion (when toggle is ON)
-            if addTaskCommitEnabled {
+            // Commit expansion (calendar section)
+            if addTaskCommitExpanded {
                 Divider()
                     .padding(.horizontal, 14)
 
@@ -458,27 +470,6 @@ struct LogTabView: View {
                             selectedDates: $addTaskDates,
                             selectedTimeframe: $addTaskTimeframe
                         )
-
-                        // Time toggle + picker
-                        Toggle(isOn: $addTaskHasScheduledTime.animation(.easeInOut(duration: 0.2))) {
-                            HStack(spacing: 8) {
-                                Image(systemName: "clock")
-                                    .foregroundColor(.blue)
-                                Text("Select a time")
-                                    .font(.subheadline.weight(.medium))
-                            }
-                        }
-                        .tint(.blue)
-
-                        if addTaskHasScheduledTime {
-                            DatePicker(
-                                "Time",
-                                selection: $addTaskScheduledTime,
-                                displayedComponents: .hourAndMinute
-                            )
-                            .datePickerStyle(.compact)
-                            .labelsHidden()
-                        }
                     }
                     .padding(.horizontal, 14)
                     .padding(.vertical, 10)
@@ -501,7 +492,7 @@ struct LogTabView: View {
                     .foregroundColor(.white)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
-                    .glassEffect(.regular.tint(.black).interactive(), in: .capsule)
+                    .background(Color.black, in: Capsule())
                 }
                 .buttonStyle(.plain)
 
@@ -539,13 +530,13 @@ struct LogTabView: View {
                     .foregroundColor(.white)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
-                    .glassEffect(.regular.tint(addTaskCategoryId != nil ? .blue : .black).interactive(), in: .capsule)
+                    .background(addTaskCategoryId != nil ? Color.blue : Color.black, in: Capsule())
                 }
 
                 // Commit toggle pill
                 Button {
                     withAnimation(.easeInOut(duration: 0.2)) {
-                        addTaskCommitEnabled.toggle()
+                        addTaskCommitExpanded.toggle()
                     }
                 } label: {
                     HStack(spacing: 4) {
@@ -557,7 +548,7 @@ struct LogTabView: View {
                     .foregroundColor(.white)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
-                    .glassEffect(.regular.tint(addTaskCommitEnabled ? .blue : .black).interactive(), in: .capsule)
+                    .background(!addTaskDates.isEmpty ? Color.blue : Color.black, in: Capsule())
                 }
                 .buttonStyle(.plain)
 
@@ -567,17 +558,15 @@ struct LogTabView: View {
                 } label: {
                     Image(systemName: "checkmark")
                         .font(.body.weight(.semibold))
-                        .foregroundColor(addTaskTitle.trimmingCharacters(in: .whitespaces).isEmpty ? .secondary : .white)
+                        .foregroundColor(isAddTaskTitleEmpty ? .secondary : .white)
                         .frame(width: 36, height: 36)
                         .background(
-                            addTaskTitle.trimmingCharacters(in: .whitespaces).isEmpty
-                                ? Color(.systemGray4)
-                                : Color.blue,
+                            isAddTaskTitleEmpty ? Color(.systemGray4) : Color.blue,
                             in: Circle()
                         )
                 }
                 .buttonStyle(.plain)
-                .disabled(addTaskTitle.trimmingCharacters(in: .whitespaces).isEmpty)
+                .disabled(isAddTaskTitleEmpty)
             }
             .padding(.horizontal, 14)
             .padding(.bottom, 20)
@@ -604,12 +593,10 @@ struct LogTabView: View {
             .map { $0.title.trimmingCharacters(in: .whitespaces) }
             .filter { !$0.isEmpty }
         let categoryId = addTaskCategoryId
-        let commitEnabled = addTaskCommitEnabled
+        let commitEnabled = !addTaskDates.isEmpty
         let timeframe = addTaskTimeframe
         let section = addTaskSection
         let dates = addTaskDates
-        let hasTime = addTaskHasScheduledTime
-        let time = addTaskScheduledTime
 
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
 
@@ -617,10 +604,11 @@ struct LogTabView: View {
         isAddTaskFieldFocused = true
         focusedSubtaskId = nil
 
-        // Clear fields for rapid entry (keep category + commit settings)
+        // Clear fields for rapid entry (keep category setting)
         addTaskTitle = ""
         addTaskSubtasks = []
         addTaskDates = []
+        addTaskCommitExpanded = false
 
         _Concurrency.Task { @MainActor in
             await taskListVM.createTaskWithCommitments(
@@ -631,8 +619,8 @@ struct LogTabView: View {
                 selectedTimeframe: timeframe,
                 selectedSection: section,
                 selectedDates: dates,
-                hasScheduledTime: hasTime,
-                scheduledTime: hasTime ? time : nil
+                hasScheduledTime: false,
+                scheduledTime: nil
             )
 
             // Refresh focus view if commitments were created
@@ -675,9 +663,8 @@ struct LogTabView: View {
         addTaskTitle = ""
         addTaskSubtasks = []
         addTaskCategoryId = nil
-        addTaskCommitEnabled = false
+        addTaskCommitExpanded = false
         addTaskDates = []
-        addTaskHasScheduledTime = false
         taskListVM.showingAddTask = false
         isAddTaskFieldFocused = false
         focusedSubtaskId = nil

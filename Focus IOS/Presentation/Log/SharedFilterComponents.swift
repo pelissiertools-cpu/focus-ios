@@ -34,17 +34,17 @@ struct SharedCategoryFilterPill<VM: LogFilterable>: View {
                 Image(systemName: showDropdown ? "chevron.up" : "chevron.down")
                     .font(.caption)
             }
-            .foregroundColor(viewModel.selectedCategoryId != nil ? .white : .secondary)
+            .foregroundColor(viewModel.selectedCategoryId != nil ? .white : .primary)
             .padding(.horizontal, 20)
             .padding(.vertical, 10)
+            .glassEffect(
+                viewModel.selectedCategoryId != nil
+                    ? .regular.tint(.blue).interactive()
+                    : .regular.interactive(),
+                in: .capsule
+            )
         }
         .buttonStyle(.plain)
-        .background {
-            RoundedRectangle(cornerRadius: 14)
-                .fill(viewModel.selectedCategoryId != nil
-                      ? Color.blue
-                      : Color.secondary.opacity(0.15))
-        }
     }
 }
 
@@ -234,12 +234,14 @@ struct SharedCommitmentFilterPills<VM: LogFilterable>: View {
             Text(label)
                 .font(.subheadline.weight(.medium))
                 .lineLimit(1)
-                .foregroundColor(isActive ? .white : .secondary)
+                .foregroundColor(isActive ? .white : .primary)
                 .padding(.horizontal, 20)
                 .padding(.vertical, 10)
-                .background(
-                    RoundedRectangle(cornerRadius: 14)
-                        .fill(isActive ? Color.blue : Color.secondary.opacity(0.15))
+                .glassEffect(
+                    isActive
+                        ? .regular.tint(.blue).interactive()
+                        : .regular.interactive(),
+                    in: .capsule
                 )
         }
         .buttonStyle(.plain)

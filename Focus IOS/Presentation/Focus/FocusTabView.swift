@@ -645,7 +645,6 @@ struct SectionView: View {
     var targetedSection: Section? = nil
     var onDragChanged: ((UUID, DragGesture.Value) -> Void)? = nil
     var onDragEnded: (() -> Void)? = nil
-
     @State private var showCapacityPopover = false
 
     var sectionCommitments: [Commitment] {
@@ -746,52 +745,47 @@ struct SectionView: View {
                         .foregroundColor(.secondary)
                 }
 
-                // Collapse chevron (Extra section only) - next to title/count
-                if section == .extra {
-                    Image(systemName: viewModel.isSectionCollapsed(section) ? "chevron.right" : "chevron.down")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                }
-
                 Spacer()
 
-                // Add button (far right)
-                Button {
-                    if section == .focus && !viewModel.canAddTask(to: .focus) {
-                        showCapacityPopover = true
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                            showCapacityPopover = false
+                // Add button (far right) - hidden when adding task
+                if !viewModel.showAddTaskSheet {
+                    Button {
+                        if section == .focus && !viewModel.canAddTask(to: .focus) {
+                            showCapacityPopover = true
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                                showCapacityPopover = false
+                            }
+                        } else {
+                            viewModel.addTaskSection = section
+                            viewModel.showAddTaskSheet = true
                         }
-                    } else {
-                        viewModel.addTaskSection = section
-                        viewModel.showAddTaskSheet = true
-                    }
-                } label: {
-                    Image(systemName: "plus")
-                        .font(.body)
-                        .fontWeight(.semibold)
-                        .foregroundColor(.blue)
-                        .frame(width: 32, height: 32)
-                        .glassEffect(.regular.interactive(), in: .circle)
-                }
-                .buttonStyle(.plain)
-                .popover(isPresented: $showCapacityPopover) {
-                    let current = viewModel.taskCount(for: .focus)
-                    let max = Section.focus.maxTasks(for: viewModel.selectedTimeframe) ?? 0
-                    VStack(spacing: 4) {
-                        Text("Focus section")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        Text("Section full")
-                            .font(.subheadline)
+                    } label: {
+                        Image(systemName: "plus")
+                            .font(.body)
                             .fontWeight(.semibold)
-                        Text("\(current)/\(max)")
-                            .font(.title3)
-                            .fontWeight(.bold)
-                            .foregroundStyle(.blue)
+                            .foregroundColor(.blue)
+                            .frame(width: 32, height: 32)
+                            .glassEffect(.regular.interactive(), in: .circle)
                     }
-                    .padding()
-                    .presentationCompactAdaptation(.popover)
+                    .buttonStyle(.plain)
+                    .popover(isPresented: $showCapacityPopover) {
+                        let current = viewModel.taskCount(for: .focus)
+                        let max = Section.focus.maxTasks(for: viewModel.selectedTimeframe) ?? 0
+                        VStack(spacing: 4) {
+                            Text("Focus section")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            Text("Section full")
+                                .font(.subheadline)
+                                .fontWeight(.semibold)
+                            Text("\(current)/\(max)")
+                                .font(.title3)
+                                .fontWeight(.bold)
+                                .foregroundStyle(.blue)
+                        }
+                        .padding()
+                        .presentationCompactAdaptation(.popover)
+                    }
                 }
             }
             .contentShape(Rectangle())

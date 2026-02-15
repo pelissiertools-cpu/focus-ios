@@ -788,7 +788,7 @@ struct LogTabView: View {
                     .padding(.horizontal, 14)
 
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 4) {
+                    VStack(alignment: .leading, spacing: 6) {
                         ForEach(addProjectDraftTasks) { task in
                             projectTaskDraftRow(task: task)
                         }
@@ -986,8 +986,11 @@ struct LogTabView: View {
                 }
                 .buttonStyle(.plain)
             }
-            .padding(.leading, 24)
+            .padding(.leading, 28)
+            .padding(.trailing, 8)
+            .padding(.vertical, 6)
         }
+        .padding(.top, 12)
 
         // "+ Sub-task" button
         Button {
@@ -995,14 +998,16 @@ struct LogTabView: View {
         } label: {
             HStack(spacing: 4) {
                 Image(systemName: "plus")
-                    .font(.caption)
+                    .font(.subheadline)
                 Text("Sub-task")
-                    .font(.caption)
+                    .font(.subheadline)
             }
             .foregroundColor(.secondary)
+            .padding(.vertical, 4)
         }
         .buttonStyle(.plain)
-        .padding(.top, 2)
+        .padding(.leading, 28)
+        .padding(.top, 8)
         .padding(.bottom, 6)
     }
 

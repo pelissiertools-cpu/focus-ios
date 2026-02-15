@@ -38,9 +38,6 @@ struct ProjectsListView: View {
             }
         }
         .padding(.top, 44)
-        .sheet(isPresented: $viewModel.showingAddProject) {
-            AddProjectSheet(viewModel: viewModel)
-        }
         .sheet(item: $viewModel.selectedProjectForDetails) { project in
             ProjectDetailsDrawer(project: project, viewModel: viewModel)
                 .drawerStyle()

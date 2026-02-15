@@ -14,15 +14,6 @@ enum FocusViewMode: String, CaseIterable {
     case schedule
 }
 
-// MARK: - Section Frame Preference Key
-
-struct SectionFramePreference: PreferenceKey {
-    static let defaultValue: [String: CGRect] = [:]
-    static func reduce(value: inout [String: CGRect], nextValue: () -> [String: CGRect]) {
-        value.merge(nextValue()) { $1 }
-    }
-}
-
 // MARK: - Drawer Top Preference Key
 
 struct DrawerTopPreference: PreferenceKey {
@@ -38,15 +29,6 @@ struct FocusTabView: View {
     @State private var showCalendarPicker = false
     @State private var viewMode: FocusViewMode = .focus
 
-    // Drag state
-    @State private var draggingCommitmentId: UUID?
-    @State private var dragFingerY: CGFloat = 0
-    @State private var dragTranslation: CGFloat = 0
-    @State private var dragReorderAdjustment: CGFloat = 0
-    @State private var lastReorderTime: Date = .distantPast
-    @State private var rowFrames: [UUID: CGRect] = [:]
-    @State private var sectionFrames: [String: CGRect] = [:]
-    @State private var targetedSection: Section?
     @State private var showScheduleDrawer = false
 
     // Compact add-task bar state
@@ -54,7 +36,6 @@ struct FocusTabView: View {
     @State private var addTaskSubtasks: [DraftSubtaskEntry] = []
     @FocusState private var isAddTaskFieldFocused: Bool
     @FocusState private var focusedSubtaskId: UUID?
-    @State private var scrollProxy: ScrollViewProxy?
 
     var body: some View {
         NavigationView {
@@ -90,58 +71,7 @@ struct FocusTabView: View {
                         ProgressView("Loading...")
                             .frame(maxHeight: .infinity)
                     } else {
-                        ScrollViewReader { proxy in
-                            ScrollView {
-                                VStack(spacing: 20) {
-                                    // Focus Section
-                                    SectionView(
-                                        title: "Focus",
-                                        section: .focus,
-                                        viewModel: viewModel,
-                                        draggingCommitmentId: draggingCommitmentId,
-                                        dragTranslation: dragTranslation,
-                                        dragReorderAdjustment: dragReorderAdjustment,
-                                        targetedSection: targetedSection,
-                                        onDragChanged: { id, value in handleCommitmentDrag(id, value) },
-                                        onDragEnded: { handleCommitmentDragEnd() }
-                                    )
-                                    .id("section-focus")
-                                    .zIndex(draggingCommitmentId != nil && viewModel.uncompletedCommitmentsForSection(.focus).contains(where: { $0.id == draggingCommitmentId }) ? 1 : 0)
-
-                                    // Extra Section
-                                    SectionView(
-                                        title: "Extra",
-                                        section: .extra,
-                                        viewModel: viewModel,
-                                        draggingCommitmentId: draggingCommitmentId,
-                                        dragTranslation: dragTranslation,
-                                        dragReorderAdjustment: dragReorderAdjustment,
-                                        targetedSection: targetedSection,
-                                        onDragChanged: { id, value in handleCommitmentDrag(id, value) },
-                                        onDragEnded: { handleCommitmentDragEnd() }
-                                    )
-                                    .id("section-extra")
-                                    .zIndex(draggingCommitmentId != nil && viewModel.uncompletedCommitmentsForSection(.extra).contains(where: { $0.id == draggingCommitmentId }) ? 1 : 0)
-                                }
-                                .padding()
-                                .onPreferenceChange(RowFramePreference.self) { frames in
-                                    rowFrames = frames
-                                }
-                                .onPreferenceChange(SectionFramePreference.self) { frames in
-                                    sectionFrames = frames
-                                }
-                            }
-                            .coordinateSpace(name: "focusList")
-                            .refreshable {
-                                await withCheckedContinuation { continuation in
-                                    _Concurrency.Task { @MainActor in
-                                        await viewModel.fetchCommitments()
-                                        continuation.resume()
-                                    }
-                                }
-                            }
-                            .onAppear { scrollProxy = proxy }
-                        }
+                        focusList
                         .opacity(viewModel.showAddTaskSheet ? 0 : 1)
                         .allowsHitTesting(!viewModel.showAddTaskSheet)
                     }
@@ -366,94 +296,157 @@ struct FocusTabView: View {
         }
     }
 
-    // MARK: - Drag Handlers
+    // MARK: - Focus List
 
-    private func handleCommitmentDrag(_ commitmentId: UUID, _ value: DragGesture.Value) {
-        if draggingCommitmentId == nil {
-            withAnimation(.easeInOut(duration: 0.15)) {
-                draggingCommitmentId = commitmentId
+    private var focusList: some View {
+        let flat = viewModel.flattenedDisplayItems
+        return List {
+            ForEach(Array(flat.enumerated()), id: \.element.id) { index, item in
+                let glassShape = glassShape(for: index, in: flat)
+                switch item {
+                case .sectionHeader(let section):
+                    let isExtraHeader = section == .extra && index > 0
+                    FocusSectionHeaderRow(section: section, viewModel: viewModel)
+                        .background(.regularMaterial, in: glassShape)
+                        .listRowBackground(Color.clear)
+                        .listRowInsets(EdgeInsets(top: isExtraHeader ? 20 : 0, leading: 0, bottom: 0, trailing: 0))
+                        .listRowSeparator(.hidden)
+
+                case .commitment(let commitment):
+                    if let task = viewModel.tasksMap[commitment.taskId] {
+                        let config = viewModel.focusConfig(for: commitment.section)
+                        CommitmentRow(
+                            commitment: commitment,
+                            task: task,
+                            section: commitment.section,
+                            viewModel: viewModel,
+                            fontOverride: commitment.section == .focus ? config.taskFont : nil,
+                            verticalPaddingOverride: commitment.section == .focus ? config.verticalPadding : nil
+                        )
+                        .moveDisabled(false)
+                        .background(.regularMaterial, in: glassShape)
+                        .listRowBackground(Color.clear)
+                        .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
+                        .listRowSeparator(.hidden)
+                    }
+
+                case .subtask(let subtask, let parentCommitment):
+                    FocusSubtaskRow(subtask: subtask, parentId: parentCommitment.taskId, parentCommitment: parentCommitment, viewModel: viewModel)
+                        .padding(.leading, 32)
+                        .padding(.trailing, 12)
+                        .moveDisabled(subtask.isCompleted)
+                        .listRowBackground(Rectangle().fill(.regularMaterial))
+                        .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
+                        .listRowSeparator(.hidden)
+
+                case .addSubtaskRow(let parentId, _):
+                    FocusInlineAddSubtaskRow(parentId: parentId, viewModel: viewModel)
+                        .padding(.leading, 32)
+                        .padding(.trailing, 12)
+                        .moveDisabled(true)
+                        .listRowBackground(Rectangle().fill(.regularMaterial))
+                        .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
+                        .listRowSeparator(.hidden)
+
+                case .completedCommitment(let commitment):
+                    if let task = viewModel.tasksMap[commitment.taskId] {
+                        let config = viewModel.focusConfig(for: commitment.section)
+                        CommitmentRow(
+                            commitment: commitment,
+                            task: task,
+                            section: commitment.section,
+                            viewModel: viewModel,
+                            fontOverride: commitment.section == .focus ? config.completedTaskFont : nil,
+                            verticalPaddingOverride: commitment.section == .focus ? config.completedVerticalPadding : nil
+                        )
+                        .moveDisabled(true)
+                        .opacity(commitment.section == .focus ? config.completedOpacity : 1.0)
+                        .background(.regularMaterial, in: glassShape)
+                        .listRowBackground(Color.clear)
+                        .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
+                        .listRowSeparator(.hidden)
+                    }
+
+                case .emptyState(let section):
+                    Text("No task yet. Tap + to add one.")
+                        .foregroundColor(.secondary)
+                        .frame(maxWidth: .infinity, minHeight: section == .focus ? 120 : 60)
+                        .moveDisabled(true)
+                        .background(.regularMaterial, in: glassShape)
+                        .listRowBackground(Color.clear)
+                        .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
+                        .listRowSeparator(.hidden)
+
+                case .allDoneState:
+                    VStack(spacing: 8) {
+                        Image(systemName: "checkmark.circle")
+                            .font(.largeTitle)
+                            .foregroundColor(.green.opacity(0.6))
+                        Text("All done!")
+                            .font(.title3)
+                            .foregroundColor(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, minHeight: 120)
+                    .moveDisabled(true)
+                    .glassEffect(.regular.interactive(), in: glassShape)
+                    .listRowBackground(Color.clear)
+                    .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
+                    .listRowSeparator(.hidden)
+
+                case .donePill:
+                    DonePillView(
+                        completedCommitments: viewModel.completedCommitmentsForSection(.extra),
+                        section: .extra,
+                        viewModel: viewModel
+                    )
+                    .moveDisabled(true)
+                    .glassEffect(.regular.interactive(), in: glassShape)
+                    .listRowBackground(Color.clear)
+                    .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
+                    .listRowSeparator(.hidden)
+
+                }
             }
-            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-        }
-        dragTranslation = value.translation.height
-        dragFingerY = value.location.y
-
-        // Update targeted section highlight
-        if let draggedCommitment = viewModel.commitments.first(where: { $0.id == commitmentId }) {
-            let otherSection: Section = draggedCommitment.section == .focus ? .extra : .focus
-            if let sectionFrame = sectionFrames[otherSection.rawValue],
-               dragFingerY >= sectionFrame.minY && dragFingerY <= sectionFrame.maxY {
-                if targetedSection != otherSection {
-                    targetedSection = otherSection
-                }
-            } else {
-                if targetedSection != nil {
-                    targetedSection = nil
-                }
+            .onMove { from, to in
+                viewModel.handleFlatMove(from: from, to: to)
             }
         }
-
-        // Cooldown: prevent double-swaps during animation
-        guard Date().timeIntervalSince(lastReorderTime) > 0.25 else { return }
-
-        // Find the dragged commitment and its current section
-        guard let draggedCommitment = viewModel.commitments.first(where: { $0.id == commitmentId }) else { return }
-
-        // Within-section reorder: check midpoint crossings in same section
-        let sameSection = viewModel.uncompletedCommitmentsForSection(draggedCommitment.section)
-        guard let currentIdx = sameSection.firstIndex(where: { $0.id == commitmentId }) else { return }
-
-        for (idx, other) in sameSection.enumerated() where other.id != commitmentId {
-            guard let frame = rowFrames[other.id] else { continue }
-            let crossedDown = idx > currentIdx && dragFingerY > frame.midY
-            let crossedUp = idx < currentIdx && dragFingerY < frame.midY
-            if crossedDown || crossedUp {
-                let passedHeight = frame.height
-                dragReorderAdjustment += crossedDown ? -passedHeight : passedHeight
-
-                withAnimation(.easeInOut(duration: 0.2)) {
-                    viewModel.reorderCommitment(droppedId: commitmentId, targetId: other.id)
+        .listStyle(.plain)
+        .listRowSpacing(0)
+        .scrollContentBackground(.hidden)
+        .refreshable {
+            await withCheckedContinuation { continuation in
+                _Concurrency.Task { @MainActor in
+                    await viewModel.fetchCommitments()
+                    continuation.resume()
                 }
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                lastReorderTime = Date()
-                break
             }
         }
     }
 
-    private func handleCommitmentDragEnd() {
-        // Check for cross-section drop
-        if let commitmentId = draggingCommitmentId,
-           let commitment = viewModel.commitments.first(where: { $0.id == commitmentId }) {
-            let otherSection: Section = commitment.section == .focus ? .extra : .focus
-            let otherSectionKey = otherSection.rawValue
+    /// Determine glass shape rounding for a row based on its position within its section
+    private func glassShape(for index: Int, in flat: [FocusFlatDisplayItem]) -> some Shape {
+        let isFirst: Bool = {
+            if case .sectionHeader = flat[index] { return true }
+            return false
+        }()
 
-            if let sectionFrame = sectionFrames[otherSectionKey],
-               dragFingerY >= sectionFrame.minY && dragFingerY <= sectionFrame.maxY {
-                // Validate Focus section capacity
-                if otherSection != .focus || viewModel.canAddTask(to: .focus, timeframe: commitment.timeframe, date: commitment.commitmentDate) {
-                    // Find insertion index based on finger position
-                    let otherList = viewModel.uncompletedCommitmentsForSection(otherSection)
-                    var insertIdx = otherList.count
-                    for (idx, other) in otherList.enumerated() {
-                        if let frame = rowFrames[other.id], dragFingerY < frame.midY {
-                            insertIdx = idx
-                            break
-                        }
-                    }
-                    viewModel.moveCommitmentToSectionAtIndex(commitment, to: otherSection, atIndex: insertIdx)
-                }
-            }
-        }
+        let isLast: Bool = {
+            let nextIdx = index + 1
+            if nextIdx >= flat.count { return true }
+            if case .sectionHeader = flat[nextIdx] { return true }
+            return false
+        }()
 
-        withAnimation(.easeInOut(duration: 0.2)) {
-            draggingCommitmentId = nil
-            dragTranslation = 0
-            dragReorderAdjustment = 0
-            dragFingerY = 0
-            targetedSection = nil
+        if isFirst && isLast {
+            return UnevenRoundedRectangle(topLeadingRadius: 16, bottomLeadingRadius: 16, bottomTrailingRadius: 16, topTrailingRadius: 16)
+        } else if isFirst {
+            return UnevenRoundedRectangle(topLeadingRadius: 16, bottomLeadingRadius: 0, bottomTrailingRadius: 0, topTrailingRadius: 16)
+        } else if isLast {
+            return UnevenRoundedRectangle(topLeadingRadius: 0, bottomLeadingRadius: 16, bottomTrailingRadius: 16, topTrailingRadius: 0)
+        } else {
+            return UnevenRoundedRectangle(topLeadingRadius: 0, bottomLeadingRadius: 0, bottomTrailingRadius: 0, topTrailingRadius: 0)
         }
-        lastReorderTime = .distantPast
     }
 
     // MARK: - Compact Add Task Bar
@@ -630,31 +623,12 @@ struct FocusTabView: View {
     }
 }
 
-// MARK: - Focus Section Config
-
-private struct FocusSectionConfig {
-    let taskFont: Font
-    let verticalPadding: CGFloat
-    let containerMinHeight: CGFloat
-    let completedTaskFont: Font
-    let completedVerticalPadding: CGFloat
-    let completedOpacity: Double
-}
-
 // MARK: - Section View
 
 struct SectionView: View {
     let title: String
     let section: Section
     @ObservedObject var viewModel: FocusTabViewModel
-
-    // Drag parameters from parent
-    var draggingCommitmentId: UUID?
-    var dragTranslation: CGFloat = 0
-    var dragReorderAdjustment: CGFloat = 0
-    var targetedSection: Section? = nil
-    var onDragChanged: ((UUID, DragGesture.Value) -> Void)? = nil
-    var onDragEnded: (() -> Void)? = nil
     @State private var showCapacityPopover = false
 
     var sectionCommitments: [Commitment] {
@@ -677,59 +651,7 @@ struct SectionView: View {
     }
 
     private var focusConfig: FocusSectionConfig {
-        guard section == .focus else {
-            return FocusSectionConfig(
-                taskFont: .body,
-                verticalPadding: 8,
-                containerMinHeight: 0,
-                completedTaskFont: .body,
-                completedVerticalPadding: 6,
-                completedOpacity: 0.5
-            )
-        }
-
-        // Yearly supports up to 10 tasks — use compact layout, no scaling
-        guard viewModel.selectedTimeframe != .yearly else {
-            return FocusSectionConfig(
-                taskFont: .body,
-                verticalPadding: 10,
-                containerMinHeight: 0,
-                completedTaskFont: .footnote,
-                completedVerticalPadding: 6,
-                completedOpacity: 0.45
-            )
-        }
-
-        let count = uncompletedCommitments.count
-        switch count {
-        case 0, 1:
-            return FocusSectionConfig(
-                taskFont: .title,
-                verticalPadding: 24,
-                containerMinHeight: 150,
-                completedTaskFont: .subheadline,
-                completedVerticalPadding: 6,
-                completedOpacity: 0.45
-            )
-        case 2:
-            return FocusSectionConfig(
-                taskFont: .title2,
-                verticalPadding: 18,
-                containerMinHeight: 150,
-                completedTaskFont: .subheadline,
-                completedVerticalPadding: 6,
-                completedOpacity: 0.45
-            )
-        default:
-            return FocusSectionConfig(
-                taskFont: .title3,
-                verticalPadding: 14,
-                containerMinHeight: 0,
-                completedTaskFont: .subheadline,
-                completedVerticalPadding: 6,
-                completedOpacity: 0.45
-            )
-        }
+        viewModel.focusConfig(for: section)
     }
 
     var body: some View {
@@ -837,11 +759,9 @@ struct SectionView: View {
                                         .foregroundColor(.secondary)
                                 }
                             } else {
-                                // Uncompleted commitments — draggable with floating pill
+                                // Uncompleted commitments
                                 ForEach(Array(uncompletedCommitments.enumerated()), id: \.element.id) { index, commitment in
                                     if let task = viewModel.tasksMap[commitment.taskId] {
-                                        let isDragging = draggingCommitmentId == commitment.id
-
                                         VStack(spacing: 0) {
                                             if index > 0 {
                                                 Divider()
@@ -851,32 +771,9 @@ struct SectionView: View {
                                                 task: task,
                                                 section: section,
                                                 viewModel: viewModel,
-                                                onDragChanged: { value in onDragChanged?(commitment.id, value) },
-                                                onDragEnded: { onDragEnded?() },
                                                 fontOverride: section == .focus ? focusConfig.taskFont : nil,
                                                 verticalPaddingOverride: section == .focus ? focusConfig.verticalPadding : nil
                                             )
-                                        }
-                                        .background(
-                                            GeometryReader { geo in
-                                                Color.clear.preference(
-                                                    key: RowFramePreference.self,
-                                                    value: [commitment.id: geo.frame(in: .named("focusList"))]
-                                                )
-                                            }
-                                        )
-                                        .background(
-                                            isDragging
-                                                ? AnyShapeStyle(.regularMaterial)
-                                                : AnyShapeStyle(.clear),
-                                            in: .rect(cornerRadius: 10)
-                                        )
-                                        .shadow(color: .black.opacity(isDragging ? 0.15 : 0), radius: 8, y: 2)
-                                        .offset(y: isDragging ? (dragTranslation + dragReorderAdjustment) : 0)
-                                        .scaleEffect(isDragging ? 1.03 : 1.0)
-                                        .zIndex(isDragging ? 1 : 0)
-                                        .transaction { t in
-                                            if isDragging { t.animation = nil }
                                         }
                                     }
                                 }
@@ -927,18 +824,6 @@ struct SectionView: View {
         .padding(.horizontal, 8)
         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 12))
-        .overlay(
-            RoundedRectangle(cornerRadius: 12)
-                .stroke(targetedSection == section ? Color.accentColor : Color.clear, lineWidth: 2)
-        )
-        .background(
-            GeometryReader { geo in
-                Color.clear.preference(
-                    key: SectionFramePreference.self,
-                    value: [section.rawValue: geo.frame(in: .named("focusList"))]
-                )
-            }
-        )
     }
 }
 
@@ -997,6 +882,101 @@ struct DonePillView: View {
     }
 }
 
+// MARK: - Focus Section Header Row
+
+struct FocusSectionHeaderRow: View {
+    let section: Section
+    @ObservedObject var viewModel: FocusTabViewModel
+    @State private var showCapacityPopover = false
+
+    private var sectionCommitments: [Commitment] {
+        viewModel.commitments.filter { commitment in
+            commitment.section == section &&
+            viewModel.isSameTimeframe(
+                commitment.commitmentDate,
+                timeframe: viewModel.selectedTimeframe,
+                selectedDate: viewModel.selectedDate
+            )
+        }
+    }
+
+    var body: some View {
+        HStack(spacing: 12) {
+            // Section icon
+            Image(systemName: section == .focus ? "target" : "tray.full")
+                .foregroundColor(.secondary)
+
+            Text(section.displayName)
+                .font(.title2)
+                .fontWeight(.bold)
+
+            // Count display
+            if let maxTasks = section.maxTasks(for: viewModel.selectedTimeframe) {
+                Text("\(sectionCommitments.count)/\(maxTasks)")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+            } else if !sectionCommitments.isEmpty {
+                Text("\(sectionCommitments.count)")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+            }
+
+            Spacer()
+
+            // Add button - hidden when adding task
+            Button {
+                if section == .focus && !viewModel.canAddTask(to: .focus) {
+                    showCapacityPopover = true
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                        showCapacityPopover = false
+                    }
+                } else {
+                    viewModel.addTaskSection = section
+                    viewModel.showAddTaskSheet = true
+                }
+            } label: {
+                Image(systemName: "plus")
+                    .font(.body)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.blue)
+                    .frame(width: 32, height: 32)
+                    .glassEffect(.regular.interactive(), in: .circle)
+            }
+            .buttonStyle(.plain)
+            .popover(isPresented: $showCapacityPopover) {
+                let current = viewModel.taskCount(for: .focus)
+                let max = Section.focus.maxTasks(for: viewModel.selectedTimeframe) ?? 0
+                VStack(spacing: 4) {
+                    Text("Focus section")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Text("Section full")
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                    Text("\(current)/\(max)")
+                        .font(.title3)
+                        .fontWeight(.bold)
+                        .foregroundStyle(.blue)
+                }
+                .padding()
+                .presentationCompactAdaptation(.popover)
+            }
+            .opacity(viewModel.showAddTaskSheet ? 0 : 1)
+            .allowsHitTesting(!viewModel.showAddTaskSheet)
+        }
+        .contentShape(Rectangle())
+        .onTapGesture {
+            if section == .extra {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    viewModel.toggleSectionCollapsed(section)
+                }
+            }
+        }
+        .padding(.vertical, 12)
+        .padding(.horizontal, 16)
+    }
+}
+
 // MARK: - Commitment Row
 
 struct CommitmentRow: View {
@@ -1004,8 +984,6 @@ struct CommitmentRow: View {
     let task: FocusTask
     let section: Section
     @ObservedObject var viewModel: FocusTabViewModel
-    var onDragChanged: ((DragGesture.Value) -> Void)? = nil
-    var onDragEnded: (() -> Void)? = nil
     var fontOverride: Font? = nil
     var verticalPaddingOverride: CGFloat? = nil
 
@@ -1032,19 +1010,8 @@ struct CommitmentRow: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Main task row - matching ExpandableTaskRow style
+            // Main task row
             HStack(spacing: 12) {
-                // Drag handle (left side) - only for uncompleted tasks with drag enabled
-                if !task.isCompleted && onDragChanged != nil {
-                    DragHandleView()
-                        .contentShape(Rectangle())
-                        .highPriorityGesture(
-                            DragGesture(minimumDistance: 5, coordinateSpace: .named("focusList"))
-                                .onChanged { value in onDragChanged?(value) }
-                                .onEnded { _ in onDragEnded?() }
-                        )
-                }
-
                 // Child commitment indicator (indentation)
                 if commitment.isChildCommitment {
                     Image(systemName: "arrow.turn.down.right")
@@ -1080,7 +1047,7 @@ struct CommitmentRow: View {
                             .foregroundColor(.blue)
                     }
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(maxWidth: .infinity, minHeight: section == .extra ? 36 : nil, alignment: .leading)
                 .contentShape(Rectangle())
                 .onTapGesture {
                     withAnimation(.easeInOut(duration: 0.2)) {
@@ -1161,22 +1128,7 @@ struct CommitmentRow: View {
             .padding(.leading, 8)
             .padding(.trailing, 12)
 
-            // Subtasks and add row (shown when expanded)
-            if isExpanded {
-                VStack(spacing: 0) {
-                    ForEach(Array(subtasks.enumerated()), id: \.element.id) { index, subtask in
-                        FocusSubtaskRow(subtask: subtask, parentId: task.id, parentCommitment: commitment, viewModel: viewModel)
-
-                        if index < subtasks.count - 1 {
-                            Divider()
-                        }
-                    }
-                    Divider()
-                    FocusInlineAddSubtaskRow(parentId: task.id, viewModel: viewModel)
-                }
-                .padding(.leading, 32)
-                .padding(.trailing, 12)
-            }
+            // Subtasks are now rendered as flat list items (see focusList)
         }
     }
 }
@@ -1276,6 +1228,12 @@ struct FocusInlineAddSubtaskRow: View {
                     .focused($isFocused)
                     .onSubmit {
                         submitSubtask()
+                    }
+                    .onChange(of: isFocused) { _, focused in
+                        if !focused {
+                            newSubtaskTitle = ""
+                            isEditing = false
+                        }
                     }
 
                 Spacer()

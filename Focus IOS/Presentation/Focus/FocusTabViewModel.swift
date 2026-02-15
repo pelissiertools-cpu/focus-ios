@@ -9,6 +9,51 @@ import SwiftUI
 import Combine
 import Auth
 
+// MARK: - Focus Section Config
+
+struct FocusSectionConfig {
+    let taskFont: Font
+    let verticalPadding: CGFloat
+    let containerMinHeight: CGFloat
+    let completedTaskFont: Font
+    let completedVerticalPadding: CGFloat
+    let completedOpacity: Double
+}
+
+// MARK: - Flat Display Item for Focus List
+
+enum FocusFlatDisplayItem: Identifiable {
+    case sectionHeader(Section)
+    case commitment(Commitment)           // uncompleted — movable
+    case completedCommitment(Commitment)   // completed — not movable
+    case subtask(FocusTask, parentCommitment: Commitment)
+    case addSubtaskRow(parentId: UUID, parentCommitment: Commitment)
+    case emptyState(Section)
+    case allDoneState
+    case donePill
+
+    var id: String {
+        switch self {
+        case .sectionHeader(let section):
+            return "header-\(section.rawValue)"
+        case .commitment(let c):
+            return c.id.uuidString
+        case .completedCommitment(let c):
+            return "done-\(c.id.uuidString)"
+        case .subtask(let task, _):
+            return "subtask-\(task.id.uuidString)"
+        case .addSubtaskRow(let parentId, _):
+            return "add-subtask-\(parentId.uuidString)"
+        case .emptyState(let section):
+            return "empty-\(section.rawValue)"
+        case .allDoneState:
+            return "all-done"
+        case .donePill:
+            return "done-pill"
+        }
+    }
+}
+
 @MainActor
 class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
     @Published var commitments: [Commitment] = []
@@ -248,6 +293,16 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
     func getSubtasks(for taskId: UUID) -> [FocusTask] {
         let subtasks = subtasksMap[taskId] ?? []
         return subtasks.sorted { !$0.isCompleted && $1.isCompleted }
+    }
+
+    /// Get uncompleted subtasks sorted by sortOrder
+    func getUncompletedSubtasks(for taskId: UUID) -> [FocusTask] {
+        (subtasksMap[taskId] ?? []).filter { !$0.isCompleted }.sorted { $0.sortOrder < $1.sortOrder }
+    }
+
+    /// Get completed subtasks
+    func getCompletedSubtasks(for taskId: UUID) -> [FocusTask] {
+        (subtasksMap[taskId] ?? []).filter { $0.isCompleted }
     }
 
     /// Find a task by ID (searches both tasksMap and subtasksMap)
@@ -720,6 +775,285 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
             }
     }
 
+    // MARK: - Flat Display Items
+
+    var flattenedDisplayItems: [FocusFlatDisplayItem] {
+        var result: [FocusFlatDisplayItem] = []
+
+        let focusUncompleted = uncompletedCommitmentsForSection(.focus)
+        let focusCompleted = completedCommitmentsForSection(.focus)
+        let extraUncompleted = uncompletedCommitmentsForSection(.extra)
+        let extraCompleted = completedCommitmentsForSection(.extra)
+
+        // -- Focus section --
+        result.append(.sectionHeader(.focus))
+
+        if focusUncompleted.isEmpty && focusCompleted.isEmpty {
+            result.append(.emptyState(.focus))
+        } else if focusUncompleted.isEmpty && !focusCompleted.isEmpty {
+            result.append(.allDoneState)
+        }
+
+        for c in focusUncompleted {
+            result.append(.commitment(c))
+            if expandedTasks.contains(c.taskId) {
+                for subtask in getUncompletedSubtasks(for: c.taskId) {
+                    result.append(.subtask(subtask, parentCommitment: c))
+                }
+                for subtask in getCompletedSubtasks(for: c.taskId) {
+                    result.append(.subtask(subtask, parentCommitment: c))
+                }
+                result.append(.addSubtaskRow(parentId: c.taskId, parentCommitment: c))
+            }
+        }
+
+        for c in focusCompleted {
+            result.append(.completedCommitment(c))
+        }
+
+        // -- Extra section --
+        result.append(.sectionHeader(.extra))
+
+        if !isSectionCollapsed(.extra) {
+            if extraUncompleted.isEmpty && extraCompleted.isEmpty {
+                result.append(.emptyState(.extra))
+            }
+
+            for c in extraUncompleted {
+                result.append(.commitment(c))
+                if expandedTasks.contains(c.taskId) {
+                    for subtask in getUncompletedSubtasks(for: c.taskId) {
+                        result.append(.subtask(subtask, parentCommitment: c))
+                    }
+                    for subtask in getCompletedSubtasks(for: c.taskId) {
+                        result.append(.subtask(subtask, parentCommitment: c))
+                    }
+                    result.append(.addSubtaskRow(parentId: c.taskId, parentCommitment: c))
+                }
+            }
+
+            if !extraCompleted.isEmpty {
+                result.append(.donePill)
+            }
+
+            if !extraCompleted.isEmpty && !isDoneSubsectionCollapsed {
+                for c in extraCompleted {
+                    result.append(.completedCommitment(c))
+                }
+            }
+        }
+
+        return result
+    }
+
+    // MARK: - Focus Section Config
+
+    func focusConfig(for section: Section) -> FocusSectionConfig {
+        guard section == .focus else {
+            return FocusSectionConfig(
+                taskFont: .body,
+                verticalPadding: 8,
+                containerMinHeight: 0,
+                completedTaskFont: .body,
+                completedVerticalPadding: 6,
+                completedOpacity: 0.5
+            )
+        }
+
+        // Yearly supports up to 10 tasks — use compact layout, no scaling
+        guard selectedTimeframe != .yearly else {
+            return FocusSectionConfig(
+                taskFont: .body,
+                verticalPadding: 10,
+                containerMinHeight: 0,
+                completedTaskFont: .footnote,
+                completedVerticalPadding: 6,
+                completedOpacity: 0.45
+            )
+        }
+
+        let count = uncompletedCommitmentsForSection(.focus).count
+        switch count {
+        case 0, 1:
+            return FocusSectionConfig(
+                taskFont: .title,
+                verticalPadding: 24,
+                containerMinHeight: 150,
+                completedTaskFont: .subheadline,
+                completedVerticalPadding: 6,
+                completedOpacity: 0.45
+            )
+        case 2:
+            return FocusSectionConfig(
+                taskFont: .title2,
+                verticalPadding: 18,
+                containerMinHeight: 150,
+                completedTaskFont: .subheadline,
+                completedVerticalPadding: 6,
+                completedOpacity: 0.45
+            )
+        default:
+            return FocusSectionConfig(
+                taskFont: .title3,
+                verticalPadding: 14,
+                containerMinHeight: 0,
+                completedTaskFont: .subheadline,
+                completedVerticalPadding: 6,
+                completedOpacity: 0.45
+            )
+        }
+    }
+
+    // MARK: - Flat Move Handler
+
+    /// Handle .onMove from the flat ForEach — supports commitment reorder, cross-section moves, and subtask reorder.
+    func handleFlatMove(from source: IndexSet, to destination: Int) {
+        let flat = flattenedDisplayItems
+        guard let fromIdx = source.first else { return }
+
+        // Check if it's a subtask move
+        if case .subtask(let movedSubtask, let parentCommitment) = flat[fromIdx] {
+            handleSubtaskMove(movedSubtask: movedSubtask, parentCommitment: parentCommitment, flat: flat, fromIdx: fromIdx, destination: destination)
+            return
+        }
+
+        // Only .commitment items can be moved (besides subtasks handled above)
+        guard case .commitment(let movedCommitment) = flat[fromIdx] else { return }
+
+        let sourceSection = movedCommitment.section
+
+        // Determine destination section by scanning backward for nearest section header
+        var destSection: Section = .focus
+        for i in stride(from: min(destination, flat.count - 1), through: 0, by: -1) {
+            if case .sectionHeader(let section) = flat[i] {
+                destSection = section
+                break
+            }
+        }
+
+        if sourceSection == destSection {
+            // -- Same-section reorder --
+            let sectionCommitments = flat.enumerated().compactMap { (i, item) -> (flatIdx: Int, commitment: Commitment)? in
+                if case .commitment(let c) = item, c.section == sourceSection {
+                    return (i, c)
+                }
+                return nil
+            }
+
+            guard let commitmentFrom = sectionCommitments.firstIndex(where: { $0.commitment.id == movedCommitment.id }) else { return }
+
+            var commitmentTo = sectionCommitments.count
+            for (ci, entry) in sectionCommitments.enumerated() {
+                if destination <= entry.flatIdx {
+                    commitmentTo = ci
+                    break
+                }
+            }
+            if commitmentTo > commitmentFrom { commitmentTo = min(commitmentTo, sectionCommitments.count) }
+
+            guard commitmentFrom != commitmentTo && commitmentFrom + 1 != commitmentTo else { return }
+
+            var uncompleted = uncompletedCommitmentsForSection(sourceSection)
+            uncompleted.move(fromOffsets: IndexSet(integer: commitmentFrom), toOffset: commitmentTo)
+
+            // Reassign sort orders
+            var updates: [(id: UUID, sortOrder: Int)] = []
+            for (index, c) in uncompleted.enumerated() {
+                if let mainIndex = commitments.firstIndex(where: { $0.id == c.id }) {
+                    commitments[mainIndex].sortOrder = index
+                }
+                updates.append((id: c.id, sortOrder: index))
+            }
+            _Concurrency.Task { await persistCommitmentSortOrders(updates) }
+
+        } else {
+            // -- Cross-section move --
+            if destSection == .focus {
+                guard canAddTask(to: .focus, timeframe: movedCommitment.timeframe, date: movedCommitment.commitmentDate) else { return }
+            }
+
+            // Find insertion index among destination section's uncompleted commitments
+            let destCommitments = flat.enumerated().compactMap { (i, item) -> (flatIdx: Int, commitment: Commitment)? in
+                if case .commitment(let c) = item, c.section == destSection {
+                    return (i, c)
+                }
+                return nil
+            }
+
+            var insertIdx = destCommitments.count
+            for (ci, entry) in destCommitments.enumerated() {
+                if destination <= entry.flatIdx {
+                    insertIdx = ci
+                    break
+                }
+            }
+
+            moveCommitmentToSectionAtIndex(movedCommitment, to: destSection, atIndex: insertIdx)
+        }
+    }
+
+    /// Handle subtask reorder within the same parent
+    private func handleSubtaskMove(movedSubtask: FocusTask, parentCommitment: Commitment, flat: [FocusFlatDisplayItem], fromIdx: Int, destination: Int) {
+        let parentId = parentCommitment.taskId
+
+        // Find parent commitment's flat index
+        guard let parentFlatIdx = flat.firstIndex(where: {
+            if case .commitment(let c) = $0 { return c.id == parentCommitment.id }
+            return false
+        }) else { return }
+
+        // Find section bounds: next commitment/sectionHeader or end of array
+        let sectionEnd = flat[(parentFlatIdx + 1)...].firstIndex(where: {
+            if case .commitment = $0 { return true }
+            if case .completedCommitment = $0 { return true }
+            if case .sectionHeader = $0 { return true }
+            if case .emptyState = $0 { return true }
+            if case .donePill = $0 { return true }
+            if case .allDoneState = $0 { return true }
+            return false
+        }) ?? flat.count
+
+        // Reject cross-parent moves
+        guard destination > parentFlatIdx && destination <= sectionEnd else { return }
+
+        // Map flat indices to sibling-only (uncompleted) indices
+        let siblingIndices = flat.enumerated().compactMap { (i, item) -> (flatIdx: Int, task: FocusTask)? in
+            if case .subtask(let t, _) = item, t.parentTaskId == parentId, !t.isCompleted { return (i, t) }
+            return nil
+        }
+
+        guard let siblingFrom = siblingIndices.firstIndex(where: { $0.task.id == movedSubtask.id }) else { return }
+
+        // Map flat destination to sibling-only destination
+        var siblingTo = siblingIndices.count
+        for (si, entry) in siblingIndices.enumerated() {
+            if destination <= entry.flatIdx {
+                siblingTo = si
+                break
+            }
+        }
+        if siblingTo > siblingFrom { siblingTo = min(siblingTo, siblingIndices.count) }
+
+        guard siblingFrom != siblingTo && siblingFrom + 1 != siblingTo else { return }
+
+        // Apply move on uncompleted subtasks
+        guard var allChildren = subtasksMap[parentId] else { return }
+        var uncompleted = allChildren.filter { !$0.isCompleted }.sorted { $0.sortOrder < $1.sortOrder }
+
+        uncompleted.move(fromOffsets: IndexSet(integer: siblingFrom), toOffset: siblingTo)
+
+        // Write sort orders back into full children array
+        var updates: [(id: UUID, sortOrder: Int)] = []
+        for (index, child) in uncompleted.enumerated() {
+            if let mapIndex = allChildren.firstIndex(where: { $0.id == child.id }) {
+                allChildren[mapIndex].sortOrder = index
+            }
+            updates.append((id: child.id, sortOrder: index))
+        }
+        subtasksMap[parentId] = allChildren
+        _Concurrency.Task { await persistSubtaskSortOrders(updates) }
+    }
+
     /// Reorder a commitment within the same section
     func reorderCommitment(droppedId: UUID, targetId: UUID) {
         // Find both commitments
@@ -812,6 +1146,15 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
     private func persistCommitmentSortOrdersAndSections(_ updates: [(id: UUID, sortOrder: Int, section: Section)]) async {
         do {
             try await commitmentRepository.updateCommitmentSortOrdersAndSections(updates)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    /// Persist subtask sort orders to database
+    private func persistSubtaskSortOrders(_ updates: [(id: UUID, sortOrder: Int)]) async {
+        do {
+            try await taskRepository.updateSortOrders(updates)
         } catch {
             errorMessage = error.localizedDescription
         }

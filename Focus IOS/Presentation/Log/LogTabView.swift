@@ -47,7 +47,7 @@ struct LogTabView: View {
 
     // Compact add-project bar state
     @State private var addProjectTitle = ""
-    @State private var addProjectTasks: [DraftSubtaskEntry] = []
+    @State private var addProjectDraftTasks: [DraftTask] = []
     @State private var addProjectCategoryId: UUID? = nil
     @State private var addProjectCommitExpanded = false
     @State private var addProjectTimeframe: Timeframe = .daily
@@ -94,6 +94,7 @@ struct LogTabView: View {
                     isAddProjectFieldFocused: $isAddProjectFieldFocused,
                     addProjectCommitExpanded: $addProjectCommitExpanded,
                     focusedProjectTaskId: $focusedProjectTaskId,
+                    addProjectDraftTasks: $addProjectDraftTasks,
                     showCategoryDropdown: $showCategoryDropdown,
                     showCreateProjectAlert: $showCreateProjectAlert,
                     showCreateListAlert: $showCreateListAlert,
@@ -769,7 +770,7 @@ struct LogTabView: View {
     private var logAddProjectBar: some View {
         VStack(spacing: 0) {
             // Project title row
-            TextField("Create a new project", text: $addProjectTitle)
+            TextField("Create a new project.", text: $addProjectTitle)
                 .font(.title3)
                 .textFieldStyle(.plain)
                 .focused($isAddProjectFieldFocused)
@@ -781,46 +782,21 @@ struct LogTabView: View {
                 .padding(.top, 20)
                 .padding(.bottom, 10)
 
-            // Tasks (expand when present)
-            if !addProjectTasks.isEmpty {
+            // Tasks + subtasks area (always visible — seeded with one empty task)
+            if !addProjectDraftTasks.isEmpty {
                 Divider()
                     .padding(.horizontal, 14)
 
-                VStack(spacing: 8) {
-                    ForEach(addProjectTasks) { task in
-                        HStack(spacing: 8) {
-                            Image(systemName: "circle")
-                                .font(.caption2)
-                                .foregroundColor(.secondary.opacity(0.5))
-
-                            TextField("Task", text: projectTaskBinding(for: task.id), axis: .vertical)
-                                .font(.subheadline)
-                                .textFieldStyle(.plain)
-                                .focused($focusedProjectTaskId, equals: task.id)
-                                .lineLimit(1)
-                                .onChange(of: projectTaskBinding(for: task.id).wrappedValue) { _, newValue in
-                                    if newValue.contains("\n") {
-                                        if let idx = addProjectTasks.firstIndex(where: { $0.id == task.id }) {
-                                            addProjectTasks[idx].title = newValue.replacingOccurrences(of: "\n", with: "")
-                                        }
-                                        addNewProjectTask()
-                                    }
-                                }
-
-                            Button {
-                                removeProjectTask(id: task.id)
-                            } label: {
-                                Image(systemName: "xmark.circle.fill")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                            }
-                            .buttonStyle(.plain)
+                ScrollView {
+                    VStack(spacing: 4) {
+                        ForEach(addProjectDraftTasks) { task in
+                            projectTaskDraftRow(task: task)
                         }
                     }
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 10)
                 }
-                .padding(.horizontal, 14)
-                .padding(.top, 10)
-                .padding(.bottom, 10)
+                .frame(maxHeight: 400)
             }
 
             // Commit expansion (calendar section)
@@ -942,6 +918,92 @@ struct LogTabView: View {
         }
         .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 20))
         .padding(.horizontal)
+    }
+
+    // MARK: - Project Task Draft Row (task + its subtasks + add subtask button)
+
+    @ViewBuilder
+    private func projectTaskDraftRow(task: DraftTask) -> some View {
+        // Task row
+        HStack(spacing: 8) {
+            Image(systemName: "circle")
+                .font(.caption2)
+                .foregroundColor(.secondary.opacity(0.5))
+
+            TextField("Task", text: projectTaskBinding(for: task.id), axis: .vertical)
+                .font(.subheadline)
+                .textFieldStyle(.plain)
+                .focused($focusedProjectTaskId, equals: task.id)
+                .lineLimit(1)
+                .onChange(of: projectTaskBinding(for: task.id).wrappedValue) { _, newValue in
+                    if newValue.contains("\n") {
+                        if let idx = addProjectDraftTasks.firstIndex(where: { $0.id == task.id }) {
+                            addProjectDraftTasks[idx].title = newValue.replacingOccurrences(of: "\n", with: "")
+                        }
+                        addNewProjectSubtask(toTask: task.id)
+                    }
+                }
+
+            Button {
+                removeProjectTask(id: task.id)
+            } label: {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            .buttonStyle(.plain)
+        }
+
+        // Subtask rows
+        ForEach(task.subtasks) { subtask in
+            HStack(spacing: 8) {
+                Image(systemName: "circle")
+                    .font(.system(size: 6))
+                    .foregroundColor(.secondary.opacity(0.4))
+
+                TextField("Sub-task", text: projectSubtaskBinding(forSubtask: subtask.id, inTask: task.id), axis: .vertical)
+                    .font(.caption)
+                    .textFieldStyle(.plain)
+                    .focused($focusedProjectTaskId, equals: subtask.id)
+                    .lineLimit(1)
+                    .onChange(of: projectSubtaskBinding(forSubtask: subtask.id, inTask: task.id).wrappedValue) { _, newValue in
+                        if newValue.contains("\n") {
+                            if let tIdx = addProjectDraftTasks.firstIndex(where: { $0.id == task.id }),
+                               let sIdx = addProjectDraftTasks[tIdx].subtasks.firstIndex(where: { $0.id == subtask.id }) {
+                                addProjectDraftTasks[tIdx].subtasks[sIdx].title = newValue.replacingOccurrences(of: "\n", with: "")
+                            }
+                            addNewProjectSubtask(toTask: task.id)
+                        }
+                    }
+
+                Button {
+                    removeProjectSubtask(id: subtask.id, fromTask: task.id)
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 10))
+                        .foregroundColor(.secondary.opacity(0.6))
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.leading, 24)
+        }
+
+        // "+ Sub-task" button
+        Button {
+            addNewProjectSubtask(toTask: task.id)
+        } label: {
+            HStack(spacing: 4) {
+                Image(systemName: "plus")
+                    .font(.system(size: 9))
+                Text("Sub-task")
+                    .font(.caption2)
+            }
+            .foregroundColor(.secondary)
+        }
+        .buttonStyle(.plain)
+        .padding(.leading, 24)
+        .padding(.top, 2)
+        .padding(.bottom, 6)
     }
 
     // MARK: - Add Task Helpers
@@ -1162,10 +1224,10 @@ struct LogTabView: View {
         let title = addProjectTitle.trimmingCharacters(in: .whitespaces)
         guard !title.isEmpty else { return }
 
-        // Convert DraftSubtaskEntry to DraftTask (flat task titles, no nested subtasks)
-        let draftTasks: [DraftTask] = addProjectTasks
-            .filter { !$0.title.trimmingCharacters(in: .whitespaces).isEmpty }
-            .map { DraftTask(title: $0.title.trimmingCharacters(in: .whitespaces)) }
+        // Pass nested DraftTask array directly (saveNewProject handles trimming/filtering)
+        let draftTasks = addProjectDraftTasks.filter {
+            !$0.title.trimmingCharacters(in: .whitespaces).isEmpty
+        }
         let categoryId = addProjectCategoryId
         let commitEnabled = !addProjectDates.isEmpty
         let timeframe = addProjectTimeframe
@@ -1179,7 +1241,7 @@ struct LogTabView: View {
 
         // Clear fields (keep category)
         addProjectTitle = ""
-        addProjectTasks = []
+        addProjectDraftTasks = []
         addProjectDates = []
         addProjectCommitExpanded = false
 
@@ -1211,38 +1273,71 @@ struct LogTabView: View {
         }
     }
 
-    private func projectTaskBinding(for id: UUID) -> Binding<String> {
+    private func projectTaskBinding(for taskId: UUID) -> Binding<String> {
         Binding(
-            get: { addProjectTasks.first(where: { $0.id == id })?.title ?? "" },
+            get: { addProjectDraftTasks.first(where: { $0.id == taskId })?.title ?? "" },
             set: { newValue in
-                if let idx = addProjectTasks.firstIndex(where: { $0.id == id }) {
-                    addProjectTasks[idx].title = newValue
+                if let idx = addProjectDraftTasks.firstIndex(where: { $0.id == taskId }) {
+                    addProjectDraftTasks[idx].title = newValue
+                }
+            }
+        )
+    }
+
+    private func projectSubtaskBinding(forSubtask subtaskId: UUID, inTask taskId: UUID) -> Binding<String> {
+        Binding(
+            get: {
+                guard let tIdx = addProjectDraftTasks.firstIndex(where: { $0.id == taskId }),
+                      let s = addProjectDraftTasks[tIdx].subtasks.first(where: { $0.id == subtaskId })
+                else { return "" }
+                return s.title
+            },
+            set: { newValue in
+                if let tIdx = addProjectDraftTasks.firstIndex(where: { $0.id == taskId }),
+                   let sIdx = addProjectDraftTasks[tIdx].subtasks.firstIndex(where: { $0.id == subtaskId }) {
+                    addProjectDraftTasks[tIdx].subtasks[sIdx].title = newValue
                 }
             }
         )
     }
 
     private func addNewProjectTask() {
-        isAddProjectFieldFocused = true
-        let newEntry = DraftSubtaskEntry()
+        let newTask = DraftTask()
         withAnimation(.easeInOut(duration: 0.15)) {
-            addProjectTasks.append(newEntry)
+            addProjectDraftTasks.append(newTask)
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            focusedProjectTaskId = newEntry.id
+            focusedProjectTaskId = newTask.id
+        }
+    }
+
+    private func addNewProjectSubtask(toTask taskId: UUID) {
+        guard let tIdx = addProjectDraftTasks.firstIndex(where: { $0.id == taskId }) else { return }
+        let newSubtask = DraftSubtask(title: "")
+        withAnimation(.easeInOut(duration: 0.15)) {
+            addProjectDraftTasks[tIdx].subtasks.append(newSubtask)
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            focusedProjectTaskId = newSubtask.id
         }
     }
 
     private func removeProjectTask(id: UUID) {
-        isAddProjectFieldFocused = true
         withAnimation(.easeInOut(duration: 0.15)) {
-            addProjectTasks.removeAll { $0.id == id }
+            addProjectDraftTasks.removeAll { $0.id == id }
+        }
+    }
+
+    private func removeProjectSubtask(id: UUID, fromTask taskId: UUID) {
+        guard let tIdx = addProjectDraftTasks.firstIndex(where: { $0.id == taskId }) else { return }
+        withAnimation(.easeInOut(duration: 0.15)) {
+            addProjectDraftTasks[tIdx].subtasks.removeAll { $0.id == id }
         }
     }
 
     private func dismissAddProject() {
         addProjectTitle = ""
-        addProjectTasks = []
+        addProjectDraftTasks = []
         addProjectCategoryId = nil
         addProjectCommitExpanded = false
         addProjectDates = []
@@ -1379,11 +1474,16 @@ private struct LogProjectBarHandlersModifier: ViewModifier {
     var isAddProjectFieldFocused: FocusState<Bool>.Binding
     @Binding var addProjectCommitExpanded: Bool
     var focusedProjectTaskId: FocusState<UUID?>.Binding
+    @Binding var addProjectDraftTasks: [DraftTask]
 
     func body(content: Content) -> some View {
         content
             .onChange(of: projectsVM.showingAddProject) { _, isShowing in
                 if isShowing && selectedTab == 2 {
+                    // Seed one empty task so the field is always visible
+                    if addProjectDraftTasks.isEmpty {
+                        addProjectDraftTasks = [DraftTask()]
+                    }
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                         isAddProjectFieldFocused.wrappedValue = true
                     }
@@ -1465,6 +1565,7 @@ private extension View {
         isAddProjectFieldFocused: FocusState<Bool>.Binding,
         addProjectCommitExpanded: Binding<Bool>,
         focusedProjectTaskId: FocusState<UUID?>.Binding,
+        addProjectDraftTasks: Binding<[DraftTask]>,
         showCategoryDropdown: Binding<Bool>,
         showCreateProjectAlert: Binding<Bool>,
         showCreateListAlert: Binding<Bool>,
@@ -1506,7 +1607,8 @@ private extension View {
                 projectsVM: projectsVM,
                 isAddProjectFieldFocused: isAddProjectFieldFocused,
                 addProjectCommitExpanded: addProjectCommitExpanded,
-                focusedProjectTaskId: focusedProjectTaskId
+                focusedProjectTaskId: focusedProjectTaskId,
+                addProjectDraftTasks: addProjectDraftTasks
             ))
             .modifier(LogTabAlertsModifier(
                 taskListVM: taskListVM,

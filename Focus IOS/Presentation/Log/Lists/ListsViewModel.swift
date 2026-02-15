@@ -8,6 +8,24 @@ import Combine
 import SwiftUI
 import Auth
 
+// MARK: - Flat List Display Item
+
+enum FlatListDisplayItem: Identifiable {
+    case list(FocusTask)
+    case item(FocusTask, listId: UUID)
+    case addItemRow(listId: UUID)
+    case doneSection(listId: UUID)
+
+    var id: String {
+        switch self {
+        case .list(let list): return list.id.uuidString
+        case .item(let item, _): return item.id.uuidString
+        case .addItemRow(let listId): return "add-\(listId.uuidString)"
+        case .doneSection(let listId): return "done-\(listId.uuidString)"
+        }
+    }
+}
+
 @MainActor
 class ListsViewModel: ObservableObject, LogFilterable, TaskEditingViewModel {
     // MARK: - Published Properties
@@ -174,6 +192,24 @@ class ListsViewModel: ObservableObject, LogFilterable, TaskEditingViewModel {
             }
         }
         return filtered.sorted { $0.sortOrder < $1.sortOrder }
+    }
+
+    /// Flat display array: lists interleaved with their expanded items, done sections, and add rows.
+    var flattenedDisplayItems: [FlatListDisplayItem] {
+        var result: [FlatListDisplayItem] = []
+        for list in filteredLists {
+            result.append(.list(list))
+            if expandedLists.contains(list.id) {
+                for item in getUncompletedItems(for: list.id) {
+                    result.append(.item(item, listId: list.id))
+                }
+                if !getCompletedItems(for: list.id).isEmpty {
+                    result.append(.doneSection(listId: list.id))
+                }
+                result.append(.addItemRow(listId: list.id))
+            }
+        }
+        return result
     }
 
     // MARK: - Data Fetching
@@ -434,6 +470,98 @@ class ListsViewModel: ObservableObject, LogFilterable, TaskEditingViewModel {
             try await repository.updateSortOrders(updates)
         } catch {
             errorMessage = "Failed to save order: \(error.localizedDescription)"
+        }
+    }
+
+    // MARK: - Flat List Move Handler
+
+    func handleFlatMove(from source: IndexSet, to destination: Int) {
+        let flat = flattenedDisplayItems
+        guard let fromIdx = source.first else { return }
+
+        switch flat[fromIdx] {
+        case .list(let movedList):
+            // --- Parent list moved ---
+            let listIndices = flat.enumerated().compactMap { (i, item) -> (flatIdx: Int, list: FocusTask)? in
+                if case .list(let l) = item { return (i, l) }
+                return nil
+            }
+
+            guard let listFrom = listIndices.firstIndex(where: { $0.list.id == movedList.id }) else { return }
+
+            var listTo = listIndices.count
+            for (li, entry) in listIndices.enumerated() {
+                if destination <= entry.flatIdx {
+                    listTo = li
+                    break
+                }
+            }
+            if listTo > listFrom { listTo = min(listTo, listIndices.count) }
+
+            guard listFrom != listTo && listFrom + 1 != listTo else { return }
+
+            var ordered = filteredLists
+            ordered.move(fromOffsets: IndexSet(integer: listFrom), toOffset: listTo)
+
+            var updates: [(id: UUID, sortOrder: Int)] = []
+            for (index, list) in ordered.enumerated() {
+                if let masterIdx = lists.firstIndex(where: { $0.id == list.id }) {
+                    lists[masterIdx].sortOrder = index
+                }
+                updates.append((id: list.id, sortOrder: index))
+            }
+            _Concurrency.Task { await persistSortOrders(updates) }
+
+        case .item(let movedItem, let listId):
+            guard !movedItem.isCompleted else { return }
+
+            guard let parentFlatIdx = flat.firstIndex(where: {
+                if case .list(let l) = $0 { return l.id == listId }
+                return false
+            }) else { return }
+
+            let sectionEnd = flat[(parentFlatIdx + 1)...].firstIndex(where: {
+                if case .list(_) = $0 { return true }
+                return false
+            }) ?? flat.count
+
+            guard destination > parentFlatIdx && destination <= sectionEnd else { return }
+
+            let siblingIndices = flat.enumerated().compactMap { (i, item) -> (flatIdx: Int, task: FocusTask)? in
+                if case .item(let t, let lid) = item, lid == listId, !t.isCompleted { return (i, t) }
+                return nil
+            }
+
+            guard let siblingFrom = siblingIndices.firstIndex(where: { $0.task.id == movedItem.id }) else { return }
+
+            var siblingTo = siblingIndices.count
+            for (si, entry) in siblingIndices.enumerated() {
+                if destination <= entry.flatIdx {
+                    siblingTo = si
+                    break
+                }
+            }
+            if siblingTo > siblingFrom { siblingTo = min(siblingTo, siblingIndices.count) }
+
+            guard siblingFrom != siblingTo && siblingFrom + 1 != siblingTo else { return }
+
+            guard var allChildren = itemsMap[listId] else { return }
+            var uncompleted = allChildren.filter { !$0.isCompleted }.sorted { $0.sortOrder < $1.sortOrder }
+
+            uncompleted.move(fromOffsets: IndexSet(integer: siblingFrom), toOffset: siblingTo)
+
+            var updates: [(id: UUID, sortOrder: Int)] = []
+            for (index, child) in uncompleted.enumerated() {
+                if let mapIndex = allChildren.firstIndex(where: { $0.id == child.id }) {
+                    allChildren[mapIndex].sortOrder = index
+                }
+                updates.append((id: child.id, sortOrder: index))
+            }
+            itemsMap[listId] = allChildren
+            _Concurrency.Task { await persistSortOrders(updates) }
+
+        default:
+            return
         }
     }
 

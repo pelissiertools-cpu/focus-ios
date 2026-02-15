@@ -11,16 +11,6 @@ struct ListsView: View {
     @ObservedObject var viewModel: ListsViewModel
     let searchText: String
 
-    // Drag state
-    @State private var draggingListId: UUID?
-    @State private var draggingItemId: UUID?
-    @State private var draggingItemListId: UUID?
-    @State private var dragFingerY: CGFloat = 0
-    @State private var dragTranslation: CGFloat = 0
-    @State private var dragReorderAdjustment: CGFloat = 0
-    @State private var lastReorderTime: Date = .distantPast
-    @State private var rowFrames: [UUID: CGRect] = [:]
-
     init(viewModel: ListsViewModel, searchText: String = "") {
         self.viewModel = viewModel
         self.searchText = searchText
@@ -116,75 +106,48 @@ struct ListsView: View {
     }
 
     private var listContent: some View {
-        ScrollView {
-            VStack(spacing: 0) {
-                ForEach(Array(viewModel.filteredLists.enumerated()), id: \.element.id) { index, list in
-                    let isDragging = draggingListId == list.id
-
-                    VStack(spacing: 0) {
-                        if index > 0 {
-                            Divider()
-                        }
-
-                        // List header row (NOT checkable)
-                        ListRow(
-                            list: list,
-                            viewModel: viewModel,
-                            onDragChanged: viewModel.isEditMode ? nil : { value in handleListDrag(list.id, value) },
-                            onDragEnded: viewModel.isEditMode ? nil : { handleListDragEnd() },
-                            isEditMode: viewModel.isEditMode,
-                            isSelected: viewModel.selectedListIds.contains(list.id),
-                            onSelectToggle: { viewModel.toggleListSelection(list.id) }
-                        )
-
-                        // Expanded content: items + done section + add row
-                        if !viewModel.isEditMode && viewModel.isExpanded(list.id) {
-                            ListItemsSection(
-                                list: list,
-                                viewModel: viewModel,
-                                draggingItemId: draggingItemId,
-                                dragTranslation: dragTranslation,
-                                dragReorderAdjustment: dragReorderAdjustment,
-                                dragFingerY: dragFingerY,
-                                rowFrames: rowFrames,
-                                onItemDragChanged: { itemId, value in
-                                    handleItemDrag(itemId, listId: list.id, value)
-                                },
-                                onItemDragEnded: { handleItemDragEnd() }
-                            )
-
-                            // Done section within this list
-                            ListDoneSection(listId: list.id, viewModel: viewModel)
-
-                            // Inline add item row
-                            InlineAddItemRow(listId: list.id, viewModel: viewModel)
-                        }
-                    }
-                    .background(
-                        GeometryReader { geo in
-                            Color.clear.preference(
-                                key: RowFramePreference.self,
-                                value: [list.id: geo.frame(in: .named("listsList"))]
-                            )
-                        }
+        List {
+            ForEach(viewModel.flattenedDisplayItems) { item in
+                switch item {
+                case .list(let list):
+                    ListRow(
+                        list: list,
+                        viewModel: viewModel,
+                        isEditMode: viewModel.isEditMode,
+                        isSelected: viewModel.selectedListIds.contains(list.id),
+                        onSelectToggle: { viewModel.toggleListSelection(list.id) }
                     )
-                    .background(Color(.systemBackground))
-                    .offset(y: isDragging ? (dragTranslation + dragReorderAdjustment) : 0)
-                    .scaleEffect(isDragging ? 1.03 : 1.0)
-                    .shadow(color: .black.opacity(isDragging ? 0.15 : 0), radius: 8, y: 2)
-                    .zIndex(isDragging ? 1 : 0)
-                    .transaction { t in
-                        if isDragging { t.animation = nil }
-                    }
+                    .moveDisabled(viewModel.isEditMode)
+                    .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+                    .listRowBackground(Color(.systemBackground))
+
+                case .item(let item, let listId):
+                    ListItemRow(item: item, listId: listId, viewModel: viewModel)
+                        .padding(.leading, 32)
+                        .moveDisabled(item.isCompleted || viewModel.isEditMode)
+                        .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+                        .listRowBackground(Color(.systemBackground))
+
+                case .doneSection(let listId):
+                    ListDoneSection(listId: listId, viewModel: viewModel)
+                        .moveDisabled(true)
+                        .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+                        .listRowSeparator(.hidden)
+                        .listRowBackground(Color(.systemBackground))
+
+                case .addItemRow(let listId):
+                    InlineAddItemRow(listId: listId, viewModel: viewModel)
+                        .moveDisabled(true)
+                        .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+                        .listRowBackground(Color(.systemBackground))
                 }
             }
-            .padding(.horizontal)
-            .padding(.bottom, 100)
-            .onPreferenceChange(RowFramePreference.self) { frames in
-                rowFrames = frames
+            .onMove { from, to in
+                viewModel.handleFlatMove(from: from, to: to)
             }
         }
-        .coordinateSpace(name: "listsList")
+        .listStyle(.plain)
+        .scrollDismissesKeyboard(.interactively)
         .refreshable {
             await withCheckedContinuation { continuation in
                 _Concurrency.Task { @MainActor in
@@ -194,102 +157,6 @@ struct ListsView: View {
             }
         }
     }
-
-    // MARK: - List Drag Handlers
-
-    private func handleListDrag(_ listId: UUID, _ value: DragGesture.Value) {
-        guard draggingItemId == nil else { return }
-
-        if draggingListId == nil {
-            withAnimation(.easeInOut(duration: 0.15)) {
-                draggingListId = listId
-            }
-            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-        }
-        dragTranslation = value.translation.height
-        dragFingerY = value.location.y
-
-        guard Date().timeIntervalSince(lastReorderTime) > 0.25 else { return }
-
-        let filtered = viewModel.filteredLists
-        guard let currentIdx = filtered.firstIndex(where: { $0.id == listId }) else { return }
-
-        for (idx, other) in filtered.enumerated() where other.id != listId {
-            guard let frame = rowFrames[other.id] else { continue }
-            let crossedDown = idx > currentIdx && dragFingerY > frame.midY
-            let crossedUp = idx < currentIdx && dragFingerY < frame.midY
-            if crossedDown || crossedUp {
-                let passedHeight = frame.height
-                dragReorderAdjustment += crossedDown ? -passedHeight : passedHeight
-
-                withAnimation(.easeInOut(duration: 0.2)) {
-                    viewModel.reorderList(droppedId: listId, targetId: other.id)
-                }
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                lastReorderTime = Date()
-                break
-            }
-        }
-    }
-
-    private func handleListDragEnd() {
-        withAnimation(.easeInOut(duration: 0.2)) {
-            draggingListId = nil
-            dragTranslation = 0
-            dragReorderAdjustment = 0
-            dragFingerY = 0
-        }
-        lastReorderTime = .distantPast
-    }
-
-    // MARK: - Item Drag Handlers
-
-    private func handleItemDrag(_ itemId: UUID, listId: UUID, _ value: DragGesture.Value) {
-        guard draggingListId == nil else { return }
-
-        if draggingItemId == nil {
-            withAnimation(.easeInOut(duration: 0.15)) {
-                draggingItemId = itemId
-                draggingItemListId = listId
-            }
-            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-        }
-        dragTranslation = value.translation.height
-        dragFingerY = value.location.y
-
-        guard Date().timeIntervalSince(lastReorderTime) > 0.25 else { return }
-
-        let uncompleted = viewModel.getUncompletedItems(for: listId)
-        guard let currentIdx = uncompleted.firstIndex(where: { $0.id == itemId }) else { return }
-
-        for (idx, other) in uncompleted.enumerated() where other.id != itemId {
-            guard let frame = rowFrames[other.id] else { continue }
-            let crossedDown = idx > currentIdx && dragFingerY > frame.midY
-            let crossedUp = idx < currentIdx && dragFingerY < frame.midY
-            if crossedDown || crossedUp {
-                let passedHeight = frame.height
-                dragReorderAdjustment += crossedDown ? -passedHeight : passedHeight
-
-                withAnimation(.easeInOut(duration: 0.2)) {
-                    viewModel.reorderItem(droppedId: itemId, targetId: other.id, listId: listId)
-                }
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                lastReorderTime = Date()
-                break
-            }
-        }
-    }
-
-    private func handleItemDragEnd() {
-        withAnimation(.easeInOut(duration: 0.2)) {
-            draggingItemId = nil
-            draggingItemListId = nil
-            dragTranslation = 0
-            dragReorderAdjustment = 0
-            dragFingerY = 0
-        }
-        lastReorderTime = .distantPast
-    }
 }
 
 // MARK: - List Row (NO checkbox — lists are not checkable)
@@ -297,8 +164,6 @@ struct ListsView: View {
 struct ListRow: View {
     let list: FocusTask
     @ObservedObject var viewModel: ListsViewModel
-    var onDragChanged: ((DragGesture.Value) -> Void)? = nil
-    var onDragEnded: (() -> Void)? = nil
     var isEditMode: Bool = false
     var isSelected: Bool = false
     var onSelectToggle: (() -> Void)? = nil
@@ -316,15 +181,6 @@ struct ListRow: View {
                 Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
                     .font(.title3)
                     .foregroundColor(isSelected ? .blue : .gray)
-            } else if onDragChanged != nil {
-                // Drag handle
-                DragHandleView()
-                    .contentShape(Rectangle())
-                    .highPriorityGesture(
-                        DragGesture(minimumDistance: 5, coordinateSpace: .named("listsList"))
-                            .onChanged { value in onDragChanged?(value) }
-                            .onEnded { _ in onDragEnded?() }
-                    )
             }
 
             // Title + item count
@@ -340,7 +196,6 @@ struct ListRow: View {
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-
         }
         .frame(minHeight: 70)
         .contentShape(Rectangle())
@@ -353,60 +208,49 @@ struct ListRow: View {
                 }
             }
         }
-        .onLongPressGesture {
+        .contextMenu {
             if !isEditMode {
-                viewModel.selectedListForDetails = list
-            }
-        }
-    }
-}
+                Button {
+                    viewModel.selectedListForDetails = list
+                } label: {
+                    Label("Edit Details", systemImage: "pencil")
+                }
 
-// MARK: - List Items Section (uncompleted items with drag-to-reorder)
-
-struct ListItemsSection: View {
-    let list: FocusTask
-    @ObservedObject var viewModel: ListsViewModel
-    var draggingItemId: UUID? = nil
-    var dragTranslation: CGFloat = 0
-    var dragReorderAdjustment: CGFloat = 0
-    var dragFingerY: CGFloat = 0
-    var rowFrames: [UUID: CGRect] = [:]
-    var onItemDragChanged: ((UUID, DragGesture.Value) -> Void)? = nil
-    var onItemDragEnded: (() -> Void)? = nil
-
-    var body: some View {
-        VStack(spacing: 0) {
-            ForEach(viewModel.getUncompletedItems(for: list.id)) { item in
-                let isDragging = draggingItemId == item.id
-
-                ListItemRow(
-                    item: item,
-                    listId: list.id,
-                    viewModel: viewModel,
-                    onDragChanged: onItemDragChanged != nil
-                        ? { value in onItemDragChanged?(item.id, value) }
-                        : nil,
-                    onDragEnded: onItemDragEnded
-                )
-                .background(
-                    GeometryReader { geo in
-                        Color.clear.preference(
-                            key: RowFramePreference.self,
-                            value: [item.id: geo.frame(in: .named("listsList"))]
-                        )
+                // Move to category
+                Menu {
+                    Button {
+                        _Concurrency.Task { await viewModel.moveTaskToCategory(list, categoryId: nil) }
+                    } label: {
+                        if list.categoryId == nil {
+                            Label("None", systemImage: "checkmark")
+                        } else {
+                            Text("None")
+                        }
                     }
-                )
-                .background(Color(.systemBackground))
-                .offset(y: isDragging ? (dragTranslation + dragReorderAdjustment) : 0)
-                .scaleEffect(isDragging ? 1.03 : 1.0)
-                .shadow(color: .black.opacity(isDragging ? 0.15 : 0), radius: 8, y: 2)
-                .zIndex(isDragging ? 1 : 0)
-                .transaction { t in
-                    if isDragging { t.animation = nil }
+                    ForEach(viewModel.categories) { category in
+                        Button {
+                            _Concurrency.Task { await viewModel.moveTaskToCategory(list, categoryId: category.id) }
+                        } label: {
+                            if list.categoryId == category.id {
+                                Label(category.name, systemImage: "checkmark")
+                            } else {
+                                Text(category.name)
+                            }
+                        }
+                    }
+                } label: {
+                    Label("Move to Category", systemImage: "folder")
+                }
+
+                Divider()
+
+                Button(role: .destructive) {
+                    _Concurrency.Task { await viewModel.deleteList(list) }
+                } label: {
+                    Label("Delete", systemImage: "trash")
                 }
             }
         }
-        .padding(.leading, 32)
     }
 }
 
@@ -416,8 +260,6 @@ struct ListItemRow: View {
     let item: FocusTask
     let listId: UUID
     @ObservedObject var viewModel: ListsViewModel
-    var onDragChanged: ((DragGesture.Value) -> Void)? = nil
-    var onDragEnded: (() -> Void)? = nil
 
     var body: some View {
         HStack(spacing: 12) {
@@ -445,24 +287,6 @@ struct ListItemRow: View {
         .onTapGesture {
             viewModel.selectedItemForDetails = item
         }
-        .gesture(
-            LongPressGesture(minimumDuration: 0.3)
-                .sequenced(before: DragGesture(minimumDistance: 0, coordinateSpace: .named("listsList")))
-                .onChanged { value in
-                    switch value {
-                    case .second(true, let drag):
-                        if let drag = drag {
-                            onDragChanged?(drag)
-                        }
-                    default:
-                        break
-                    }
-                }
-                .onEnded { _ in
-                    onDragEnded?()
-                },
-            isEnabled: !item.isCompleted && onDragChanged != nil
-        )
     }
 }
 

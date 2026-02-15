@@ -13,6 +13,7 @@ struct ProjectCard: View {
     @ObservedObject var viewModel: ProjectsViewModel
     var onDragChanged: ((DragGesture.Value) -> Void)? = nil
     var onDragEnded: (() -> Void)? = nil
+    @State private var isInlineAddFocused = false
 
     private var taskProgress: (completed: Int, total: Int) {
         viewModel.taskProgress(for: project.id)
@@ -153,7 +154,8 @@ struct ProjectCard: View {
 
                     InlineAddProjectTaskRow(
                         projectId: project.id,
-                        viewModel: viewModel
+                        viewModel: viewModel,
+                        isAnyAddFieldActive: $isInlineAddFocused
                     )
                 } else {
                     List {
@@ -183,7 +185,8 @@ struct ProjectCard: View {
                             case .addSubtaskRow(let parentId):
                                 InlineAddSubtaskForProjectRow(
                                     parentId: parentId,
-                                    viewModel: viewModel
+                                    viewModel: viewModel,
+                                    isAnyAddFieldActive: $isInlineAddFocused
                                 )
                                 .padding(.leading, 32)
                                 .moveDisabled(true)
@@ -194,7 +197,8 @@ struct ProjectCard: View {
                             case .addTaskRow:
                                 InlineAddProjectTaskRow(
                                     projectId: project.id,
-                                    viewModel: viewModel
+                                    viewModel: viewModel,
+                                    isAnyAddFieldActive: $isInlineAddFocused
                                 )
                                 .moveDisabled(true)
                                 .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
@@ -209,6 +213,7 @@ struct ProjectCard: View {
                     .listStyle(.plain)
                     .scrollDisabled(true)
                     .scrollContentBackground(.hidden)
+                    .keyboardDismissOverlay(isActive: $isInlineAddFocused)
                     .frame(minHeight: items.reduce(CGFloat(0)) { sum, item in
                         if case .task(let t) = item, t.parentTaskId == nil { return sum + 70 }
                         return sum + 44
@@ -350,8 +355,10 @@ struct ProjectSubtaskRow: View {
 struct InlineAddProjectTaskRow: View {
     let projectId: UUID
     @ObservedObject var viewModel: ProjectsViewModel
+    @Binding var isAnyAddFieldActive: Bool
     @State private var newTaskTitle = ""
     @State private var isEditing = false
+    @State private var isSubmitting = false
     @FocusState private var isFocused: Bool
 
     var body: some View {
@@ -388,6 +395,15 @@ struct InlineAddProjectTaskRow: View {
             }
         }
         .padding(.vertical, 8)
+        .onChange(of: isFocused) { _, focused in
+            if focused {
+                isAnyAddFieldActive = true
+            } else if !isSubmitting {
+                isAnyAddFieldActive = false
+                isEditing = false
+                newTaskTitle = ""
+            }
+        }
     }
 
     private func submitTask() {
@@ -397,9 +413,12 @@ struct InlineAddProjectTaskRow: View {
             return
         }
 
+        isSubmitting = true
         _Concurrency.Task {
             await viewModel.createProjectTask(title: title, projectId: projectId)
             newTaskTitle = ""
+            isFocused = true
+            isSubmitting = false
         }
     }
 }
@@ -409,8 +428,10 @@ struct InlineAddProjectTaskRow: View {
 struct InlineAddSubtaskForProjectRow: View {
     let parentId: UUID
     @ObservedObject var viewModel: ProjectsViewModel
+    @Binding var isAnyAddFieldActive: Bool
     @State private var newTitle = ""
     @State private var isEditing = false
+    @State private var isSubmitting = false
     @FocusState private var isFocused: Bool
 
     var body: some View {
@@ -447,6 +468,15 @@ struct InlineAddSubtaskForProjectRow: View {
             }
         }
         .padding(.vertical, 6)
+        .onChange(of: isFocused) { _, focused in
+            if focused {
+                isAnyAddFieldActive = true
+            } else if !isSubmitting {
+                isAnyAddFieldActive = false
+                isEditing = false
+                newTitle = ""
+            }
+        }
     }
 
     private func submitSubtask() {
@@ -456,9 +486,12 @@ struct InlineAddSubtaskForProjectRow: View {
             return
         }
 
+        isSubmitting = true
         _Concurrency.Task {
             await viewModel.createSubtask(title: title, parentId: parentId)
             newTitle = ""
+            isFocused = true
+            isSubmitting = false
         }
     }
 }

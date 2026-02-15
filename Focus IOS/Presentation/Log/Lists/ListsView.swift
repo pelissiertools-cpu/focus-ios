@@ -10,6 +10,7 @@ import SwiftUI
 struct ListsView: View {
     @ObservedObject var viewModel: ListsViewModel
     let searchText: String
+    @State private var isInlineAddFocused = false
 
     init(viewModel: ListsViewModel, searchText: String = "") {
         self.viewModel = viewModel
@@ -133,7 +134,7 @@ struct ListsView: View {
                         .listRowBackground(Color(.systemBackground))
 
                 case .addItemRow(let listId):
-                    InlineAddItemRow(listId: listId, viewModel: viewModel)
+                    InlineAddItemRow(listId: listId, viewModel: viewModel, isAnyAddFieldActive: $isInlineAddFocused)
                         .moveDisabled(true)
                         .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
                         .listRowBackground(Color(.systemBackground))
@@ -145,6 +146,7 @@ struct ListsView: View {
         }
         .listStyle(.plain)
         .scrollDismissesKeyboard(.interactively)
+        .keyboardDismissOverlay(isActive: $isInlineAddFocused)
         .refreshable {
             await withCheckedContinuation { continuation in
                 _Concurrency.Task { @MainActor in
@@ -379,8 +381,10 @@ struct ListDoneSection: View {
 struct InlineAddItemRow: View {
     let listId: UUID
     @ObservedObject var viewModel: ListsViewModel
+    @Binding var isAnyAddFieldActive: Bool
     @State private var newItemTitle = ""
     @State private var isEditing = false
+    @State private var isSubmitting = false
     @FocusState private var isFocused: Bool
 
     var body: some View {
@@ -419,7 +423,10 @@ struct InlineAddItemRow: View {
         .padding(.vertical, 12)
         .padding(.leading, 32)
         .onChange(of: isFocused) { _, focused in
-            if !focused {
+            if focused {
+                isAnyAddFieldActive = true
+            } else if !isSubmitting {
+                isAnyAddFieldActive = false
                 isEditing = false
                 newItemTitle = ""
             }
@@ -433,10 +440,12 @@ struct InlineAddItemRow: View {
             return
         }
 
+        isSubmitting = true
         _Concurrency.Task {
             await viewModel.createItem(title: title, listId: listId)
             newItemTitle = ""
             isFocused = true
+            isSubmitting = false
         }
     }
 }

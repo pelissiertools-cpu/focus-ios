@@ -24,6 +24,7 @@ struct TasksListView: View {
 
     let searchText: String
     @Binding var isSearchFocused: Bool
+    @State private var isInlineAddFocused = false
 
     init(viewModel: TaskListViewModel, searchText: String = "", isSearchFocused: Binding<Bool> = .constant(false)) {
         self.viewModel = viewModel
@@ -141,7 +142,7 @@ struct TasksListView: View {
                     .listRowBackground(Color(.systemBackground))
 
                 case .addSubtaskRow(let parentId):
-                    InlineAddSubtaskRow(parentId: parentId, viewModel: viewModel)
+                    InlineAddSubtaskRow(parentId: parentId, viewModel: viewModel, isAnyAddFieldActive: $isInlineAddFocused)
                         .moveDisabled(true)
                         .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
                         .listRowBackground(Color(.systemBackground))
@@ -153,7 +154,7 @@ struct TasksListView: View {
 
             // Done pill (when there are completed tasks, hidden in edit mode)
             if !viewModel.isEditMode && !viewModel.completedTasks.isEmpty {
-                LogDonePillView(completedTasks: viewModel.completedTasks, viewModel: viewModel)
+                LogDonePillView(completedTasks: viewModel.completedTasks, viewModel: viewModel, isInlineAddFocused: $isInlineAddFocused)
                     .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
                     .listRowSeparator(.hidden)
                     .listRowBackground(Color(.systemBackground))
@@ -161,6 +162,7 @@ struct TasksListView: View {
         }
         .listStyle(.plain)
         .scrollDismissesKeyboard(.interactively)
+        .keyboardDismissOverlay(isActive: $isInlineAddFocused)
         .refreshable {
             await withCheckedContinuation { continuation in
                 _Concurrency.Task { @MainActor in
@@ -180,6 +182,7 @@ struct TasksListView: View {
 struct LogDonePillView: View {
     let completedTasks: [FocusTask]
     @ObservedObject var viewModel: TaskListViewModel
+    @Binding var isInlineAddFocused: Bool
     @State private var showClearConfirmation = false
 
     private var isExpanded: Bool {
@@ -241,7 +244,7 @@ struct LogDonePillView: View {
 
                         if viewModel.isExpanded(task.id) {
                             SubtasksList(parentTask: task, viewModel: viewModel)
-                            InlineAddSubtaskRow(parentId: task.id, viewModel: viewModel)
+                            InlineAddSubtaskRow(parentId: task.id, viewModel: viewModel, isAnyAddFieldActive: $isInlineAddFocused)
                         }
                     }
                 }
@@ -556,8 +559,10 @@ struct SubtaskRow: View {
 struct InlineAddSubtaskRow: View {
     let parentId: UUID
     @ObservedObject var viewModel: TaskListViewModel
+    @Binding var isAnyAddFieldActive: Bool
     @State private var newSubtaskTitle = ""
     @State private var isEditing = false
+    @State private var isSubmitting = false
     @FocusState private var isFocused: Bool
 
     var body: some View {
@@ -596,7 +601,10 @@ struct InlineAddSubtaskRow: View {
         .padding(.vertical, 12)
         .padding(.leading, 32)
         .onChange(of: isFocused) { _, focused in
-            if !focused {
+            if focused {
+                isAnyAddFieldActive = true
+            } else if !isSubmitting {
+                isAnyAddFieldActive = false
                 isEditing = false
                 newSubtaskTitle = ""
             }
@@ -610,10 +618,12 @@ struct InlineAddSubtaskRow: View {
             return
         }
 
-        Task {
+        isSubmitting = true
+        _Concurrency.Task {
             await viewModel.createSubtask(title: title, parentId: parentId)
             newSubtaskTitle = ""
-            // Keep editing mode open for adding more subtasks
+            isFocused = true
+            isSubmitting = false
         }
     }
 }

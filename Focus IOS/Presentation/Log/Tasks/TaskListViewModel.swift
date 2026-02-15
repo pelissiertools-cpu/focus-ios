@@ -571,39 +571,6 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
 
     // MARK: - Reordering
 
-    /// Reorder a task by placing the dragged task at the target task's position
-    func reorderTask(droppedId: UUID, targetId: UUID) {
-        guard let updates = ReorderUtility.reorderItems(
-            &tasks, droppedId: droppedId, targetId: targetId
-        ) else { return }
-        Task { await persistSortOrders(updates) }
-    }
-
-    /// Move task using IndexSet/Int from List .onMove (operates on the filtered uncompletedTasks view)
-    func moveTask(from source: IndexSet, to destination: Int) {
-        var uncompleted = uncompletedTasks
-        uncompleted.move(fromOffsets: source, toOffset: destination)
-
-        // Write new sort orders back into the master tasks array
-        var updates: [(id: UUID, sortOrder: Int)] = []
-        for (index, task) in uncompleted.enumerated() {
-            if let taskIndex = tasks.firstIndex(where: { $0.id == task.id }) {
-                tasks[taskIndex].sortOrder = index
-            }
-            updates.append((id: task.id, sortOrder: index))
-        }
-
-        Task { await persistSortOrders(updates) }
-    }
-
-    /// Reorder a subtask by placing the dragged subtask at the target subtask's position
-    func reorderSubtask(droppedId: UUID, targetId: UUID, parentId: UUID) {
-        guard let updates = ReorderUtility.reorderChildItems(
-            in: &subtasksMap, parentId: parentId, droppedId: droppedId, targetId: targetId
-        ) else { return }
-        Task { await persistSortOrders(updates) }
-    }
-
     /// Persist sort order changes to Supabase
     private func persistSortOrders(_ updates: [(id: UUID, sortOrder: Int)]) async {
         do {

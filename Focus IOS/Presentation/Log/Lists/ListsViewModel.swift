@@ -450,21 +450,6 @@ class ListsViewModel: ObservableObject, LogFilterable, TaskEditingViewModel {
 
     // MARK: - Reordering
 
-    func reorderList(droppedId: UUID, targetId: UUID) {
-        guard let updates = ReorderUtility.reorderItems(
-            &lists, droppedId: droppedId, targetId: targetId,
-            filterCompleted: false
-        ) else { return }
-        _Concurrency.Task { await persistSortOrders(updates) }
-    }
-
-    func reorderItem(droppedId: UUID, targetId: UUID, listId: UUID) {
-        guard let updates = ReorderUtility.reorderChildItems(
-            in: &itemsMap, parentId: listId, droppedId: droppedId, targetId: targetId
-        ) else { return }
-        _Concurrency.Task { await persistSortOrders(updates) }
-    }
-
     private func persistSortOrders(_ updates: [(id: UUID, sortOrder: Int)]) async {
         do {
             try await repository.updateSortOrders(updates)

@@ -8,7 +8,7 @@
 import SwiftUI
 import Auth
 
-// MARK: - Row Frame Preference Key (used by FocusTabView, ListsView, ProjectsListView)
+// MARK: - Row Frame Preference Key (used by FocusTabView, ProjectsListView)
 
 struct RowFramePreference: PreferenceKey {
     static let defaultValue: [UUID: CGRect] = [:]

@@ -70,7 +70,7 @@ struct ProjectCard: View {
             // Title and progress
             VStack(alignment: .leading, spacing: 6) {
                 Text(project.title)
-                    .font(.headline)
+                    .font(.title3)
                     .lineLimit(1)
                     .strikethrough(project.isCompleted)
                     .foregroundColor(project.isCompleted ? .secondary : .primary)
@@ -142,42 +142,78 @@ struct ProjectCard: View {
                 }
                 .padding()
             } else {
-                let tasks = viewModel.projectTasksMap[project.id] ?? []
+                let items = viewModel.flattenedProjectItems(for: project.id)
 
-                if tasks.isEmpty {
+                if items.count <= 1 {
+                    // Only the addTaskRow — no tasks yet
                     Text("No tasks yet")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                         .padding()
-                } else {
-                    ForEach(tasks) { task in
-                        VStack(spacing: 0) {
-                            ProjectTaskRow(
-                                task: task,
-                                projectId: project.id,
-                                viewModel: viewModel
-                            )
 
-                            // Subtasks (nested directly under parent)
-                            if viewModel.isTaskExpanded(task.id) {
-                                ProjectSubtasksList(
-                                    parentTask: task,
-                                    viewModel: viewModel
-                                )
+                    InlineAddProjectTaskRow(
+                        projectId: project.id,
+                        viewModel: viewModel
+                    )
+                } else {
+                    List {
+                        ForEach(items) { item in
+                            switch item {
+                            case .task(let task):
+                                Group {
+                                    if task.parentTaskId != nil {
+                                        ProjectSubtaskRow(
+                                            subtask: task,
+                                            parentId: task.parentTaskId!,
+                                            viewModel: viewModel
+                                        )
+                                        .padding(.leading, 32)
+                                    } else {
+                                        ProjectTaskRow(
+                                            task: task,
+                                            projectId: project.id,
+                                            viewModel: viewModel
+                                        )
+                                    }
+                                }
+                                .moveDisabled(task.isCompleted || viewModel.isEditMode)
+                                .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+                                .listRowBackground(Color.clear)
+
+                            case .addSubtaskRow(let parentId):
                                 InlineAddSubtaskForProjectRow(
-                                    parentId: task.id,
+                                    parentId: parentId,
                                     viewModel: viewModel
                                 )
+                                .padding(.leading, 32)
+                                .moveDisabled(true)
+                                .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+                                .listRowBackground(Color.clear)
+                                .listRowSeparator(.hidden)
+
+                            case .addTaskRow:
+                                InlineAddProjectTaskRow(
+                                    projectId: project.id,
+                                    viewModel: viewModel
+                                )
+                                .moveDisabled(true)
+                                .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+                                .listRowBackground(Color.clear)
+                                .listRowSeparator(.hidden)
                             }
                         }
+                        .onMove { from, to in
+                            viewModel.handleProjectContentFlatMove(from: from, to: to, projectId: project.id)
+                        }
                     }
+                    .listStyle(.plain)
+                    .scrollDisabled(true)
+                    .scrollContentBackground(.hidden)
+                    .frame(minHeight: items.reduce(CGFloat(0)) { sum, item in
+                        if case .task(let t) = item, t.parentTaskId == nil { return sum + 70 }
+                        return sum + 44
+                    })
                 }
-
-                // Add task row
-                InlineAddProjectTaskRow(
-                    projectId: project.id,
-                    viewModel: viewModel
-                )
             }
         }
         .padding(.bottom, 12)
@@ -199,31 +235,20 @@ struct ProjectTaskRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            // Expand indicator
-            Image(systemName: "line.3.horizontal")
-                .font(.caption)
-                .foregroundColor(.secondary)
-
             // Task title + subtask count
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 4) {
                 Text(task.title)
-                    .font(.subheadline)
+                    .font(.body)
                     .strikethrough(task.isCompleted)
                     .foregroundColor(task.isCompleted ? .secondary : .primary)
-            }
 
-            Spacer()
-
-            // Subtask count badge
-            if subtaskCount.total > 0 {
-                Text("\(subtaskCount.completed)/\(subtaskCount.total)")
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(Color(.systemGray5))
-                    .cornerRadius(8)
+                if subtaskCount.total > 0 {
+                    Text("\(subtaskCount.completed)/\(subtaskCount.total) subtasks")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
 
             // Completion button
             Button {
@@ -237,57 +262,32 @@ struct ProjectTaskRow: View {
             }
             .buttonStyle(.plain)
         }
-        .padding(.horizontal)
-        .padding(.vertical, 10)
+        .frame(minHeight: 70)
         .contentShape(Rectangle())
         .onTapGesture {
             _Concurrency.Task {
                 await viewModel.toggleTaskExpanded(task.id)
             }
         }
-        .onLongPressGesture {
-            viewModel.selectedTaskForDetails = task
-        }
-    }
-}
-
-// MARK: - Project Subtasks List
-
-struct ProjectSubtasksList: View {
-    let parentTask: FocusTask
-    @ObservedObject var viewModel: ProjectsViewModel
-
-    var body: some View {
-        VStack(spacing: 0) {
-            if viewModel.isLoadingSubtasks.contains(parentTask.id) {
-                HStack {
-                    Spacer()
-                    ProgressView()
-                        .scaleEffect(0.7)
-                    Spacer()
-                }
-                .padding(.vertical, 4)
-            } else {
-                // Uncompleted subtasks
-                ForEach(viewModel.getUncompletedSubtasks(for: parentTask.id)) { subtask in
-                    ProjectSubtaskRow(
-                        subtask: subtask,
-                        parentId: parentTask.id,
-                        viewModel: viewModel
-                    )
+        .contextMenu {
+            if !task.isCompleted {
+                Button {
+                    viewModel.selectedTaskForDetails = task
+                } label: {
+                    Label("Edit Details", systemImage: "pencil")
                 }
 
-                // Completed subtasks
-                ForEach(viewModel.getCompletedSubtasks(for: parentTask.id)) { subtask in
-                    ProjectSubtaskRow(
-                        subtask: subtask,
-                        parentId: parentTask.id,
-                        viewModel: viewModel
-                    )
+                Divider()
+
+                Button(role: .destructive) {
+                    _Concurrency.Task {
+                        await viewModel.deleteProjectTask(task, projectId: projectId)
+                    }
+                } label: {
+                    Label("Delete", systemImage: "trash")
                 }
             }
         }
-        .padding(.leading, 32)
     }
 }
 
@@ -318,11 +318,29 @@ struct ProjectSubtaskRow: View {
             }
             .buttonStyle(.plain)
         }
-        .padding(.vertical, 6)
-        .padding(.horizontal)
+        .frame(minHeight: 44)
         .contentShape(Rectangle())
-        .onLongPressGesture {
+        .onTapGesture {
             viewModel.selectedTaskForDetails = subtask
+        }
+        .contextMenu {
+            if !subtask.isCompleted {
+                Button {
+                    viewModel.selectedTaskForDetails = subtask
+                } label: {
+                    Label("Edit Details", systemImage: "pencil")
+                }
+
+                Divider()
+
+                Button(role: .destructive) {
+                    _Concurrency.Task {
+                        await viewModel.deleteSubtask(subtask, parentId: parentId)
+                    }
+                } label: {
+                    Label("Delete", systemImage: "trash")
+                }
+            }
         }
     }
 }
@@ -369,7 +387,6 @@ struct InlineAddProjectTaskRow: View {
                 Spacer()
             }
         }
-        .padding(.horizontal)
         .padding(.vertical, 8)
     }
 
@@ -430,8 +447,6 @@ struct InlineAddSubtaskForProjectRow: View {
             }
         }
         .padding(.vertical, 6)
-        .padding(.horizontal)
-        .padding(.leading, 32)
     }
 
     private func submitSubtask() {

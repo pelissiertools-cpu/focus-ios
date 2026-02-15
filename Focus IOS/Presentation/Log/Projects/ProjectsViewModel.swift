@@ -8,6 +8,22 @@ import Combine
 import SwiftUI
 import Auth
 
+// MARK: - Project Card Display Item
+
+enum ProjectCardDisplayItem: Identifiable {
+    case task(FocusTask)
+    case addSubtaskRow(parentId: UUID)
+    case addTaskRow
+
+    var id: String {
+        switch self {
+        case .task(let task): return task.id.uuidString
+        case .addSubtaskRow(let parentId): return "add-subtask-\(parentId.uuidString)"
+        case .addTaskRow: return "add-task"
+        }
+    }
+}
+
 @MainActor
 class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
     // MARK: - Published Properties
@@ -175,6 +191,32 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
 
     func toggleDoneCollapsed() {
         isDoneCollapsed.toggle()
+    }
+
+    /// Flat display array for a project's expanded content: tasks interleaved with their subtasks and add rows.
+    func flattenedProjectItems(for projectId: UUID) -> [ProjectCardDisplayItem] {
+        let allTasks = projectTasksMap[projectId] ?? []
+        let uncompleted = allTasks.filter { !$0.isCompleted && $0.parentTaskId == nil }.sorted { $0.sortOrder < $1.sortOrder }
+        let completed = allTasks.filter { $0.isCompleted && $0.parentTaskId == nil }.sorted { $0.sortOrder < $1.sortOrder }
+
+        var result: [ProjectCardDisplayItem] = []
+        for task in uncompleted {
+            result.append(.task(task))
+            if expandedTasks.contains(task.id) {
+                for subtask in getUncompletedSubtasks(for: task.id) {
+                    result.append(.task(subtask))
+                }
+                for subtask in getCompletedSubtasks(for: task.id) {
+                    result.append(.task(subtask))
+                }
+                result.append(.addSubtaskRow(parentId: task.id))
+            }
+        }
+        for task in completed {
+            result.append(.task(task))
+        }
+        result.append(.addTaskRow)
+        return result
     }
 
     func clearCompletedProjects() async {
@@ -737,6 +779,104 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
             try await repository.updateSortOrders(updates)
         } catch {
             errorMessage = "Failed to save order: \(error.localizedDescription)"
+        }
+    }
+
+    // MARK: - Project Content Flat Move Handler
+
+    /// Handle .onMove from the flat ForEach inside a project card.
+    /// Same pattern as ListsViewModel.handleFlatMove and TaskListViewModel.handleFlatMove.
+    func handleProjectContentFlatMove(from source: IndexSet, to destination: Int, projectId: UUID) {
+        let flat = flattenedProjectItems(for: projectId)
+        guard let fromIdx = source.first else { return }
+
+        // Only task items can be moved
+        guard case .task(let movedTask) = flat[fromIdx],
+              !movedTask.isCompleted else { return }
+
+        if movedTask.parentTaskId == nil {
+            // --- Parent task moved ---
+            let parentIndices = flat.enumerated().compactMap { (i, item) -> (flatIdx: Int, task: FocusTask)? in
+                if case .task(let t) = item, t.parentTaskId == nil, !t.isCompleted { return (i, t) }
+                return nil
+            }
+
+            guard let parentFrom = parentIndices.firstIndex(where: { $0.task.id == movedTask.id }) else { return }
+
+            var parentTo = parentIndices.count
+            for (pi, entry) in parentIndices.enumerated() {
+                if destination <= entry.flatIdx {
+                    parentTo = pi
+                    break
+                }
+            }
+            if parentTo > parentFrom { parentTo = min(parentTo, parentIndices.count) }
+
+            guard parentFrom != parentTo && parentFrom + 1 != parentTo else { return }
+
+            guard var allTasks = projectTasksMap[projectId] else { return }
+            var uncompleted = allTasks.filter { !$0.isCompleted && $0.parentTaskId == nil }.sorted { $0.sortOrder < $1.sortOrder }
+
+            uncompleted.move(fromOffsets: IndexSet(integer: parentFrom), toOffset: parentTo)
+
+            var updates: [(id: UUID, sortOrder: Int)] = []
+            for (index, task) in uncompleted.enumerated() {
+                if let mapIndex = allTasks.firstIndex(where: { $0.id == task.id }) {
+                    allTasks[mapIndex].sortOrder = index
+                }
+                updates.append((id: task.id, sortOrder: index))
+            }
+            projectTasksMap[projectId] = allTasks
+            _Concurrency.Task { await persistSortOrders(updates) }
+
+        } else {
+            // --- Subtask moved ---
+            let parentId = movedTask.parentTaskId!
+
+            guard let parentFlatIdx = flat.firstIndex(where: {
+                if case .task(let t) = $0 { return t.id == parentId }
+                return false
+            }) else { return }
+
+            let sectionEnd = flat[(parentFlatIdx + 1)...].firstIndex(where: {
+                if case .task(let t) = $0 { return t.parentTaskId == nil }
+                return false
+            }) ?? flat.count
+
+            guard destination > parentFlatIdx && destination <= sectionEnd else { return }
+
+            let siblingIndices = flat.enumerated().compactMap { (i, item) -> (flatIdx: Int, task: FocusTask)? in
+                if case .task(let t) = item, t.parentTaskId == parentId, !t.isCompleted { return (i, t) }
+                return nil
+            }
+
+            guard let siblingFrom = siblingIndices.firstIndex(where: { $0.task.id == movedTask.id }) else { return }
+
+            var siblingTo = siblingIndices.count
+            for (si, entry) in siblingIndices.enumerated() {
+                if destination <= entry.flatIdx {
+                    siblingTo = si
+                    break
+                }
+            }
+            if siblingTo > siblingFrom { siblingTo = min(siblingTo, siblingIndices.count) }
+
+            guard siblingFrom != siblingTo && siblingFrom + 1 != siblingTo else { return }
+
+            guard var allChildren = subtasksMap[parentId] else { return }
+            var uncompleted = allChildren.filter { !$0.isCompleted }.sorted { $0.sortOrder < $1.sortOrder }
+
+            uncompleted.move(fromOffsets: IndexSet(integer: siblingFrom), toOffset: siblingTo)
+
+            var updates: [(id: UUID, sortOrder: Int)] = []
+            for (index, child) in uncompleted.enumerated() {
+                if let mapIndex = allChildren.firstIndex(where: { $0.id == child.id }) {
+                    allChildren[mapIndex].sortOrder = index
+                }
+                updates.append((id: child.id, sortOrder: index))
+            }
+            subtasksMap[parentId] = allChildren
+            _Concurrency.Task { await persistSortOrders(updates) }
         }
     }
 

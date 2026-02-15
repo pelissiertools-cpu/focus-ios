@@ -11,6 +11,7 @@ import Auth
 struct LogTabView: View {
     @State private var selectedTab = 0
     @State private var searchText = ""
+    @Namespace private var segmentedAnimation
     @State private var isSearchActive = false
     @FocusState private var isSearchFieldFocused: Bool
 
@@ -77,6 +78,8 @@ struct LogTabView: View {
         addProjectTitle.trimmingCharacters(in: .whitespaces).isEmpty
     }
 
+    private let tabLabels = ["Tasks", "Lists", "Projects"]
+
     var body: some View {
         NavigationView {
             logContentStack
@@ -113,12 +116,33 @@ struct LogTabView: View {
             VStack(spacing: 0) {
                 // Picker row with search pill
                 HStack(spacing: 12) {
-                    Picker("Log Type", selection: $selectedTab) {
-                        Text("Tasks").tag(0)
-                        Text("Lists").tag(1)
-                        Text("Projects").tag(2)
+                    HStack(spacing: 0) {
+                        ForEach(Array(tabLabels.enumerated()), id: \.offset) { index, label in
+                            Button {
+                                withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                                    selectedTab = index
+                                }
+                            } label: {
+                                Text(label)
+                                    .font(.subheadline.weight(selectedTab == index ? .semibold : .medium))
+                                    .foregroundStyle(selectedTab == index ? .primary : .secondary)
+                                    .padding(.horizontal, 16)
+                                    .padding(.vertical, 8)
+                                    .frame(maxWidth: .infinity)
+                                    .background {
+                                        if selectedTab == index {
+                                            Capsule()
+                                                .fill(Color.white)
+                                                .shadow(color: .black.opacity(0.12), radius: 4, y: 1)
+                                                .matchedGeometryEffect(id: "activeTab", in: segmentedAnimation)
+                                        }
+                                    }
+                            }
+                            .buttonStyle(.plain)
+                        }
                     }
-                    .pickerStyle(.segmented)
+                    .padding(4)
+                    .glassEffect(.regular.interactive(), in: .capsule)
 
                     searchPillButton
                 }
@@ -219,8 +243,7 @@ struct LogTabView: View {
                 .font(.body.weight(.medium))
                 .foregroundColor(.secondary)
                 .frame(width: 36, height: 36)
-                .background(Color(.systemGray5))
-                .clipShape(Circle())
+                .glassEffect(.regular.interactive(), in: .circle)
         }
     }
 

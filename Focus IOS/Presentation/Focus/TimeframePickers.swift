@@ -14,6 +14,7 @@ struct DateNavigator: View {
     @Binding var viewMode: FocusViewMode
     let compact: Bool
     let onCalendarTap: () -> Void
+    @Namespace private var timeframeAnimation
 
     private var calendar: Calendar {
         var cal = Calendar.current
@@ -67,15 +68,34 @@ struct DateNavigator: View {
         } else {
             // Focus mode: full 3-row layout with dividers
             VStack(spacing: 0) {
-                // Row 1: Segmented timeframe picker
-                Picker("Timeframe", selection: $selectedTimeframe) {
-                    Text("Daily").tag(Timeframe.daily)
-                    Text("Weekly").tag(Timeframe.weekly)
-                    Text("Monthly").tag(Timeframe.monthly)
-                    Text("Yearly").tag(Timeframe.yearly)
+                // Row 1: Glass timeframe picker
+                HStack(spacing: 0) {
+                    ForEach(Timeframe.allCases, id: \.self) { timeframe in
+                        Button {
+                            withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                                selectedTimeframe = timeframe
+                            }
+                        } label: {
+                            Text(timeframe.rawValue.capitalized)
+                                .font(.subheadline.weight(selectedTimeframe == timeframe ? .semibold : .medium))
+                                .foregroundStyle(selectedTimeframe == timeframe ? .primary : .secondary)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 8)
+                                .frame(maxWidth: .infinity)
+                                .background {
+                                    if selectedTimeframe == timeframe {
+                                        Capsule()
+                                            .fill(Color.white)
+                                            .shadow(color: .black.opacity(0.12), radius: 4, y: 1)
+                                            .matchedGeometryEffect(id: "activeTimeframe", in: timeframeAnimation)
+                                    }
+                                }
+                        }
+                        .buttonStyle(.plain)
+                    }
                 }
-                .pickerStyle(.segmented)
-                .frame(height: 32)
+                .padding(4)
+                .glassEffect(.regular.interactive(), in: .capsule)
                 .padding(.horizontal)
                 .padding(.top, 40)
                 .padding(.bottom, 14)

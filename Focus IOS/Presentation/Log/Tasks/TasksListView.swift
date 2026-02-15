@@ -8,7 +8,7 @@
 import SwiftUI
 import Auth
 
-// MARK: - Row Frame Preference Key
+// MARK: - Row Frame Preference Key (used by FocusTabView, ListsView, ProjectsListView)
 
 struct RowFramePreference: PreferenceKey {
     static let defaultValue: [UUID: CGRect] = [:]
@@ -124,27 +124,31 @@ struct TasksListView: View {
 
     private var taskList: some View {
         List {
-            // Uncompleted tasks — reorderable via List's native drag
-            ForEach(viewModel.uncompletedTasks) { task in
-                VStack(spacing: 0) {
-                    ExpandableTaskRow(
+            // Flat array: parents + expanded subtasks + add rows — all top-level ForEach citizens
+            ForEach(viewModel.flattenedDisplayItems) { item in
+                switch item {
+                case .task(let task):
+                    FlatTaskRow(
                         task: task,
                         viewModel: viewModel,
                         isEditMode: viewModel.isEditMode,
                         isSelected: viewModel.selectedTaskIds.contains(task.id),
                         onSelectToggle: { viewModel.toggleTaskSelection(task.id) }
                     )
+                    .padding(.leading, task.parentTaskId != nil ? 32 : 0)
+                    .moveDisabled(task.isCompleted || viewModel.isEditMode)
+                    .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+                    .listRowBackground(Color(.systemBackground))
 
-                    if !viewModel.isEditMode && viewModel.isExpanded(task.id) {
-                        SubtasksList(parentTask: task, viewModel: viewModel)
-                        InlineAddSubtaskRow(parentId: task.id, viewModel: viewModel)
-                    }
+                case .addSubtaskRow(let parentId):
+                    InlineAddSubtaskRow(parentId: parentId, viewModel: viewModel)
+                        .moveDisabled(true)
+                        .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+                        .listRowBackground(Color(.systemBackground))
                 }
-                .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
-                .listRowBackground(Color(.systemBackground))
             }
             .onMove { from, to in
-                viewModel.moveTask(from: from, to: to)
+                viewModel.handleFlatMove(from: from, to: to)
             }
 
             // Done pill (when there are completed tasks, hidden in edit mode)
@@ -252,6 +256,133 @@ struct LogDonePillView: View {
             }
         } message: {
             Text("This will permanently delete \(completedTasks.count) completed task\(completedTasks.count == 1 ? "" : "s").")
+        }
+    }
+}
+
+// MARK: - Flat Task Row (Unified for parents and subtasks)
+
+struct FlatTaskRow: View {
+    let task: FocusTask
+    @ObservedObject var viewModel: TaskListViewModel
+    var isEditMode: Bool = false
+    var isSelected: Bool = false
+    var onSelectToggle: (() -> Void)? = nil
+
+    private var isParent: Bool { task.parentTaskId == nil }
+
+    var body: some View {
+        HStack(spacing: 12) {
+            // Edit mode: selection circle (uncompleted parent tasks only)
+            if isEditMode && !task.isCompleted && isParent {
+                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                    .font(.title3)
+                    .foregroundColor(isSelected ? .blue : .gray)
+            }
+
+            // Task content
+            VStack(alignment: .leading, spacing: 4) {
+                Text(task.title)
+                    .font(isParent ? .body : .subheadline)
+                    .strikethrough(task.isCompleted)
+                    .foregroundColor(task.isCompleted ? .secondary : .primary)
+
+                // Parent: subtask count badge
+                if isParent, let subtasks = viewModel.subtasksMap[task.id], !subtasks.isEmpty {
+                    let completedCount = subtasks.filter { $0.isCompleted }.count
+                    Text("\(completedCount)/\(subtasks.count) subtasks")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            // Completion checkbox (hidden in edit mode)
+            if !isEditMode {
+                Button {
+                    _Concurrency.Task {
+                        if isParent {
+                            await viewModel.toggleCompletion(task)
+                        } else {
+                            await viewModel.toggleSubtaskCompletion(task, parentId: task.parentTaskId!)
+                        }
+                    }
+                } label: {
+                    Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
+                        .font(isParent ? .title3 : .subheadline)
+                        .foregroundColor(task.isCompleted ? .green : .gray)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .frame(minHeight: isParent ? 70 : 44)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            if isEditMode && !task.isCompleted && isParent {
+                onSelectToggle?()
+            } else if !isEditMode {
+                if isParent {
+                    // Parent tap: expand/collapse subtasks
+                    _Concurrency.Task {
+                        await viewModel.toggleExpanded(task.id)
+                    }
+                } else {
+                    // Subtask tap: open details drawer
+                    viewModel.selectedTaskForDetails = task
+                }
+            }
+        }
+        // Context menu: long-press shows quick actions (both parents and subtasks)
+        .contextMenu {
+            if !isEditMode && !task.isCompleted {
+                Button {
+                    viewModel.selectedTaskForDetails = task
+                } label: {
+                    Label("Edit Details", systemImage: "pencil")
+                }
+
+                // Move to category (parent tasks only)
+                if isParent {
+                    Menu {
+                        Button {
+                            _Concurrency.Task { await viewModel.moveTaskToCategory(task, categoryId: nil) }
+                        } label: {
+                            if task.categoryId == nil {
+                                Label("None", systemImage: "checkmark")
+                            } else {
+                                Text("None")
+                            }
+                        }
+                        ForEach(viewModel.categories) { category in
+                            Button {
+                                _Concurrency.Task { await viewModel.moveTaskToCategory(task, categoryId: category.id) }
+                            } label: {
+                                if task.categoryId == category.id {
+                                    Label(category.name, systemImage: "checkmark")
+                                } else {
+                                    Text(category.name)
+                                }
+                            }
+                        }
+                    } label: {
+                        Label("Move to Category", systemImage: "folder")
+                    }
+                }
+
+                Divider()
+
+                Button(role: .destructive) {
+                    _Concurrency.Task {
+                        if isParent {
+                            await viewModel.deleteTask(task)
+                        } else {
+                            await viewModel.deleteSubtask(task, parentId: task.parentTaskId!)
+                        }
+                    }
+                } label: {
+                    Label("Delete", systemImage: "trash")
+                }
+            }
         }
     }
 }

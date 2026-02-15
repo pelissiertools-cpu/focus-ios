@@ -39,23 +39,32 @@ struct MainTabView: View {
 }
 
 private struct TabBarSelectedImageSetter: UIViewRepresentable {
-    func makeUIView(context: Context) -> UIView {
-        let view = UIView(frame: .zero)
-        view.isHidden = true
-        return view
+    func makeUIView(context: Context) -> TabBarSetterView {
+        TabBarSetterView()
+    }
+    func updateUIView(_ uiView: TabBarSetterView, context: Context) {}
+}
+
+private class TabBarSetterView: UIView {
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        guard let window = window else { return }
+        configureTabBar(in: window)
     }
 
-    func updateUIView(_ uiView: UIView, context: Context) {
-        DispatchQueue.main.async {
-            guard let window = uiView.window,
-                  let tabBar = window.findSubview(ofType: UITabBar.self),
-                  let items = tabBar.items, items.count >= 2
-            else { return }
-            items[0].selectedImage = UIImage(systemName: "target")?
-                .withTintColor(.systemBlue, renderingMode: .alwaysOriginal)
-            items[1].selectedImage = UIImage(systemName: "tray.full")?
-                .withTintColor(.systemOrange, renderingMode: .alwaysOriginal)
+    private func configureTabBar(in window: UIWindow) {
+        guard let tabBar = window.findSubview(ofType: UITabBar.self),
+              let items = tabBar.items, items.count >= 2 else {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+                guard let window = self?.window else { return }
+                self?.configureTabBar(in: window)
+            }
+            return
         }
+        items[0].selectedImage = UIImage(systemName: "target")?
+            .withTintColor(.systemBlue, renderingMode: .alwaysOriginal)
+        items[1].selectedImage = UIImage(systemName: "tray.full")?
+            .withTintColor(.systemOrange, renderingMode: .alwaysOriginal)
     }
 }
 

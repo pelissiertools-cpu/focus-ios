@@ -779,8 +779,8 @@ struct LogTabView: View {
                     saveLogProject()
                 }
                 .padding(.horizontal, 14)
-                .padding(.top, 20)
-                .padding(.bottom, 10)
+                .padding(.top, 14)
+                .padding(.bottom, 8)
 
             // Tasks + subtasks area (always visible — seeded with one empty task)
             if !addProjectDraftTasks.isEmpty {
@@ -788,15 +788,16 @@ struct LogTabView: View {
                     .padding(.horizontal, 14)
 
                 ScrollView {
-                    VStack(spacing: 4) {
+                    VStack(alignment: .leading, spacing: 4) {
                         ForEach(addProjectDraftTasks) { task in
                             projectTaskDraftRow(task: task)
                         }
                     }
                     .padding(.horizontal, 14)
-                    .padding(.vertical, 10)
+                    .padding(.top, 8)
+                    .padding(.bottom, 6)
                 }
-                .frame(maxHeight: 400)
+                .frame(maxHeight: 200)
             }
 
             // Commit expansion (calendar section)
@@ -820,7 +821,7 @@ struct LogTabView: View {
                     .padding(.horizontal, 14)
                     .padding(.vertical, 10)
                 }
-                .frame(maxHeight: 350)
+                .frame(maxHeight: 200)
             }
 
             // Bottom row: [Task] ... [Category pill] [Commit pill] [Checkmark]
@@ -914,7 +915,7 @@ struct LogTabView: View {
                 .disabled(isAddProjectTitleEmpty)
             }
             .padding(.horizontal, 14)
-            .padding(.bottom, 20)
+            .padding(.bottom, 14)
         }
         .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 20))
         .padding(.horizontal)
@@ -931,7 +932,7 @@ struct LogTabView: View {
                 .foregroundColor(.secondary.opacity(0.5))
 
             TextField("Task", text: projectTaskBinding(for: task.id), axis: .vertical)
-                .font(.subheadline)
+                .font(.title3)
                 .textFieldStyle(.plain)
                 .focused($focusedProjectTaskId, equals: task.id)
                 .lineLimit(1)
@@ -958,11 +959,11 @@ struct LogTabView: View {
         ForEach(task.subtasks) { subtask in
             HStack(spacing: 8) {
                 Image(systemName: "circle")
-                    .font(.system(size: 6))
-                    .foregroundColor(.secondary.opacity(0.4))
+                    .font(.caption2)
+                    .foregroundColor(.secondary.opacity(0.5))
 
                 TextField("Sub-task", text: projectSubtaskBinding(forSubtask: subtask.id, inTask: task.id), axis: .vertical)
-                    .font(.caption)
+                    .font(.body)
                     .textFieldStyle(.plain)
                     .focused($focusedProjectTaskId, equals: subtask.id)
                     .lineLimit(1)
@@ -980,8 +981,8 @@ struct LogTabView: View {
                     removeProjectSubtask(id: subtask.id, fromTask: task.id)
                 } label: {
                     Image(systemName: "xmark.circle.fill")
-                        .font(.system(size: 10))
-                        .foregroundColor(.secondary.opacity(0.6))
+                        .font(.caption)
+                        .foregroundColor(.secondary)
                 }
                 .buttonStyle(.plain)
             }
@@ -994,14 +995,13 @@ struct LogTabView: View {
         } label: {
             HStack(spacing: 4) {
                 Image(systemName: "plus")
-                    .font(.system(size: 9))
+                    .font(.caption)
                 Text("Sub-task")
-                    .font(.caption2)
+                    .font(.caption)
             }
             .foregroundColor(.secondary)
         }
         .buttonStyle(.plain)
-        .padding(.leading, 24)
         .padding(.top, 2)
         .padding(.bottom, 6)
     }

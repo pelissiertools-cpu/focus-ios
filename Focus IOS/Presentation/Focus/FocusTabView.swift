@@ -307,9 +307,9 @@ struct FocusTabView: View {
                 case .sectionHeader(let section):
                     let isExtraHeader = section == .extra && index > 0
                     FocusSectionHeaderRow(section: section, viewModel: viewModel)
-                        .background(.regularMaterial, in: glassShape)
+                        .background(Color(.systemBackground), in: glassShape)
                         .listRowBackground(Color.clear)
-                        .listRowInsets(EdgeInsets(top: isExtraHeader ? 20 : 0, leading: 0, bottom: 0, trailing: 0))
+                        .listRowInsets(EdgeInsets(top: isExtraHeader ? 20 : 8, leading: 0, bottom: 0, trailing: 0))
                         .listRowSeparator(.hidden)
 
                 case .commitment(let commitment):
@@ -324,7 +324,7 @@ struct FocusTabView: View {
                             verticalPaddingOverride: commitment.section == .focus ? config.verticalPadding : nil
                         )
                         .moveDisabled(false)
-                        .background(.regularMaterial, in: glassShape)
+                        .background(Color(.systemBackground), in: glassShape)
                         .listRowBackground(Color.clear)
                         .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
                         .listRowSeparator(.hidden)
@@ -335,7 +335,7 @@ struct FocusTabView: View {
                         .padding(.leading, 32)
                         .padding(.trailing, 12)
                         .moveDisabled(subtask.isCompleted)
-                        .listRowBackground(Rectangle().fill(.regularMaterial))
+                        .listRowBackground(Color(.systemBackground))
                         .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
                         .listRowSeparator(.hidden)
 
@@ -344,7 +344,7 @@ struct FocusTabView: View {
                         .padding(.leading, 32)
                         .padding(.trailing, 12)
                         .moveDisabled(true)
-                        .listRowBackground(Rectangle().fill(.regularMaterial))
+                        .listRowBackground(Color(.systemBackground))
                         .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
                         .listRowSeparator(.hidden)
 
@@ -361,7 +361,7 @@ struct FocusTabView: View {
                         )
                         .moveDisabled(true)
                         .opacity(commitment.section == .focus ? config.completedOpacity : 1.0)
-                        .background(.regularMaterial, in: glassShape)
+                        .background(Color(.systemBackground), in: glassShape)
                         .listRowBackground(Color.clear)
                         .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
                         .listRowSeparator(.hidden)
@@ -372,7 +372,7 @@ struct FocusTabView: View {
                         .foregroundColor(.secondary)
                         .frame(maxWidth: .infinity, minHeight: section == .focus ? 120 : 60)
                         .moveDisabled(true)
-                        .background(.regularMaterial, in: glassShape)
+                        .background(Color(.systemBackground), in: glassShape)
                         .listRowBackground(Color.clear)
                         .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
                         .listRowSeparator(.hidden)
@@ -388,7 +388,7 @@ struct FocusTabView: View {
                     }
                     .frame(maxWidth: .infinity, minHeight: 120)
                     .moveDisabled(true)
-                    .glassEffect(.regular.interactive(), in: glassShape)
+                    .background(Color(.systemBackground), in: glassShape)
                     .listRowBackground(Color.clear)
                     .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
                     .listRowSeparator(.hidden)
@@ -400,7 +400,7 @@ struct FocusTabView: View {
                         viewModel: viewModel
                     )
                     .moveDisabled(true)
-                    .glassEffect(.regular.interactive(), in: glassShape)
+                    .background(Color(.systemBackground), in: glassShape)
                     .listRowBackground(Color.clear)
                     .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
                     .listRowSeparator(.hidden)
@@ -824,6 +824,7 @@ struct SectionView: View {
         .padding(.horizontal, 8)
         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 12))
+        .shadow(color: .black.opacity(0.08), radius: 10, y: 4)
     }
 }
 
@@ -940,7 +941,7 @@ struct FocusSectionHeaderRow: View {
                     .fontWeight(.semibold)
                     .foregroundColor(.blue)
                     .frame(width: 32, height: 32)
-                    .glassEffect(.regular.interactive(), in: .circle)
+                    .background(.white.opacity(0.6), in: .circle)
             }
             .buttonStyle(.plain)
             .popover(isPresented: $showCapacityPopover) {
@@ -1125,8 +1126,7 @@ struct CommitmentRow: View {
                 .buttonStyle(.plain)
             }
             .padding(.vertical, verticalPaddingOverride ?? (section == .focus ? 14 : 8))
-            .padding(.leading, 8)
-            .padding(.trailing, 12)
+            .padding(.horizontal, 16)
 
             // Subtasks are now rendered as flat list items (see focusList)
         }

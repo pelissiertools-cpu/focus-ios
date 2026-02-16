@@ -603,6 +603,7 @@ struct InlineAddSubtaskRow: View {
 struct DraftSubtaskEntry: Identifiable {
     let id = UUID()
     var title: String = ""
+    var isAISuggested: Bool = false
 }
 
 #Preview {

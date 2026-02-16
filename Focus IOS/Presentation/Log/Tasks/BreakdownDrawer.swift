@@ -165,6 +165,7 @@ struct BreakdownDrawer: View {
         }
         .task {
             if viewModel.suggestions.isEmpty && !viewModel.isLoading {
+                await viewModel.loadExistingSubtasks()
                 await viewModel.generateSuggestions()
             }
         }

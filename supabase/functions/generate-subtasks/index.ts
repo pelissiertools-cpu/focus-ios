@@ -23,7 +23,7 @@ serve(async (req) => {
       )
     }
 
-    const { title, description } = await req.json()
+    const { title, description, existingSubtasks } = await req.json()
     if (!title || typeof title !== "string" || title.trim().length === 0) {
       return new Response(
         JSON.stringify({ subtasks: null, error: "Task title is required" }),
@@ -35,6 +35,14 @@ serve(async (req) => {
       ? `Task: "${title}"\nDescription: "${description}"`
       : `Task: "${title}"`
 
+    let userPrompt = `Break down the following task into 4-6 specific, actionable subtasks.\n\n${taskContext}`
+
+    if (Array.isArray(existingSubtasks) && existingSubtasks.length > 0) {
+      userPrompt += `\n\nThe following subtasks already exist for this task. Do NOT repeat or rephrase these. Generate ONLY new, different subtasks that complement the existing ones:\n${existingSubtasks.map((s: string) => `- ${s}`).join("\n")}`
+    }
+
+    userPrompt += `\n\nReturn ONLY a JSON array of strings. Example: ["Research options", "Draft outline", "Write first draft"]`
+
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
@@ -45,14 +53,11 @@ serve(async (req) => {
       body: JSON.stringify({
         model: "claude-sonnet-4-20250514",
         max_tokens: 1024,
+        system: "You are a task planning assistant for a productivity app. Your job is to break tasks into specific, actionable subtasks. Each subtask must start with a verb, be concise (under 60 characters), and be logically ordered. Return ONLY a valid JSON array of strings — no markdown, no explanation.",
         messages: [
           {
             role: "user",
-            content: `Break down the following task into 4-6 specific, actionable subtasks. Return ONLY a JSON array of strings, no other text or markdown. Each subtask should be concise (under 60 characters), start with a verb, and be logically ordered from first to last step.
-
-${taskContext}
-
-Example format: ["Research options", "Draft outline", "Write first draft", "Review and edit", "Submit final version"]`,
+            content: userPrompt,
           },
         ],
       }),

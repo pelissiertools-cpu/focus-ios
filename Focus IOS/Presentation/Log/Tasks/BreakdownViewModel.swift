@@ -24,6 +24,7 @@ class BreakdownViewModel: ObservableObject {
     private let aiService: AIService
     private let taskRepository: TaskRepository
     private let userId: UUID
+    private var existingSubtaskTitles: [String] = []
 
     init(parentTask: FocusTask, userId: UUID) {
         self.parentTask = parentTask
@@ -32,14 +33,26 @@ class BreakdownViewModel: ObservableObject {
         self.taskRepository = TaskRepository()
     }
 
+    func loadExistingSubtasks() async {
+        do {
+            let subtasks = try await taskRepository.fetchSubtasks(parentId: parentTask.id)
+            existingSubtaskTitles = subtasks.map { $0.title }
+        } catch {
+            // Non-fatal — AI just won't know about existing subtasks
+        }
+    }
+
     func generateSuggestions() async {
         isLoading = true
         errorMessage = nil
 
         do {
+            // Combine DB subtasks + current suggestions so AI avoids all of them
+            let allExisting = existingSubtaskTitles + suggestions.map { $0.title }
             let subtaskTitles = try await aiService.generateSubtasks(
                 title: parentTask.title,
-                description: parentTask.description
+                description: parentTask.description,
+                existingSubtasks: allExisting.isEmpty ? nil : allExisting
             )
             suggestions = subtaskTitles.map {
                 SubtaskSuggestion(id: UUID(), title: $0, isAISuggested: true)

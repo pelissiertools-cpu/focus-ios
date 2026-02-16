@@ -667,13 +667,27 @@ struct FocusTabView: View {
     private func generateBreakdown() {
         let title = addTaskTitle.trimmingCharacters(in: .whitespaces)
         guard !title.isEmpty else { return }
+
+        // Capture all existing subtask titles so AI avoids duplicating them
+        let existingTitles = addTaskSubtasks
+            .map { $0.title.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+
         isGeneratingBreakdown = true
         _Concurrency.Task { @MainActor in
             do {
                 let aiService = AIService()
-                let suggestions = try await aiService.generateSubtasks(title: title, description: nil)
+                let suggestions = try await aiService.generateSubtasks(
+                    title: title,
+                    description: nil,
+                    existingSubtasks: existingTitles.isEmpty ? nil : existingTitles
+                )
                 withAnimation(.easeInOut(duration: 0.2)) {
-                    addTaskSubtasks.append(contentsOf: suggestions.map { DraftSubtaskEntry(title: $0) })
+                    // Keep manually-added subtasks, replace AI-generated ones
+                    let manualSubtasks = addTaskSubtasks.filter { !$0.isAISuggested }
+                    addTaskSubtasks = manualSubtasks + suggestions.map {
+                        DraftSubtaskEntry(title: $0, isAISuggested: true)
+                    }
                 }
                 hasGeneratedBreakdown = true
             } catch {

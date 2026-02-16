@@ -15,7 +15,10 @@ struct BatchMoveCategorySheet<VM: LogFilterable>: View {
     @State private var selectedTab = 0
 
     var body: some View {
-        NavigationView {
+        DrawerContainer(
+            title: "Move \(viewModel.selectedCount) Items",
+            leadingButton: .cancel { dismiss() }
+        ) {
             VStack(spacing: 0) {
                 Picker("Move To", selection: $selectedTab) {
                     Text("Tasks").tag(0)
@@ -26,41 +29,34 @@ struct BatchMoveCategorySheet<VM: LogFilterable>: View {
                 .padding()
 
                 List {
-                Button {
-                    _Concurrency.Task {
-                        await viewModel.batchMoveToCategory(nil)
-                        dismiss()
-                    }
-                } label: {
-                    Label("None", systemImage: "xmark.circle")
-                        .foregroundColor(.primary)
-                }
-
-                ForEach(viewModel.categories) { category in
                     Button {
                         _Concurrency.Task {
-                            await viewModel.batchMoveToCategory(category.id)
+                            await viewModel.batchMoveToCategory(nil)
                             dismiss()
                         }
                     } label: {
-                        Text(category.name)
+                        Label("None", systemImage: "xmark.circle")
                             .foregroundColor(.primary)
                     }
-                }
 
-                Button {
-                    showingNewCategoryAlert = true
-                } label: {
-                    Label("New Category", systemImage: "plus")
-                        .foregroundColor(.blue)
-                }
-            }
-            }
-            .navigationTitle("Move \(viewModel.selectedCount) Items")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Cancel") { dismiss() }
+                    ForEach(viewModel.categories) { category in
+                        Button {
+                            _Concurrency.Task {
+                                await viewModel.batchMoveToCategory(category.id)
+                                dismiss()
+                            }
+                        } label: {
+                            Text(category.name)
+                                .foregroundColor(.primary)
+                        }
+                    }
+
+                    Button {
+                        showingNewCategoryAlert = true
+                    } label: {
+                        Label("New Category", systemImage: "plus")
+                            .foregroundColor(.blue)
+                    }
                 }
             }
             .alert("New Category", isPresented: $showingNewCategoryAlert) {

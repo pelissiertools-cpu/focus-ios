@@ -66,7 +66,6 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
     @Published var hasLoadedInitialData = false
     @Published var errorMessage: String?
     @Published var selectedTaskForDetails: FocusTask?
-    @Published var taskForEditing: FocusTask?
 
     // Trickle-down state
     @Published var childCommitmentsMap: [UUID: [Commitment]] = [:]  // parentId -> children

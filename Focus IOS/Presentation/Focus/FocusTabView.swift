@@ -199,13 +199,6 @@ struct FocusTabView: View {
                     .environmentObject(viewModel)
                     .drawerStyle()
             }
-            .sheet(item: $viewModel.taskForEditing) { task in
-                let commitment = viewModel.commitments.first { $0.taskId == task.id }
-                TaskDetailsDrawer(task: task, viewModel: viewModel, commitment: commitment)
-                    .environmentObject(viewModel)
-                    .presentationDetents([.large])
-                    .presentationDragIndicator(.visible)
-            }
             .sheet(isPresented: $viewModel.showCommitSheet) {
                 if let commitment = viewModel.selectedCommitmentForCommit,
                    let task = viewModel.tasksMap[commitment.taskId] {
@@ -1135,7 +1128,7 @@ struct CommitmentRow: View {
                 .contextMenu {
                     Button {
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                            viewModel.taskForEditing = task
+                            viewModel.selectedTaskForDetails = task
                         }
                     } label: {
                         Label("Edit", systemImage: "pencil")
@@ -1269,7 +1262,7 @@ struct FocusSubtaskRow: View {
         .contextMenu {
             Button {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                    viewModel.taskForEditing = subtask
+                    viewModel.selectedTaskForDetails = subtask
                 }
             } label: {
                 Label("Edit", systemImage: "pencil")

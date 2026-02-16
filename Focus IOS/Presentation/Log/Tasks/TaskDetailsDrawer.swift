@@ -23,7 +23,6 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
     @State private var newSubtaskTitle: String = ""
     @State private var showingDeleteConfirmation = false
     @State private var showingBreakdownDrawer = false
-    @FocusState private var isFocused: Bool
     @FocusState private var isNewSubtaskFocused: Bool
     @Environment(\.dismiss) private var dismiss
 
@@ -38,14 +37,6 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
 
     private var subtasks: [FocusTask] {
         viewModel.getSubtasks(for: task.id)
-    }
-
-    private var currentCategoryName: String {
-        if let categoryId = task.categoryId,
-           let category = categories.first(where: { $0.id == categoryId }) {
-            return category.name
-        }
-        return "None"
     }
 
     init(task: FocusTask, viewModel: VM, commitment: Commitment? = nil, categories: [Category] = []) {
@@ -66,31 +57,29 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
     }
 
     var body: some View {
-        NavigationView {
+        DrawerContainer(
+            title: isSubtask ? "Subtask Details" : "Task Details",
+            leadingButton: .done {
+                saveTitle()
+                dismiss()
+            }
+        ) {
             List {
                 // Edit Title Section
-                SwiftUI.Section("Title") {
-                    TextField("Task title", text: $taskTitle)
-                        .focused($isFocused)
-                        .onSubmit {
-                            saveTitle()
-                        }
-                        .onAppear {
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                                isFocused = true
-                            }
-                        }
-                }
+                DrawerTitleSection(
+                    placeholder: "Task title",
+                    title: $taskTitle,
+                    autoFocus: true,
+                    onSubmit: saveTitle
+                )
 
                 // Info Section - shows parent or subtask count
                 if isSubtask {
                     SwiftUI.Section("Parent Task") {
                         if let parent = parentTask {
-                            Label(parent.title, systemImage: "arrow.up.circle")
-                                .foregroundColor(.secondary)
+                            DrawerStatsRow(icon: "arrow.up.circle", text: parent.title)
                         } else {
-                            Label("Subtask", systemImage: "arrow.up.circle")
-                                .foregroundColor(.secondary)
+                            DrawerStatsRow(icon: "arrow.up.circle", text: "Subtask")
                         }
                     }
                 } else {
@@ -99,8 +88,7 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                         // Summary header
                         if !subtasks.isEmpty {
                             let completedCount = subtasks.filter { $0.isCompleted }.count
-                            Label("\(completedCount)/\(subtasks.count) completed", systemImage: "checklist")
-                                .foregroundColor(.secondary)
+                            DrawerStatsRow(icon: "checklist", text: "\(completedCount)/\(subtasks.count) completed")
                         }
 
                         // Editable subtask rows
@@ -130,41 +118,12 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                 SwiftUI.Section {
                     // Move to category (only for parent tasks in Log view)
                     if !isSubtask && commitment == nil {
-                        Menu {
-                            Button {
-                                moveTask(to: nil)
-                            } label: {
-                                if task.categoryId == nil {
-                                    Label("None", systemImage: "checkmark")
-                                } else {
-                                    Text("None")
-                                }
-                            }
-                            ForEach(categories) { category in
-                                Button {
-                                    moveTask(to: category.id)
-                                } label: {
-                                    if task.categoryId == category.id {
-                                        Label(category.name, systemImage: "checkmark")
-                                    } else {
-                                        Text(category.name)
-                                    }
-                                }
-                            }
-                            Divider()
-                            Button {
-                                showingNewCategoryAlert = true
-                            } label: {
-                                Label("New Category", systemImage: "plus")
-                            }
-                        } label: {
-                            HStack {
-                                Label("Move to", systemImage: "folder")
-                                Spacer()
-                                Text(currentCategoryName)
-                                    .foregroundColor(.secondary)
-                            }
-                        }
+                        DrawerCategoryMenu(
+                            currentCategoryId: task.categoryId,
+                            categories: categories,
+                            onSelect: { categoryId in moveTask(to: categoryId) },
+                            onCreateNew: { showingNewCategoryAlert = true }
+                        )
                     }
 
                     // Commit to Focus (only shown when not already committed)
@@ -304,16 +263,6 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                         } label: {
                             Label("Delete Task", systemImage: "trash")
                         }
-                    }
-                }
-            }
-            .navigationTitle(isSubtask ? "Subtask Details" : "Task Details")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Done") {
-                        saveTitle()
-                        dismiss()
                     }
                 }
             }

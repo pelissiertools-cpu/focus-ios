@@ -38,7 +38,14 @@ struct CommitSheet: View {
     }
 
     var body: some View {
-        NavigationView {
+        DrawerContainer(
+            title: "Commit",
+            leadingButton: .cancel { dismiss() },
+            trailingButton: .add(
+                action: { _Concurrency.Task { await addSelectedCommitments() } },
+                disabled: selectedDates.isEmpty || isSaving
+            )
+        ) {
             VStack(spacing: 0) {
                 // Header info
                 VStack(alignment: .leading, spacing: 8) {
@@ -82,24 +89,6 @@ struct CommitSheet: View {
                 .padding(.top, 8)
 
                 Spacer()
-            }
-            .navigationTitle("Commit")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Cancel") {
-                        dismiss()
-                    }
-                }
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Add") {
-                        Task {
-                            await addSelectedCommitments()
-                        }
-                    }
-                    .disabled(selectedDates.isEmpty || isSaving)
-                    .fontWeight(.semibold)
-                }
             }
             .onChange(of: selectedTargetTimeframe) {
                 // Clear selections when timeframe changes
@@ -206,7 +195,14 @@ struct SubtaskCommitSheet: View {
     }
 
     var body: some View {
-        NavigationView {
+        DrawerContainer(
+            title: "Commit Subtask",
+            leadingButton: .cancel { dismiss() },
+            trailingButton: .add(
+                action: { _Concurrency.Task { await addSelectedCommitments() } },
+                disabled: selectedDates.isEmpty || isSaving
+            )
+        ) {
             VStack(spacing: 0) {
                 // Header info
                 VStack(alignment: .leading, spacing: 8) {
@@ -236,24 +232,6 @@ struct SubtaskCommitSheet: View {
                 .padding(.top, 8)
 
                 Spacer()
-            }
-            .navigationTitle("Commit Subtask")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Cancel") {
-                        dismiss()
-                    }
-                }
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Add") {
-                        Task {
-                            await addSelectedCommitments()
-                        }
-                    }
-                    .disabled(selectedDates.isEmpty || isSaving)
-                    .fontWeight(.semibold)
-                }
             }
             .onChange(of: selectedTargetTimeframe) {
                 // Clear selections when timeframe changes

@@ -20,7 +20,14 @@ struct BatchCommitSheet<VM: LogFilterable>: View {
     @State private var errorMessage = ""
 
     var body: some View {
-        NavigationView {
+        DrawerContainer(
+            title: "Commit Items",
+            leadingButton: .cancel { dismiss() },
+            trailingButton: .save(
+                action: { _Concurrency.Task { await saveCommitments() } },
+                disabled: selectedDates.isEmpty || isSaving
+            )
+        ) {
             Form {
                 SwiftUI.Section("Items") {
                     Text("\(viewModel.selectedCount) item\(viewModel.selectedCount == 1 ? "" : "s") selected")
@@ -40,20 +47,6 @@ struct BatchCommitSheet<VM: LogFilterable>: View {
                         selectedDates: $selectedDates,
                         selectedTimeframe: $selectedTimeframe
                     )
-                }
-            }
-            .navigationTitle("Commit Items")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Cancel") { dismiss() }
-                }
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Save") {
-                        _Concurrency.Task { await saveCommitments() }
-                    }
-                    .disabled(selectedDates.isEmpty || isSaving)
-                    .fontWeight(.semibold)
                 }
             }
             .alert("Error", isPresented: $showError) {

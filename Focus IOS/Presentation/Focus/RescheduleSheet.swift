@@ -30,7 +30,14 @@ struct RescheduleSheet: View {
     }
 
     var body: some View {
-        NavigationView {
+        DrawerContainer(
+            title: "Reschedule Task",
+            leadingButton: .cancel { dismiss() },
+            trailingButton: .save(
+                action: { _Concurrency.Task { await save() } },
+                disabled: !hasChanges || isSaving
+            )
+        ) {
             Form {
                 SwiftUI.Section("Current Schedule") {
                     HStack {
@@ -69,24 +76,6 @@ struct RescheduleSheet: View {
                         Label(error, systemImage: "exclamationmark.triangle")
                             .foregroundColor(.red)
                     }
-                }
-            }
-            .navigationTitle("Reschedule Task")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Cancel") {
-                        dismiss()
-                    }
-                }
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Save") {
-                        Task {
-                            await save()
-                        }
-                    }
-                    .disabled(!hasChanges || isSaving)
-                    .fontWeight(.semibold)
                 }
             }
         }

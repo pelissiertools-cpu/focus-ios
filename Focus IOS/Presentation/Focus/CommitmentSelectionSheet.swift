@@ -35,7 +35,14 @@ struct CommitmentSelectionSheet: View {
     }
 
     var body: some View {
-        NavigationView {
+        DrawerContainer(
+            title: task.type == .list ? "Commit List" : "Commit Task",
+            leadingButton: .cancel { dismiss() },
+            trailingButton: .save(
+                action: { _Concurrency.Task { await saveChanges() } },
+                disabled: !hasChanges || isSaving
+            )
+        ) {
             Form {
                 SwiftUI.Section(task.type == .list ? "List" : "Task") {
                     Text(task.title)
@@ -62,24 +69,6 @@ struct CommitmentSelectionSheet: View {
                         selectedDates: $selectedDates,
                         selectedTimeframe: $selectedTimeframe
                     )
-                }
-            }
-            .navigationTitle(task.type == .list ? "Commit List" : "Commit Task")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Cancel") {
-                        dismiss()
-                    }
-                }
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Save") {
-                        Task {
-                            await saveChanges()
-                        }
-                    }
-                    .disabled(!hasChanges || isSaving)
-                    .fontWeight(.semibold)
                 }
             }
             .alert("Error", isPresented: $showError) {

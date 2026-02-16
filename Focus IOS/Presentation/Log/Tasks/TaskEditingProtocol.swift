@@ -32,6 +32,9 @@ protocol TaskEditingViewModel: ObservableObject {
     /// Create a new subtask
     func createSubtask(title: String, parentId: UUID) async
 
+    /// Refresh subtasks for a parent task from the database
+    func refreshSubtasks(for parentId: UUID) async
+
     /// Move a task to a different category
     func moveTaskToCategory(_ task: FocusTask, categoryId: UUID?) async
 
@@ -42,6 +45,7 @@ protocol TaskEditingViewModel: ObservableObject {
 // Default empty implementations for category operations.
 // ViewModels that don't support categories (e.g. FocusTabViewModel) get these for free.
 extension TaskEditingViewModel {
+    func refreshSubtasks(for parentId: UUID) async {}
     func moveTaskToCategory(_ task: FocusTask, categoryId: UUID?) async {}
     func createCategoryAndMove(name: String, task: FocusTask) async {}
 }

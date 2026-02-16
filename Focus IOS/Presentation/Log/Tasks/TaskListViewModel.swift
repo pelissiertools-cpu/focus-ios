@@ -281,6 +281,11 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
         return false
     }
 
+    /// Refresh subtasks for a parent task (protocol conformance)
+    func refreshSubtasks(for parentId: UUID) async {
+        await fetchSubtasks(for: parentId)
+    }
+
     /// Fetch subtasks for a specific parent task
     func fetchSubtasks(for parentId: UUID) async {
         guard !isLoadingSubtasks.contains(parentId) else { return }

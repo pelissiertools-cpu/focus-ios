@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import Auth
 
 struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
     let task: FocusTask
@@ -13,6 +14,7 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
     let categories: [Category]
     @ObservedObject var viewModel: VM
     @EnvironmentObject var focusViewModel: FocusTabViewModel
+    @EnvironmentObject var authService: AuthService
     @State private var taskTitle: String
     @State private var showingCommitmentSheet = false
     @State private var showingRescheduleSheet = false
@@ -20,6 +22,7 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
     @State private var newCategoryName = ""
     @State private var newSubtaskTitle: String = ""
     @State private var showingDeleteConfirmation = false
+    @State private var showingBreakdownDrawer = false
     @FocusState private var isFocused: Bool
     @FocusState private var isNewSubtaskFocused: Bool
     @Environment(\.dismiss) private var dismiss
@@ -263,6 +266,15 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                         }
                     }
 
+                    // AI Breakdown
+                    if !isSubtask && !task.isCompleted {
+                        Button {
+                            showingBreakdownDrawer = true
+                        } label: {
+                            Label("Break Down with AI", systemImage: "sparkles")
+                        }
+                    }
+
                     // Delete
                     if isSubtask {
                         Button(role: .destructive) {
@@ -332,6 +344,17 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                 }
             } message: {
                 Text("This will permanently delete this task and all its commitments.")
+            }
+            .sheet(isPresented: $showingBreakdownDrawer) {
+                if let userId = authService.currentUser?.id {
+                    BreakdownDrawer(parentTask: task, userId: userId) {
+                        _Concurrency.Task { @MainActor in
+                            await viewModel.refreshSubtasks(for: task.id)
+                        }
+                    }
+                    .presentationDetents([.large])
+                    .presentationDragIndicator(.visible)
+                }
             }
         }
     }

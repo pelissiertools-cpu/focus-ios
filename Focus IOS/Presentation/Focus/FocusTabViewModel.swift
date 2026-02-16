@@ -289,6 +289,19 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
         }
     }
 
+    /// Refresh subtasks for a parent task from the database
+    func refreshSubtasks(for parentId: UUID) async {
+        do {
+            let subtasks = try await taskRepository.fetchSubtasks(parentId: parentId)
+            subtasksMap[parentId] = subtasks
+            for subtask in subtasks {
+                tasksMap[subtask.id] = subtask
+            }
+        } catch {
+            // Silently fail — subtasks will refresh on next full load
+        }
+    }
+
     /// Get subtasks for a task (sorted: uncompleted first)
     func getSubtasks(for taskId: UUID) -> [FocusTask] {
         let subtasks = subtasksMap[taskId] ?? []

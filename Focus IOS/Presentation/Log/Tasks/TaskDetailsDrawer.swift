@@ -21,6 +21,7 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
     @State private var showingNewCategoryAlert = false
     @State private var newCategoryName = ""
     @State private var newSubtaskTitle: String = ""
+    @State private var showNewSubtaskField = false
     @State private var showingDeleteConfirmation = false
     @State private var showingBreakdownDrawer = false
     @State private var pendingDeletions: Set<UUID> = []
@@ -228,7 +229,7 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                 }
 
                 // New subtask entry (shown when focused)
-                if isNewSubtaskFocused || !newSubtaskTitle.isEmpty {
+                if showNewSubtaskField || !newSubtaskTitle.isEmpty {
                     HStack(spacing: 8) {
                         Image(systemName: "circle")
                             .font(.caption2)
@@ -238,10 +239,12 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                             .font(.body)
                             .textFieldStyle(.plain)
                             .focused($isNewSubtaskFocused)
+                            .onAppear { isNewSubtaskFocused = true }
                             .onSubmit { addSubtask() }
 
                         Button {
                             newSubtaskTitle = ""
+                            showNewSubtaskField = false
                             isNewSubtaskFocused = false
                         } label: {
                             Image(systemName: "xmark.circle.fill")
@@ -256,6 +259,10 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                 if !task.isCompleted {
                     HStack {
                         Button {
+                            if !newSubtaskTitle.trimmingCharacters(in: .whitespaces).isEmpty {
+                                addSubtask()
+                            }
+                            showNewSubtaskField = true
                             isNewSubtaskFocused = true
                         } label: {
                             HStack(spacing: 4) {

@@ -28,7 +28,8 @@ struct ProjectDetailsDrawer: View {
             List {
                 DrawerTitleSection(
                     placeholder: "Project title",
-                    title: $projectTitle
+                    title: $projectTitle,
+                    autoFocus: true
                 )
 
                 SwiftUI.Section("Statistics") {

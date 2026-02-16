@@ -33,6 +33,7 @@ struct ListDetailsDrawer: View {
                 DrawerTitleSection(
                     placeholder: "List title",
                     title: $listTitle,
+                    autoFocus: true,
                     onSubmit: saveTitle
                 )
 

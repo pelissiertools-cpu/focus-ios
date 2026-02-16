@@ -14,6 +14,8 @@ enum DrawerButton {
     case cancel(action: () -> Void)
     case save(action: () -> Void, disabled: Bool = false)
     case add(action: () -> Void, disabled: Bool = false)
+    case close(action: () -> Void)
+    case check(action: () -> Void, highlighted: Bool = false)
 }
 
 // MARK: - Drawer Container
@@ -29,6 +31,7 @@ struct DrawerContainer<Content: View>: View {
             content()
                 .navigationTitle(title)
                 .navigationBarTitleDisplayMode(.inline)
+                .toolbarBackground(.hidden, for: .navigationBar)
                 .toolbar {
                     ToolbarItem(placement: .navigationBarLeading) {
                         leadingButtonView
@@ -44,24 +47,16 @@ struct DrawerContainer<Content: View>: View {
 
     @ViewBuilder
     private var leadingButtonView: some View {
-        switch leadingButton {
-        case .done(let action):
-            Button("Done", action: action)
-        case .cancel(let action):
-            Button("Cancel", action: action)
-        case .save(let action, let disabled):
-            Button("Save", action: action)
-                .fontWeight(.semibold)
-                .disabled(disabled)
-        case .add(let action, let disabled):
-            Button("Add", action: action)
-                .fontWeight(.semibold)
-                .disabled(disabled)
-        }
+        drawerButtonView(leadingButton)
     }
 
     @ViewBuilder
     private func trailingButtonView(_ button: DrawerButton) -> some View {
+        drawerButtonView(button)
+    }
+
+    @ViewBuilder
+    private func drawerButtonView(_ button: DrawerButton) -> some View {
         switch button {
         case .done(let action):
             Button("Done", action: action)
@@ -75,6 +70,24 @@ struct DrawerContainer<Content: View>: View {
             Button("Add", action: action)
                 .fontWeight(.semibold)
                 .disabled(disabled)
+        case .close(let action):
+            Button(action: action) {
+                Image(systemName: "xmark")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundColor(.primary)
+                    .frame(width: 30, height: 30)
+                    .background(.white, in: Circle())
+            }
+        case .check(let action, let highlighted):
+            Button(action: action) {
+                Image(systemName: "checkmark")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundColor(highlighted ? .white : .secondary)
+                    .frame(width: 30, height: 30)
+            }
+            .background(highlighted ? Color.accentColor : Color(.systemGray5))
+            .clipShape(Circle())
+            .buttonStyle(.plain)
         }
     }
 }

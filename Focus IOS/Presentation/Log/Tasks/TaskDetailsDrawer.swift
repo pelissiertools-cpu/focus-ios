@@ -23,6 +23,7 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
     @State private var newSubtaskTitle: String = ""
     @State private var showingDeleteConfirmation = false
     @State private var showingBreakdownDrawer = false
+    @State private var pendingDeletions: Set<UUID> = []
     @FocusState private var isTitleFocused: Bool
     @FocusState private var focusedSubtaskId: UUID?
     @FocusState private var isNewSubtaskFocused: Bool
@@ -39,6 +40,7 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
 
     private var subtasks: [FocusTask] {
         viewModel.getSubtasks(for: task.id)
+            .filter { !pendingDeletions.contains($0.id) }
     }
 
     init(task: FocusTask, viewModel: VM, commitment: Commitment? = nil, categories: [Category] = []) {
@@ -58,13 +60,19 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
         }
     }
 
+    private var hasChanges: Bool {
+        taskTitle != task.title || !pendingDeletions.isEmpty
+    }
+
     var body: some View {
         DrawerContainer(
             title: isSubtask ? "Subtask Details" : "Task Details",
-            leadingButton: .done {
+            leadingButton: .close { dismiss() },
+            trailingButton: .check(action: {
                 saveTitle()
+                commitPendingDeletions()
                 dismiss()
-            }
+            }, highlighted: hasChanges)
         ) {
             ScrollView {
                 VStack(spacing: 12) {
@@ -81,7 +89,7 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                 }
                 .padding(.bottom, 20)
             }
-            .background(Color(.systemGroupedBackground))
+            .background(.clear)
             .alert("New Category", isPresented: $showingNewCategoryAlert) {
                 TextField("Category name", text: $newCategoryName)
                 Button("Cancel", role: .cancel) { newCategoryName = "" }
@@ -181,6 +189,26 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                         .foregroundColor(.primary)
                         .padding(.horizontal, 14)
                         .padding(.vertical, 8)
+                        .background {
+                            Capsule()
+                                .stroke(
+                                    AngularGradient(
+                                        colors: [
+                                            Color(red: 0.85, green: 0.25, blue: 0.2),
+                                            Color(red: 0.7, green: 0.3, blue: 0.5),
+                                            Color(red: 0.35, green: 0.45, blue: 0.85),
+                                            Color(red: 0.3, green: 0.55, blue: 0.7),
+                                            Color(red: 0.55, green: 0.65, blue: 0.3),
+                                            Color(red: 0.9, green: 0.75, blue: 0.15),
+                                            Color(red: 0.9, green: 0.45, blue: 0.15),
+                                            Color(red: 0.85, green: 0.25, blue: 0.2),
+                                        ],
+                                        center: .center
+                                    ),
+                                    lineWidth: 2.5
+                                )
+                                .blur(radius: 6)
+                        }
                         .overlay {
                             Capsule()
                                 .stroke(.white.opacity(0.5), lineWidth: 1.5)
@@ -194,21 +222,56 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
             .padding(.top, 12)
             .padding(.bottom, 10)
 
-            VStack(spacing: 12) {
+            VStack(spacing: 14) {
                 ForEach(subtasks) { subtask in
                     compactSubtaskRow(subtask)
                 }
 
-                // Add subtask row
-                HStack(spacing: 8) {
-                    Image(systemName: "plus.circle")
-                        .font(.body)
-                        .foregroundColor(.accentColor)
-                    TextField("Add subtask", text: $newSubtaskTitle)
-                        .font(.body)
-                        .textFieldStyle(.plain)
-                        .focused($isNewSubtaskFocused)
-                        .onSubmit { addSubtask() }
+                // New subtask entry (shown when focused)
+                if isNewSubtaskFocused || !newSubtaskTitle.isEmpty {
+                    HStack(spacing: 8) {
+                        Image(systemName: "circle")
+                            .font(.caption2)
+                            .foregroundColor(.secondary.opacity(0.5))
+
+                        TextField("Subtask", text: $newSubtaskTitle)
+                            .font(.body)
+                            .textFieldStyle(.plain)
+                            .focused($isNewSubtaskFocused)
+                            .onSubmit { addSubtask() }
+
+                        Button {
+                            newSubtaskTitle = ""
+                            isNewSubtaskFocused = false
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+
+                // "+ Sub-task" pill button
+                if !task.isCompleted {
+                    HStack {
+                        Button {
+                            isNewSubtaskFocused = true
+                        } label: {
+                            HStack(spacing: 4) {
+                                Image(systemName: "plus")
+                                    .font(.caption)
+                                Text("Sub-task")
+                                    .font(.caption)
+                            }
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .glassEffect(.regular.tint(.black).interactive(), in: .capsule)
+                        }
+                        .buttonStyle(.plain)
+                        Spacer()
+                    }
                 }
             }
             .padding(.horizontal, 14)
@@ -224,32 +287,24 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
     @ViewBuilder
     private func compactSubtaskRow(_ subtask: FocusTask) -> some View {
         HStack(spacing: 8) {
-            // Checkbox
-            Button {
-                _Concurrency.Task {
-                    await viewModel.toggleSubtaskCompletion(subtask, parentId: task.id)
-                }
-            } label: {
-                Image(systemName: subtask.isCompleted ? "checkmark.circle.fill" : "circle")
-                    .font(.footnote)
-                    .foregroundColor(subtask.isCompleted ? .green : .gray)
-            }
-            .buttonStyle(.plain)
+            Image(systemName: subtask.isCompleted ? "checkmark.circle.fill" : "circle")
+                .font(.caption2)
+                .foregroundColor(subtask.isCompleted ? .green : .secondary.opacity(0.5))
 
             // Editable title
             SubtaskTextField(subtask: subtask, viewModel: viewModel, focusedId: $focusedSubtaskId)
 
-            // Delete X button
-            Button {
-                _Concurrency.Task {
-                    await viewModel.deleteSubtask(subtask, parentId: task.id)
+            // Delete X button (staged — committed on save)
+            if !subtask.isCompleted {
+                Button {
+                    pendingDeletions.insert(subtask.id)
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
                 }
-            } label: {
-                Image(systemName: "xmark")
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
         }
     }
 
@@ -390,10 +445,22 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
         }
     }
 
+    private func commitPendingDeletions() {
+        let allSubtasks = viewModel.getSubtasks(for: task.id)
+        for subtaskId in pendingDeletions {
+            if let subtask = allSubtasks.first(where: { $0.id == subtaskId }) {
+                _Concurrency.Task {
+                    await viewModel.deleteSubtask(subtask, parentId: task.id)
+                }
+            }
+        }
+    }
+
     private func addSubtask() {
         guard !newSubtaskTitle.trimmingCharacters(in: .whitespaces).isEmpty else { return }
         let title = newSubtaskTitle
         newSubtaskTitle = ""
+        isNewSubtaskFocused = true
         _Concurrency.Task {
             if let commitment = commitment {
                 await focusViewModel.createSubtask(title: title, parentId: task.id, parentCommitment: commitment)

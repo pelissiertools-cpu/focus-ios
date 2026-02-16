@@ -5,6 +5,7 @@ struct DrawerStyle: ViewModifier {
         content
             .presentationDetents([.large])
             .presentationDragIndicator(.visible)
+            .presentationBackground(.ultraThinMaterial)
     }
 }
 

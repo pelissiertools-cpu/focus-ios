@@ -33,6 +33,7 @@ struct LogTabView: View {
     @State private var addTaskSection: Section = .focus
     @State private var addTaskDates: Set<Date> = []
     @State private var isGeneratingBreakdown = false
+    @State private var hasGeneratedBreakdown = false
     @FocusState private var isAddTaskFieldFocused: Bool
     @FocusState private var focusedSubtaskId: UUID?
 
@@ -448,7 +449,7 @@ struct LogTabView: View {
                 Divider()
                     .padding(.horizontal, 14)
 
-                VStack(spacing: 8) {
+                VStack(spacing: 14) {
                     ForEach(addTaskSubtasks) { subtask in
                         HStack(spacing: 8) {
                             Image(systemName: "circle")
@@ -482,7 +483,7 @@ struct LogTabView: View {
                 }
                 .padding(.horizontal, 14)
                 .padding(.top, 10)
-                .padding(.bottom, 10)
+                .padding(.bottom, 18)
             }
 
             // Commit expansion (calendar section)
@@ -511,7 +512,7 @@ struct LogTabView: View {
                 .frame(maxHeight: 350)
             }
 
-            // Bottom row: [Sub-task] ... [Category pill] [Commit pill] [Checkmark]
+            // Bottom row: [Sub-task] ... [Category pill] [Commit pill]
             HStack(spacing: 8) {
                 // Add sub-task button
                 Button {
@@ -585,6 +586,62 @@ struct LogTabView: View {
                     .background(!addTaskDates.isEmpty ? Color.blue : Color.black, in: Capsule())
                 }
                 .buttonStyle(.plain)
+            }
+            .padding(.leading, 14)
+            .padding(.trailing, 60)
+            .padding(.bottom, 4)
+
+            // AI Breakdown + Submit row
+            HStack(spacing: 10) {
+                // AI Breakdown button
+                Button {
+                    generateBreakdown()
+                } label: {
+                    HStack(spacing: 8) {
+                        if isGeneratingBreakdown {
+                            ProgressView()
+                                .tint(.primary)
+                        } else {
+                            Image(systemName: hasGeneratedBreakdown ? "arrow.clockwise" : "sparkles")
+                                .font(.body.weight(.semibold))
+                        }
+                        Text(hasGeneratedBreakdown ? "Regenerate" : "Break Down task")
+                            .font(.subheadline.weight(.medium))
+                    }
+                    .foregroundColor(.primary)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background {
+                        if !isAddTaskTitleEmpty {
+                            // Rainbow glow behind the button
+                            Capsule()
+                                .stroke(
+                                    AngularGradient(
+                                        colors: [
+                                            Color(red: 0.85, green: 0.25, blue: 0.2),
+                                            Color(red: 0.7, green: 0.3, blue: 0.5),
+                                            Color(red: 0.35, green: 0.45, blue: 0.85),
+                                            Color(red: 0.3, green: 0.55, blue: 0.7),
+                                            Color(red: 0.55, green: 0.65, blue: 0.3),
+                                            Color(red: 0.9, green: 0.75, blue: 0.15),
+                                            Color(red: 0.9, green: 0.45, blue: 0.15),
+                                            Color(red: 0.85, green: 0.25, blue: 0.2),
+                                        ],
+                                        center: .center
+                                    ),
+                                    lineWidth: 2.5
+                                )
+                                .blur(radius: 6)
+                        }
+                    }
+                    .overlay {
+                        Capsule()
+                            .stroke(.white.opacity(0.5), lineWidth: 1.5)
+                    }
+                    .glassEffect(.regular.interactive(), in: .capsule)
+                }
+                .buttonStyle(.plain)
+                .disabled(isAddTaskTitleEmpty || isGeneratingBreakdown)
 
                 // Submit button (checkmark)
                 Button {
@@ -603,59 +660,7 @@ struct LogTabView: View {
                 .disabled(isAddTaskTitleEmpty)
             }
             .padding(.horizontal, 14)
-
-            // AI Breakdown button
-            if !isAddTaskTitleEmpty {
-                Button {
-                    generateBreakdown()
-                } label: {
-                    HStack(spacing: 8) {
-                        if isGeneratingBreakdown {
-                            ProgressView()
-                                .tint(.primary)
-                        } else {
-                            Image(systemName: "sparkles")
-                                .font(.body.weight(.semibold))
-                        }
-                        Text("Break Down task")
-                            .font(.subheadline.weight(.medium))
-                    }
-                    .foregroundColor(.primary)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
-                    .background {
-                        // Rainbow glow behind the button
-                        Capsule()
-                            .stroke(
-                                AngularGradient(
-                                    colors: [
-                                        Color(red: 0.85, green: 0.25, blue: 0.2),  // soft red
-                                        Color(red: 0.7, green: 0.3, blue: 0.5),    // red-blue blend
-                                        Color(red: 0.35, green: 0.45, blue: 0.85), // blue
-                                        Color(red: 0.3, green: 0.55, blue: 0.7),   // teal-blue
-                                        Color(red: 0.55, green: 0.65, blue: 0.3),  // olive transition
-                                        Color(red: 0.9, green: 0.75, blue: 0.15),  // gold
-                                        Color(red: 0.9, green: 0.45, blue: 0.15),  // orange
-                                        Color(red: 0.85, green: 0.25, blue: 0.2),  // back to soft red
-                                    ],
-                                    center: .center
-                                ),
-                                lineWidth: 2.5
-                            )
-                            .blur(radius: 6)
-                    }
-                    .overlay {
-                        // White border to cover the rainbow source, letting only the glow show
-                        Capsule()
-                            .stroke(.white.opacity(0.5), lineWidth: 1.5)
-                    }
-                    .glassEffect(.regular.interactive(), in: .capsule)
-                }
-                .buttonStyle(.plain)
-                .disabled(isGeneratingBreakdown)
-                .padding(.horizontal, 14)
-                .padding(.top, 6)
-            }
+            .padding(.top, 6)
 
             Spacer().frame(height: 20)
         }
@@ -1108,8 +1113,9 @@ struct LogTabView: View {
                 let aiService = AIService()
                 let suggestions = try await aiService.generateSubtasks(title: title, description: nil)
                 withAnimation(.easeInOut(duration: 0.2)) {
-                    addTaskSubtasks = suggestions.map { DraftSubtaskEntry(title: $0) }
+                    addTaskSubtasks.append(contentsOf: suggestions.map { DraftSubtaskEntry(title: $0) })
                 }
+                hasGeneratedBreakdown = true
             } catch {
                 // Silently fail — user can tap again or add subtasks manually
             }
@@ -1141,6 +1147,7 @@ struct LogTabView: View {
         addTaskSubtasks = []
         addTaskDates = []
         addTaskCommitExpanded = false
+        hasGeneratedBreakdown = false
 
         _Concurrency.Task { @MainActor in
             await taskListVM.createTaskWithCommitments(
@@ -1197,6 +1204,7 @@ struct LogTabView: View {
         addTaskCategoryId = nil
         addTaskCommitExpanded = false
         addTaskDates = []
+        hasGeneratedBreakdown = false
         taskListVM.showingAddTask = false
         isAddTaskFieldFocused = false
         focusedSubtaskId = nil

@@ -82,6 +82,7 @@ struct EditModeActionBar<VM: LogFilterable>: View {
                                     .font(.title3)
                                     .foregroundColor(item.isDestructive ? .red : .primary)
                                     .frame(width: 52, height: 52)
+                                    .contentShape(Rectangle())
                             }
                             .buttonStyle(.plain)
                             .disabled(!hasSelection)

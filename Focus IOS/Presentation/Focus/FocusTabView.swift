@@ -36,6 +36,8 @@ struct FocusTabView: View {
     @State private var addTaskSubtasks: [DraftSubtaskEntry] = []
     @FocusState private var isAddTaskFieldFocused: Bool
     @FocusState private var focusedSubtaskId: UUID?
+    @State private var isGeneratingBreakdown = false
+    @State private var hasGeneratedBreakdown = false
 
     var body: some View {
         NavigationView {
@@ -454,7 +456,7 @@ struct FocusTabView: View {
     private var addTaskBarOverlay: some View {
         VStack(spacing: 0) {
             // Task title row
-            TextField("Add new task.", text: $addTaskTitle)
+            TextField("Add new task", text: $addTaskTitle)
                 .font(.title3)
                 .textFieldStyle(.plain)
                 .focused($isAddTaskFieldFocused)
@@ -471,7 +473,7 @@ struct FocusTabView: View {
                 Divider()
                     .padding(.horizontal, 14)
 
-                VStack(spacing: 8) {
+                VStack(spacing: 14) {
                     ForEach(addTaskSubtasks) { subtask in
                         HStack(spacing: 8) {
                             Image(systemName: "circle")
@@ -479,7 +481,7 @@ struct FocusTabView: View {
                                 .foregroundColor(.secondary.opacity(0.5))
 
                             TextField("Subtask", text: subtaskBinding(for: subtask.id), axis: .vertical)
-                                .font(.subheadline)
+                                .font(.body)
                                 .textFieldStyle(.plain)
                                 .focused($focusedSubtaskId, equals: subtask.id)
                                 .lineLimit(1)
@@ -506,12 +508,11 @@ struct FocusTabView: View {
                 }
                 .padding(.horizontal, 14)
                 .padding(.top, 10)
-                .padding(.bottom, 10)
+                .padding(.bottom, 18)
             }
 
-            // Bottom row: left space for future buttons, right side checkmark
+            // Add sub-task button row
             HStack(spacing: 8) {
-                // Add sub-task button
                 Button {
                     addNewSubtask()
                 } label: {
@@ -529,6 +530,61 @@ struct FocusTabView: View {
                 .buttonStyle(.plain)
 
                 Spacer()
+            }
+            .padding(.horizontal, 14)
+            .padding(.bottom, 10)
+
+            // AI Breakdown + Submit row
+            HStack(spacing: 10) {
+                // AI Breakdown button
+                Button {
+                    generateBreakdown()
+                } label: {
+                    HStack(spacing: 8) {
+                        if isGeneratingBreakdown {
+                            ProgressView()
+                                .tint(.primary)
+                        } else {
+                            Image(systemName: hasGeneratedBreakdown ? "arrow.clockwise" : "sparkles")
+                                .font(.body.weight(.semibold))
+                        }
+                        Text(hasGeneratedBreakdown ? "Regenerate" : "Break Down task")
+                            .font(.subheadline.weight(.medium))
+                    }
+                    .foregroundColor(.primary)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background {
+                        if !addTaskTitle.trimmingCharacters(in: .whitespaces).isEmpty {
+                            // Rainbow glow behind the button
+                            Capsule()
+                                .stroke(
+                                    AngularGradient(
+                                        colors: [
+                                            Color(red: 0.85, green: 0.25, blue: 0.2),
+                                            Color(red: 0.7, green: 0.3, blue: 0.5),
+                                            Color(red: 0.35, green: 0.45, blue: 0.85),
+                                            Color(red: 0.3, green: 0.55, blue: 0.7),
+                                            Color(red: 0.55, green: 0.65, blue: 0.3),
+                                            Color(red: 0.9, green: 0.75, blue: 0.15),
+                                            Color(red: 0.9, green: 0.45, blue: 0.15),
+                                            Color(red: 0.85, green: 0.25, blue: 0.2),
+                                        ],
+                                        center: .center
+                                    ),
+                                    lineWidth: 2.5
+                                )
+                                .blur(radius: 6)
+                        }
+                    }
+                    .overlay {
+                        Capsule()
+                            .stroke(.white.opacity(0.5), lineWidth: 1.5)
+                    }
+                    .glassEffect(.regular.interactive(), in: .capsule)
+                }
+                .buttonStyle(.plain)
+                .disabled(addTaskTitle.trimmingCharacters(in: .whitespaces).isEmpty || isGeneratingBreakdown)
 
                 // Submit button
                 Button {
@@ -574,6 +630,7 @@ struct FocusTabView: View {
         // Clear fields immediately for rapid entry
         addTaskTitle = ""
         addTaskSubtasks = []
+        hasGeneratedBreakdown = false
 
         _Concurrency.Task { @MainActor in
             await viewModel.createTaskWithSubtasks(title: title, section: section, subtaskTitles: subtasksToCreate)
@@ -614,9 +671,29 @@ struct FocusTabView: View {
         }
     }
 
+    private func generateBreakdown() {
+        let title = addTaskTitle.trimmingCharacters(in: .whitespaces)
+        guard !title.isEmpty else { return }
+        isGeneratingBreakdown = true
+        _Concurrency.Task { @MainActor in
+            do {
+                let aiService = AIService()
+                let suggestions = try await aiService.generateSubtasks(title: title, description: nil)
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    addTaskSubtasks.append(contentsOf: suggestions.map { DraftSubtaskEntry(title: $0) })
+                }
+                hasGeneratedBreakdown = true
+            } catch {
+                // Silently fail — user can tap again or add subtasks manually
+            }
+            isGeneratingBreakdown = false
+        }
+    }
+
     private func dismissAddTask() {
         addTaskTitle = ""
         addTaskSubtasks = []
+        hasGeneratedBreakdown = false
         viewModel.showAddTaskSheet = false
         isAddTaskFieldFocused = false
         focusedSubtaskId = nil

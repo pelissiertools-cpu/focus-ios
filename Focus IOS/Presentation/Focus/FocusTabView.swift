@@ -1057,6 +1057,7 @@ struct CommitmentRow: View {
     @ObservedObject var viewModel: FocusTabViewModel
     var fontOverride: Font? = nil
     var verticalPaddingOverride: CGFloat? = nil
+    @State private var showDeleteConfirmation = false
 
     private var subtasks: [FocusTask] {
         viewModel.getSubtasks(for: task.id)
@@ -1126,12 +1127,10 @@ struct CommitmentRow: View {
                     }
                 }
                 .contextMenu {
-                    Button {
+                    ContextMenuItems.editButton {
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                             viewModel.selectedTaskForDetails = task
                         }
-                    } label: {
-                        Label("Edit", systemImage: "pencil")
                     }
 
                     Button(role: .destructive) {
@@ -1161,13 +1160,19 @@ struct CommitmentRow: View {
 
                     Divider()
 
-                    Button(role: .destructive) {
+                    ContextMenuItems.deleteButton {
+                        showDeleteConfirmation = true
+                    }
+                }
+                .alert("Delete Task", isPresented: $showDeleteConfirmation) {
+                    Button("Delete", role: .destructive) {
                         _Concurrency.Task { @MainActor in
                             await viewModel.permanentlyDeleteTask(task)
                         }
-                    } label: {
-                        Label("Delete Task", systemImage: "trash")
                     }
+                    Button("Cancel", role: .cancel) {}
+                } message: {
+                    Text("Are you sure you want to delete \"\(task.title)\"?")
                 }
 
                 // Commit button (for non-daily commitments)
@@ -1260,22 +1265,18 @@ struct FocusSubtaskRow: View {
         .padding(.vertical, 6)
         .contentShape(Rectangle())
         .contextMenu {
-            Button {
+            ContextMenuItems.editButton {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                     viewModel.selectedTaskForDetails = subtask
                 }
-            } label: {
-                Label("Edit", systemImage: "pencil")
             }
 
             Divider()
 
-            Button(role: .destructive) {
+            ContextMenuItems.deleteButton {
                 _Concurrency.Task { @MainActor in
                     await viewModel.deleteSubtask(subtask, parentId: parentId)
                 }
-            } label: {
-                Label("Delete Subtask", systemImage: "trash")
             }
         }
     }

@@ -166,6 +166,7 @@ struct ListRow: View {
     var isEditMode: Bool = false
     var isSelected: Bool = false
     var onSelectToggle: (() -> Void)? = nil
+    @State private var showDeleteConfirmation = false
 
     private var itemCount: (uncompleted: Int, total: Int) {
         let items = viewModel.itemsMap[list.id] ?? []
@@ -209,46 +210,31 @@ struct ListRow: View {
         }
         .contextMenu {
             if !isEditMode {
-                Button {
+                ContextMenuItems.editButton {
                     viewModel.selectedListForDetails = list
-                } label: {
-                    Label("Edit Details", systemImage: "pencil")
                 }
 
-                // Move to category
-                Menu {
-                    Button {
-                        _Concurrency.Task { await viewModel.moveTaskToCategory(list, categoryId: nil) }
-                    } label: {
-                        if list.categoryId == nil {
-                            Label("None", systemImage: "checkmark")
-                        } else {
-                            Text("None")
-                        }
-                    }
-                    ForEach(viewModel.categories) { category in
-                        Button {
-                            _Concurrency.Task { await viewModel.moveTaskToCategory(list, categoryId: category.id) }
-                        } label: {
-                            if list.categoryId == category.id {
-                                Label(category.name, systemImage: "checkmark")
-                            } else {
-                                Text(category.name)
-                            }
-                        }
-                    }
-                } label: {
-                    Label("Move to Category", systemImage: "folder")
+                ContextMenuItems.categorySubmenu(
+                    currentCategoryId: list.categoryId,
+                    categories: viewModel.categories
+                ) { categoryId in
+                    _Concurrency.Task { await viewModel.moveTaskToCategory(list, categoryId: categoryId) }
                 }
 
                 Divider()
 
-                Button(role: .destructive) {
-                    _Concurrency.Task { await viewModel.deleteList(list) }
-                } label: {
-                    Label("Delete", systemImage: "trash")
+                ContextMenuItems.deleteButton {
+                    showDeleteConfirmation = true
                 }
             }
+        }
+        .alert("Delete List", isPresented: $showDeleteConfirmation) {
+            Button("Delete", role: .destructive) {
+                _Concurrency.Task { await viewModel.deleteList(list) }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Are you sure you want to delete \"\(list.title)\"?")
         }
     }
 }

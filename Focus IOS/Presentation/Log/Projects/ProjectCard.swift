@@ -231,6 +231,7 @@ struct ProjectTaskRow: View {
     let task: FocusTask
     let projectId: UUID
     @ObservedObject var viewModel: ProjectsViewModel
+    @State private var showDeleteConfirmation = false
 
     private var subtaskCount: (completed: Int, total: Int) {
         let subtasks = viewModel.subtasksMap[task.id] ?? []
@@ -276,22 +277,26 @@ struct ProjectTaskRow: View {
         }
         .contextMenu {
             if !task.isCompleted {
-                Button {
+                ContextMenuItems.editButton {
                     viewModel.selectedTaskForDetails = task
-                } label: {
-                    Label("Edit Details", systemImage: "pencil")
                 }
 
                 Divider()
 
-                Button(role: .destructive) {
-                    _Concurrency.Task {
-                        await viewModel.deleteProjectTask(task, projectId: projectId)
-                    }
-                } label: {
-                    Label("Delete", systemImage: "trash")
+                ContextMenuItems.deleteButton {
+                    showDeleteConfirmation = true
                 }
             }
+        }
+        .alert("Delete Task", isPresented: $showDeleteConfirmation) {
+            Button("Delete", role: .destructive) {
+                _Concurrency.Task {
+                    await viewModel.deleteProjectTask(task, projectId: projectId)
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Are you sure you want to delete \"\(task.title)\"?")
         }
     }
 }
@@ -330,20 +335,16 @@ struct ProjectSubtaskRow: View {
         }
         .contextMenu {
             if !subtask.isCompleted {
-                Button {
+                ContextMenuItems.editButton {
                     viewModel.selectedTaskForDetails = subtask
-                } label: {
-                    Label("Edit Details", systemImage: "pencil")
                 }
 
                 Divider()
 
-                Button(role: .destructive) {
+                ContextMenuItems.deleteButton {
                     _Concurrency.Task {
                         await viewModel.deleteSubtask(subtask, parentId: parentId)
                     }
-                } label: {
-                    Label("Delete", systemImage: "trash")
                 }
             }
         }

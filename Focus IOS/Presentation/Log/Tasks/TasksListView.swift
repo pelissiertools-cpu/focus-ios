@@ -271,6 +271,7 @@ struct FlatTaskRow: View {
     var isEditMode: Bool = false
     var isSelected: Bool = false
     var onSelectToggle: (() -> Void)? = nil
+    @State private var showDeleteConfirmation = false
 
     private var isParent: Bool { task.parentTaskId == nil }
 
@@ -335,57 +336,41 @@ struct FlatTaskRow: View {
                 }
             }
         }
-        // Context menu: long-press shows quick actions (both parents and subtasks)
         .contextMenu {
             if !isEditMode && !task.isCompleted {
-                Button {
+                ContextMenuItems.editButton {
                     viewModel.selectedTaskForDetails = task
-                } label: {
-                    Label("Edit Details", systemImage: "pencil")
                 }
 
-                // Move to category (parent tasks only)
                 if isParent {
-                    Menu {
-                        Button {
-                            _Concurrency.Task { await viewModel.moveTaskToCategory(task, categoryId: nil) }
-                        } label: {
-                            if task.categoryId == nil {
-                                Label("None", systemImage: "checkmark")
-                            } else {
-                                Text("None")
-                            }
-                        }
-                        ForEach(viewModel.categories) { category in
-                            Button {
-                                _Concurrency.Task { await viewModel.moveTaskToCategory(task, categoryId: category.id) }
-                            } label: {
-                                if task.categoryId == category.id {
-                                    Label(category.name, systemImage: "checkmark")
-                                } else {
-                                    Text(category.name)
-                                }
-                            }
-                        }
-                    } label: {
-                        Label("Move to Category", systemImage: "folder")
+                    ContextMenuItems.categorySubmenu(
+                        currentCategoryId: task.categoryId,
+                        categories: viewModel.categories
+                    ) { categoryId in
+                        _Concurrency.Task { await viewModel.moveTaskToCategory(task, categoryId: categoryId) }
                     }
                 }
 
                 Divider()
 
-                Button(role: .destructive) {
-                    _Concurrency.Task {
-                        if isParent {
-                            await viewModel.deleteTask(task)
-                        } else {
+                ContextMenuItems.deleteButton {
+                    if isParent {
+                        showDeleteConfirmation = true
+                    } else {
+                        _Concurrency.Task {
                             await viewModel.deleteSubtask(task, parentId: task.parentTaskId!)
                         }
                     }
-                } label: {
-                    Label("Delete", systemImage: "trash")
                 }
             }
+        }
+        .alert("Delete Task", isPresented: $showDeleteConfirmation) {
+            Button("Delete", role: .destructive) {
+                _Concurrency.Task { await viewModel.deleteTask(task) }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Are you sure you want to delete \"\(task.title)\"?")
         }
     }
 }
@@ -398,6 +383,7 @@ struct ExpandableTaskRow: View {
     var isEditMode: Bool = false
     var isSelected: Bool = false
     var onSelectToggle: (() -> Void)? = nil
+    @State private var showDeleteConfirmation = false
 
     var body: some View {
         HStack(spacing: 12) {
@@ -449,51 +435,35 @@ struct ExpandableTaskRow: View {
                 }
             }
         }
-        // Context menu: long-press shows quick actions
         .contextMenu {
             if !isEditMode && !task.isCompleted {
-                Button {
+                ContextMenuItems.editButton {
                     viewModel.selectedTaskForDetails = task
-                } label: {
-                    Label("Edit Details", systemImage: "pencil")
                 }
 
-                // Move to category (parent tasks only, not committed)
                 if task.parentTaskId == nil {
-                    Menu {
-                        Button {
-                            _Concurrency.Task { await viewModel.moveTaskToCategory(task, categoryId: nil) }
-                        } label: {
-                            if task.categoryId == nil {
-                                Label("None", systemImage: "checkmark")
-                            } else {
-                                Text("None")
-                            }
-                        }
-                        ForEach(viewModel.categories) { category in
-                            Button {
-                                _Concurrency.Task { await viewModel.moveTaskToCategory(task, categoryId: category.id) }
-                            } label: {
-                                if task.categoryId == category.id {
-                                    Label(category.name, systemImage: "checkmark")
-                                } else {
-                                    Text(category.name)
-                                }
-                            }
-                        }
-                    } label: {
-                        Label("Move to Category", systemImage: "folder")
+                    ContextMenuItems.categorySubmenu(
+                        currentCategoryId: task.categoryId,
+                        categories: viewModel.categories
+                    ) { categoryId in
+                        _Concurrency.Task { await viewModel.moveTaskToCategory(task, categoryId: categoryId) }
                     }
                 }
 
                 Divider()
 
-                Button(role: .destructive) {
-                    _Concurrency.Task { await viewModel.deleteTask(task) }
-                } label: {
-                    Label("Delete", systemImage: "trash")
+                ContextMenuItems.deleteButton {
+                    showDeleteConfirmation = true
                 }
             }
+        }
+        .alert("Delete Task", isPresented: $showDeleteConfirmation) {
+            Button("Delete", role: .destructive) {
+                _Concurrency.Task { await viewModel.deleteTask(task) }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Are you sure you want to delete \"\(task.title)\"?")
         }
     }
 }

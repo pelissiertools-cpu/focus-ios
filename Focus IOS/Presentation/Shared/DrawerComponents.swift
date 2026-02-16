@@ -164,12 +164,7 @@ struct DrawerCategoryMenu: View {
                 Label("New Category", systemImage: "plus")
             }
         } label: {
-            HStack {
-                Label("Move to", systemImage: "folder")
-                Spacer()
-                Text(currentCategoryName)
-                    .foregroundColor(.secondary)
-            }
+            DrawerActionLabel(icon: "folder", text: "Category", trailing: currentCategoryName)
         }
     }
 }
@@ -203,5 +198,69 @@ struct DrawerDeleteSection: View {
         } message: {
             Text(confirmationMessage)
         }
+    }
+}
+
+// MARK: - Compact Action Row (Button)
+
+struct DrawerActionRow: View {
+    let icon: String
+    let text: String
+    var trailing: String? = nil
+    var iconColor: Color = .accentColor
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            DrawerActionLabel(icon: icon, text: text, trailing: trailing, iconColor: iconColor)
+        }
+    }
+}
+
+// MARK: - Compact Action Row (Menu)
+
+struct DrawerActionMenuRow: View {
+    let icon: String
+    let text: String
+    var trailing: String? = nil
+    var iconColor: Color = .accentColor
+    @ViewBuilder let menuContent: () -> AnyView
+
+    var body: some View {
+        Menu {
+            menuContent()
+        } label: {
+            DrawerActionLabel(icon: icon, text: text, trailing: trailing, iconColor: iconColor)
+        }
+    }
+}
+
+// MARK: - Shared Action Label
+
+struct DrawerActionLabel: View {
+    let icon: String
+    let text: String
+    var trailing: String? = nil
+    var iconColor: Color = .accentColor
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: icon)
+                .font(.body)
+                .foregroundColor(iconColor)
+                .frame(width: 24)
+            Text(text)
+                .font(.body)
+                .foregroundColor(.primary)
+            Spacer()
+            if let trailing {
+                Text(trailing)
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .contentShape(Rectangle())
     }
 }

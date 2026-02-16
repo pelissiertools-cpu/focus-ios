@@ -23,6 +23,8 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
     @State private var newSubtaskTitle: String = ""
     @State private var showingDeleteConfirmation = false
     @State private var showingBreakdownDrawer = false
+    @FocusState private var isTitleFocused: Bool
+    @FocusState private var focusedSubtaskId: UUID?
     @FocusState private var isNewSubtaskFocused: Bool
     @Environment(\.dismiss) private var dismiss
 
@@ -64,208 +66,22 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                 dismiss()
             }
         ) {
-            List {
-                // Edit Title Section
-                DrawerTitleSection(
-                    placeholder: "Task title",
-                    title: $taskTitle,
-                    autoFocus: true,
-                    onSubmit: saveTitle
-                )
+            ScrollView {
+                VStack(spacing: 12) {
+                    // ─── TITLE ───
+                    titleCard
 
-                // Info Section - shows parent or subtask count
-                if isSubtask {
-                    SwiftUI.Section("Parent Task") {
-                        if let parent = parentTask {
-                            DrawerStatsRow(icon: "arrow.up.circle", text: parent.title)
-                        } else {
-                            DrawerStatsRow(icon: "arrow.up.circle", text: "Subtask")
-                        }
+                    // ─── SUBTASKS ───
+                    if !isSubtask {
+                        subtasksCard
                     }
-                } else {
-                    // Subtasks Section (for parent tasks - show even if empty to allow adding)
-                    SwiftUI.Section {
-                        // Summary header
-                        if !subtasks.isEmpty {
-                            let completedCount = subtasks.filter { $0.isCompleted }.count
-                            DrawerStatsRow(icon: "checklist", text: "\(completedCount)/\(subtasks.count) completed")
-                        }
 
-                        // Editable subtask rows
-                        ForEach(subtasks) { subtask in
-                            DrawerSubtaskRow(subtask: subtask, parentId: task.id, viewModel: viewModel)
-                        }
-                        .onDelete { indexSet in
-                            deleteSubtasks(at: indexSet)
-                        }
-
-                        // Add subtask row
-                        HStack {
-                            Image(systemName: "plus.circle")
-                                .foregroundColor(.accentColor)
-                            TextField("Add subtask", text: $newSubtaskTitle)
-                                .focused($isNewSubtaskFocused)
-                                .onSubmit {
-                                    addSubtask()
-                                }
-                        }
-                    } header: {
-                        Text("Subtasks")
-                    }
+                    // ─── ACTIONS ───
+                    actionsCard
                 }
-
-                // Actions Section
-                SwiftUI.Section {
-                    // Move to category (only for parent tasks in Log view)
-                    if !isSubtask && commitment == nil {
-                        DrawerCategoryMenu(
-                            currentCategoryId: task.categoryId,
-                            categories: categories,
-                            onSelect: { categoryId in moveTask(to: categoryId) },
-                            onCreateNew: { showingNewCategoryAlert = true }
-                        )
-                    }
-
-                    // Commit to Focus (only shown when not already committed)
-                    if commitment == nil {
-                        Button {
-                            showingCommitmentSheet = true
-                        } label: {
-                            Label("Commit to Focus", systemImage: "arrow.right.circle")
-                        }
-                    }
-
-                    // Remove from Focus (only shown when committed - cascades to child commitments)
-                    if let commitment = commitment {
-                        Button(role: .destructive) {
-                            Task {
-                                await focusViewModel.removeCommitment(commitment)
-                                dismiss()
-                            }
-                        } label: {
-                            Label {
-                                switch commitment.timeframe {
-                                case .daily: Text("Remove from today")
-                                case .weekly: Text("Remove from this week")
-                                case .monthly: Text("Remove from this month")
-                                case .yearly: Text("Remove from this year")
-                                }
-                            } icon: {
-                                Image(systemName: "minus.circle")
-                            }
-                        }
-                    }
-
-                    // Commit to lower timeframe (for non-daily commitments)
-                    if let commitment = commitment,
-                       commitment.canBreakdown,
-                       let childTimeframe = commitment.childTimeframe {
-                        Button {
-                            focusViewModel.selectedCommitmentForCommit = commitment
-                            focusViewModel.showCommitSheet = true
-                            dismiss()
-                        } label: {
-                            Label("Commit to \(childTimeframe.displayName)", systemImage: "arrow.down.forward.circle")
-                        }
-                    }
-
-                    // Commit Subtask to lower timeframe (for subtasks without their own commitment)
-                    if isSubtask && commitment == nil {
-                        // Find parent's commitment at current timeframe
-                        if let parentId = task.parentTaskId,
-                           let parentCommitment = focusViewModel.commitments.first(where: {
-                               $0.taskId == parentId &&
-                               focusViewModel.isSameTimeframe($0.commitmentDate, timeframe: focusViewModel.selectedTimeframe, selectedDate: focusViewModel.selectedDate)
-                           }),
-                           parentCommitment.timeframe != .daily {
-                            Button {
-                                focusViewModel.selectedSubtaskForCommit = task
-                                focusViewModel.selectedParentCommitmentForSubtaskCommit = parentCommitment
-                                focusViewModel.showSubtaskCommitSheet = true
-                                dismiss()
-                            } label: {
-                                Label("Commit to \(parentCommitment.childTimeframe?.displayName ?? "...")", systemImage: "arrow.down.forward.circle")
-                            }
-                        }
-                    }
-
-                    // Reschedule (any non-completed parent task in Focus view)
-                    if commitment != nil, !isSubtask, !task.isCompleted {
-                        Button {
-                            showingRescheduleSheet = true
-                        } label: {
-                            Label("Reschedule", systemImage: "calendar")
-                        }
-                    }
-
-                    // Unschedule (remove from calendar timeline, keep commitment)
-                    if let commitment = commitment, commitment.scheduledTime != nil {
-                        Button {
-                            _Concurrency.Task { @MainActor in
-                                await focusViewModel.timelineVM.unscheduleCommitment(commitment.id)
-                                dismiss()
-                            }
-                        } label: {
-                            Label("Unschedule", systemImage: "calendar.badge.minus")
-                        }
-                    }
-
-                    // Push to Next (any non-completed parent task in Focus view)
-                    if let commitment = commitment, !isSubtask, !task.isCompleted {
-                        Button {
-                            Task {
-                                let success = await focusViewModel.pushCommitmentToNext(commitment)
-                                if success {
-                                    dismiss()
-                                }
-                                // If failed (section full), error message shown, drawer stays open
-                            }
-                        } label: {
-                            Label("Push to \(nextTimeframeLabel(for: commitment.timeframe))", systemImage: "arrow.turn.right.down")
-                        }
-                    }
-
-                    // AI Breakdown
-                    if !isSubtask && !task.isCompleted {
-                        Button {
-                            showingBreakdownDrawer = true
-                        } label: {
-                            Label("Break Down with AI", systemImage: "sparkles")
-                        }
-                    }
-
-                    // Delete
-                    if isSubtask {
-                        Button(role: .destructive) {
-                            Task {
-                                if let parentId = task.parentTaskId {
-                                    await viewModel.deleteSubtask(task, parentId: parentId)
-                                }
-                                dismiss()
-                            }
-                        } label: {
-                            Label("Delete Subtask", systemImage: "trash")
-                        }
-                    } else if commitment != nil {
-                        // Focus view - permanent delete with confirmation
-                        Button(role: .destructive) {
-                            showingDeleteConfirmation = true
-                        } label: {
-                            Label("Delete Task", systemImage: "trash")
-                        }
-                    } else {
-                        // Log view - delete task
-                        Button(role: .destructive) {
-                            Task {
-                                await viewModel.deleteTask(task)
-                                dismiss()
-                            }
-                        } label: {
-                            Label("Delete Task", systemImage: "trash")
-                        }
-                    }
-                }
+                .padding(.bottom, 20)
             }
+            .background(Color(.systemGroupedBackground))
             .alert("New Category", isPresented: $showingNewCategoryAlert) {
                 TextField("Category name", text: $newCategoryName)
                 Button("Cancel", role: .cancel) { newCategoryName = "" }
@@ -308,9 +124,268 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
         }
     }
 
+    // MARK: - Title Card
+
+    @ViewBuilder
+    private var titleCard: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            TextField("Task title", text: $taskTitle, axis: .vertical)
+                .font(.title3)
+                .textFieldStyle(.plain)
+                .focused($isTitleFocused)
+                .onSubmit { saveTitle() }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 16)
+
+            if isSubtask, let parent = parentTask {
+                Text(parent.title)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .padding(.horizontal, 14)
+                    .padding(.top, -8)
+                    .padding(.bottom, 12)
+            }
+        }
+        .background(Color(.secondarySystemGroupedBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .padding(.horizontal, 16)
+        .padding(.top, 8)
+        .onAppear {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                isTitleFocused = true
+            }
+        }
+    }
+
+    // MARK: - Subtasks Card
+
+    @ViewBuilder
+    private var subtasksCard: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // Header: "Subtasks" label + "Break Down" button
+            HStack {
+                Text("Subtasks")
+                    .font(.subheadline.weight(.medium))
+                    .foregroundColor(.primary)
+                Spacer()
+                if !task.isCompleted {
+                    Button {
+                        showingBreakdownDrawer = true
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "sparkles")
+                                .font(.subheadline.weight(.semibold))
+                            Text("Suggest Breakdown")
+                                .font(.caption.weight(.medium))
+                        }
+                        .foregroundColor(.primary)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
+                        .overlay {
+                            Capsule()
+                                .stroke(.white.opacity(0.5), lineWidth: 1.5)
+                        }
+                        .glassEffect(.regular.interactive(), in: .capsule)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 14)
+            .padding(.top, 12)
+            .padding(.bottom, 10)
+
+            VStack(spacing: 12) {
+                ForEach(subtasks) { subtask in
+                    compactSubtaskRow(subtask)
+                }
+
+                // Add subtask row
+                HStack(spacing: 8) {
+                    Image(systemName: "plus.circle")
+                        .font(.body)
+                        .foregroundColor(.accentColor)
+                    TextField("Add subtask", text: $newSubtaskTitle)
+                        .font(.body)
+                        .textFieldStyle(.plain)
+                        .focused($isNewSubtaskFocused)
+                        .onSubmit { addSubtask() }
+                }
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+        }
+        .background(Color(.secondarySystemGroupedBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .padding(.horizontal, 16)
+    }
+
+    // MARK: - Compact Subtask Row
+
+    @ViewBuilder
+    private func compactSubtaskRow(_ subtask: FocusTask) -> some View {
+        HStack(spacing: 8) {
+            // Checkbox
+            Button {
+                _Concurrency.Task {
+                    await viewModel.toggleSubtaskCompletion(subtask, parentId: task.id)
+                }
+            } label: {
+                Image(systemName: subtask.isCompleted ? "checkmark.circle.fill" : "circle")
+                    .font(.footnote)
+                    .foregroundColor(subtask.isCompleted ? .green : .gray)
+            }
+            .buttonStyle(.plain)
+
+            // Editable title
+            SubtaskTextField(subtask: subtask, viewModel: viewModel, focusedId: $focusedSubtaskId)
+
+            // Delete X button
+            Button {
+                _Concurrency.Task {
+                    await viewModel.deleteSubtask(subtask, parentId: task.id)
+                }
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    // MARK: - Actions Card
+
+    @ViewBuilder
+    private var actionsCard: some View {
+        VStack(spacing: 0) {
+            // Category (only in Log view, parent tasks)
+            if !isSubtask && commitment == nil {
+                DrawerCategoryMenu(
+                    currentCategoryId: task.categoryId,
+                    categories: categories,
+                    onSelect: { categoryId in moveTask(to: categoryId) },
+                    onCreateNew: { showingNewCategoryAlert = true }
+                )
+            }
+
+            // Commit (only when not committed)
+            if commitment == nil {
+                DrawerActionRow(icon: "arrow.right.circle", text: "Commit") {
+                    showingCommitmentSheet = true
+                }
+            }
+
+            // Remove from Focus (when committed)
+            if let commitment = commitment {
+                DrawerActionRow(
+                    icon: "minus.circle",
+                    text: {
+                        switch commitment.timeframe {
+                        case .daily: return "Remove from Today"
+                        case .weekly: return "Remove from This Week"
+                        case .monthly: return "Remove from This Month"
+                        case .yearly: return "Remove from This Year"
+                        }
+                    }()
+                ) {
+                    _Concurrency.Task {
+                        await focusViewModel.removeCommitment(commitment)
+                        dismiss()
+                    }
+                }
+            }
+
+            // Commit to lower timeframe (non-daily commitments)
+            if let commitment = commitment,
+               commitment.canBreakdown,
+               let childTimeframe = commitment.childTimeframe {
+                DrawerActionRow(icon: "arrow.down.forward.circle", text: "Commit to \(childTimeframe.displayName)") {
+                    focusViewModel.selectedCommitmentForCommit = commitment
+                    focusViewModel.showCommitSheet = true
+                    dismiss()
+                }
+            }
+
+            // Commit Subtask to lower timeframe
+            if isSubtask && commitment == nil {
+                if let parentId = task.parentTaskId,
+                   let parentCommitment = focusViewModel.commitments.first(where: {
+                       $0.taskId == parentId &&
+                       focusViewModel.isSameTimeframe($0.commitmentDate, timeframe: focusViewModel.selectedTimeframe, selectedDate: focusViewModel.selectedDate)
+                   }),
+                   parentCommitment.timeframe != .daily {
+                    DrawerActionRow(icon: "arrow.down.forward.circle", text: "Commit to \(parentCommitment.childTimeframe?.displayName ?? "...")") {
+                        focusViewModel.selectedSubtaskForCommit = task
+                        focusViewModel.selectedParentCommitmentForSubtaskCommit = parentCommitment
+                        focusViewModel.showSubtaskCommitSheet = true
+                        dismiss()
+                    }
+                }
+            }
+
+            // Reschedule (committed, non-completed parent task)
+            if commitment != nil, !isSubtask, !task.isCompleted {
+                DrawerActionRow(icon: "calendar", text: "Reschedule") {
+                    showingRescheduleSheet = true
+                }
+            }
+
+            // Unschedule (remove from timeline, keep commitment)
+            if let commitment = commitment, commitment.scheduledTime != nil {
+                DrawerActionRow(icon: "calendar.badge.minus", text: "Unschedule") {
+                    _Concurrency.Task { @MainActor in
+                        await focusViewModel.timelineVM.unscheduleCommitment(commitment.id)
+                        dismiss()
+                    }
+                }
+            }
+
+            // Push to Next (committed, non-completed parent task)
+            if let commitment = commitment, !isSubtask, !task.isCompleted {
+                DrawerActionRow(icon: "arrow.turn.right.down", text: "Push to \(nextTimeframeLabel(for: commitment.timeframe))") {
+                    _Concurrency.Task {
+                        let success = await focusViewModel.pushCommitmentToNext(commitment)
+                        if success { dismiss() }
+                    }
+                }
+            }
+
+            Divider()
+                .padding(.horizontal, 14)
+
+            // Delete
+            if isSubtask {
+                DrawerActionRow(icon: "trash", text: "Delete Subtask", iconColor: .red) {
+                    _Concurrency.Task {
+                        if let parentId = task.parentTaskId {
+                            await viewModel.deleteSubtask(task, parentId: parentId)
+                        }
+                        dismiss()
+                    }
+                }
+            } else if commitment != nil {
+                DrawerActionRow(icon: "trash", text: "Delete Task", iconColor: .red) {
+                    showingDeleteConfirmation = true
+                }
+            } else {
+                DrawerActionRow(icon: "trash", text: "Delete Task", iconColor: .red) {
+                    _Concurrency.Task {
+                        await viewModel.deleteTask(task)
+                        dismiss()
+                    }
+                }
+            }
+        }
+        .background(Color(.secondarySystemGroupedBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .padding(.horizontal, 16)
+    }
+
+    // MARK: - Actions
+
     private func saveTitle() {
         guard taskTitle != task.title else { return }
-        Task {
+        _Concurrency.Task {
             await viewModel.updateTask(task, newTitle: taskTitle)
         }
     }
@@ -319,9 +394,7 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
         guard !newSubtaskTitle.trimmingCharacters(in: .whitespaces).isEmpty else { return }
         let title = newSubtaskTitle
         newSubtaskTitle = ""
-        Task {
-            // In Focus view context (when we have a commitment), pass the commitment
-            // so the new subtask gets its own commitment at the same timeframe
+        _Concurrency.Task {
             if let commitment = commitment {
                 await focusViewModel.createSubtask(title: title, parentId: task.id, parentCommitment: commitment)
             } else {
@@ -331,7 +404,7 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
     }
 
     private func moveTask(to categoryId: UUID?) {
-        Task {
+        _Concurrency.Task {
             await viewModel.moveTaskToCategory(task, categoryId: categoryId)
             dismiss()
         }
@@ -340,70 +413,46 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
     private func createAndMoveToCategory() {
         let name = newCategoryName
         newCategoryName = ""
-        Task {
+        _Concurrency.Task {
             await viewModel.createCategoryAndMove(name: name, task: task)
             dismiss()
         }
     }
-
-    private func deleteSubtasks(at indexSet: IndexSet) {
-        for index in indexSet {
-            let subtask = subtasks[index]
-            Task {
-                await viewModel.deleteSubtask(subtask, parentId: task.id)
-            }
-        }
-    }
 }
 
-// MARK: - Subtask Row for Drawer
+// MARK: - Inline Subtask TextField
 
-struct DrawerSubtaskRow<VM: TaskEditingViewModel>: View {
+private struct SubtaskTextField<VM: TaskEditingViewModel>: View {
     let subtask: FocusTask
-    let parentId: UUID
     @ObservedObject var viewModel: VM
+    var focusedId: FocusState<UUID?>.Binding
     @State private var editingTitle: String
-    @FocusState private var isEditing: Bool
 
-    init(subtask: FocusTask, parentId: UUID, viewModel: VM) {
+    init(subtask: FocusTask, viewModel: VM, focusedId: FocusState<UUID?>.Binding) {
         self.subtask = subtask
-        self.parentId = parentId
         self.viewModel = viewModel
+        self.focusedId = focusedId
         _editingTitle = State(initialValue: subtask.title)
     }
 
     var body: some View {
-        HStack(spacing: 12) {
-            // Completion toggle
-            Button {
-                Task {
-                    await viewModel.toggleSubtaskCompletion(subtask, parentId: parentId)
+        TextField("Subtask", text: $editingTitle)
+            .font(.body)
+            .textFieldStyle(.plain)
+            .strikethrough(subtask.isCompleted)
+            .foregroundColor(subtask.isCompleted ? .secondary : .primary)
+            .focused(focusedId, equals: subtask.id)
+            .onSubmit { saveTitle() }
+            .onChange(of: focusedId.wrappedValue) { _, newValue in
+                if newValue != subtask.id {
+                    saveTitle()
                 }
-            } label: {
-                Image(systemName: subtask.isCompleted ? "checkmark.circle.fill" : "circle")
-                    .foregroundColor(subtask.isCompleted ? .green : .gray)
             }
-            .buttonStyle(.plain)
-
-            // Editable title
-            TextField("Subtask", text: $editingTitle)
-                .strikethrough(subtask.isCompleted)
-                .foregroundColor(subtask.isCompleted ? .secondary : .primary)
-                .focused($isEditing)
-                .onSubmit {
-                    saveSubtaskTitle()
-                }
-                .onChange(of: isEditing) { _, editing in
-                    if !editing {
-                        saveSubtaskTitle()
-                    }
-                }
-        }
     }
 
-    private func saveSubtaskTitle() {
+    private func saveTitle() {
         guard editingTitle != subtask.title else { return }
-        Task {
+        _Concurrency.Task {
             await viewModel.updateTask(subtask, newTitle: editingTitle)
         }
     }

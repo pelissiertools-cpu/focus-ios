@@ -302,6 +302,7 @@ struct FocusTabView: View {
                 case .sectionHeader(let section):
                     let isExtraHeader = section == .extra && index > 0
                     FocusSectionHeaderRow(section: section, viewModel: viewModel)
+                        .moveDisabled(true)
                         .background(Color(.systemBackground), in: glassShape)
                         .listRowBackground(Color.clear)
                         .listRowInsets(EdgeInsets(top: isExtraHeader ? 20 : 8, leading: 0, bottom: 0, trailing: 0))

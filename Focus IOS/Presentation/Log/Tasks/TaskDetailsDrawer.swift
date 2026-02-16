@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-import Auth
 
 struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
     let task: FocusTask
@@ -14,7 +13,6 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
     let categories: [Category]
     @ObservedObject var viewModel: VM
     @EnvironmentObject var focusViewModel: FocusTabViewModel
-    @EnvironmentObject var authService: AuthService
     @State private var taskTitle: String
     @State private var showingCommitmentSheet = false
     @State private var showingRescheduleSheet = false
@@ -23,7 +21,9 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
     @State private var newSubtaskTitle: String = ""
     @State private var showNewSubtaskField = false
     @State private var showingDeleteConfirmation = false
-    @State private var showingBreakdownDrawer = false
+    @State private var isGeneratingBreakdown = false
+    @State private var hasGeneratedBreakdown = false
+    @State private var draftSuggestions: [DraftSubtaskEntry] = []
     @State private var pendingDeletions: Set<UUID> = []
     @FocusState private var isTitleFocused: Bool
     @FocusState private var focusedSubtaskId: UUID?
@@ -62,7 +62,7 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
     }
 
     private var hasChanges: Bool {
-        taskTitle != task.title || !pendingDeletions.isEmpty || !newSubtaskTitle.trimmingCharacters(in: .whitespaces).isEmpty
+        taskTitle != task.title || !pendingDeletions.isEmpty || !newSubtaskTitle.trimmingCharacters(in: .whitespaces).isEmpty || !draftSuggestions.isEmpty
     }
 
     var body: some View {
@@ -72,6 +72,7 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
             trailingButton: .check(action: {
                 saveTitle()
                 addSubtask()
+                commitDraftSuggestions()
                 commitPendingDeletions()
                 dismiss()
             }, highlighted: hasChanges)
@@ -119,17 +120,6 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                 }
             } message: {
                 Text("This will permanently delete this task and all its commitments.")
-            }
-            .sheet(isPresented: $showingBreakdownDrawer) {
-                if let userId = authService.currentUser?.id {
-                    BreakdownDrawer(parentTask: task, userId: userId) {
-                        _Concurrency.Task { @MainActor in
-                            await viewModel.refreshSubtasks(for: task.id)
-                        }
-                    }
-                    .presentationDetents([.large])
-                    .presentationDragIndicator(.visible)
-                }
             }
         }
     }
@@ -180,12 +170,17 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                 Spacer()
                 if !task.isCompleted {
                     Button {
-                        showingBreakdownDrawer = true
+                        generateBreakdown()
                     } label: {
                         HStack(spacing: 6) {
-                            Image(systemName: "sparkles")
-                                .font(.subheadline.weight(.semibold))
-                            Text("Suggest Breakdown")
+                            if isGeneratingBreakdown {
+                                ProgressView()
+                                    .tint(.primary)
+                            } else {
+                                Image(systemName: hasGeneratedBreakdown ? "arrow.clockwise" : "sparkles")
+                                    .font(.subheadline.weight(.semibold))
+                            }
+                            Text(hasGeneratedBreakdown ? "Regenerate" : "Suggest Breakdown")
                                 .font(.caption.weight(.medium))
                         }
                         .foregroundColor(.primary)
@@ -218,6 +213,7 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                         .glassEffect(.regular.interactive(), in: .capsule)
                     }
                     .buttonStyle(.plain)
+                    .disabled(isGeneratingBreakdown)
                 }
             }
             .padding(.horizontal, 14)
@@ -227,6 +223,30 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
             VStack(spacing: 14) {
                 ForEach(subtasks) { subtask in
                     compactSubtaskRow(subtask)
+                }
+
+                // Draft AI suggestions (not yet saved)
+                ForEach(draftSuggestions) { draft in
+                    HStack(spacing: 8) {
+                        Image(systemName: "sparkles")
+                            .font(.caption2)
+                            .foregroundColor(.purple.opacity(0.6))
+
+                        TextField("Subtask", text: draftBinding(for: draft.id))
+                            .font(.body)
+                            .textFieldStyle(.plain)
+
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.15)) {
+                                draftSuggestions.removeAll { $0.id == draft.id }
+                            }
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        .buttonStyle(.plain)
+                    }
                 }
 
                 // New subtask entry (shown when focused)
@@ -476,6 +496,57 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                 await viewModel.createSubtask(title: title, parentId: task.id)
             }
         }
+    }
+
+    private func generateBreakdown() {
+        isGeneratingBreakdown = true
+        let existingTitles = subtasks.map { $0.title } + draftSuggestions.map { $0.title }
+
+        _Concurrency.Task { @MainActor in
+            do {
+                let suggestions = try await AIService().generateSubtasks(
+                    title: task.title,
+                    description: task.description,
+                    existingSubtasks: existingTitles.isEmpty ? nil : existingTitles
+                )
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    // Keep manually-added drafts, replace AI-generated ones
+                    let manualDrafts = draftSuggestions.filter { !$0.isAISuggested }
+                    draftSuggestions = manualDrafts + suggestions.map {
+                        DraftSubtaskEntry(title: $0, isAISuggested: true)
+                    }
+                }
+                hasGeneratedBreakdown = true
+            } catch {
+                // Silently fail — user can retry or add manually
+            }
+            isGeneratingBreakdown = false
+        }
+    }
+
+    private func commitDraftSuggestions() {
+        for draft in draftSuggestions {
+            let title = draft.title.trimmingCharacters(in: .whitespaces)
+            guard !title.isEmpty else { continue }
+            _Concurrency.Task {
+                if let commitment = commitment {
+                    await focusViewModel.createSubtask(title: title, parentId: task.id, parentCommitment: commitment)
+                } else {
+                    await viewModel.createSubtask(title: title, parentId: task.id)
+                }
+            }
+        }
+    }
+
+    private func draftBinding(for id: UUID) -> Binding<String> {
+        Binding(
+            get: { draftSuggestions.first(where: { $0.id == id })?.title ?? "" },
+            set: { newValue in
+                if let idx = draftSuggestions.firstIndex(where: { $0.id == id }) {
+                    draftSuggestions[idx].title = newValue
+                }
+            }
+        )
     }
 
     private func moveTask(to categoryId: UUID?) {

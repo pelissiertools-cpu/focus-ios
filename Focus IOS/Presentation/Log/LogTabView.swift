@@ -612,18 +612,44 @@ struct LogTabView: View {
                     HStack(spacing: 8) {
                         if isGeneratingBreakdown {
                             ProgressView()
-                                .tint(.white)
+                                .tint(.primary)
                         } else {
                             Image(systemName: "sparkles")
                                 .font(.body.weight(.semibold))
                         }
-                        Text("Break Down with AI")
+                        Text("Break Down task")
                             .font(.subheadline.weight(.medium))
                     }
-                    .foregroundColor(.white)
+                    .foregroundColor(.primary)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
-                    .background(Color.blue, in: Capsule())
+                    .background {
+                        // Rainbow glow behind the button
+                        Capsule()
+                            .stroke(
+                                AngularGradient(
+                                    colors: [
+                                        Color(red: 0.85, green: 0.25, blue: 0.2),  // soft red
+                                        Color(red: 0.7, green: 0.3, blue: 0.5),    // red-blue blend
+                                        Color(red: 0.35, green: 0.45, blue: 0.85), // blue
+                                        Color(red: 0.3, green: 0.55, blue: 0.7),   // teal-blue
+                                        Color(red: 0.55, green: 0.65, blue: 0.3),  // olive transition
+                                        Color(red: 0.9, green: 0.75, blue: 0.15),  // gold
+                                        Color(red: 0.9, green: 0.45, blue: 0.15),  // orange
+                                        Color(red: 0.85, green: 0.25, blue: 0.2),  // back to soft red
+                                    ],
+                                    center: .center
+                                ),
+                                lineWidth: 2.5
+                            )
+                            .blur(radius: 6)
+                    }
+                    .overlay {
+                        // White border to cover the rainbow source, letting only the glow show
+                        Capsule()
+                            .stroke(.white.opacity(0.5), lineWidth: 1.5)
+                    }
+                    .glassEffect(.regular.interactive(), in: .capsule)
                 }
                 .buttonStyle(.plain)
                 .disabled(isGeneratingBreakdown)

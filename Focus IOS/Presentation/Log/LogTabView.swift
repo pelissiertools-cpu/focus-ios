@@ -32,6 +32,7 @@ struct LogTabView: View {
     @State private var addTaskTimeframe: Timeframe = .daily
     @State private var addTaskSection: Section = .focus
     @State private var addTaskDates: Set<Date> = []
+    @State private var isGeneratingBreakdown = false
     @FocusState private var isAddTaskFieldFocused: Bool
     @FocusState private var focusedSubtaskId: UUID?
 
@@ -455,7 +456,7 @@ struct LogTabView: View {
                                 .foregroundColor(.secondary.opacity(0.5))
 
                             TextField("Subtask", text: subtaskBinding(for: subtask.id), axis: .vertical)
-                                .font(.subheadline)
+                                .font(.body)
                                 .textFieldStyle(.plain)
                                 .focused($focusedSubtaskId, equals: subtask.id)
                                 .lineLimit(1)
@@ -602,7 +603,35 @@ struct LogTabView: View {
                 .disabled(isAddTaskTitleEmpty)
             }
             .padding(.horizontal, 14)
-            .padding(.bottom, 20)
+
+            // AI Breakdown button
+            if !isAddTaskTitleEmpty {
+                Button {
+                    generateBreakdown()
+                } label: {
+                    HStack(spacing: 8) {
+                        if isGeneratingBreakdown {
+                            ProgressView()
+                                .tint(.white)
+                        } else {
+                            Image(systemName: "sparkles")
+                                .font(.body.weight(.semibold))
+                        }
+                        Text("Break Down with AI")
+                            .font(.subheadline.weight(.medium))
+                    }
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(Color.blue, in: Capsule())
+                }
+                .buttonStyle(.plain)
+                .disabled(isGeneratingBreakdown)
+                .padding(.horizontal, 14)
+                .padding(.top, 6)
+            }
+
+            Spacer().frame(height: 20)
         }
         .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 20))
         .padding(.horizontal)
@@ -638,7 +667,7 @@ struct LogTabView: View {
                                 .foregroundColor(.secondary.opacity(0.5))
 
                             TextField("Item", text: listItemBinding(for: item.id), axis: .vertical)
-                                .font(.subheadline)
+                                .font(.body)
                                 .textFieldStyle(.plain)
                                 .focused($focusedListItemId, equals: item.id)
                                 .lineLimit(1)
@@ -1042,6 +1071,24 @@ struct LogTabView: View {
             return category.name
         }
         return "Category"
+    }
+
+    private func generateBreakdown() {
+        let title = addTaskTitle.trimmingCharacters(in: .whitespaces)
+        guard !title.isEmpty else { return }
+        isGeneratingBreakdown = true
+        _Concurrency.Task { @MainActor in
+            do {
+                let aiService = AIService()
+                let suggestions = try await aiService.generateSubtasks(title: title, description: nil)
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    addTaskSubtasks = suggestions.map { DraftSubtaskEntry(title: $0) }
+                }
+            } catch {
+                // Silently fail — user can tap again or add subtasks manually
+            }
+            isGeneratingBreakdown = false
+        }
     }
 
     private func saveLogTask() {

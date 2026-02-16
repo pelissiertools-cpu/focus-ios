@@ -62,7 +62,7 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
     }
 
     private var hasChanges: Bool {
-        taskTitle != task.title || !pendingDeletions.isEmpty
+        taskTitle != task.title || !pendingDeletions.isEmpty || !newSubtaskTitle.trimmingCharacters(in: .whitespaces).isEmpty
     }
 
     var body: some View {
@@ -71,6 +71,7 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
             leadingButton: .close { dismiss() },
             trailingButton: .check(action: {
                 saveTitle()
+                addSubtask()
                 commitPendingDeletions()
                 dismiss()
             }, highlighted: hasChanges)

@@ -158,6 +158,7 @@ struct ProjectCard: View {
                         viewModel: viewModel,
                         isAnyAddFieldActive: $isInlineAddFocused
                     )
+                    .padding(.horizontal, 16)
                 } else {
                     List {
                         ForEach(items) { item in
@@ -386,7 +387,7 @@ struct InlineAddProjectTaskRow: View {
                     HStack(spacing: 8) {
                         Image(systemName: "plus")
                             .font(.subheadline)
-                        Text("Add")
+                        Text("Add task")
                             .font(.subheadline)
                     }
                     .foregroundColor(.secondary)

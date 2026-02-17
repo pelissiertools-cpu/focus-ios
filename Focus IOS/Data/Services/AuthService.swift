@@ -173,6 +173,16 @@ class AuthService: ObservableObject {
         }
     }
 
+    /// Check if an email already exists in auth.users via RPC
+    func checkEmailExists(email: String) async -> Bool {
+        do {
+            let result: Bool = try await supabase.rpc("check_email_exists", params: ["email_input": email]).execute().value
+            return result
+        } catch {
+            return false
+        }
+    }
+
     /// Sign out the current user
     func signOut() async throws {
         isLoading = true

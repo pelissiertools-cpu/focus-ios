@@ -11,8 +11,7 @@ import GoogleSignIn
 
 struct SignInView: View {
     @EnvironmentObject var authService: AuthService
-    @State private var showSignUp = false
-    @State private var showLogIn = false
+    @State private var showAuth = false
 
     var body: some View {
         ZStack {
@@ -73,7 +72,7 @@ struct SignInView: View {
                     .disabled(authService.isLoading)
 
                     // Sign up
-                    Button(action: { showSignUp = true }) {
+                    Button(action: { showAuth = true }) {
                         Text("Sign up")
                             .fontWeight(.semibold)
                             .frame(maxWidth: .infinity)
@@ -85,7 +84,7 @@ struct SignInView: View {
                     .disabled(authService.isLoading)
 
                     // Log in
-                    Button(action: { showLogIn = true }) {
+                    Button(action: { showAuth = true }) {
                         Text("Log in")
                             .fontWeight(.semibold)
                             .frame(maxWidth: .infinity)
@@ -115,13 +114,8 @@ struct SignInView: View {
                 )
             }
         }
-        .sheet(isPresented: $showSignUp) {
-            SignUpView()
-                .environmentObject(authService)
-                .drawerStyle()
-        }
-        .sheet(isPresented: $showLogIn) {
-            EmailSignInView()
+        .sheet(isPresented: $showAuth) {
+            AuthSheetView()
                 .environmentObject(authService)
                 .drawerStyle()
         }

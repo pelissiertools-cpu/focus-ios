@@ -813,6 +813,9 @@ struct SectionView: View {
                     }
                 }
             }
+            .padding(.vertical, 10)
+            .padding(.horizontal, 14)
+            .background(.ultraThinMaterial, in: Capsule())
 
             // Committed Tasks (hidden when collapsed)
             if !viewModel.isSectionCollapsed(section) {
@@ -1055,6 +1058,7 @@ struct FocusSectionHeaderRow: View {
         }
         .padding(.vertical, 12)
         .padding(.horizontal, 16)
+        .background(.ultraThinMaterial, in: Capsule())
     }
 }
 

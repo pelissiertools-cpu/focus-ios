@@ -236,6 +236,15 @@ struct ListRow: View {
         } message: {
             Text("Are you sure you want to delete \"\(list.title)\"?")
         }
+        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+            if !isEditMode {
+                Button(role: .destructive) {
+                    showDeleteConfirmation = true
+                } label: {
+                    Label("Delete", systemImage: "trash")
+                }
+            }
+        }
     }
 }
 
@@ -271,6 +280,15 @@ struct ListItemRow: View {
         .contentShape(Rectangle())
         .onTapGesture {
             viewModel.selectedItemForDetails = item
+        }
+        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+            Button(role: .destructive) {
+                _Concurrency.Task {
+                    await viewModel.deleteItem(item, listId: listId)
+                }
+            } label: {
+                Label("Delete", systemImage: "trash")
+            }
         }
     }
 }

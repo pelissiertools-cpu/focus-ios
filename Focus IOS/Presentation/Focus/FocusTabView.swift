@@ -1215,6 +1215,17 @@ struct CommitmentRow: View {
 
             // Subtasks are now rendered as flat list items (see focusList)
         }
+        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+            if !task.isCompleted {
+                Button(role: .destructive) {
+                    _Concurrency.Task { @MainActor in
+                        await viewModel.removeCommitment(commitment)
+                    }
+                } label: {
+                    Label("Remove", systemImage: "minus.circle")
+                }
+            }
+        }
     }
 }
 

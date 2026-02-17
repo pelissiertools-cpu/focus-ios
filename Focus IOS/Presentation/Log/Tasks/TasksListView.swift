@@ -372,6 +372,21 @@ struct FlatTaskRow: View {
         } message: {
             Text("Are you sure you want to delete \"\(task.title)\"?")
         }
+        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+            if !isEditMode && !task.isCompleted {
+                Button(role: .destructive) {
+                    _Concurrency.Task {
+                        if isParent {
+                            await viewModel.deleteTask(task)
+                        } else if let parentId = task.parentTaskId {
+                            await viewModel.deleteSubtask(task, parentId: parentId)
+                        }
+                    }
+                } label: {
+                    Label("Delete", systemImage: "trash")
+                }
+            }
+        }
     }
 }
 

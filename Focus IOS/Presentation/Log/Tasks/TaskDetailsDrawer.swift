@@ -14,7 +14,13 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
     @ObservedObject var viewModel: VM
     @EnvironmentObject var focusViewModel: FocusTabViewModel
     @State private var taskTitle: String
-    @State private var showingCommitmentSheet = false
+    @State private var commitExpanded = false
+    @State private var commitTimeframe: Timeframe = .daily
+    @State private var commitSection: Section = .focus
+    @State private var commitDates: Set<Date> = []
+    @State private var originalCommitDates: Set<Date> = []
+    @State private var originalCommitments: [Commitment] = []
+    @State private var hasExistingCommitments = false
     @State private var showingRescheduleSheet = false
     @State private var showingNewCategoryAlert = false
     @State private var newCategoryName = ""
@@ -63,8 +69,17 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
         }
     }
 
+    private var commitPillIsActive: Bool {
+        !commitDates.isEmpty || hasExistingCommitments
+    }
+
+    private var hasCommitChanges: Bool {
+        let currentDates = Set(commitDates.map { Calendar.current.startOfDay(for: $0) })
+        return originalCommitDates != currentDates
+    }
+
     private var hasChanges: Bool {
-        taskTitle != task.title || selectedCategoryId != task.categoryId || !pendingDeletions.isEmpty || !newSubtaskTitle.trimmingCharacters(in: .whitespaces).isEmpty || !draftSuggestions.isEmpty
+        taskTitle != task.title || selectedCategoryId != task.categoryId || !pendingDeletions.isEmpty || !newSubtaskTitle.trimmingCharacters(in: .whitespaces).isEmpty || !draftSuggestions.isEmpty || hasCommitChanges
     }
 
     var body: some View {
@@ -77,40 +92,75 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                 addSubtask()
                 commitDraftSuggestions()
                 commitPendingDeletions()
+                saveCommitChanges()
                 dismiss()
             }, highlighted: hasChanges)
         ) {
-            ScrollView {
-                VStack(spacing: 12) {
-                    // ─── TITLE ───
-                    titleCard
+            ScrollViewReader { proxy in
+                ScrollView {
+                    VStack(spacing: 12) {
+                        // ─── TITLE ───
+                        titleCard
 
-                    // ─── SUBTASKS ───
-                    if !isSubtask {
-                        subtasksCard
+                        // ─── SUBTASKS ───
+                        if !isSubtask {
+                            subtasksCard
+                        }
+
+                        // ─── PILL ACTIONS ───
+                        actionPillsRow
+
+                        // ─── INLINE COMMIT ───
+                        if commitExpanded {
+                            inlineCommitCard
+                                .id("commitCard")
+                        }
+
+                        // ─── CONTEXTUAL ACTIONS ───
+                        if contextualActionsVisible {
+                            contextualActionsCard
+                        }
                     }
-
-                    // ─── PILL ACTIONS ───
-                    actionPillsRow
-
-                    // ─── CONTEXTUAL ACTIONS ───
-                    if contextualActionsVisible {
-                        contextualActionsCard
+                    .padding(.bottom, 20)
+                }
+                .onChange(of: commitExpanded) { _, expanded in
+                    if expanded {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                proxy.scrollTo("commitCard", anchor: .bottom)
+                            }
+                        }
                     }
                 }
-                .padding(.bottom, 20)
             }
             .background(.clear)
+            .onChange(of: isTitleFocused) { _, isFocused in
+                if isFocused && commitExpanded {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        commitExpanded = false
+                    }
+                }
+            }
+            .onChange(of: isNewSubtaskFocused) { _, isFocused in
+                if isFocused && commitExpanded {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        commitExpanded = false
+                    }
+                }
+            }
+            .onChange(of: focusedSubtaskId) { _, subtaskId in
+                if subtaskId != nil && commitExpanded {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        commitExpanded = false
+                    }
+                }
+            }
             .alert("New Category", isPresented: $showingNewCategoryAlert) {
                 TextField("Category name", text: $newCategoryName)
                 Button("Cancel", role: .cancel) { newCategoryName = "" }
                 Button("Create") { createAndMoveToCategory() }
             } message: {
                 Text("Enter a name for the new category.")
-            }
-            .sheet(isPresented: $showingCommitmentSheet) {
-                CommitmentSelectionSheet(task: task, focusViewModel: focusViewModel)
-                    .drawerStyle()
             }
             .sheet(isPresented: $showingRescheduleSheet) {
                 if let commitment = commitment {
@@ -168,6 +218,7 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                 isTitleFocused = true
             }
+            checkExistingCommitments()
         }
     }
 
@@ -404,7 +455,14 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
             // Commit pill (only when not committed)
             if commitment == nil {
                 Button {
-                    showingCommitmentSheet = true
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        commitExpanded.toggle()
+                    }
+                    if commitExpanded {
+                        isTitleFocused = false
+                        focusedSubtaskId = nil
+                        isNewSubtaskFocused = false
+                    }
                 } label: {
                     HStack(spacing: 6) {
                         Image(systemName: "arrow.right.circle")
@@ -412,10 +470,15 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                         Text("Commit")
                             .font(.subheadline.weight(.medium))
                     }
-                    .foregroundColor(.primary)
+                    .foregroundColor(commitPillIsActive ? .white : .primary)
                     .padding(.horizontal, 16)
                     .padding(.vertical, 10)
-                    .glassEffect(.regular.interactive(), in: .capsule)
+                    .glassEffect(
+                        commitPillIsActive
+                            ? .regular.tint(.blue).interactive()
+                            : .regular.interactive(),
+                        in: .capsule
+                    )
                 }
                 .buttonStyle(.plain)
             }
@@ -524,6 +587,137 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
         .background(Color(.secondarySystemGroupedBackground))
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .padding(.horizontal, 16)
+    }
+
+    // MARK: - Inline Commit Card
+
+    @ViewBuilder
+    private var inlineCommitCard: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // Section picker (Focus/Extra)
+            Picker("Section", selection: $commitSection) {
+                Text("Focus").tag(Section.focus)
+                Text("Extra").tag(Section.extra)
+            }
+            .pickerStyle(.segmented)
+            .padding(.horizontal, 14)
+            .padding(.top, 12)
+            .padding(.bottom, 8)
+
+            Divider()
+                .padding(.horizontal, 14)
+
+            // Calendar picker
+            ScrollView {
+                UnifiedCalendarPicker(
+                    selectedDates: $commitDates,
+                    selectedTimeframe: $commitTimeframe
+                )
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
+            }
+            .frame(maxHeight: 350)
+        }
+        .background(Color(.secondarySystemGroupedBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .padding(.horizontal, 16)
+        .onAppear {
+            fetchTaskCommitments()
+        }
+        .onChange(of: commitTimeframe) {
+            fetchTaskCommitments()
+        }
+        .onChange(of: commitSection) {
+            fetchTaskCommitments()
+        }
+    }
+
+    // MARK: - Commit Data
+
+    private func checkExistingCommitments() {
+        _Concurrency.Task {
+            do {
+                let commitments = try await CommitmentRepository().fetchCommitments(forTask: task.id)
+                await MainActor.run {
+                    hasExistingCommitments = !commitments.isEmpty
+                }
+            } catch {
+                // Silently fail
+            }
+        }
+    }
+
+    private func fetchTaskCommitments() {
+        _Concurrency.Task {
+            do {
+                let commitmentRepository = CommitmentRepository()
+                let commitments = try await commitmentRepository.fetchCommitments(forTask: task.id)
+
+                let filtered = commitments.filter {
+                    $0.timeframe == commitTimeframe && $0.section == commitSection
+                }
+
+                await MainActor.run {
+                    originalCommitments = filtered
+                    originalCommitDates = Set(filtered.map { Calendar.current.startOfDay(for: $0.commitmentDate) })
+                    commitDates = Set(filtered.map { $0.commitmentDate })
+                }
+            } catch {
+                // Silently fail
+            }
+        }
+    }
+
+    private func saveCommitChanges() {
+        let currentDates = Set(commitDates.map { Calendar.current.startOfDay(for: $0) })
+        guard originalCommitDates != currentDates else { return }
+
+        let capturedOriginalCommitments = originalCommitments
+        let capturedSection = commitSection
+        let capturedTimeframe = commitTimeframe
+
+        _Concurrency.Task {
+            do {
+                let commitmentRepository = CommitmentRepository()
+                let allCommitments = try await commitmentRepository.fetchCommitments(forTask: task.id)
+                let otherSection: Section = capturedSection == .focus ? .extra : .focus
+
+                let datesToAdd = currentDates.subtracting(originalCommitDates)
+                let datesToRemove = originalCommitDates.subtracting(currentDates)
+
+                for date in datesToRemove {
+                    if let commitment = capturedOriginalCommitments.first(where: {
+                        Calendar.current.startOfDay(for: $0.commitmentDate) == date
+                    }) {
+                        try await commitmentRepository.deleteCommitment(id: commitment.id)
+                    }
+                }
+
+                for date in datesToAdd {
+                    if let conflicting = allCommitments.first(where: {
+                        $0.section == otherSection &&
+                        $0.timeframe == capturedTimeframe &&
+                        Calendar.current.startOfDay(for: $0.commitmentDate) == Calendar.current.startOfDay(for: date)
+                    }) {
+                        try await commitmentRepository.deleteCommitment(id: conflicting.id)
+                    }
+
+                    let newCommitment = Commitment(
+                        userId: task.userId,
+                        taskId: task.id,
+                        timeframe: capturedTimeframe,
+                        section: capturedSection,
+                        commitmentDate: date,
+                        sortOrder: 0
+                    )
+                    _ = try await commitmentRepository.createCommitment(newCommitment)
+                }
+
+                await focusViewModel.fetchCommitments()
+            } catch {
+                // Silently fail
+            }
+        }
     }
 
     // MARK: - Actions

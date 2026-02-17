@@ -8,6 +8,7 @@
 import SwiftUI
 import AuthenticationServices
 import GoogleSignIn
+import CryptoKit
 
 struct SignInView: View {
     @EnvironmentObject var authService: AuthService
@@ -143,7 +144,15 @@ struct SignInView: View {
                     return
                 }
 
-                let result = try await GIDSignIn.sharedInstance.signIn(withPresenting: rootViewController)
+                let nonce = NonceHelper.randomNonceString()
+                let hashedNonce = NonceHelper.sha256(nonce)
+
+                let result = try await GIDSignIn.sharedInstance.signIn(
+                    withPresenting: rootViewController,
+                    hint: nil,
+                    additionalScopes: nil,
+                    nonce: hashedNonce
+                )
 
                 guard let idToken = result.user.idToken?.tokenString else {
                     authService.errorMessage = "Unable to get Google ID token."
@@ -151,7 +160,7 @@ struct SignInView: View {
                 }
 
                 let accessToken = result.user.accessToken.tokenString
-                try await authService.signInWithGoogle(idToken: idToken, accessToken: accessToken)
+                try await authService.signInWithGoogle(idToken: idToken, accessToken: accessToken, nonce: nonce)
             } catch {
                 // GIDSignInError.canceled is expected, other errors handled in AuthService
             }

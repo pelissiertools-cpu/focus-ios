@@ -151,7 +151,7 @@ class AuthService: ObservableObject {
     }
 
     /// Sign in with Google using GoogleSignIn SDK
-    func signInWithGoogle(idToken: String, accessToken: String) async throws {
+    func signInWithGoogle(idToken: String, accessToken: String, nonce: String) async throws {
         isLoading = true
         errorMessage = nil
 
@@ -160,7 +160,8 @@ class AuthService: ObservableObject {
                 credentials: .init(
                     provider: .google,
                     idToken: idToken,
-                    accessToken: accessToken
+                    accessToken: accessToken,
+                    nonce: nonce
                 )
             )
             self.currentUser = session.user

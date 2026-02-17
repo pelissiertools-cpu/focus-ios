@@ -9,12 +9,12 @@
 			<string>Editor</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>com.googleusercontent.apps.928456128913-1f5cla0rp48mfn6beuprbpa3tfs6hng7</string>
+				<string>com.googleusercontent.apps.928456128913-ortcj51chft2m3cu5sv65lc21bbeccsj</string>
 			</array>
 		</dict>
 	</array>
 	<key>GIDClientID</key>
-	<string>928456128913-1f5cla0rp48mfn6beuprbpa3tfs6hng7.apps.googleusercontent.com</string>
+	<string>928456128913-ortcj51chft2m3cu5sv65lc21bbeccsj.apps.googleusercontent.com</string>
 	<key>UIAppFonts</key>
 	<array>
 		<string>Fonts/Outfit-Thin.ttf</string>

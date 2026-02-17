@@ -80,6 +80,21 @@ class AuthService: ObservableObject {
         }
     }
 
+    /// Send a password reset email
+    func resetPassword(email: String) async throws {
+        isLoading = true
+        errorMessage = nil
+
+        do {
+            try await supabase.auth.resetPasswordForEmail(email)
+            self.isLoading = false
+        } catch {
+            self.isLoading = false
+            self.errorMessage = error.localizedDescription
+            throw error
+        }
+    }
+
     /// Sign out the current user
     func signOut() async throws {
         isLoading = true

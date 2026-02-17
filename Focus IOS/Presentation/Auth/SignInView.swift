@@ -12,6 +12,9 @@ struct SignInView: View {
     @State private var email = ""
     @State private var password = ""
     @State private var showSignUp = false
+    @State private var showForgotPassword = false
+    @State private var resetEmailSent = false
+    @State private var forgotPasswordEmail = ""
 
     var body: some View {
         NavigationView {
@@ -38,6 +41,18 @@ struct SignInView: View {
                     .textContentType(.password)
                     .disabled(authService.isLoading)
                     .padding(.horizontal)
+
+                // Forgot Password
+                HStack {
+                    Spacer()
+                    Button("Forgot Password?") {
+                        forgotPasswordEmail = email
+                        showForgotPassword = true
+                    }
+                    .font(.subheadline)
+                    .disabled(authService.isLoading)
+                }
+                .padding(.horizontal)
 
                 // Error Message
                 if let errorMessage = authService.errorMessage {
@@ -80,6 +95,29 @@ struct SignInView: View {
                 SignUpView()
                     .environmentObject(authService)
                     .drawerStyle()
+            }
+            .alert("Reset Password", isPresented: $showForgotPassword) {
+                TextField("Email", text: $forgotPasswordEmail)
+                    .textContentType(.emailAddress)
+                    .autocapitalization(.none)
+                Button("Send Reset Link") {
+                    _Concurrency.Task { @MainActor in
+                        do {
+                            try await authService.resetPassword(email: forgotPasswordEmail)
+                            resetEmailSent = true
+                        } catch {
+                            // Error handled in AuthService
+                        }
+                    }
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("Enter your email address and we'll send you a link to reset your password.")
+            }
+            .alert("Email Sent", isPresented: $resetEmailSent) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text("Check your inbox for a password reset link.")
             }
         }
     }

@@ -863,10 +863,10 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
     func focusConfig(for section: Section) -> FocusSectionConfig {
         guard section == .focus else {
             return FocusSectionConfig(
-                taskFont: .body,
+                taskFont: .outfit(.body),
                 verticalPadding: 8,
                 containerMinHeight: 0,
-                completedTaskFont: .body,
+                completedTaskFont: .outfit(.body),
                 completedVerticalPadding: 6,
                 completedOpacity: 0.5
             )
@@ -875,10 +875,10 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
         // Yearly supports up to 10 tasks — use compact layout, no scaling
         guard selectedTimeframe != .yearly else {
             return FocusSectionConfig(
-                taskFont: .body,
+                taskFont: .outfit(.body),
                 verticalPadding: 10,
                 containerMinHeight: 0,
-                completedTaskFont: .footnote,
+                completedTaskFont: .outfit(.footnote),
                 completedVerticalPadding: 6,
                 completedOpacity: 0.45
             )
@@ -888,28 +888,28 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
         switch count {
         case 0, 1:
             return FocusSectionConfig(
-                taskFont: .title,
+                taskFont: .outfit(.title, weight: .semibold),
                 verticalPadding: 24,
                 containerMinHeight: 150,
-                completedTaskFont: .subheadline,
+                completedTaskFont: .outfit(.subheadline),
                 completedVerticalPadding: 6,
                 completedOpacity: 0.45
             )
         case 2:
             return FocusSectionConfig(
-                taskFont: .title2,
+                taskFont: .outfit(.title2, weight: .semibold),
                 verticalPadding: 18,
                 containerMinHeight: 150,
-                completedTaskFont: .subheadline,
+                completedTaskFont: .outfit(.subheadline),
                 completedVerticalPadding: 6,
                 completedOpacity: 0.45
             )
         default:
             return FocusSectionConfig(
-                taskFont: .title3,
+                taskFont: .outfit(.title3, weight: .medium),
                 verticalPadding: 14,
                 containerMinHeight: 0,
-                completedTaskFont: .subheadline,
+                completedTaskFont: .outfit(.subheadline),
                 completedVerticalPadding: 6,
                 completedOpacity: 0.45
             )

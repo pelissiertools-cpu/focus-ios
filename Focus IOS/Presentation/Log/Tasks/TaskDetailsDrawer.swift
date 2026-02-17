@@ -256,9 +256,9 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                                 .stroke(
                                     AngularGradient(
                                         colors: [
-                                            Color(red: 0.0, green: 0.2, blue: 1.0),   // Fluorescent blue
-                                            Color(red: 0.5, green: 0.0, blue: 1.0),   // Vivid purple
-                                            Color(red: 0.0, green: 0.2, blue: 1.0),   // Back to blue
+                                            Color(red: 0.0, green: 0.2, blue: 1.0),
+                                            Color(red: 0.15, green: 0.35, blue: 1.0),
+                                            Color(red: 0.0, green: 0.2, blue: 1.0),
                                         ],
                                         center: .center
                                     ),

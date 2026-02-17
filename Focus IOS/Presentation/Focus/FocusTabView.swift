@@ -550,19 +550,14 @@ struct FocusTabView: View {
                     .padding(.vertical, 12)
                     .background {
                         if !addTaskTitle.trimmingCharacters(in: .whitespaces).isEmpty {
-                            // Rainbow glow behind the button
+                            // Blue glow behind the button
                             Capsule()
                                 .stroke(
                                     AngularGradient(
                                         colors: [
-                                            Color(red: 0.85, green: 0.25, blue: 0.2),
-                                            Color(red: 0.7, green: 0.3, blue: 0.5),
-                                            Color(red: 0.35, green: 0.45, blue: 0.85),
-                                            Color(red: 0.3, green: 0.55, blue: 0.7),
-                                            Color(red: 0.55, green: 0.65, blue: 0.3),
-                                            Color(red: 0.9, green: 0.75, blue: 0.15),
-                                            Color(red: 0.9, green: 0.45, blue: 0.15),
-                                            Color(red: 0.85, green: 0.25, blue: 0.2),
+                                            Color(red: 0.0, green: 0.2, blue: 1.0),
+                                            Color(red: 0.15, green: 0.35, blue: 1.0),
+                                            Color(red: 0.0, green: 0.2, blue: 1.0),
                                         ],
                                         center: .center
                                     ),

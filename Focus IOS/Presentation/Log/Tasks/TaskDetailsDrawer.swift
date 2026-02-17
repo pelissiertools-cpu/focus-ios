@@ -20,6 +20,7 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
     @State private var newCategoryName = ""
     @State private var newSubtaskTitle: String = ""
     @State private var showNewSubtaskField = false
+    @State private var selectedCategoryId: UUID?
     @State private var showingDeleteConfirmation = false
     @State private var isGeneratingBreakdown = false
     @State private var hasGeneratedBreakdown = false
@@ -50,6 +51,7 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
         self.commitment = commitment
         self.categories = categories
         _taskTitle = State(initialValue: task.title)
+        _selectedCategoryId = State(initialValue: task.categoryId)
     }
 
     private func nextTimeframeLabel(for timeframe: Timeframe) -> String {
@@ -62,7 +64,7 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
     }
 
     private var hasChanges: Bool {
-        taskTitle != task.title || !pendingDeletions.isEmpty || !newSubtaskTitle.trimmingCharacters(in: .whitespaces).isEmpty || !draftSuggestions.isEmpty
+        taskTitle != task.title || selectedCategoryId != task.categoryId || !pendingDeletions.isEmpty || !newSubtaskTitle.trimmingCharacters(in: .whitespaces).isEmpty || !draftSuggestions.isEmpty
     }
 
     var body: some View {
@@ -71,6 +73,7 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
             leadingButton: .close { dismiss() },
             trailingButton: .check(action: {
                 saveTitle()
+                saveCategory()
                 addSubtask()
                 commitDraftSuggestions()
                 commitPendingDeletions()
@@ -87,8 +90,13 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                         subtasksCard
                     }
 
-                    // ─── ACTIONS ───
-                    actionsCard
+                    // ─── PILL ACTIONS ───
+                    actionPillsRow
+
+                    // ─── CONTEXTUAL ACTIONS ───
+                    if contextualActionsVisible {
+                        contextualActionsCard
+                    }
                 }
                 .padding(.bottom, 20)
             }
@@ -110,16 +118,22 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                         .drawerStyle()
                 }
             }
-            .alert("Delete task?", isPresented: $showingDeleteConfirmation) {
+            .alert(isSubtask ? "Delete subtask?" : "Delete task?", isPresented: $showingDeleteConfirmation) {
                 Button("Cancel", role: .cancel) { }
                 Button("Delete", role: .destructive) {
                     _Concurrency.Task { @MainActor in
-                        await focusViewModel.permanentlyDeleteTask(task)
+                        if isSubtask, let parentId = task.parentTaskId {
+                            await viewModel.deleteSubtask(task, parentId: parentId)
+                        } else if commitment != nil {
+                            await focusViewModel.permanentlyDeleteTask(task)
+                        } else {
+                            await viewModel.deleteTask(task)
+                        }
                         dismiss()
                     }
                 }
             } message: {
-                Text("This will permanently delete this task and all its commitments.")
+                Text(isSubtask ? "This will permanently delete this subtask." : "This will permanently delete this task and all its commitments.")
             }
         }
     }
@@ -191,14 +205,9 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                                 .stroke(
                                     AngularGradient(
                                         colors: [
-                                            Color(red: 0.85, green: 0.25, blue: 0.2),
-                                            Color(red: 0.7, green: 0.3, blue: 0.5),
-                                            Color(red: 0.35, green: 0.45, blue: 0.85),
-                                            Color(red: 0.3, green: 0.55, blue: 0.7),
-                                            Color(red: 0.55, green: 0.65, blue: 0.3),
-                                            Color(red: 0.9, green: 0.75, blue: 0.15),
-                                            Color(red: 0.9, green: 0.45, blue: 0.15),
-                                            Color(red: 0.85, green: 0.25, blue: 0.2),
+                                            Color(red: 0.0, green: 0.2, blue: 1.0),   // Fluorescent blue
+                                            Color(red: 0.5, green: 0.0, blue: 1.0),   // Vivid purple
+                                            Color(red: 0.0, green: 0.2, blue: 1.0),   // Back to blue
                                         ],
                                         center: .center
                                     ),
@@ -336,28 +345,107 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
         }
     }
 
-    // MARK: - Actions Card
+    // MARK: - Action Pills Row
+
+    private var currentCategoryName: String {
+        if let id = selectedCategoryId,
+           let cat = categories.first(where: { $0.id == id }) {
+            return cat.name
+        }
+        return "Category"
+    }
 
     @ViewBuilder
-    private var actionsCard: some View {
-        VStack(spacing: 0) {
-            // Category (only in Log view, parent tasks)
+    private var actionPillsRow: some View {
+        HStack(spacing: 8) {
+            // Category pill (only in Log view, parent tasks)
             if !isSubtask && commitment == nil {
-                DrawerCategoryMenu(
-                    currentCategoryId: task.categoryId,
-                    categories: categories,
-                    onSelect: { categoryId in moveTask(to: categoryId) },
-                    onCreateNew: { showingNewCategoryAlert = true }
-                )
-            }
-
-            // Commit (only when not committed)
-            if commitment == nil {
-                DrawerActionRow(icon: "arrow.right.circle", text: "Commit") {
-                    showingCommitmentSheet = true
+                Menu {
+                    Button {
+                        selectedCategoryId = nil
+                    } label: {
+                        if selectedCategoryId == nil {
+                            Label("None", systemImage: "checkmark")
+                        } else {
+                            Text("None")
+                        }
+                    }
+                    ForEach(categories) { category in
+                        Button {
+                            selectedCategoryId = category.id
+                        } label: {
+                            if selectedCategoryId == category.id {
+                                Label(category.name, systemImage: "checkmark")
+                            } else {
+                                Text(category.name)
+                            }
+                        }
+                    }
+                    Divider()
+                    Button {
+                        showingNewCategoryAlert = true
+                    } label: {
+                        Label("New Category", systemImage: "plus")
+                    }
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "folder")
+                            .font(.subheadline)
+                        Text(currentCategoryName)
+                            .font(.subheadline.weight(.medium))
+                    }
+                    .foregroundColor(.primary)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .glassEffect(.regular.interactive(), in: .capsule)
                 }
             }
 
+            // Commit pill (only when not committed)
+            if commitment == nil {
+                Button {
+                    showingCommitmentSheet = true
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "arrow.right.circle")
+                            .font(.subheadline)
+                        Text("Commit")
+                            .font(.subheadline.weight(.medium))
+                    }
+                    .foregroundColor(.primary)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .glassEffect(.regular.interactive(), in: .capsule)
+                }
+                .buttonStyle(.plain)
+            }
+
+            Spacer()
+
+            // Delete circle
+            Button {
+                showingDeleteConfirmation = true
+            } label: {
+                Image(systemName: "trash")
+                    .font(.body.weight(.semibold))
+                    .foregroundColor(.red)
+                    .frame(width: 44, height: 44)
+                    .glassEffect(.regular.interactive(), in: .circle)
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 16)
+    }
+
+    // MARK: - Contextual Actions Card
+
+    private var contextualActionsVisible: Bool {
+        commitment != nil
+    }
+
+    @ViewBuilder
+    private var contextualActionsCard: some View {
+        VStack(spacing: 0) {
             // Remove from Focus (when committed)
             if let commitment = commitment {
                 DrawerActionRow(
@@ -432,32 +520,6 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                     }
                 }
             }
-
-            Divider()
-                .padding(.horizontal, 14)
-
-            // Delete
-            if isSubtask {
-                DrawerActionRow(icon: "trash", text: "Delete Subtask", iconColor: .red) {
-                    _Concurrency.Task {
-                        if let parentId = task.parentTaskId {
-                            await viewModel.deleteSubtask(task, parentId: parentId)
-                        }
-                        dismiss()
-                    }
-                }
-            } else if commitment != nil {
-                DrawerActionRow(icon: "trash", text: "Delete Task", iconColor: .red) {
-                    showingDeleteConfirmation = true
-                }
-            } else {
-                DrawerActionRow(icon: "trash", text: "Delete Task", iconColor: .red) {
-                    _Concurrency.Task {
-                        await viewModel.deleteTask(task)
-                        dismiss()
-                    }
-                }
-            }
         }
         .background(Color(.secondarySystemGroupedBackground))
         .clipShape(RoundedRectangle(cornerRadius: 12))
@@ -470,6 +532,13 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
         guard taskTitle != task.title else { return }
         _Concurrency.Task {
             await viewModel.updateTask(task, newTitle: taskTitle)
+        }
+    }
+
+    private func saveCategory() {
+        guard selectedCategoryId != task.categoryId else { return }
+        _Concurrency.Task {
+            await viewModel.moveTaskToCategory(task, categoryId: selectedCategoryId)
         }
     }
 
@@ -547,13 +616,6 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                 }
             }
         )
-    }
-
-    private func moveTask(to categoryId: UUID?) {
-        _Concurrency.Task {
-            await viewModel.moveTaskToCategory(task, categoryId: categoryId)
-            dismiss()
-        }
     }
 
     private func createAndMoveToCategory() {

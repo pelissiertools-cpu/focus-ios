@@ -10,6 +10,7 @@ import SwiftUI
 struct LogFilterBar<VM: LogFilterable>: View {
     @ObservedObject var viewModel: VM
     @Binding var showCategoryDropdown: Bool
+    @EnvironmentObject var languageManager: LanguageManager
 
     var body: some View {
         HStack(spacing: 0) {
@@ -23,7 +24,7 @@ struct LogFilterBar<VM: LogFilterable>: View {
                             viewModel.selectAllUncompleted()
                         }
                     } label: {
-                        Text(viewModel.allUncompletedSelected ? "Deselect All" : "Select All")
+                        Text(LocalizedStringKey(viewModel.allUncompletedSelected ? "Deselect All" : "Select All"))
                             .font(.subheadline.weight(.medium))
                             .foregroundColor(.blue)
                     }

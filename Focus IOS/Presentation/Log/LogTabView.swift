@@ -9,6 +9,7 @@ import SwiftUI
 import Auth
 
 struct LogTabView: View {
+    @EnvironmentObject var languageManager: LanguageManager
     @State private var selectedTab = 0
     @State private var searchText = ""
     @Namespace private var segmentedAnimation
@@ -83,7 +84,7 @@ struct LogTabView: View {
         addProjectTitle.trimmingCharacters(in: .whitespaces).isEmpty
     }
 
-    private let tabLabels = ["Tasks", "Lists", "Projects"]
+    private let tabKeys = ["Tasks", "Lists", "Projects"]
 
     var body: some View {
         NavigationView {
@@ -130,13 +131,13 @@ struct LogTabView: View {
                 // Picker row with search pill
                 HStack(spacing: 12) {
                     HStack(spacing: 0) {
-                        ForEach(Array(tabLabels.enumerated()), id: \.offset) { index, label in
+                        ForEach(Array(tabKeys.enumerated()), id: \.offset) { index, key in
                             Button {
                                 withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
                                     selectedTab = index
                                 }
                             } label: {
-                                Text(label)
+                                Text(LocalizedStringKey(key))
                                     .font(.subheadline.weight(selectedTab == index ? .semibold : .medium))
                                     .foregroundStyle(selectedTab == index ? .primary : .secondary)
                                     .padding(.horizontal, 16)
@@ -584,7 +585,7 @@ struct LogTabView: View {
                     HStack(spacing: 4) {
                         Image(systemName: "folder")
                             .font(.caption)
-                        Text(categoryPillLabel)
+                        Text(LocalizedStringKey(categoryPillLabel))
                             .font(.caption)
                     }
                     .foregroundColor(.white)
@@ -630,7 +631,7 @@ struct LogTabView: View {
                             Image(systemName: hasGeneratedBreakdown ? "arrow.clockwise" : "sparkles")
                                 .font(.body.weight(.semibold))
                         }
-                        Text(hasGeneratedBreakdown ? "Regenerate" : "Break Down task")
+                        Text(LocalizedStringKey(hasGeneratedBreakdown ? "Regenerate" : "Break Down task"))
                             .font(.subheadline.weight(.medium))
                     }
                     .foregroundColor(.primary)
@@ -817,7 +818,7 @@ struct LogTabView: View {
                     HStack(spacing: 4) {
                         Image(systemName: "folder")
                             .font(.caption)
-                        Text(listCategoryPillLabel)
+                        Text(LocalizedStringKey(listCategoryPillLabel))
                             .font(.caption)
                     }
                     .foregroundColor(.white)
@@ -973,7 +974,7 @@ struct LogTabView: View {
                     HStack(spacing: 4) {
                         Image(systemName: "folder")
                             .font(.caption)
-                        Text(projectCategoryPillLabel)
+                        Text(LocalizedStringKey(projectCategoryPillLabel))
                             .font(.caption)
                     }
                     .foregroundColor(.white)

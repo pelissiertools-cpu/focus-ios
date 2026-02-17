@@ -56,7 +56,7 @@ struct ProjectCard: View {
             }
         }
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 16))
+        .glassEffect(.regular, in: .rect(cornerRadius: 16))
     }
 
     // MARK: - Header
@@ -122,7 +122,8 @@ struct ProjectCard: View {
                 await viewModel.toggleExpanded(project.id)
             }
         }
-        .onLongPressGesture {
+        .onLongPressGesture(minimumDuration: 0.35) {
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
             viewModel.selectedProjectForDetails = project
         }
     }

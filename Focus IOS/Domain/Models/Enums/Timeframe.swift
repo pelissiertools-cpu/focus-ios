@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import SwiftUI
 
 /// Represents the different timeframes for task commitments
 enum Timeframe: String, Codable, CaseIterable {

@@ -13,6 +13,7 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
     let categories: [Category]
     @ObservedObject var viewModel: VM
     @EnvironmentObject var focusViewModel: FocusTabViewModel
+    @EnvironmentObject var languageManager: LanguageManager
     @State private var taskTitle: String
     @State private var commitExpanded = false
     @State private var commitTimeframe: Timeframe = .daily
@@ -58,15 +59,6 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
         self.categories = categories
         _taskTitle = State(initialValue: task.title)
         _selectedCategoryId = State(initialValue: task.categoryId)
-    }
-
-    private func nextTimeframeLabel(for timeframe: Timeframe) -> String {
-        switch timeframe {
-        case .daily: return "Tomorrow"
-        case .weekly: return "Next Week"
-        case .monthly: return "Next Month"
-        case .yearly: return "Next Year"
-        }
     }
 
     private var commitPillIsActive: Bool {
@@ -245,7 +237,7 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                                 Image(systemName: hasGeneratedBreakdown ? "arrow.clockwise" : "sparkles")
                                     .font(.subheadline.weight(.semibold))
                             }
-                            Text(hasGeneratedBreakdown ? "Regenerate" : "Suggest Breakdown")
+                            Text(LocalizedStringKey(hasGeneratedBreakdown ? "Regenerate" : "Suggest Breakdown"))
                                 .font(.caption.weight(.medium))
                         }
                         .foregroundColor(.primary)
@@ -442,7 +434,7 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                     HStack(spacing: 6) {
                         Image(systemName: "folder")
                             .font(.subheadline)
-                        Text(currentCategoryName)
+                        Text(LocalizedStringKey(currentCategoryName))
                             .font(.subheadline.weight(.medium))
                     }
                     .foregroundColor(.primary)
@@ -513,14 +505,7 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
             if let commitment = commitment {
                 DrawerActionRow(
                     icon: "minus.circle",
-                    text: {
-                        switch commitment.timeframe {
-                        case .daily: return "Remove from Today"
-                        case .weekly: return "Remove from This Week"
-                        case .monthly: return "Remove from This Month"
-                        case .yearly: return "Remove from This Year"
-                        }
-                    }()
+                    text: commitment.timeframe.removeLabel
                 ) {
                     _Concurrency.Task {
                         await focusViewModel.removeCommitment(commitment)
@@ -576,7 +561,7 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
 
             // Push to Next (committed, non-completed parent task)
             if let commitment = commitment, !isSubtask, !task.isCompleted {
-                DrawerActionRow(icon: "arrow.turn.right.down", text: "Push to \(nextTimeframeLabel(for: commitment.timeframe))") {
+                DrawerActionRow(icon: "arrow.turn.right.down", text: "Push to \(commitment.timeframe.nextTimeframeLabel)") {
                     _Concurrency.Task {
                         let success = await focusViewModel.pushCommitmentToNext(commitment)
                         if success { dismiss() }

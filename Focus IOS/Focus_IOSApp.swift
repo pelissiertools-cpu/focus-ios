@@ -12,6 +12,7 @@ import GoogleSignIn
 struct Focus_IOSApp: App {
     @StateObject private var authService: AuthService
     @StateObject private var focusViewModel: FocusTabViewModel
+    @StateObject private var languageManager = LanguageManager.shared
 
     init() {
         let auth = AuthService()
@@ -31,6 +32,8 @@ struct Focus_IOSApp: App {
                         .environmentObject(authService)
                 }
             }
+            .environmentObject(languageManager)
+            .environment(\.locale, languageManager.locale)
             .onOpenURL { url in
                 GIDSignIn.sharedInstance.handle(url)
             }

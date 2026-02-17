@@ -10,6 +10,7 @@ import Auth
 
 struct SettingsView: View {
     @EnvironmentObject var authService: AuthService
+    @EnvironmentObject var languageManager: LanguageManager
     @Environment(\.dismiss) private var dismiss
 
     // Change email state
@@ -22,6 +23,9 @@ struct SettingsView: View {
     @State private var newPassword = ""
     @State private var confirmNewPassword = ""
     @State private var passwordChangeSuccess = false
+
+    // Language picker state
+    @State private var showLanguagePicker = false
 
     private var userEmail: String {
         authService.currentUser?.email ?? ""
@@ -129,16 +133,72 @@ struct SettingsView: View {
                     VStack(spacing: 0) {
                         // App Language row
                         Button {
-                            // Placeholder
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                showLanguagePicker.toggle()
+                            }
                         } label: {
-                            settingsRow(
-                                icon: "globe",
-                                title: "App Language",
-                                value: "English",
-                                showChevron: true
-                            )
+                            HStack(spacing: 12) {
+                                Image(systemName: "globe")
+                                    .font(.body)
+                                    .foregroundStyle(.primary)
+                                    .frame(width: 24)
+
+                                Text("App Language")
+                                    .font(.body)
+
+                                Spacer()
+
+                                Text(languageManager.currentLanguage.displayName)
+                                    .font(.body)
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(1)
+
+                                Image(systemName: "chevron.right")
+                                    .font(.caption)
+                                    .fontWeight(.semibold)
+                                    .foregroundStyle(.tertiary)
+                                    .rotationEffect(.degrees(showLanguagePicker ? 90 : 0))
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 14)
                         }
                         .buttonStyle(.plain)
+
+                        // Inline language options
+                        if showLanguagePicker {
+                            ForEach(AppLanguage.allCases) { language in
+                                Divider()
+                                    .padding(.leading, 44)
+
+                                Button {
+                                    languageManager.currentLanguage = language
+                                    withAnimation(.easeInOut(duration: 0.2)) {
+                                        showLanguagePicker = false
+                                    }
+                                } label: {
+                                    HStack(spacing: 12) {
+                                        Spacer()
+                                            .frame(width: 24)
+
+                                        Text(language.displayName)
+                                            .font(.body)
+                                            .foregroundStyle(.primary)
+
+                                        Spacer()
+
+                                        if languageManager.currentLanguage == language {
+                                            Image(systemName: "checkmark")
+                                                .font(.body)
+                                                .fontWeight(.semibold)
+                                                .foregroundStyle(.blue)
+                                        }
+                                    }
+                                    .padding(.horizontal, 16)
+                                    .padding(.vertical, 12)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
 
                         Divider()
                             .padding(.leading, 44)
@@ -251,7 +311,7 @@ struct SettingsView: View {
 
     private func settingsRow(
         icon: String,
-        title: String,
+        title: LocalizedStringKey,
         value: String? = nil,
         showChevron: Bool = false
     ) -> some View {
@@ -289,5 +349,6 @@ struct SettingsView: View {
     NavigationView {
         SettingsView()
             .environmentObject(AuthService())
+            .environmentObject(LanguageManager.shared)
     }
 }

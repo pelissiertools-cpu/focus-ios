@@ -18,6 +18,7 @@ enum ScheduleFilter: Equatable {
 struct ScheduleDrawer: View {
     @ObservedObject var viewModel: FocusTabViewModel
     @ObservedObject var timelineVM: TimelineViewModel
+    @EnvironmentObject var languageManager: LanguageManager
     @State private var selectedFilter: ScheduleFilter = .today
     @State private var categories: [Category] = []
 
@@ -31,16 +32,25 @@ struct ScheduleDrawer: View {
 
     // MARK: - Computed Properties
 
-    private var titleText: String {
+    @ViewBuilder
+    private var titleView: some View {
         switch selectedFilter {
         case .today:
-            let formatter = DateFormatter()
-            formatter.dateFormat = "MMM d"
-            return "Today, \(formatter.string(from: viewModel.selectedDate))"
+            let formatted: String = {
+                let f = DateFormatter()
+                f.locale = LanguageManager.shared.locale
+                f.dateFormat = "MMM d"
+                return f.string(from: viewModel.selectedDate)
+            }()
+            (Text(LocalizedStringKey("Today")) + Text(", \(formatted)"))
         case .all:
-            return "All Tasks"
+            Text(LocalizedStringKey("All Tasks"))
         case .category(let id):
-            return categories.first(where: { $0.id == id })?.name ?? "Category"
+            if let name = categories.first(where: { $0.id == id })?.name {
+                Text(name)
+            } else {
+                Text(LocalizedStringKey("Category"))
+            }
         }
     }
 
@@ -85,7 +95,7 @@ struct ScheduleDrawer: View {
             .padding(.bottom, 4)
 
             // Title
-            Text(titleText)
+            titleView
                 .font(.title2)
                 .fontWeight(.bold)
                 .padding(.horizontal)
@@ -512,7 +522,7 @@ private struct FilterPill: View {
 
     var body: some View {
         Button(action: action) {
-            Text(title)
+            Text(LocalizedStringKey(title))
                 .font(.subheadline)
                 .fontWeight(.medium)
                 .foregroundColor(isSelected ? .white : .secondary)

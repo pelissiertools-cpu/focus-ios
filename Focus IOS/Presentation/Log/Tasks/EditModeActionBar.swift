@@ -9,6 +9,7 @@ import SwiftUI
 
 struct EditModeActionBar<VM: LogFilterable>: View {
     @ObservedObject var viewModel: VM
+    @EnvironmentObject var languageManager: LanguageManager
     var showCreateProjectAlert: Binding<Bool>?
     var showCreateListAlert: Binding<Bool>?
 
@@ -61,7 +62,7 @@ struct EditModeActionBar<VM: LogFilterable>: View {
                     // Floating labels column (each tappable)
                     VStack(alignment: .trailing, spacing: 0) {
                         ForEach(Array(actions.reversed().enumerated()), id: \.element.id) { _, item in
-                            Text(item.label)
+                            Text(LocalizedStringKey(item.label))
                                 .font(.subheadline.weight(.medium))
                                 .foregroundColor(item.isDestructive ? .red : .primary)
                                 .frame(height: 52)

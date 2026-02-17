@@ -26,6 +26,7 @@ struct DrawerTopPreference: PreferenceKey {
 struct FocusTabView: View {
     @EnvironmentObject var authService: AuthService
     @EnvironmentObject var viewModel: FocusTabViewModel
+    @EnvironmentObject var languageManager: LanguageManager
     @State private var showCalendarPicker = false
     @State private var viewMode: FocusViewMode = .focus
 
@@ -551,7 +552,7 @@ struct FocusTabView: View {
                             Image(systemName: hasGeneratedBreakdown ? "arrow.clockwise" : "sparkles")
                                 .font(.outfit(.body, weight: .semibold))
                         }
-                        Text(hasGeneratedBreakdown ? "Regenerate" : "Break Down task")
+                        Text(LocalizedStringKey(hasGeneratedBreakdown ? "Regenerate" : "Break Down task"))
                             .font(.outfit(.subheadline, weight: .medium))
                     }
                     .foregroundColor(.primary)

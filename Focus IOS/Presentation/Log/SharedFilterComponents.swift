@@ -12,6 +12,7 @@ import SwiftUI
 struct SharedCategoryFilterPill<VM: LogFilterable>: View {
     @ObservedObject var viewModel: VM
     @Binding var showDropdown: Bool
+    @EnvironmentObject var languageManager: LanguageManager
 
     private var selectedCategoryName: String {
         if let id = viewModel.selectedCategoryId,
@@ -28,7 +29,7 @@ struct SharedCategoryFilterPill<VM: LogFilterable>: View {
             }
         } label: {
             HStack(spacing: 6) {
-                Text(selectedCategoryName)
+                Text(LocalizedStringKey(selectedCategoryName))
                     .font(.subheadline.weight(.medium))
                     .lineLimit(1)
                 Image(systemName: showDropdown ? "chevron.up" : "chevron.down")
@@ -76,7 +77,7 @@ struct SharedCategoryDropdownMenu<VM: LogFilterable>: View {
             VStack(alignment: .leading, spacing: 0) {
                 // Header row (mirrors the pill appearance)
                 HStack(spacing: 6) {
-                    Text(selectedCategoryName)
+                    Text(LocalizedStringKey(selectedCategoryName))
                         .font(.subheadline.weight(.medium))
                         .lineLimit(1)
                     Image(systemName: "chevron.up")
@@ -97,7 +98,7 @@ struct SharedCategoryDropdownMenu<VM: LogFilterable>: View {
                     closeDropdown()
                 } label: {
                     HStack {
-                        Text("All")
+                        Text(LocalizedStringKey("All"))
                             .font(.body)
                         Spacer()
                         if viewModel.selectedCategoryId == nil {
@@ -215,6 +216,7 @@ struct SharedCategoryDropdownMenu<VM: LogFilterable>: View {
 
 struct SharedCommitmentFilterPills<VM: LogFilterable>: View {
     @ObservedObject var viewModel: VM
+    @EnvironmentObject var languageManager: LanguageManager
 
     var body: some View {
         HStack(spacing: 8) {
@@ -231,7 +233,7 @@ struct SharedCommitmentFilterPills<VM: LogFilterable>: View {
                 viewModel.toggleCommitmentFilter(filter)
             }
         } label: {
-            Text(label)
+            Text(LocalizedStringKey(label))
                 .font(.subheadline.weight(.medium))
                 .lineLimit(1)
                 .foregroundColor(isActive ? .white : .primary)

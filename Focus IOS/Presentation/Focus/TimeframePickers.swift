@@ -15,6 +15,7 @@ struct DateNavigator: View {
     let compact: Bool
     let onCalendarTap: () -> Void
     var onProfileTap: (() -> Void)? = nil
+    @EnvironmentObject var languageManager: LanguageManager
     @Namespace private var timeframeAnimation
 
     private var calendar: Calendar {
@@ -23,7 +24,11 @@ struct DateNavigator: View {
         return cal
     }
 
-    private let dayAbbreviations = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"]
+    private var dayAbbreviations: [String] {
+        var cal = Calendar.current
+        cal.locale = LanguageManager.shared.locale
+        return cal.shortWeekdaySymbols.map { $0.replacingOccurrences(of: ".", with: "").uppercased() }
+    }
 
     var body: some View {
         if compact {
@@ -78,7 +83,7 @@ struct DateNavigator: View {
                                     selectedTimeframe = timeframe
                                 }
                             } label: {
-                                Text(timeframe.rawValue.capitalized)
+                                Text(LocalizedStringKey(timeframe.displayName))
                                     .font(.subheadline.weight(selectedTimeframe == timeframe ? .semibold : .medium))
                                     .foregroundStyle(selectedTimeframe == timeframe ? .primary : .secondary)
                                     .padding(.horizontal, 12)
@@ -375,6 +380,7 @@ struct DateNavigator: View {
                         } label: {
                             Text({
                                 formatter.dateFormat = "MMM"
+                                formatter.locale = LanguageManager.shared.locale
                                 return formatter.string(from: monthDate).uppercased()
                             }())
                                 .font(.subheadline)
@@ -467,9 +473,11 @@ struct DateNavigator: View {
     // MARK: - Subtitle Text
 
     private var subtitleText: String {
+        let locale = LanguageManager.shared.locale
         switch selectedTimeframe {
         case .daily:
             let formatter = DateFormatter()
+            formatter.locale = locale
             formatter.dateFormat = "EEE MMM d, yyyy"
             return formatter.string(from: selectedDate)
 
@@ -478,11 +486,13 @@ struct DateNavigator: View {
 
         case .monthly:
             let formatter = DateFormatter()
+            formatter.locale = locale
             formatter.dateFormat = "MMMM, yyyy"
             return formatter.string(from: selectedDate)
 
         case .yearly:
             let formatter = DateFormatter()
+            formatter.locale = locale
             formatter.dateFormat = "yyyy"
             return formatter.string(from: selectedDate)
         }
@@ -492,6 +502,7 @@ struct DateNavigator: View {
 
     private var compactSubtitleText: String {
         let formatter = DateFormatter()
+        formatter.locale = LanguageManager.shared.locale
         formatter.dateFormat = "EEEE"
         let dayName = formatter.string(from: selectedDate)
         return "\(dayName) – \(formattedDateWithOrdinal(selectedDate))"
@@ -505,10 +516,13 @@ struct DateNavigator: View {
             return ""
         }
 
+        let locale = LanguageManager.shared.locale
         let startFormatter = DateFormatter()
+        startFormatter.locale = locale
         startFormatter.dateFormat = "MMM d"
 
         let endFormatter = DateFormatter()
+        endFormatter.locale = locale
         endFormatter.dateFormat = "MMM d, yyyy"
 
         return "\(startFormatter.string(from: weekStart)) - \(endFormatter.string(from: weekEnd))"
@@ -519,6 +533,7 @@ struct DateNavigator: View {
         let ordinal = ordinalSuffix(for: day)
 
         let formatter = DateFormatter()
+        formatter.locale = LanguageManager.shared.locale
         formatter.dateFormat = "MMM"
         let month = formatter.string(from: date)
 

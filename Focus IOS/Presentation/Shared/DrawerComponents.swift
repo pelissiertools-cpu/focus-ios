@@ -29,7 +29,7 @@ struct DrawerContainer<Content: View>: View {
     var body: some View {
         NavigationView {
             content()
-                .navigationTitle(title)
+                .navigationTitle(LocalizedStringKey(title))
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbarBackground(.hidden, for: .navigationBar)
                 .toolbar {
@@ -202,7 +202,7 @@ struct DrawerDeleteSection: View {
                     onDelete()
                 }
             } label: {
-                Label(title, systemImage: "trash")
+                Label(LocalizedStringKey(title), systemImage: "trash")
             }
         }
         .alert(confirmationTitle, isPresented: $showConfirmation) {
@@ -262,7 +262,7 @@ struct DrawerActionLabel: View {
                 .font(.body)
                 .foregroundColor(iconColor)
                 .frame(width: 24)
-            Text(text)
+            Text(LocalizedStringKey(text))
                 .font(.body)
                 .foregroundColor(.primary)
             Spacer()

@@ -195,15 +195,8 @@ struct AuthSheetView: View {
             // Continue with Google
             Button(action: handleGoogleSignIn) {
                 HStack(spacing: 8) {
-                    Text("G")
-                        .font(.system(size: 16, weight: .bold))
-                        .foregroundStyle(
-                            .linearGradient(
-                                colors: [.blue, .green, .yellow, .red],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
+                    GoogleLogoView()
+                        .frame(width: 18, height: 18)
                     Text("Continue with Google")
                         .fontWeight(.semibold)
                         .foregroundColor(.primary)

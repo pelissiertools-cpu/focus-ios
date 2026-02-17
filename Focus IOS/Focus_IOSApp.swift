@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import GoogleSignIn
 
 @main
 struct Focus_IOSApp: App {
@@ -20,13 +21,18 @@ struct Focus_IOSApp: App {
 
     var body: some Scene {
         WindowGroup {
-            if authService.isAuthenticated {
-                MainTabView()
-                    .environmentObject(authService)
-                    .environmentObject(focusViewModel)
-            } else {
-                SignInView()
-                    .environmentObject(authService)
+            Group {
+                if authService.isAuthenticated {
+                    MainTabView()
+                        .environmentObject(authService)
+                        .environmentObject(focusViewModel)
+                } else {
+                    SignInView()
+                        .environmentObject(authService)
+                }
+            }
+            .onOpenURL { url in
+                GIDSignIn.sharedInstance.handle(url)
             }
         }
     }

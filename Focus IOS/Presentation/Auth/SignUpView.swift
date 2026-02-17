@@ -6,6 +6,8 @@
 //
 
 import SwiftUI
+import AuthenticationServices
+import GoogleSignIn
 
 struct SignUpView: View {
     @Environment(\.dismiss) var dismiss
@@ -82,6 +84,65 @@ struct SignUpView: View {
                 .disabled(authService.isLoading || !isFormValid)
                 .padding(.horizontal)
 
+                // Divider
+                HStack {
+                    Rectangle()
+                        .frame(height: 1)
+                        .foregroundStyle(.secondary.opacity(0.3))
+                    Text("or")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    Rectangle()
+                        .frame(height: 1)
+                        .foregroundStyle(.secondary.opacity(0.3))
+                }
+                .padding(.horizontal)
+
+                // Continue with Apple
+                Button(action: handleAppleSignIn) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "apple.logo")
+                            .font(.system(size: 18))
+                        Text("Continue with Apple")
+                            .fontWeight(.semibold)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 50)
+                    .background(Color(.label))
+                    .foregroundColor(Color(.systemBackground))
+                    .cornerRadius(10)
+                }
+                .disabled(authService.isLoading)
+                .padding(.horizontal)
+
+                // Continue with Google
+                Button(action: handleGoogleSignIn) {
+                    HStack(spacing: 8) {
+                        Text("G")
+                            .font(.system(size: 16, weight: .bold))
+                            .foregroundStyle(
+                                .linearGradient(
+                                    colors: [.blue, .green, .yellow, .red],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                        Text("Continue with Google")
+                            .fontWeight(.semibold)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 50)
+                    .background(Color(.secondarySystemBackground))
+                    .foregroundColor(Color(.label))
+                    .cornerRadius(10)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10)
+                            .stroke(Color(.separator), lineWidth: 1)
+                    )
+                }
+                .disabled(authService.isLoading)
+                .padding(.horizontal)
+
                 Spacer()
             }
             .navigationBarTitleDisplayMode(.inline)
@@ -101,12 +162,49 @@ struct SignUpView: View {
     }
 
     private func signUp() {
-        Task {
+        _Concurrency.Task { @MainActor in
             do {
                 try await authService.signUp(email: email, password: password)
                 dismiss()
             } catch {
                 // Error is handled in AuthService
+            }
+        }
+    }
+
+    private func handleAppleSignIn() {
+        _Concurrency.Task { @MainActor in
+            do {
+                let helper = AppleSignInHelper()
+                let result = try await helper.signIn()
+                try await authService.signInWithApple(idToken: result.idToken, nonce: result.nonce)
+            } catch let error as ASAuthorizationError where error.code == .canceled {
+                // User canceled
+            } catch {
+                // Other errors handled in AuthService
+            }
+        }
+    }
+
+    private func handleGoogleSignIn() {
+        _Concurrency.Task { @MainActor in
+            do {
+                guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                      let rootViewController = windowScene.windows.first?.rootViewController else {
+                    return
+                }
+
+                let result = try await GIDSignIn.sharedInstance.signIn(withPresenting: rootViewController)
+
+                guard let idToken = result.user.idToken?.tokenString else {
+                    authService.errorMessage = "Unable to get Google ID token."
+                    return
+                }
+
+                let accessToken = result.user.accessToken.tokenString
+                try await authService.signInWithGoogle(idToken: idToken, accessToken: accessToken)
+            } catch {
+                // Errors handled in AuthService
             }
         }
     }

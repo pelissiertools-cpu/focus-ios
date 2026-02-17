@@ -6,130 +6,178 @@
 //
 
 import SwiftUI
+import AuthenticationServices
+import GoogleSignIn
 
 struct SignInView: View {
     @EnvironmentObject var authService: AuthService
-    @State private var email = ""
-    @State private var password = ""
     @State private var showSignUp = false
-    @State private var showForgotPassword = false
-    @State private var resetEmailSent = false
-    @State private var forgotPasswordEmail = ""
+    @State private var showLogIn = false
 
     var body: some View {
-        NavigationView {
-            VStack(spacing: 20) {
+        ZStack {
+            // White background
+            Color.white
+                .ignoresSafeArea()
+
+            VStack {
                 Spacer()
 
                 // App Title
                 Text("Focus")
                     .font(.system(size: 48, weight: .bold))
-                    .padding(.bottom, 40)
-
-                // Email Field
-                TextField("Email", text: $email)
-                    .textFieldStyle(.roundedBorder)
-                    .textContentType(.emailAddress)
-                    .autocapitalization(.none)
-                    .keyboardType(.emailAddress)
-                    .disabled(authService.isLoading)
-                    .padding(.horizontal)
-
-                // Password Field
-                SecureField("Password", text: $password)
-                    .textFieldStyle(.roundedBorder)
-                    .textContentType(.password)
-                    .disabled(authService.isLoading)
-                    .padding(.horizontal)
-
-                // Forgot Password
-                HStack {
-                    Spacer()
-                    Button("Forgot Password?") {
-                        forgotPasswordEmail = email
-                        showForgotPassword = true
-                    }
-                    .font(.subheadline)
-                    .disabled(authService.isLoading)
-                }
-                .padding(.horizontal)
-
-                // Error Message
-                if let errorMessage = authService.errorMessage {
-                    Text(errorMessage)
-                        .foregroundColor(.red)
-                        .font(.caption)
-                        .padding(.horizontal)
-                }
-
-                // Sign In Button
-                Button(action: signIn) {
-                    if authService.isLoading {
-                        ProgressView()
-                            .progressViewStyle(.circular)
-                            .tint(.white)
-                    } else {
-                        Text("Sign In")
-                            .fontWeight(.semibold)
-                    }
-                }
-                .frame(maxWidth: .infinity)
-                .frame(height: 50)
-                .background(Color.blue)
-                .foregroundColor(.white)
-                .cornerRadius(10)
-                .disabled(authService.isLoading || email.isEmpty || password.isEmpty)
-                .padding(.horizontal)
-
-                // Sign Up Button
-                Button(action: { showSignUp = true }) {
-                    Text("Don't have an account? Sign Up")
-                        .font(.subheadline)
-                }
-                .disabled(authService.isLoading)
+                    .foregroundColor(.black)
 
                 Spacer()
-            }
-            .navigationBarHidden(true)
-            .sheet(isPresented: $showSignUp) {
-                SignUpView()
-                    .environmentObject(authService)
-                    .drawerStyle()
-            }
-            .alert("Reset Password", isPresented: $showForgotPassword) {
-                TextField("Email", text: $forgotPasswordEmail)
-                    .textContentType(.emailAddress)
-                    .autocapitalization(.none)
-                Button("Send Reset Link") {
-                    _Concurrency.Task { @MainActor in
-                        do {
-                            try await authService.resetPassword(email: forgotPasswordEmail)
-                            resetEmailSent = true
-                        } catch {
-                            // Error handled in AuthService
-                        }
+
+                // Dark bottom drawer
+                VStack(spacing: 12) {
+                    // Error Message
+                    if let errorMessage = authService.errorMessage {
+                        Text(errorMessage)
+                            .foregroundColor(.red)
+                            .font(.caption)
+                            .padding(.horizontal)
                     }
+
+                    // Continue with Apple
+                    Button(action: handleAppleSignIn) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "apple.logo")
+                                .font(.system(size: 18))
+                            Text("Continue with Apple")
+                                .fontWeight(.semibold)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 54)
+                        .background(Color.white)
+                        .foregroundColor(.black)
+                        .cornerRadius(14)
+                    }
+                    .disabled(authService.isLoading)
+
+                    // Continue with Google
+                    Button(action: handleGoogleSignIn) {
+                        HStack(spacing: 8) {
+                            GoogleLogoView()
+                                .frame(width: 18, height: 18)
+                            Text("Continue with Google")
+                                .fontWeight(.semibold)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 54)
+                        .background(Color.white.opacity(0.12))
+                        .foregroundColor(.white)
+                        .cornerRadius(14)
+                    }
+                    .disabled(authService.isLoading)
+
+                    // Sign up
+                    Button(action: { showSignUp = true }) {
+                        Text("Sign up")
+                            .fontWeight(.semibold)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 54)
+                            .background(Color.white.opacity(0.12))
+                            .foregroundColor(.white)
+                            .cornerRadius(14)
+                    }
+                    .disabled(authService.isLoading)
+
+                    // Log in
+                    Button(action: { showLogIn = true }) {
+                        Text("Log in")
+                            .fontWeight(.semibold)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 54)
+                            .background(Color.clear)
+                            .foregroundColor(.white)
+                            .cornerRadius(14)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 14)
+                                    .stroke(Color.white.opacity(0.3), lineWidth: 1)
+                            )
+                    }
+                    .disabled(authService.isLoading)
                 }
-                Button("Cancel", role: .cancel) {}
-            } message: {
-                Text("Enter your email address and we'll send you a link to reset your password.")
+                .padding(.horizontal, 20)
+                .padding(.top, 28)
+                .padding(.bottom, 40)
+                .background(
+                    UnevenRoundedRectangle(
+                        topLeadingRadius: 24,
+                        bottomLeadingRadius: 0,
+                        bottomTrailingRadius: 0,
+                        topTrailingRadius: 24
+                    )
+                    .fill(Color.black)
+                    .ignoresSafeArea(edges: .bottom)
+                )
             }
-            .alert("Email Sent", isPresented: $resetEmailSent) {
-                Button("OK", role: .cancel) {}
-            } message: {
-                Text("Check your inbox for a password reset link.")
+        }
+        .sheet(isPresented: $showSignUp) {
+            SignUpView()
+                .environmentObject(authService)
+                .drawerStyle()
+        }
+        .sheet(isPresented: $showLogIn) {
+            EmailSignInView()
+                .environmentObject(authService)
+                .drawerStyle()
+        }
+    }
+
+    private func handleAppleSignIn() {
+        _Concurrency.Task { @MainActor in
+            do {
+                let helper = AppleSignInHelper()
+                let result = try await helper.signIn()
+                try await authService.signInWithApple(idToken: result.idToken, nonce: result.nonce)
+            } catch let error as ASAuthorizationError where error.code == .canceled {
+                // User canceled — ignore
+            } catch {
+                // Other errors handled in AuthService
             }
         }
     }
 
-    private func signIn() {
-        Task {
+    private func handleGoogleSignIn() {
+        _Concurrency.Task { @MainActor in
             do {
-                try await authService.signIn(email: email, password: password)
+                guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                      let rootViewController = windowScene.windows.first?.rootViewController else {
+                    return
+                }
+
+                let result = try await GIDSignIn.sharedInstance.signIn(withPresenting: rootViewController)
+
+                guard let idToken = result.user.idToken?.tokenString else {
+                    authService.errorMessage = "Unable to get Google ID token."
+                    return
+                }
+
+                let accessToken = result.user.accessToken.tokenString
+                try await authService.signInWithGoogle(idToken: idToken, accessToken: accessToken)
             } catch {
-                // Error is handled in AuthService
+                // GIDSignInError.canceled is expected, other errors handled in AuthService
             }
         }
+    }
+}
+
+// MARK: - Google Logo
+
+private struct GoogleLogoView: View {
+    var body: some View {
+        Text("G")
+            .font(.system(size: 16, weight: .bold))
+            .foregroundStyle(
+                .linearGradient(
+                    colors: [.blue, .green, .yellow, .red],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
     }
 }
 

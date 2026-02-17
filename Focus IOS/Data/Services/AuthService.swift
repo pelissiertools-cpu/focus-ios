@@ -8,6 +8,8 @@
 import Foundation
 import Supabase
 import Combine
+import AuthenticationServices
+import CryptoKit
 
 /// Service for handling authentication with Supabase
 @MainActor
@@ -117,6 +119,52 @@ class AuthService: ObservableObject {
 
         do {
             self.currentUser = try await supabase.auth.update(user: UserAttributes(password: newPassword))
+            self.isLoading = false
+        } catch {
+            self.isLoading = false
+            self.errorMessage = error.localizedDescription
+            throw error
+        }
+    }
+
+    /// Sign in with Apple using native AuthenticationServices
+    func signInWithApple(idToken: String, nonce: String) async throws {
+        isLoading = true
+        errorMessage = nil
+
+        do {
+            let session = try await supabase.auth.signInWithIdToken(
+                credentials: .init(
+                    provider: .apple,
+                    idToken: idToken,
+                    nonce: nonce
+                )
+            )
+            self.currentUser = session.user
+            self.isAuthenticated = true
+            self.isLoading = false
+        } catch {
+            self.isLoading = false
+            self.errorMessage = error.localizedDescription
+            throw error
+        }
+    }
+
+    /// Sign in with Google using GoogleSignIn SDK
+    func signInWithGoogle(idToken: String, accessToken: String) async throws {
+        isLoading = true
+        errorMessage = nil
+
+        do {
+            let session = try await supabase.auth.signInWithIdToken(
+                credentials: .init(
+                    provider: .google,
+                    idToken: idToken,
+                    accessToken: accessToken
+                )
+            )
+            self.currentUser = session.user
+            self.isAuthenticated = true
             self.isLoading = false
         } catch {
             self.isLoading = false

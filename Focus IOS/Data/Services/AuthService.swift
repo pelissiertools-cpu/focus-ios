@@ -95,6 +95,36 @@ class AuthService: ObservableObject {
         }
     }
 
+    /// Update the user's email
+    func updateEmail(newEmail: String) async throws {
+        isLoading = true
+        errorMessage = nil
+
+        do {
+            self.currentUser = try await supabase.auth.update(user: UserAttributes(email: newEmail))
+            self.isLoading = false
+        } catch {
+            self.isLoading = false
+            self.errorMessage = error.localizedDescription
+            throw error
+        }
+    }
+
+    /// Update the user's password
+    func updatePassword(newPassword: String) async throws {
+        isLoading = true
+        errorMessage = nil
+
+        do {
+            self.currentUser = try await supabase.auth.update(user: UserAttributes(password: newPassword))
+            self.isLoading = false
+        } catch {
+            self.isLoading = false
+            self.errorMessage = error.localizedDescription
+            throw error
+        }
+    }
+
     /// Sign out the current user
     func signOut() async throws {
         isLoading = true

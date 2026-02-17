@@ -64,6 +64,9 @@ struct LogTabView: View {
     @StateObject private var projectsVM = ProjectsViewModel(authService: AuthService())
     @StateObject private var listsVM = ListsViewModel(authService: AuthService())
 
+    // Settings navigation
+    @State private var showSettings = false
+
     // Focus view model for refreshing commitments after commit creation
     @EnvironmentObject var focusViewModel: FocusTabViewModel
 
@@ -110,6 +113,14 @@ struct LogTabView: View {
                     dismissAddList: dismissAddList,
                     dismissAddProject: dismissAddProject
                 )
+                .background(
+                    NavigationLink(isActive: $showSettings) {
+                        SettingsView()
+                    } label: {
+                        EmptyView()
+                    }
+                    .hidden()
+                )
         }
     }
 
@@ -147,6 +158,8 @@ struct LogTabView: View {
                     .glassEffect(.regular.interactive(), in: .capsule)
 
                     searchPillButton
+
+                    profilePillButton
                 }
                 .padding(.horizontal)
                 .padding(.top, 40)
@@ -242,6 +255,18 @@ struct LogTabView: View {
             }
         } label: {
             Image(systemName: "magnifyingglass")
+                .font(.body.weight(.medium))
+                .foregroundColor(.secondary)
+                .frame(width: 36, height: 36)
+                .glassEffect(.regular.interactive(), in: .circle)
+        }
+    }
+
+    private var profilePillButton: some View {
+        Button {
+            showSettings = true
+        } label: {
+            Image(systemName: "person.circle")
                 .font(.body.weight(.medium))
                 .foregroundColor(.secondary)
                 .frame(width: 36, height: 36)

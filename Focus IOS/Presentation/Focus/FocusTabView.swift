@@ -30,6 +30,7 @@ struct FocusTabView: View {
     @State private var viewMode: FocusViewMode = .focus
 
     @State private var showScheduleDrawer = false
+    @State private var showSettings = false
 
     // Compact add-task bar state
     @State private var addTaskTitle = ""
@@ -49,7 +50,8 @@ struct FocusTabView: View {
                     selectedTimeframe: $viewModel.selectedTimeframe,
                     viewMode: $viewMode,
                     compact: viewMode == .schedule,
-                    onCalendarTap: { showCalendarPicker = true }
+                    onCalendarTap: { showCalendarPicker = true },
+                    onProfileTap: { showSettings = true }
                 )
                 .opacity(viewModel.showAddTaskSheet ? 0 : 1)
                 .allowsHitTesting(!viewModel.showAddTaskSheet)
@@ -176,6 +178,14 @@ struct FocusTabView: View {
                 }
             }
             .toolbar(showScheduleDrawer && viewMode == .schedule ? .hidden : .visible, for: .tabBar)
+            .background(
+                NavigationLink(isActive: $showSettings) {
+                    SettingsView()
+                } label: {
+                    EmptyView()
+                }
+                .hidden()
+            )
             .animation(.easeInOut(duration: 0.25), value: showScheduleDrawer)
             .animation(.easeInOut(duration: 0.25), value: viewModel.timelineVM.isDrawerRetractedForDrag)
             .task {

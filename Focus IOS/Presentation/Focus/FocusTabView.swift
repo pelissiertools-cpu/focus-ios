@@ -771,7 +771,7 @@ struct SectionView: View {
             // Section Header
             HStack(alignment: .lastTextBaseline, spacing: 12) {
                 Text(title)
-                    .font(.montserrat(size: section == .focus ? 30 : 22, weight: .medium))
+                    .font(.montserratHeader(size: section == .focus ? 30 : 22, weight: .semibold))
 
                 // Count display
                 if let maxTasks = section.maxTasks(for: viewModel.selectedTimeframe) {
@@ -1030,7 +1030,7 @@ struct FocusSectionHeaderRow: View {
         HStack(spacing: 12) {
             HStack(alignment: .lastTextBaseline, spacing: 8) {
                 Text(section.displayName)
-                    .font(.montserrat(size: section == .focus ? 30 : 22, weight: .medium))
+                    .font(.montserratHeader(size: section == .focus ? 30 : 22, weight: .semibold))
 
                 // Count display
                 if let maxTasks = section.maxTasks(for: viewModel.selectedTimeframe) {

@@ -50,6 +50,7 @@ struct SignInView: View {
                         }
                         .frame(maxWidth: .infinity)
                         .frame(height: 54)
+                        .contentShape(Rectangle())
                         .background(Color.white)
                         .foregroundColor(.black)
                         .cornerRadius(14)
@@ -66,6 +67,7 @@ struct SignInView: View {
                         }
                         .frame(maxWidth: .infinity)
                         .frame(height: 54)
+                        .contentShape(Rectangle())
                         .background(Color.white.opacity(0.12))
                         .foregroundColor(.white)
                         .cornerRadius(14)
@@ -78,6 +80,7 @@ struct SignInView: View {
                             .font(.montserrat(.body, weight: .semibold))
                             .frame(maxWidth: .infinity)
                             .frame(height: 54)
+                            .contentShape(Rectangle())
                             .background(Color.white.opacity(0.12))
                             .foregroundColor(.white)
                             .cornerRadius(14)
@@ -90,6 +93,7 @@ struct SignInView: View {
                             .font(.montserrat(.body, weight: .semibold))
                             .frame(maxWidth: .infinity)
                             .frame(height: 54)
+                            .contentShape(Rectangle())
                             .background(Color.clear)
                             .foregroundColor(.white)
                             .cornerRadius(14)

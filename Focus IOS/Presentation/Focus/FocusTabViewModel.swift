@@ -883,7 +883,7 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
         switch count {
         case 0, 1:
             return FocusSectionConfig(
-                taskFont: .montserrat(.title, weight: .semibold),
+                taskFont: .montserrat(.title),
                 verticalPadding: 24,
                 containerMinHeight: 150,
                 completedTaskFont: .montserrat(.subheadline),
@@ -892,7 +892,7 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
             )
         case 2:
             return FocusSectionConfig(
-                taskFont: .montserrat(.title2, weight: .semibold),
+                taskFont: .montserrat(.title2),
                 verticalPadding: 18,
                 containerMinHeight: 150,
                 completedTaskFont: .montserrat(.subheadline),
@@ -901,7 +901,7 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
             )
         default:
             return FocusSectionConfig(
-                taskFont: .montserrat(.title3, weight: .medium),
+                taskFont: .montserrat(.title3),
                 verticalPadding: 14,
                 containerMinHeight: 0,
                 completedTaskFont: .montserrat(.subheadline),

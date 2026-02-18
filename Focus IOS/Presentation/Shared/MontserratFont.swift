@@ -1,28 +1,38 @@
 import SwiftUI
 
-// MARK: - Montserrat Font Utility
+// MARK: - App Font Utility
 
 extension Font {
 
-    /// Montserrat font matching a system Dynamic Type text style.
+    /// System font matching a Dynamic Type text style with weight mapping.
     /// Usage: `.font(.montserrat(.title2))` or `.font(.montserrat(.body, weight: .semibold))`
     static func montserrat(_ style: TextStyle, weight: MontserratWeight = .regular) -> Font {
-        .custom(weight.fontName, size: style.montserratSize, relativeTo: style)
+        .system(style, weight: weight.systemWeight)
     }
 
-    /// Montserrat font with explicit point size and weight.
+    /// System font with explicit point size and weight.
     /// Usage: `.font(.montserrat(size: 16, weight: .semibold))`
     static func montserrat(size: CGFloat, weight: MontserratWeight = .regular) -> Font {
+        .system(size: size, weight: weight.systemWeight)
+    }
+
+    /// System font with explicit size, relative to a text style for Dynamic Type scaling.
+    static func montserrat(size: CGFloat, weight: MontserratWeight = .regular, relativeTo style: TextStyle) -> Font {
+        .system(size: size, weight: weight.systemWeight)
+    }
+
+    /// Montserrat custom font — used for section headers and date navigator.
+    static func montserratHeader(size: CGFloat, weight: MontserratWeight = .regular) -> Font {
         .custom(weight.fontName, size: size)
     }
 
-    /// Montserrat font with explicit size, relative to a text style for Dynamic Type scaling.
-    static func montserrat(size: CGFloat, weight: MontserratWeight = .regular, relativeTo style: TextStyle) -> Font {
-        .custom(weight.fontName, size: size, relativeTo: style)
+    /// Montserrat custom font matching a Dynamic Type text style — used for date navigator.
+    static func montserratHeader(_ style: TextStyle, weight: MontserratWeight = .regular) -> Font {
+        .custom(weight.fontName, size: style.defaultSize, relativeTo: style)
     }
 }
 
-// MARK: - Montserrat Weight
+// MARK: - Weight Mapping
 
 enum MontserratWeight {
     case thin, extraLight, light, regular, medium, semibold, bold, extraBold, black
@@ -40,13 +50,13 @@ enum MontserratWeight {
         case .black:      "Montserrat-Black"
         }
     }
+
 }
 
 // MARK: - TextStyle Size Mapping
 
-private extension Font.TextStyle {
-    /// Default point sizes matching Apple's Dynamic Type base sizes (Large content size).
-    var montserratSize: CGFloat {
+extension Font.TextStyle {
+    var defaultSize: CGFloat {
         switch self {
         case .largeTitle:  34
         case .title:       28
@@ -60,6 +70,24 @@ private extension Font.TextStyle {
         case .caption:     12
         case .caption2:    11
         @unknown default:  17
+        }
+    }
+}
+
+// MARK: - System Weight Mapping
+
+extension MontserratWeight {
+    var systemWeight: Font.Weight {
+        switch self {
+        case .thin:       .thin
+        case .extraLight: .ultraLight
+        case .light:      .light
+        case .regular:    .regular
+        case .medium:     .medium
+        case .semibold:   .semibold
+        case .bold:       .bold
+        case .extraBold:  .heavy
+        case .black:      .black
         }
     }
 }

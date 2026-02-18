@@ -161,17 +161,20 @@ struct AuthSheetView: View {
                     }
                 }
             }) {
-                if isCheckingEmail {
-                    ProgressView()
-                        .progressViewStyle(.circular)
-                        .tint(.white)
-                } else {
-                    Text("Continue")
-                        .font(.montserrat(.body, weight: .semibold))
+                Group {
+                    if isCheckingEmail {
+                        ProgressView()
+                            .progressViewStyle(.circular)
+                            .tint(.white)
+                    } else {
+                        Text("Continue")
+                            .font(.montserrat(.body, weight: .semibold))
+                    }
                 }
+                .frame(maxWidth: .infinity)
+                .frame(height: 50)
+                .contentShape(Rectangle())
             }
-            .frame(maxWidth: .infinity)
-            .frame(height: 50)
             .background(email.isEmpty ? Color(.systemGray4) : Color.black)
             .foregroundColor(.white)
             .cornerRadius(25)
@@ -202,6 +205,7 @@ struct AuthSheetView: View {
                 }
                 .frame(maxWidth: .infinity)
                 .frame(height: 50)
+                .contentShape(Rectangle())
                 .background(Color(.systemBackground))
                 .cornerRadius(12)
                 .overlay(
@@ -222,6 +226,7 @@ struct AuthSheetView: View {
                 .foregroundColor(.primary)
                 .frame(maxWidth: .infinity)
                 .frame(height: 50)
+                .contentShape(Rectangle())
                 .background(Color(.systemBackground))
                 .cornerRadius(12)
                 .overlay(
@@ -299,17 +304,20 @@ struct AuthSheetView: View {
 
             // Continue button
             Button(action: handleAuth) {
-                if authService.isLoading {
-                    ProgressView()
-                        .progressViewStyle(.circular)
-                        .tint(.white)
-                } else {
-                    Text("Continue")
-                        .font(.montserrat(.body, weight: .semibold))
+                Group {
+                    if authService.isLoading {
+                        ProgressView()
+                            .progressViewStyle(.circular)
+                            .tint(.white)
+                    } else {
+                        Text("Continue")
+                            .font(.montserrat(.body, weight: .semibold))
+                    }
                 }
+                .frame(maxWidth: .infinity)
+                .frame(height: 50)
+                .contentShape(Rectangle())
             }
-            .frame(maxWidth: .infinity)
-            .frame(height: 50)
             .background(password.isEmpty ? Color(.systemGray4) : Color.black)
             .foregroundColor(.white)
             .cornerRadius(25)

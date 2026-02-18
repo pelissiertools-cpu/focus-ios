@@ -149,7 +149,7 @@ struct ProjectsListView: View {
                 }
             }
             .padding(.horizontal)
-            .padding(.top, 8)
+            .padding(.top, 24)
             .padding(.bottom, 100)
             .onPreferenceChange(RowFramePreference.self) { frames in
                 rowFrames = frames

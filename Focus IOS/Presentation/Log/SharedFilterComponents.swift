@@ -36,13 +36,13 @@ struct SharedCategoryFilterPill<VM: LogFilterable>: View {
                     .font(.caption)
             }
             .foregroundColor(viewModel.selectedCategoryId != nil ? .white : .primary)
-            .padding(.horizontal, 20)
+            .padding(.horizontal, 16)
             .padding(.vertical, 10)
-            .background(
+            .glassEffect(
                 viewModel.selectedCategoryId != nil
-                    ? Color.blue
-                    : Color(.systemGray5),
-                in: Capsule()
+                    ? .regular.tint(.blue).interactive()
+                    : .regular.interactive(),
+                in: .capsule
             )
         }
         .buttonStyle(.plain)
@@ -237,11 +237,13 @@ struct SharedCommitmentFilterPills<VM: LogFilterable>: View {
                 .font(.subheadline.weight(.medium))
                 .lineLimit(1)
                 .foregroundColor(isActive ? .white : .primary)
-                .padding(.horizontal, 20)
+                .padding(.horizontal, 16)
                 .padding(.vertical, 10)
-                .background(
-                    isActive ? Color.blue : Color(.systemGray5),
-                    in: Capsule()
+                .glassEffect(
+                    isActive
+                        ? .regular.tint(.blue).interactive()
+                        : .regular.interactive(),
+                    in: .capsule
                 )
         }
         .buttonStyle(.plain)

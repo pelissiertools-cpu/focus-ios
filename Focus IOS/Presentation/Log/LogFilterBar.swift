@@ -43,7 +43,9 @@ struct LogFilterBar<VM: LogFilterable>: View {
                         SharedCommitmentFilterPills(viewModel: viewModel)
                     }
                     .padding(.leading)
+                    .padding(.vertical, 6)
                 }
+                .scrollClipDisabled()
             }
 
             Spacer()
@@ -67,12 +69,13 @@ struct LogFilterBar<VM: LogFilterable>: View {
                         .font(.body.weight(.semibold))
                         .foregroundColor(.primary)
                         .frame(width: 36, height: 36)
-                        .background(Color(.systemGray5), in: Circle())
+                        .glassEffect(.regular.interactive(), in: .circle)
                 }
             }
             .buttonStyle(.plain)
             .padding(.trailing, viewModel.isEditMode ? 4 : 12)
         }
-        .padding(.top, 4)
+        .padding(.top, 2)
+        .padding(.bottom, 2)
     }
 }

@@ -91,9 +91,8 @@ struct DateNavigator: View {
                                     .frame(maxWidth: .infinity)
                                     .background {
                                         if selectedTimeframe == timeframe {
-                                            Capsule()
-                                                .fill(Color.white)
-                                                .shadow(color: .black.opacity(0.12), radius: 4, y: 1)
+                                            Color.clear
+                                                .glassEffect(.regular.interactive(), in: .capsule)
                                                 .matchedGeometryEffect(id: "activeTimeframe", in: timeframeAnimation)
                                         }
                                     }

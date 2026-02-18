@@ -145,9 +145,8 @@ struct LogTabView: View {
                                     .frame(maxWidth: .infinity)
                                     .background {
                                         if selectedTab == index {
-                                            Capsule()
-                                                .fill(Color.white)
-                                                .shadow(color: .black.opacity(0.12), radius: 4, y: 1)
+                                            Color.clear
+                                                .glassEffect(.regular.interactive(), in: .capsule)
                                                 .matchedGeometryEffect(id: "activeTab", in: segmentedAnimation)
                                         }
                                     }

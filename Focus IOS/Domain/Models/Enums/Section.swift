@@ -25,7 +25,7 @@ enum Section: String, Codable, CaseIterable {
     func maxTasks(for timeframe: Timeframe) -> Int? {
         switch self {
         case .focus:
-            return 10
+            return timeframe == .yearly ? 10 : 5
         case .extra:
             return nil // Unlimited
         }

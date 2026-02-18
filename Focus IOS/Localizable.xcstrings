@@ -2258,6 +2258,9 @@
         }
       }
     },
+    "Nothing to focus on yet." : {
+
+    },
     "Notifications" : {
       "localizations" : {
         "es" : {
@@ -3015,6 +3018,9 @@
           }
         }
       }
+    },
+    "Tap + to start" : {
+
     },
     "Tap the + button to add your first task" : {
       "localizations" : {

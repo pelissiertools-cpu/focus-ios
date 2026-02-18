@@ -301,6 +301,7 @@ struct FocusTabView: View {
                     .zIndex(100)
                 }
             } // ZStack
+            .background(Color(red: 0xFC/255.0, green: 0xFC/255.0, blue: 0xFC/255.0).ignoresSafeArea())
             .animation(.spring(response: 0.35, dampingFraction: 0.85), value: viewModel.showAddTaskSheet)
         }
     }
@@ -317,7 +318,6 @@ struct FocusTabView: View {
                     let isExtraHeader = section == .extra && index > 0
                     FocusSectionHeaderRow(section: section, viewModel: viewModel)
                         .moveDisabled(true)
-                        .background(Color(.systemBackground), in: glassShape)
                         .listRowBackground(Color.clear)
                         .listRowInsets(EdgeInsets(top: isExtraHeader ? 20 : 8, leading: 16, bottom: 0, trailing: 16))
                         .listRowSeparator(.hidden)
@@ -334,7 +334,6 @@ struct FocusTabView: View {
                             verticalPaddingOverride: commitment.section == .focus ? config.verticalPadding : nil
                         )
                         .moveDisabled(false)
-                        .background(Color(.systemBackground), in: glassShape)
                         .listRowBackground(Color.clear)
                         .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
                         .listRowSeparator(.hidden)
@@ -345,7 +344,7 @@ struct FocusTabView: View {
                         .padding(.leading, 32)
                         .padding(.trailing, 12)
                         .moveDisabled(subtask.isCompleted)
-                        .listRowBackground(Color(.systemBackground))
+                        .listRowBackground(Color.clear)
                         .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
                         .listRowSeparator(.hidden)
 
@@ -354,7 +353,7 @@ struct FocusTabView: View {
                         .padding(.leading, 32)
                         .padding(.trailing, 12)
                         .moveDisabled(true)
-                        .listRowBackground(Color(.systemBackground))
+                        .listRowBackground(Color.clear)
                         .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
                         .listRowSeparator(.hidden)
 
@@ -371,21 +370,39 @@ struct FocusTabView: View {
                         )
                         .moveDisabled(true)
                         .opacity(commitment.section == .focus ? config.completedOpacity : 1.0)
-                        .background(Color(.systemBackground), in: glassShape)
                         .listRowBackground(Color.clear)
                         .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
                         .listRowSeparator(.hidden)
                     }
 
                 case .emptyState(let section):
-                    Text("No task yet. Tap + to add one.")
-                        .foregroundColor(.secondary)
-                        .frame(maxWidth: .infinity, minHeight: section == .focus ? 120 : 60)
-                        .moveDisabled(true)
-                        .background(Color(.systemBackground), in: glassShape)
-                        .listRowBackground(Color.clear)
-                        .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
-                        .listRowSeparator(.hidden)
+                    Group {
+                        if section == .focus {
+                            VStack(spacing: 4) {
+                                Text("Nothing to focus on yet.")
+                                    .font(.outfit(.headline))
+                                    .bold()
+                                if !viewModel.showAddTaskSheet {
+                                    Text("Tap + to start")
+                                        .font(.outfit(.subheadline))
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+                        } else {
+                            Text("No task yet. Tap + to add one.")
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, minHeight: section == .focus ? 120 : 60)
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        viewModel.addTaskSection = section
+                        viewModel.showAddTaskSheet = true
+                    }
+                    .moveDisabled(true)
+                    .listRowBackground(Color.clear)
+                    .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
+                    .listRowSeparator(.hidden)
 
                 case .allDoneState:
                     VStack(spacing: 8) {
@@ -398,7 +415,6 @@ struct FocusTabView: View {
                     }
                     .frame(maxWidth: .infinity, minHeight: 120)
                     .moveDisabled(true)
-                    .background(Color(.systemBackground), in: glassShape)
                     .listRowBackground(Color.clear)
                     .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
                     .listRowSeparator(.hidden)
@@ -410,7 +426,6 @@ struct FocusTabView: View {
                         viewModel: viewModel
                     )
                     .moveDisabled(true)
-                    .background(Color(.systemBackground), in: glassShape)
                     .listRowBackground(Color.clear)
                     .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
                     .listRowSeparator(.hidden)
@@ -828,11 +843,31 @@ struct SectionView: View {
                     // Empty state centered in the focus zone
                     VStack {
                         Spacer(minLength: 0)
-                        Text("No task yet. Tap + to add one.")
-                            .foregroundColor(.secondary)
+                        Group {
+                            if section == .focus {
+                                VStack(spacing: 4) {
+                                    Text("Nothing to focus on yet.")
+                                        .font(.outfit(.headline))
+                                        .bold()
+                                    if !viewModel.showAddTaskSheet {
+                                        Text("Tap + to start")
+                                            .font(.outfit(.subheadline))
+                                            .foregroundColor(.secondary)
+                                    }
+                                }
+                            } else {
+                                Text("No task yet. Tap + to add one.")
+                                    .foregroundColor(.secondary)
+                            }
+                        }
                         Spacer(minLength: 0)
                     }
                     .frame(maxWidth: .infinity, minHeight: section == .focus ? 180 : nil)
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        viewModel.addTaskSection = section
+                        viewModel.showAddTaskSheet = true
+                    }
                 } else {
                     VStack(spacing: 0) {
                         // Centering zone for uncompleted tasks

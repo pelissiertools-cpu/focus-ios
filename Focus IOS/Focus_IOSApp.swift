@@ -13,6 +13,7 @@ struct Focus_IOSApp: App {
     @StateObject private var authService: AuthService
     @StateObject private var focusViewModel: FocusTabViewModel
     @StateObject private var languageManager = LanguageManager.shared
+    @StateObject private var appearanceManager = AppearanceManager.shared
 
     init() {
         let auth = AuthService()
@@ -33,7 +34,9 @@ struct Focus_IOSApp: App {
                 }
             }
             .environmentObject(languageManager)
+            .environmentObject(appearanceManager)
             .environment(\.locale, languageManager.locale)
+            .preferredColorScheme(appearanceManager.currentAppearance.colorScheme)
             .onOpenURL { url in
                 GIDSignIn.sharedInstance.handle(url)
             }

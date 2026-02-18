@@ -20,18 +20,22 @@ struct MainTabView: View {
         UITabBar.appearance().scrollEdgeAppearance = appearance
     }
 
+    @State private var selectedTab = 0
+
     var body: some View {
-        TabView {
-            FocusTabView()
+        TabView(selection: $selectedTab) {
+            FocusTabView(selectedTab: $selectedTab)
                 .tabItem {
                     Label("Focus", systemImage: "target")
                 }
+                .tag(0)
                 .environmentObject(focusViewModel)
 
-            LogTabView()
+            LogTabView(mainTab: $selectedTab)
                 .tabItem {
                     Label("Log", systemImage: "tray.full")
                 }
+                .tag(1)
                 .environmentObject(focusViewModel)
         }
         .background(TabBarSelectedImageSetter())

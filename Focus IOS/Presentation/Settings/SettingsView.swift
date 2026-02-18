@@ -26,6 +26,9 @@ struct SettingsView: View {
 
     // Language picker state
     @State private var showLanguagePicker = false
+    // Appearance picker state
+    @State private var showAppearancePicker = false
+    @EnvironmentObject var appearanceManager: AppearanceManager
 
     private var userEmail: String {
         authService.currentUser?.email ?? ""
@@ -205,16 +208,72 @@ struct SettingsView: View {
 
                         // Appearance row
                         Button {
-                            // Placeholder
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                showAppearancePicker.toggle()
+                            }
                         } label: {
-                            settingsRow(
-                                icon: "sun.min",
-                                title: "Appearance",
-                                value: "System",
-                                showChevron: true
-                            )
+                            HStack(spacing: 12) {
+                                Image(systemName: "sun.min")
+                                    .font(.body)
+                                    .foregroundStyle(.primary)
+                                    .frame(width: 24, alignment: .center)
+
+                                Text("Appearance")
+                                    .font(.body)
+                                    .foregroundStyle(.primary)
+
+                                Spacer()
+
+                                Text(appearanceManager.currentAppearance.displayName)
+                                    .font(.body)
+                                    .foregroundStyle(.secondary)
+
+                                Image(systemName: "chevron.right")
+                                    .font(.caption)
+                                    .fontWeight(.semibold)
+                                    .foregroundStyle(.tertiary)
+                                    .rotationEffect(.degrees(showAppearancePicker ? 90 : 0))
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 14)
                         }
                         .buttonStyle(.plain)
+
+                        // Inline appearance options
+                        if showAppearancePicker {
+                            ForEach(AppAppearance.allCases) { appearance in
+                                Divider()
+                                    .padding(.leading, 44)
+
+                                Button {
+                                    appearanceManager.currentAppearance = appearance
+                                    withAnimation(.easeInOut(duration: 0.2)) {
+                                        showAppearancePicker = false
+                                    }
+                                } label: {
+                                    HStack(spacing: 12) {
+                                        Spacer()
+                                            .frame(width: 24)
+
+                                        Text(appearance.displayName)
+                                            .font(.body)
+                                            .foregroundStyle(.primary)
+
+                                        Spacer()
+
+                                        if appearanceManager.currentAppearance == appearance {
+                                            Image(systemName: "checkmark")
+                                                .font(.body)
+                                                .fontWeight(.semibold)
+                                                .foregroundStyle(.blue)
+                                        }
+                                    }
+                                    .padding(.horizontal, 16)
+                                    .padding(.vertical, 12)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
                     }
                     .background(Color(.secondarySystemGroupedBackground))
                     .clipShape(RoundedRectangle(cornerRadius: 12))

@@ -24,6 +24,7 @@ struct DrawerTopPreference: PreferenceKey {
 }
 
 struct FocusTabView: View {
+    @Binding var selectedTab: Int
     @EnvironmentObject var authService: AuthService
     @EnvironmentObject var viewModel: FocusTabViewModel
     @EnvironmentObject var languageManager: LanguageManager
@@ -189,6 +190,9 @@ struct FocusTabView: View {
             )
             .animation(.easeInOut(duration: 0.25), value: showScheduleDrawer)
             .animation(.easeInOut(duration: 0.25), value: viewModel.timelineVM.isDrawerRetractedForDrag)
+            .onChange(of: selectedTab) {
+                showSettings = false
+            }
             .task {
                 if !viewModel.hasLoadedInitialData {
                     await viewModel.fetchCommitments()
@@ -315,7 +319,7 @@ struct FocusTabView: View {
                         .moveDisabled(true)
                         .background(Color(.systemBackground), in: glassShape)
                         .listRowBackground(Color.clear)
-                        .listRowInsets(EdgeInsets(top: isExtraHeader ? 20 : 8, leading: 0, bottom: 0, trailing: 0))
+                        .listRowInsets(EdgeInsets(top: isExtraHeader ? 20 : 8, leading: 16, bottom: 0, trailing: 16))
                         .listRowSeparator(.hidden)
 
                 case .commitment(let commitment):
@@ -911,8 +915,8 @@ struct SectionView: View {
         .frame(maxHeight: viewModel.showAddTaskSheet && viewModel.addTaskSection == section ? .infinity : nil, alignment: .top)
         .padding(.vertical)
         .padding(.horizontal, 8)
-        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 12))
+        .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
+        .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 4))
         .shadow(color: .black.opacity(0.08), radius: 10, y: 4)
     }
 }
@@ -991,9 +995,10 @@ struct FocusSectionHeaderRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            // Section icon
+            // Section icon (hidden for Extra to remove visual icon while preserving alignment)
             Image(systemName: section == .focus ? "target" : "tray.full")
                 .foregroundColor(.secondary)
+                .opacity(section == .focus ? 1 : 0)
 
             Text(section.displayName)
                 .font(.outfit(.title2, weight: .bold))
@@ -1059,7 +1064,7 @@ struct FocusSectionHeaderRow: View {
         }
         .padding(.vertical, 12)
         .padding(.horizontal, 16)
-        .background(.ultraThinMaterial, in: Capsule())
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
 }
 
@@ -1447,7 +1452,7 @@ private struct ScheduleDragPreviewRow: View {
 
 #Preview {
     let authService = AuthService()
-    FocusTabView()
+    FocusTabView(selectedTab: .constant(0))
         .environmentObject(authService)
         .environmentObject(FocusTabViewModel(authService: authService))
 }

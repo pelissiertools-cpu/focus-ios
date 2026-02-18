@@ -9,6 +9,7 @@ import SwiftUI
 import Auth
 
 struct LogTabView: View {
+    @Binding var mainTab: Int
     @EnvironmentObject var languageManager: LanguageManager
     @State private var selectedTab = 0
     @State private var searchText = ""
@@ -122,12 +123,25 @@ struct LogTabView: View {
                     }
                     .hidden()
                 )
+                .onChange(of: mainTab) {
+                    showSettings = false
+                }
         }
     }
 
     private var logContentStack: some View {
         ZStack(alignment: .bottom) {
             VStack(spacing: 0) {
+                // Row 0: Profile button — own row, right-aligned
+                HStack {
+                    Spacer()
+                    profilePillButton
+                }
+                .padding(.leading)
+                .padding(.trailing, 50)
+                .padding(.top, 2)
+                .padding(.bottom, 8)
+
                 // Picker row with search pill
                 HStack(spacing: 12) {
                     HStack(spacing: 0) {
@@ -158,11 +172,9 @@ struct LogTabView: View {
                     .glassEffect(.regular.interactive(), in: .capsule)
 
                     searchPillButton
-
-                    profilePillButton
                 }
                 .padding(.horizontal)
-                .padding(.top, 40)
+                .padding(.top, 8)
                 .padding(.bottom, 14)
 
                 // Tab content with shared controls overlay
@@ -1488,7 +1500,7 @@ struct LogTabView: View {
 }
 
 #Preview {
-    LogTabView()
+    LogTabView(mainTab: .constant(1))
 }
 
 // MARK: - LogTab onChange Modifiers (split into small groups for type-checker)

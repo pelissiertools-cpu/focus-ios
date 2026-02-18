@@ -72,38 +72,12 @@ struct DateNavigator: View {
                 Divider()
             }
         } else {
-            // Focus mode: full 3-row layout with dividers
+            // Focus mode: full layout with dividers
             VStack(spacing: 0) {
-                // Row 1: Glass timeframe picker + profile button
-                HStack(spacing: 12) {
-                    HStack(spacing: 0) {
-                        ForEach(Timeframe.allCases, id: \.self) { timeframe in
-                            Button {
-                                withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
-                                    selectedTimeframe = timeframe
-                                }
-                            } label: {
-                                Text(LocalizedStringKey(timeframe.displayName))
-                                    .font(.subheadline.weight(selectedTimeframe == timeframe ? .semibold : .medium))
-                                    .foregroundStyle(selectedTimeframe == timeframe ? .primary : .secondary)
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 8)
-                                    .frame(maxWidth: .infinity)
-                                    .background {
-                                        if selectedTimeframe == timeframe {
-                                            Color.clear
-                                                .glassEffect(.regular.interactive(), in: .capsule)
-                                                .matchedGeometryEffect(id: "activeTimeframe", in: timeframeAnimation)
-                                        }
-                                    }
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
-                    .padding(4)
-                    .glassEffect(.regular.interactive(), in: .capsule)
-
-                    if let onProfileTap {
+                // Row 0: Profile button — own row, right-aligned
+                if let onProfileTap {
+                    HStack {
+                        Spacer()
                         Button(action: onProfileTap) {
                             Image(systemName: "person.circle")
                                 .font(.body.weight(.medium))
@@ -112,9 +86,41 @@ struct DateNavigator: View {
                                 .glassEffect(.regular.interactive(), in: .circle)
                         }
                     }
+                    .padding(.leading)
+                    .padding(.trailing, 50)
+                    .padding(.top, 2)
+                    .padding(.bottom, 8)
                 }
+
+                // Row 1: Glass timeframe picker
+                HStack(spacing: 0) {
+                    ForEach(Timeframe.allCases, id: \.self) { timeframe in
+                        Button {
+                            withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                                selectedTimeframe = timeframe
+                            }
+                        } label: {
+                            Text(LocalizedStringKey(timeframe.displayName))
+                                .font(.subheadline.weight(selectedTimeframe == timeframe ? .semibold : .medium))
+                                .foregroundStyle(selectedTimeframe == timeframe ? .primary : .secondary)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 8)
+                                .frame(maxWidth: .infinity)
+                                .background {
+                                    if selectedTimeframe == timeframe {
+                                        Color.clear
+                                            .glassEffect(.regular.interactive(), in: .capsule)
+                                            .matchedGeometryEffect(id: "activeTimeframe", in: timeframeAnimation)
+                                    }
+                                }
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(4)
+                .glassEffect(.regular.interactive(), in: .capsule)
                 .padding(.horizontal)
-                .padding(.top, 40)
+                .padding(.top, 8)
                 .padding(.bottom, 14)
 
                 Divider()

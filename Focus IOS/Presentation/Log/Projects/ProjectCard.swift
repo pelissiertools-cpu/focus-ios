@@ -64,9 +64,12 @@ struct ProjectCard: View {
     private var projectHeader: some View {
         HStack(spacing: 12) {
             // Project icon
-            Image(systemName: "archivebox.fill")
-                .font(.montserrat(.title3))
-                .foregroundColor(project.isCompleted ? .secondary : .orange)
+            ProjectIconShape()
+                .frame(width: 64, height: 64)
+                .padding(.leading, -18)
+                .padding(.trailing, -12)
+                .padding(.vertical, -16)
+                .opacity(project.isCompleted ? 0.4 : 1.0)
 
             // Title and progress
             VStack(alignment: .leading, spacing: 6) {
@@ -497,5 +500,15 @@ struct InlineAddSubtaskForProjectRow: View {
             isFocused = true
             isSubmitting = false
         }
+    }
+}
+
+// MARK: - Project Icon Shape
+
+struct ProjectIconShape: View {
+    var body: some View {
+        Image("ProjectIcon")
+            .resizable()
+            .aspectRatio(contentMode: .fit)
     }
 }

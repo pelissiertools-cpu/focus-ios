@@ -454,7 +454,7 @@ struct LogTabView: View {
                         .font(.montserrat(.title2, weight: .semibold))
                         .foregroundColor(.white)
                         .frame(width: 56, height: 56)
-                        .background(Color.black, in: Circle())
+                        .background(Color(red: 40/255, green: 45/255, blue: 46/255), in: Circle())
                         .shadow(radius: 4, y: 2)
                 }
                 .padding(.trailing, 20)

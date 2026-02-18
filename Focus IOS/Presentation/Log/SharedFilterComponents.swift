@@ -28,19 +28,21 @@ struct SharedCategoryFilterPill<VM: LogFilterable>: View {
                 showDropdown.toggle()
             }
         } label: {
-            HStack(spacing: 6) {
+            HStack(spacing: 4) {
+                Image(systemName: "folder")
+                    .font(.montserrat(.caption))
                 Text(LocalizedStringKey(selectedCategoryName))
-                    .font(.montserrat(.subheadline, weight: .medium))
+                    .font(.montserrat(.caption, weight: .medium))
                     .lineLimit(1)
                 Image(systemName: showDropdown ? "chevron.up" : "chevron.down")
-                    .font(.montserrat(.caption))
+                    .font(.montserrat(.caption2))
             }
             .foregroundColor(viewModel.selectedCategoryId != nil ? .white : .primary)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 10)
+            .padding(.horizontal, 10)
+            .frame(height: 32)
             .glassEffect(
                 viewModel.selectedCategoryId != nil
-                    ? .regular.tint(.blue).interactive()
+                    ? .regular.tint(Color(red: 40/255, green: 45/255, blue: 46/255)).interactive()
                     : .regular.interactive(),
                 in: .capsule
             )
@@ -234,11 +236,11 @@ struct SharedCommitmentFilterPills<VM: LogFilterable>: View {
             }
         } label: {
             Text(LocalizedStringKey(label))
-                .font(.montserrat(.subheadline, weight: .medium))
+                .font(.montserrat(.caption, weight: .medium))
                 .lineLimit(1)
                 .foregroundColor(isActive ? .white : .primary)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 10)
+                .padding(.horizontal, 10)
+                .frame(height: 32)
                 .glassEffect(
                     isActive
                         ? .regular.tint(.blue).interactive()

@@ -381,8 +381,8 @@ struct FocusTabView: View {
                 case .emptyState(let section):
                     Group {
                         if section == .focus {
-                            VStack(spacing: 4) {
-                                Text("Nothing to focus on yet.")
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Nothing to focus on")
                                     .font(.montserrat(.headline))
                                     .bold()
                                 if !viewModel.showAddTaskSheet {
@@ -396,7 +396,8 @@ struct FocusTabView: View {
                                 .foregroundColor(.secondary)
                         }
                     }
-                    .frame(maxWidth: .infinity, minHeight: section == .focus ? 120 : 60)
+                    .padding(.horizontal, 16)
+                    .frame(maxWidth: .infinity, minHeight: section == .focus ? 120 : 60, alignment: .leading)
                     .contentShape(Rectangle())
                     .onTapGesture {
                         viewModel.addTaskSection = section
@@ -838,13 +839,13 @@ struct SectionView: View {
             // Committed Tasks (hidden when collapsed)
             if !viewModel.isSectionCollapsed(section) {
                 if sectionCommitments.isEmpty && completedCommitments.isEmpty {
-                    // Empty state centered in the focus zone
+                    // Empty state left-aligned in the focus zone
                     VStack {
                         Spacer(minLength: 0)
                         Group {
                             if section == .focus {
-                                VStack(spacing: 4) {
-                                    Text("Nothing to focus on yet.")
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("Nothing to focus on")
                                         .font(.montserrat(.headline))
                                         .bold()
                                     if !viewModel.showAddTaskSheet {
@@ -858,9 +859,10 @@ struct SectionView: View {
                                     .foregroundColor(.secondary)
                             }
                         }
+                        .padding(.horizontal, 16)
                         Spacer(minLength: 0)
                     }
-                    .frame(maxWidth: .infinity, minHeight: section == .focus ? 180 : nil)
+                    .frame(maxWidth: .infinity, minHeight: section == .focus ? 180 : nil, alignment: .leading)
                     .contentShape(Rectangle())
                     .onTapGesture {
                         viewModel.addTaskSection = section

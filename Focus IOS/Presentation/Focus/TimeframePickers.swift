@@ -80,7 +80,7 @@ struct DateNavigator: View {
                         Button(action: onProfileTap) {
                             Image(systemName: "person.circle")
                                 .font(.montserrat(.body, weight: .medium))
-                                .foregroundColor(.secondary)
+                                .foregroundColor(.black)
                                 .frame(width: 36, height: 36)
                                 .glassEffect(.regular.interactive(), in: .circle)
                         }
@@ -205,6 +205,7 @@ struct DateNavigator: View {
                         let dayNumber = calendar.component(.day, from: date)
 
                         Button {
+                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
                             withAnimation(.easeInOut(duration: 0.2)) {
                                 selectedDate = date
                             }
@@ -225,6 +226,7 @@ struct DateNavigator: View {
                                     .overlay(
                                         Circle()
                                             .stroke(isToday && !isSelected ? Color.blue : Color.clear, lineWidth: 2)
+                                            .frame(width: 32, height: 32)
                                     )
                             }
                             .frame(width: 44)
@@ -298,6 +300,7 @@ struct DateNavigator: View {
                         let weekNum = calendar.component(.weekOfYear, from: weekStart)
 
                         Button {
+                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
                             withAnimation(.easeInOut(duration: 0.2)) {
                                 selectedDate = weekStart
                             }
@@ -374,6 +377,7 @@ struct DateNavigator: View {
                         let formatter = DateFormatter()
 
                         Button {
+                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
                             withAnimation(.easeInOut(duration: 0.2)) {
                                 selectedDate = monthDate
                             }
@@ -430,6 +434,7 @@ struct DateNavigator: View {
                         let isCurrent = year == currentYear
 
                         Button {
+                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
                             if let newDate = calendar.date(from: DateComponents(year: year, month: calendar.component(.month, from: selectedDate), day: 1)) {
                                 withAnimation(.easeInOut(duration: 0.2)) {
                                     selectedDate = newDate

@@ -186,7 +186,7 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
     private var titleCard: some View {
         VStack(alignment: .leading, spacing: 0) {
             TextField("Task title", text: $taskTitle, axis: .vertical)
-                .font(.title3)
+                .font(.montserrat(.title3))
                 .textFieldStyle(.plain)
                 .focused($isTitleFocused)
                 .onSubmit { saveTitle() }
@@ -195,7 +195,7 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
 
             if isSubtask, let parent = parentTask {
                 Text(parent.title)
-                    .font(.caption)
+                    .font(.montserrat(.caption))
                     .foregroundColor(.secondary)
                     .padding(.horizontal, 14)
                     .padding(.top, -8)
@@ -222,7 +222,7 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
             // Header: "Subtasks" label + "Break Down" button
             HStack {
                 Text("Subtasks")
-                    .font(.subheadline.weight(.medium))
+                    .font(.montserrat(.subheadline, weight: .medium))
                     .foregroundColor(.primary)
                 Spacer()
                 if !task.isCompleted {
@@ -235,10 +235,10 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                                     .tint(.primary)
                             } else {
                                 Image(systemName: hasGeneratedBreakdown ? "arrow.clockwise" : "sparkles")
-                                    .font(.subheadline.weight(.semibold))
+                                    .font(.montserrat(.subheadline, weight: .semibold))
                             }
                             Text(LocalizedStringKey(hasGeneratedBreakdown ? "Regenerate" : "Suggest Breakdown"))
-                                .font(.caption.weight(.medium))
+                                .font(.montserrat(.caption, weight: .medium))
                         }
                         .foregroundColor(.primary)
                         .padding(.horizontal, 14)
@@ -281,11 +281,11 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                 ForEach(draftSuggestions) { draft in
                     HStack(spacing: 8) {
                         Image(systemName: "sparkles")
-                            .font(.caption2)
+                            .font(.montserrat(.caption2))
                             .foregroundColor(.purple.opacity(0.6))
 
                         TextField("Subtask", text: draftBinding(for: draft.id))
-                            .font(.body)
+                            .font(.montserrat(.body))
                             .textFieldStyle(.plain)
 
                         Button {
@@ -294,7 +294,7 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                             }
                         } label: {
                             Image(systemName: "xmark.circle.fill")
-                                .font(.caption)
+                                .font(.montserrat(.caption))
                                 .foregroundColor(.secondary)
                         }
                         .buttonStyle(.plain)
@@ -305,11 +305,11 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                 if showNewSubtaskField || !newSubtaskTitle.isEmpty {
                     HStack(spacing: 8) {
                         Image(systemName: "circle")
-                            .font(.caption2)
+                            .font(.montserrat(.caption2))
                             .foregroundColor(.secondary.opacity(0.5))
 
                         TextField("Subtask", text: $newSubtaskTitle)
-                            .font(.body)
+                            .font(.montserrat(.body))
                             .textFieldStyle(.plain)
                             .focused($isNewSubtaskFocused)
                             .onAppear { isNewSubtaskFocused = true }
@@ -321,7 +321,7 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                             isNewSubtaskFocused = false
                         } label: {
                             Image(systemName: "xmark.circle.fill")
-                                .font(.caption)
+                                .font(.montserrat(.caption))
                                 .foregroundColor(.secondary)
                         }
                         .buttonStyle(.plain)
@@ -340,9 +340,9 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                         } label: {
                             HStack(spacing: 4) {
                                 Image(systemName: "plus")
-                                    .font(.caption)
+                                    .font(.montserrat(.caption))
                                 Text("Sub-task")
-                                    .font(.caption)
+                                    .font(.montserrat(.caption))
                             }
                             .foregroundColor(.white)
                             .padding(.horizontal, 10)
@@ -368,7 +368,7 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
     private func compactSubtaskRow(_ subtask: FocusTask) -> some View {
         HStack(spacing: 8) {
             Image(systemName: subtask.isCompleted ? "checkmark.circle.fill" : "circle")
-                .font(.caption2)
+                .font(.montserrat(.caption2))
                 .foregroundColor(subtask.isCompleted ? .green : .secondary.opacity(0.5))
 
             // Editable title
@@ -380,7 +380,7 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                     pendingDeletions.insert(subtask.id)
                 } label: {
                     Image(systemName: "xmark.circle.fill")
-                        .font(.caption)
+                        .font(.montserrat(.caption))
                         .foregroundColor(.secondary)
                 }
                 .buttonStyle(.plain)
@@ -433,9 +433,9 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                 } label: {
                     HStack(spacing: 6) {
                         Image(systemName: "folder")
-                            .font(.subheadline)
+                            .font(.montserrat(.subheadline))
                         Text(LocalizedStringKey(currentCategoryName))
-                            .font(.subheadline.weight(.medium))
+                            .font(.montserrat(.subheadline, weight: .medium))
                     }
                     .foregroundColor(.primary)
                     .padding(.horizontal, 16)
@@ -458,9 +458,9 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                 } label: {
                     HStack(spacing: 6) {
                         Image(systemName: "arrow.right.circle")
-                            .font(.subheadline)
+                            .font(.montserrat(.subheadline))
                         Text("Commit")
-                            .font(.subheadline.weight(.medium))
+                            .font(.montserrat(.subheadline, weight: .medium))
                     }
                     .foregroundColor(commitPillIsActive ? .white : .primary)
                     .padding(.horizontal, 16)
@@ -482,7 +482,7 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                 showingDeleteConfirmation = true
             } label: {
                 Image(systemName: "trash")
-                    .font(.body.weight(.semibold))
+                    .font(.montserrat(.body, weight: .semibold))
                     .foregroundColor(.red)
                     .frame(width: 44, height: 44)
                     .glassEffect(.regular.interactive(), in: .circle)
@@ -824,7 +824,7 @@ private struct SubtaskTextField<VM: TaskEditingViewModel>: View {
 
     var body: some View {
         TextField("Subtask", text: $editingTitle)
-            .font(.body)
+            .font(.montserrat(.body))
             .textFieldStyle(.plain)
             .strikethrough(subtask.isCompleted)
             .foregroundColor(subtask.isCompleted ? .secondary : .primary)

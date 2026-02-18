@@ -30,10 +30,10 @@ struct SharedCategoryFilterPill<VM: LogFilterable>: View {
         } label: {
             HStack(spacing: 6) {
                 Text(LocalizedStringKey(selectedCategoryName))
-                    .font(.subheadline.weight(.medium))
+                    .font(.montserrat(.subheadline, weight: .medium))
                     .lineLimit(1)
                 Image(systemName: showDropdown ? "chevron.up" : "chevron.down")
-                    .font(.caption)
+                    .font(.montserrat(.caption))
             }
             .foregroundColor(viewModel.selectedCategoryId != nil ? .white : .primary)
             .padding(.horizontal, 16)
@@ -78,10 +78,10 @@ struct SharedCategoryDropdownMenu<VM: LogFilterable>: View {
                 // Header row (mirrors the pill appearance)
                 HStack(spacing: 6) {
                     Text(LocalizedStringKey(selectedCategoryName))
-                        .font(.subheadline.weight(.medium))
+                        .font(.montserrat(.subheadline, weight: .medium))
                         .lineLimit(1)
                     Image(systemName: "chevron.up")
-                        .font(.caption)
+                        .font(.montserrat(.caption))
                 }
                 .foregroundColor(.secondary)
                 .padding(.horizontal, 20)
@@ -99,11 +99,11 @@ struct SharedCategoryDropdownMenu<VM: LogFilterable>: View {
                 } label: {
                     HStack {
                         Text(LocalizedStringKey("All"))
-                            .font(.body)
+                            .font(.montserrat(.body))
                         Spacer()
                         if viewModel.selectedCategoryId == nil {
                             Image(systemName: "checkmark")
-                                .font(.body)
+                                .font(.montserrat(.body))
                                 .foregroundColor(.blue)
                         }
                     }
@@ -121,12 +121,12 @@ struct SharedCategoryDropdownMenu<VM: LogFilterable>: View {
                     } label: {
                         HStack {
                             Text(category.name)
-                                .font(.body)
+                                .font(.montserrat(.body))
                                 .lineLimit(1)
                             Spacer()
                             if viewModel.selectedCategoryId == category.id {
                                 Image(systemName: "checkmark")
-                                    .font(.body)
+                                    .font(.montserrat(.body))
                                     .foregroundColor(.blue)
                             }
                         }
@@ -144,14 +144,14 @@ struct SharedCategoryDropdownMenu<VM: LogFilterable>: View {
                 if isAddingCategory {
                     HStack(spacing: 8) {
                         TextField("Category name", text: $newCategoryName)
-                            .font(.body)
+                            .font(.montserrat(.body))
                             .focused($isTextFieldFocused)
                             .onSubmit { submitNewCategory() }
                         Button {
                             submitNewCategory()
                         } label: {
                             Image(systemName: "checkmark.circle.fill")
-                                .font(.body)
+                                .font(.montserrat(.body))
                                 .foregroundColor(
                                     newCategoryName.trimmingCharacters(in: .whitespaces).isEmpty
                                     ? .gray : .blue
@@ -169,9 +169,9 @@ struct SharedCategoryDropdownMenu<VM: LogFilterable>: View {
                     } label: {
                         HStack(spacing: 6) {
                             Image(systemName: "plus")
-                                .font(.body)
+                                .font(.montserrat(.body))
                             Text("New Category")
-                                .font(.body)
+                                .font(.montserrat(.body))
                         }
                         .foregroundColor(.blue)
                         .padding(.horizontal, 20)
@@ -234,7 +234,7 @@ struct SharedCommitmentFilterPills<VM: LogFilterable>: View {
             }
         } label: {
             Text(LocalizedStringKey(label))
-                .font(.subheadline.weight(.medium))
+                .font(.montserrat(.subheadline, weight: .medium))
                 .lineLimit(1)
                 .foregroundColor(isActive ? .white : .primary)
                 .padding(.horizontal, 16)

@@ -65,13 +65,13 @@ struct ProjectCard: View {
         HStack(spacing: 12) {
             // Project icon
             Image(systemName: "archivebox.fill")
-                .font(.title3)
+                .font(.montserrat(.title3))
                 .foregroundColor(project.isCompleted ? .secondary : .orange)
 
             // Title and progress
             VStack(alignment: .leading, spacing: 6) {
                 Text(project.title)
-                    .font(.title3)
+                    .font(.montserrat(.title3))
                     .lineLimit(1)
                     .strikethrough(project.isCompleted)
                     .foregroundColor(project.isCompleted ? .secondary : .primary)
@@ -79,17 +79,17 @@ struct ProjectCard: View {
                 HStack(spacing: 16) {
                     HStack(spacing: 4) {
                         Text("Task")
-                            .font(.caption)
+                            .font(.montserrat(.caption))
                         Text("\(taskProgress.completed)/\(taskProgress.total)")
-                            .font(.caption)
+                            .font(.montserrat(.caption))
                     }
                     .foregroundColor(.secondary)
 
                     HStack(spacing: 4) {
                         Text("Sub Task")
-                            .font(.caption)
+                            .font(.montserrat(.caption))
                         Text("\(subtaskProgress.completed)/\(subtaskProgress.total)")
-                            .font(.caption)
+                            .font(.montserrat(.caption))
                     }
                     .foregroundColor(.secondary)
                 }
@@ -100,7 +100,7 @@ struct ProjectCard: View {
             if project.isCompleted {
                 // Blue checkmark for completed projects
                 Image(systemName: "checkmark.circle.fill")
-                    .font(.title3)
+                    .font(.montserrat(.title3))
                     .foregroundColor(.blue)
             } else if !viewModel.isEditMode, let onDragChanged, let onDragEnded {
                 // Drag handle
@@ -149,7 +149,7 @@ struct ProjectCard: View {
                 if items.count <= 1 {
                     // Only the addTaskRow — no tasks yet
                     Text("No tasks yet")
-                        .font(.subheadline)
+                        .font(.montserrat(.subheadline))
                         .foregroundColor(.secondary)
                         .padding()
 
@@ -183,6 +183,7 @@ struct ProjectCard: View {
                                 .moveDisabled(task.isCompleted || viewModel.isEditMode)
                                 .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
                                 .listRowBackground(Color.clear)
+                                .listRowSeparator(.visible)
 
                             case .addSubtaskRow(let parentId):
                                 InlineAddSubtaskForProjectRow(
@@ -246,13 +247,13 @@ struct ProjectTaskRow: View {
             // Task title + subtask count
             VStack(alignment: .leading, spacing: 4) {
                 Text(task.title)
-                    .font(.body)
+                    .font(.montserrat(.body))
                     .strikethrough(task.isCompleted)
                     .foregroundColor(task.isCompleted ? .secondary : .primary)
 
                 if subtaskCount.total > 0 {
                     Text("\(subtaskCount.completed)/\(subtaskCount.total) subtasks")
-                        .font(.caption)
+                        .font(.montserrat(.caption))
                         .foregroundColor(.secondary)
                 }
             }
@@ -265,7 +266,7 @@ struct ProjectTaskRow: View {
                 }
             } label: {
                 Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
-                    .font(.title3)
+                    .font(.montserrat(.title3))
                     .foregroundColor(task.isCompleted ? .blue : .gray)
             }
             .buttonStyle(.plain)
@@ -313,7 +314,7 @@ struct ProjectSubtaskRow: View {
     var body: some View {
         HStack(spacing: 12) {
             Text(subtask.title)
-                .font(.subheadline)
+                .font(.montserrat(.subheadline))
                 .strikethrough(subtask.isCompleted)
                 .foregroundColor(subtask.isCompleted ? .secondary : .primary)
 
@@ -325,7 +326,7 @@ struct ProjectSubtaskRow: View {
                 }
             } label: {
                 Image(systemName: subtask.isCompleted ? "checkmark.circle.fill" : "circle")
-                    .font(.subheadline)
+                    .font(.montserrat(.subheadline))
                     .foregroundColor(subtask.isCompleted ? .blue : .gray)
             }
             .buttonStyle(.plain)
@@ -368,7 +369,7 @@ struct InlineAddProjectTaskRow: View {
         HStack(spacing: 12) {
             if isEditing {
                 TextField("Task title", text: $newTaskTitle)
-                    .font(.subheadline)
+                    .font(.montserrat(.subheadline))
                     .focused($isFocused)
                     .onSubmit {
                         submitTask()
@@ -377,7 +378,7 @@ struct InlineAddProjectTaskRow: View {
                 Spacer()
 
                 Image(systemName: "circle")
-                    .font(.subheadline)
+                    .font(.montserrat(.subheadline))
                     .foregroundColor(.gray.opacity(0.5))
             } else {
                 Button {
@@ -386,9 +387,9 @@ struct InlineAddProjectTaskRow: View {
                 } label: {
                     HStack(spacing: 8) {
                         Image(systemName: "plus")
-                            .font(.subheadline)
+                            .font(.montserrat(.subheadline))
                         Text("Add task")
-                            .font(.subheadline)
+                            .font(.montserrat(.subheadline))
                     }
                     .foregroundColor(.secondary)
                 }
@@ -441,7 +442,7 @@ struct InlineAddSubtaskForProjectRow: View {
         HStack(spacing: 12) {
             if isEditing {
                 TextField("Subtask title", text: $newTitle)
-                    .font(.subheadline)
+                    .font(.montserrat(.subheadline))
                     .focused($isFocused)
                     .onSubmit {
                         submitSubtask()
@@ -450,7 +451,7 @@ struct InlineAddSubtaskForProjectRow: View {
                 Spacer()
 
                 Image(systemName: "circle")
-                    .font(.caption)
+                    .font(.montserrat(.caption))
                     .foregroundColor(.gray.opacity(0.5))
             } else {
                 Button {
@@ -459,9 +460,9 @@ struct InlineAddSubtaskForProjectRow: View {
                 } label: {
                     HStack(spacing: 8) {
                         Image(systemName: "plus")
-                            .font(.subheadline)
-                        Text("Add")
-                            .font(.subheadline)
+                            .font(.montserrat(.subheadline))
+                        Text("Add subtask")
+                            .font(.montserrat(.subheadline))
                     }
                     .foregroundColor(.secondary)
                 }

@@ -848,11 +848,6 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
                 result.append(.donePill)
             }
 
-            if !extraCompleted.isEmpty && !isDoneSubsectionCollapsed {
-                for c in extraCompleted {
-                    result.append(.completedCommitment(c))
-                }
-            }
         }
 
         return result
@@ -863,10 +858,10 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
     func focusConfig(for section: Section) -> FocusSectionConfig {
         guard section == .focus else {
             return FocusSectionConfig(
-                taskFont: .outfit(.body),
+                taskFont: .montserrat(.body),
                 verticalPadding: 8,
                 containerMinHeight: 0,
-                completedTaskFont: .outfit(.body),
+                completedTaskFont: .montserrat(.body),
                 completedVerticalPadding: 6,
                 completedOpacity: 0.5
             )
@@ -875,10 +870,10 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
         // Yearly supports up to 10 tasks — use compact layout, no scaling
         guard selectedTimeframe != .yearly else {
             return FocusSectionConfig(
-                taskFont: .outfit(.body),
+                taskFont: .montserrat(.body),
                 verticalPadding: 10,
                 containerMinHeight: 0,
-                completedTaskFont: .outfit(.footnote),
+                completedTaskFont: .montserrat(.footnote),
                 completedVerticalPadding: 6,
                 completedOpacity: 0.45
             )
@@ -888,28 +883,28 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
         switch count {
         case 0, 1:
             return FocusSectionConfig(
-                taskFont: .outfit(.title, weight: .semibold),
+                taskFont: .montserrat(.title, weight: .semibold),
                 verticalPadding: 24,
                 containerMinHeight: 150,
-                completedTaskFont: .outfit(.subheadline),
+                completedTaskFont: .montserrat(.subheadline),
                 completedVerticalPadding: 6,
                 completedOpacity: 0.45
             )
         case 2:
             return FocusSectionConfig(
-                taskFont: .outfit(.title2, weight: .semibold),
+                taskFont: .montserrat(.title2, weight: .semibold),
                 verticalPadding: 18,
                 containerMinHeight: 150,
-                completedTaskFont: .outfit(.subheadline),
+                completedTaskFont: .montserrat(.subheadline),
                 completedVerticalPadding: 6,
                 completedOpacity: 0.45
             )
         default:
             return FocusSectionConfig(
-                taskFont: .outfit(.title3, weight: .medium),
+                taskFont: .montserrat(.title3, weight: .medium),
                 verticalPadding: 14,
                 containerMinHeight: 0,
-                completedTaskFont: .outfit(.subheadline),
+                completedTaskFont: .montserrat(.subheadline),
                 completedVerticalPadding: 6,
                 completedOpacity: 0.45
             )

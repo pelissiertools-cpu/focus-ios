@@ -13,8 +13,9 @@ struct MainTabView: View {
 
     init() {
         let appearance = UITabBarAppearance()
-        appearance.stackedLayoutAppearance.normal.iconColor = UIColor.label
-        appearance.stackedLayoutAppearance.normal.titleTextAttributes = [.foregroundColor: UIColor.label]
+        appearance.stackedLayoutAppearance.normal.iconColor = UIColor.secondaryLabel
+        appearance.stackedLayoutAppearance.normal.titleTextAttributes = [.foregroundColor: UIColor.secondaryLabel]
+        appearance.stackedLayoutAppearance.selected.iconColor = UIColor.label
         appearance.stackedLayoutAppearance.selected.titleTextAttributes = [.foregroundColor: UIColor.label]
         UITabBar.appearance().standardAppearance = appearance
         UITabBar.appearance().scrollEdgeAppearance = appearance
@@ -66,9 +67,9 @@ private class TabBarSetterView: UIView {
             return
         }
         items[0].selectedImage = UIImage(systemName: "target")?
-            .withTintColor(.systemBlue, renderingMode: .alwaysOriginal)
+            .withTintColor(.label, renderingMode: .alwaysOriginal)
         items[1].selectedImage = UIImage(systemName: "tray.full")?
-            .withTintColor(.systemOrange, renderingMode: .alwaysOriginal)
+            .withTintColor(.label, renderingMode: .alwaysOriginal)
     }
 }
 

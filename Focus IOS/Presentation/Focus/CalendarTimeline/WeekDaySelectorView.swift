@@ -39,13 +39,11 @@ struct WeekDaySelectorView: View {
                 } label: {
                     VStack(spacing: 6) {
                         Text(dayAbbreviations[index])
-                            .font(.caption2)
-                            .fontWeight(.medium)
+                            .font(.montserrat(.caption2, weight: .medium))
                             .foregroundColor(isSelected ? .blue : .secondary)
 
                         Text("\(dayNumber)")
-                            .font(.body)
-                            .fontWeight(isSelected ? .bold : .regular)
+                            .font(.montserrat(.body, weight: isSelected ? .bold : .regular))
                             .foregroundColor(isSelected ? .white : (isToday ? .blue : .primary))
                             .frame(width: 36, height: 36)
                             .background(

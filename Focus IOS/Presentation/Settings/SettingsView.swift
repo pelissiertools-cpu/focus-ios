@@ -39,14 +39,14 @@ struct SettingsView: View {
             VStack(spacing: 0) {
                 // App branding
                 Text("Focus")
-                    .font(.system(size: 48, weight: .bold))
+                    .font(.montserrat(size: 48, weight: .bold))
                     .padding(.top, 24)
                     .padding(.bottom, 28)
 
                 // Account section
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Account")
-                        .font(.footnote)
+                        .font(.montserrat(.footnote))
                         .foregroundStyle(.secondary)
                         .padding(.horizontal, 4)
 
@@ -129,7 +129,7 @@ struct SettingsView: View {
                 // App section
                 VStack(alignment: .leading, spacing: 8) {
                     Text("App")
-                        .font(.footnote)
+                        .font(.montserrat(.footnote))
                         .foregroundStyle(.secondary)
                         .padding(.horizontal, 4)
 
@@ -142,23 +142,22 @@ struct SettingsView: View {
                         } label: {
                             HStack(spacing: 12) {
                                 Image(systemName: "globe")
-                                    .font(.body)
+                                    .font(.montserrat(.body))
                                     .foregroundStyle(.primary)
                                     .frame(width: 24)
 
                                 Text("App Language")
-                                    .font(.body)
+                                    .font(.montserrat(.body))
 
                                 Spacer()
 
                                 Text(languageManager.currentLanguage.displayName)
-                                    .font(.body)
+                                    .font(.montserrat(.body))
                                     .foregroundStyle(.secondary)
                                     .lineLimit(1)
 
                                 Image(systemName: "chevron.right")
-                                    .font(.caption)
-                                    .fontWeight(.semibold)
+                                    .font(.montserrat(.caption, weight: .semibold))
                                     .foregroundStyle(.tertiary)
                                     .rotationEffect(.degrees(showLanguagePicker ? 90 : 0))
                             }
@@ -184,15 +183,14 @@ struct SettingsView: View {
                                             .frame(width: 24)
 
                                         Text(language.displayName)
-                                            .font(.body)
+                                            .font(.montserrat(.body))
                                             .foregroundStyle(.primary)
 
                                         Spacer()
 
                                         if languageManager.currentLanguage == language {
                                             Image(systemName: "checkmark")
-                                                .font(.body)
-                                                .fontWeight(.semibold)
+                                                .font(.montserrat(.body, weight: .semibold))
                                                 .foregroundStyle(.blue)
                                         }
                                     }
@@ -214,23 +212,22 @@ struct SettingsView: View {
                         } label: {
                             HStack(spacing: 12) {
                                 Image(systemName: "sun.min")
-                                    .font(.body)
+                                    .font(.montserrat(.body))
                                     .foregroundStyle(.primary)
                                     .frame(width: 24, alignment: .center)
 
                                 Text("Appearance")
-                                    .font(.body)
+                                    .font(.montserrat(.body))
                                     .foregroundStyle(.primary)
 
                                 Spacer()
 
                                 Text(appearanceManager.currentAppearance.displayName)
-                                    .font(.body)
+                                    .font(.montserrat(.body))
                                     .foregroundStyle(.secondary)
 
                                 Image(systemName: "chevron.right")
-                                    .font(.caption)
-                                    .fontWeight(.semibold)
+                                    .font(.montserrat(.caption, weight: .semibold))
                                     .foregroundStyle(.tertiary)
                                     .rotationEffect(.degrees(showAppearancePicker ? 90 : 0))
                             }
@@ -256,15 +253,14 @@ struct SettingsView: View {
                                             .frame(width: 24)
 
                                         Text(appearance.displayName)
-                                            .font(.body)
+                                            .font(.montserrat(.body))
                                             .foregroundStyle(.primary)
 
                                         Spacer()
 
                                         if appearanceManager.currentAppearance == appearance {
                                             Image(systemName: "checkmark")
-                                                .font(.body)
-                                                .fontWeight(.semibold)
+                                                .font(.montserrat(.body, weight: .semibold))
                                                 .foregroundStyle(.blue)
                                         }
                                     }
@@ -376,26 +372,25 @@ struct SettingsView: View {
     ) -> some View {
         HStack(spacing: 12) {
             Image(systemName: icon)
-                .font(.body)
+                .font(.montserrat(.body))
                 .foregroundStyle(.primary)
                 .frame(width: 24)
 
             Text(title)
-                .font(.body)
+                .font(.montserrat(.body))
 
             Spacer()
 
             if let value {
                 Text(value)
-                    .font(.body)
+                    .font(.montserrat(.body))
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             }
 
             if showChevron {
                 Image(systemName: "chevron.right")
-                    .font(.caption)
-                    .fontWeight(.semibold)
+                    .font(.montserrat(.caption, weight: .semibold))
                     .foregroundStyle(.tertiary)
             }
         }

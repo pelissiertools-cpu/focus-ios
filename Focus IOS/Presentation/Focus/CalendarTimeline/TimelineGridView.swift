@@ -23,7 +23,7 @@ struct TimelineGridView: View {
                     HStack(alignment: .top, spacing: 0) {
                         // Hour label
                         Text(hourLabel(for: hour))
-                            .font(.caption)
+                            .font(.montserrat(.caption))
                             .foregroundColor(.secondary)
                             .frame(width: Self.labelWidth, alignment: .trailing)
                             .padding(.trailing, 8)

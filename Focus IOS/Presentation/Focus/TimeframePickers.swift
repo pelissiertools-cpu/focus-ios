@@ -62,8 +62,7 @@ struct DateNavigator: View {
                 // Row 3: Tappable date subtitle
                 Button(action: onCalendarTap) {
                     Text(compactSubtitleText)
-                        .font(.subheadline)
-                        .fontWeight(.medium)
+                        .font(.montserrat(.subheadline, weight: .medium))
                         .foregroundColor(.black)
                 }
                 .buttonStyle(.plain)
@@ -80,7 +79,7 @@ struct DateNavigator: View {
                         Spacer()
                         Button(action: onProfileTap) {
                             Image(systemName: "person.circle")
-                                .font(.body.weight(.medium))
+                                .font(.montserrat(.body, weight: .medium))
                                 .foregroundColor(.secondary)
                                 .frame(width: 36, height: 36)
                                 .glassEffect(.regular.interactive(), in: .circle)
@@ -101,7 +100,7 @@ struct DateNavigator: View {
                             }
                         } label: {
                             Text(LocalizedStringKey(timeframe.displayName))
-                                .font(.subheadline.weight(selectedTimeframe == timeframe ? .semibold : .medium))
+                                .font(.montserrat(.subheadline, weight: selectedTimeframe == timeframe ? .semibold : .medium))
                                 .foregroundStyle(selectedTimeframe == timeframe ? .primary : .secondary)
                                 .padding(.horizontal, 12)
                                 .padding(.vertical, 8)
@@ -146,8 +145,7 @@ struct DateNavigator: View {
                 // Row 3: Tappable subtitle
                 Button(action: onCalendarTap) {
                     Text(subtitleText)
-                        .font(.subheadline)
-                        .fontWeight(.medium)
+                        .font(.montserrat(.subheadline, weight: .medium))
                         .foregroundColor(.black)
                 }
                 .buttonStyle(.plain)
@@ -213,13 +211,11 @@ struct DateNavigator: View {
                         } label: {
                             VStack(spacing: 4) {
                                 Text(dayAbbreviations[weekdayIndex])
-                                    .font(.caption2)
-                                    .fontWeight(.medium)
+                                    .font(.montserrat(.caption2, weight: .medium))
                                     .foregroundColor(isSelected ? .blue : .secondary)
 
                                 Text("\(dayNumber)")
-                                    .font(.body)
-                                    .fontWeight(isSelected || isToday ? .bold : .regular)
+                                    .font(.montserrat(.body, weight: isSelected || isToday ? .bold : .regular))
                                     .foregroundColor(isSelected ? .white : (isToday ? .blue : .primary))
                                     .frame(width: 40, height: 40)
                                     .background(
@@ -308,10 +304,9 @@ struct DateNavigator: View {
                         } label: {
                             VStack(spacing: 2) {
                                 Text("W\(weekNum)")
-                                    .font(.caption)
-                                    .fontWeight(.bold)
+                                    .font(.montserrat(.caption, weight: .bold))
                                 Text(shortWeekRange(from: weekStart))
-                                    .font(.caption2)
+                                    .font(.montserrat(.caption2))
                             }
                             .foregroundColor(isSelected ? .white : .primary)
                             .frame(width: 68, height: 48)
@@ -388,8 +383,7 @@ struct DateNavigator: View {
                                 formatter.locale = LanguageManager.shared.locale
                                 return formatter.string(from: monthDate).uppercased()
                             }())
-                                .font(.subheadline)
-                                .fontWeight(.medium)
+                                .font(.montserrat(.subheadline, weight: .medium))
                                 .foregroundColor(isSelected ? .white : .primary)
                                 .frame(width: 64, height: 40)
                                 .background(
@@ -443,8 +437,7 @@ struct DateNavigator: View {
                             }
                         } label: {
                             Text(String(year))
-                                .font(.subheadline)
-                                .fontWeight(.medium)
+                                .font(.montserrat(.subheadline, weight: .medium))
                                 .foregroundColor(isSelected ? .white : .primary)
                                 .frame(width: 64, height: 40)
                                 .background(

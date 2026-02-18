@@ -54,8 +54,7 @@ struct TimelineTaskBlockView: View {
                 )
                 .overlay(
                     Text(task.title)
-                        .font(.caption)
-                        .fontWeight(.medium)
+                        .font(.montserrat(.caption, weight: .medium))
                         .foregroundColor(.blue)
                         .lineLimit(1)
                         .padding(.horizontal, 8)

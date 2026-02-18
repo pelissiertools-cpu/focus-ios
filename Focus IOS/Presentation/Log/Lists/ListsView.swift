@@ -27,7 +27,7 @@ struct ListsView: View {
             } else if viewModel.filteredLists.isEmpty {
                 VStack(spacing: 12) {
                     Text("No matching lists")
-                        .font(.headline)
+                        .font(.montserrat(.headline))
                         .foregroundColor(.secondary)
                 }
                 .padding()
@@ -88,12 +88,11 @@ struct ListsView: View {
     private var emptyState: some View {
         VStack(spacing: 16) {
             Image(systemName: "list.bullet.rectangle")
-                .font(.system(size: 60))
+                .font(.montserrat(size: 60))
                 .foregroundColor(.secondary)
 
             Text("No Lists Yet")
-                .font(.title2)
-                .fontWeight(.semibold)
+                .font(.montserrat(.title2, weight: .semibold))
 
             Text("Tap the + button to create your first list")
                 .foregroundColor(.secondary)
@@ -179,19 +178,19 @@ struct ListRow: View {
             // Edit mode: selection circle
             if isEditMode {
                 Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                    .font(.title3)
+                    .font(.montserrat(.title3))
                     .foregroundColor(isSelected ? .blue : .gray)
             }
 
             // Title + item count
             VStack(alignment: .leading, spacing: 4) {
                 Text(list.title)
-                    .font(.body)
+                    .font(.montserrat(.body))
                     .lineLimit(1)
 
                 if itemCount.total > 0 {
                     Text("\(itemCount.uncompleted) item\(itemCount.uncompleted == 1 ? "" : "s")")
-                        .font(.caption)
+                        .font(.montserrat(.caption))
                         .foregroundColor(.secondary)
                 }
             }
@@ -258,7 +257,7 @@ struct ListItemRow: View {
     var body: some View {
         HStack(spacing: 12) {
             Text(item.title)
-                .font(.subheadline)
+                .font(.montserrat(.subheadline))
                 .strikethrough(item.isCompleted)
                 .foregroundColor(item.isCompleted ? .secondary : .primary)
 
@@ -271,7 +270,7 @@ struct ListItemRow: View {
                 }
             } label: {
                 Image(systemName: item.isCompleted ? "checkmark.circle.fill" : "circle")
-                    .font(.subheadline)
+                    .font(.montserrat(.subheadline))
                     .foregroundColor(item.isCompleted ? .green : .gray)
             }
             .buttonStyle(.plain)
@@ -319,16 +318,15 @@ struct ListDoneSection: View {
                 } label: {
                     HStack(spacing: 8) {
                         Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
-                            .font(.caption)
+                            .font(.montserrat(.caption))
                             .foregroundColor(.secondary)
 
                         Text("Completed")
-                            .font(.subheadline)
-                            .fontWeight(.medium)
+                            .font(.montserrat(.subheadline, weight: .medium))
                             .foregroundColor(.secondary)
 
                         Text("(\(completedItems.count))")
-                            .font(.subheadline)
+                            .font(.montserrat(.subheadline))
                             .foregroundColor(.secondary)
 
                         if isExpanded {
@@ -336,7 +334,7 @@ struct ListDoneSection: View {
                                 showClearConfirmation = true
                             } label: {
                                 Text("Clear list")
-                                    .font(.caption)
+                                    .font(.montserrat(.caption))
                                     .foregroundColor(.secondary)
                                     .padding(.horizontal, 10)
                                     .padding(.vertical, 4)
@@ -395,7 +393,7 @@ struct InlineAddItemRow: View {
         HStack(spacing: 12) {
             if isEditing {
                 TextField("Item title", text: $newItemTitle)
-                    .font(.subheadline)
+                    .font(.montserrat(.subheadline))
                     .focused($isFocused)
                     .onSubmit {
                         submitItem()
@@ -404,7 +402,7 @@ struct InlineAddItemRow: View {
                 Spacer()
 
                 Image(systemName: "circle")
-                    .font(.subheadline)
+                    .font(.montserrat(.subheadline))
                     .foregroundColor(.gray.opacity(0.5))
             } else {
                 Button {
@@ -413,9 +411,9 @@ struct InlineAddItemRow: View {
                 } label: {
                     HStack(spacing: 8) {
                         Image(systemName: "plus")
-                            .font(.subheadline)
-                        Text("Add")
-                            .font(.subheadline)
+                            .font(.montserrat(.subheadline))
+                        Text("Add items")
+                            .font(.montserrat(.subheadline))
                     }
                     .foregroundColor(.secondary)
                 }

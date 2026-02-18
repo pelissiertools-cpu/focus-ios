@@ -56,12 +56,11 @@ struct TimelineDropPreviewView: View {
                 .overlay(
                     VStack(alignment: .leading, spacing: 2) {
                         Text(taskTitle)
-                            .font(.caption)
-                            .fontWeight(.medium)
+                            .font(.montserrat(.caption, weight: .medium))
                             .foregroundColor(.blue)
                             .lineLimit(1)
                         Text(timeLabel)
-                            .font(.caption2)
+                            .font(.montserrat(.caption2))
                             .foregroundColor(.blue.opacity(0.6))
                     }
                     .padding(.horizontal, 8)

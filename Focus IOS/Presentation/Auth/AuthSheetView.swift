@@ -40,7 +40,7 @@ struct AuthSheetView: View {
 
                     // Logo
                     Image(systemName: "target")
-                        .font(.system(size: 40))
+                        .font(.montserrat(size: 40))
                         .foregroundColor(.primary)
                         .padding(.top, 8)
 
@@ -60,7 +60,7 @@ struct AuthSheetView: View {
                 if step == 2 {
                     Button(action: { withAnimation { step = 1 } }) {
                         Image(systemName: "chevron.left")
-                            .font(.system(size: 16, weight: .semibold))
+                            .font(.montserrat(size: 16, weight: .semibold))
                             .foregroundColor(.primary)
                             .frame(width: 36, height: 36)
                             .background(.ultraThinMaterial)
@@ -72,7 +72,7 @@ struct AuthSheetView: View {
 
                 Button(action: { dismiss() }) {
                     Image(systemName: "xmark")
-                        .font(.system(size: 14, weight: .semibold))
+                        .font(.montserrat(size: 14, weight: .semibold))
                         .foregroundColor(.primary)
                         .frame(width: 36, height: 36)
                         .background(.ultraThinMaterial)
@@ -116,12 +116,11 @@ struct AuthSheetView: View {
         VStack(spacing: 16) {
             // Title
             Text("Log in or sign up")
-                .font(.title2)
-                .fontWeight(.bold)
+                .font(.montserrat(.title2, weight: .bold))
 
             // Subtitle
             Text("Enter your email to get started")
-                .font(.subheadline)
+                .font(.montserrat(.subheadline))
                 .foregroundStyle(.secondary)
 
             // Email field
@@ -144,7 +143,7 @@ struct AuthSheetView: View {
             if let errorMessage = authService.errorMessage {
                 Text(errorMessage)
                     .foregroundColor(.red)
-                    .font(.caption)
+                    .font(.montserrat(.caption))
             }
 
             // Continue button
@@ -168,7 +167,7 @@ struct AuthSheetView: View {
                         .tint(.white)
                 } else {
                     Text("Continue")
-                        .fontWeight(.semibold)
+                        .font(.montserrat(.body, weight: .semibold))
                 }
             }
             .frame(maxWidth: .infinity)
@@ -184,8 +183,7 @@ struct AuthSheetView: View {
                     .frame(height: 1)
                     .foregroundStyle(Color(.separator))
                 Text("OR")
-                    .font(.caption)
-                    .fontWeight(.medium)
+                    .font(.montserrat(.caption, weight: .medium))
                     .foregroundStyle(.secondary)
                 Rectangle()
                     .frame(height: 1)
@@ -199,7 +197,7 @@ struct AuthSheetView: View {
                     GoogleLogoView()
                         .frame(width: 18, height: 18)
                     Text("Continue with Google")
-                        .fontWeight(.semibold)
+                        .font(.montserrat(.body, weight: .semibold))
                         .foregroundColor(.primary)
                 }
                 .frame(maxWidth: .infinity)
@@ -217,9 +215,9 @@ struct AuthSheetView: View {
             Button(action: handleAppleSignIn) {
                 HStack(spacing: 8) {
                     Image(systemName: "apple.logo")
-                        .font(.system(size: 18))
+                        .font(.montserrat(size: 18))
                     Text("Continue with Apple")
-                        .fontWeight(.semibold)
+                        .font(.montserrat(.body, weight: .semibold))
                 }
                 .foregroundColor(.primary)
                 .frame(maxWidth: .infinity)
@@ -241,14 +239,13 @@ struct AuthSheetView: View {
         VStack(spacing: 16) {
             // Title
             Text(detectedMode == .logIn ? "Welcome back" : "Create your account")
-                .font(.title2)
-                .fontWeight(.bold)
+                .font(.montserrat(.title2, weight: .bold))
 
             // Subtitle
             Text(detectedMode == .logIn
                  ? "Enter your password to continue"
                  : "Set your password for Focus to continue")
-                .font(.subheadline)
+                .font(.montserrat(.subheadline))
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
 
@@ -297,7 +294,7 @@ struct AuthSheetView: View {
             if let errorMessage = authService.errorMessage {
                 Text(errorMessage)
                     .foregroundColor(.red)
-                    .font(.caption)
+                    .font(.montserrat(.caption))
             }
 
             // Continue button
@@ -308,7 +305,7 @@ struct AuthSheetView: View {
                         .tint(.white)
                 } else {
                     Text("Continue")
-                        .fontWeight(.semibold)
+                        .font(.montserrat(.body, weight: .semibold))
                 }
             }
             .frame(maxWidth: .infinity)
@@ -324,7 +321,7 @@ struct AuthSheetView: View {
                     forgotPasswordEmail = email
                     showForgotPassword = true
                 }
-                .font(.subheadline)
+                .font(.montserrat(.subheadline))
                 .disabled(authService.isLoading)
             }
         }

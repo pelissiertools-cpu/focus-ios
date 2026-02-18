@@ -72,7 +72,7 @@ struct DailyCalendarView: View {
                 Spacer()
 
                 Text(monthYearText)
-                    .font(.headline)
+                    .font(.montserrat(.headline))
                     .foregroundColor(.primary)
 
                 Spacer()
@@ -95,7 +95,7 @@ struct DailyCalendarView: View {
             LazyVGrid(columns: columns, spacing: 0) {
                 ForEach(weekdaySymbols, id: \.self) { symbol in
                     Text(symbol)
-                        .font(.caption)
+                        .font(.montserrat(.caption))
                         .foregroundColor(.secondary)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 4)
@@ -215,8 +215,7 @@ struct DayCell: View {
             }
         } label: {
             Text(dayNumber)
-                .font(.body)
-                .fontWeight(isToday ? .bold : .regular)
+                .font(.montserrat(.body, weight: isToday ? .bold : .regular))
                 .foregroundColor(textColor)
                 .frame(width: 36, height: 36)
                 .background(backgroundColor)
@@ -224,7 +223,7 @@ struct DayCell: View {
                 .overlay(
                     isExcluded ?
                         Image(systemName: "checkmark")
-                            .font(.caption2)
+                            .font(.montserrat(.caption2))
                             .foregroundColor(.green) : nil
                 )
         }
@@ -277,13 +276,13 @@ struct WeeklyCalendarView: View {
                         showingMonthPicker = true
                     } label: {
                         Text(monthYearText)
-                            .font(.headline)
+                            .font(.montserrat(.headline))
                             .foregroundColor(.primary)
                     }
                     .buttonStyle(.plain)
                 } else {
                     Text(monthYearText)
-                        .font(.headline)
+                        .font(.montserrat(.headline))
                         .foregroundColor(.primary)
                 }
 
@@ -465,8 +464,7 @@ struct WeekPillView: View {
                 // Week badge
                 ZStack {
                     Text("W\(weekNumber)")
-                        .font(.body)
-                        .fontWeight(.medium)
+                        .font(.montserrat(.body, weight: .medium))
                         .foregroundColor(isSelected ? .white : (isExcluded ? .secondary : .primary))
                         .frame(width: 44, height: 44)
                         .background(badgeColor)
@@ -474,7 +472,7 @@ struct WeekPillView: View {
 
                     if isExcluded {
                         Image(systemName: "checkmark")
-                            .font(.caption2)
+                            .font(.montserrat(.caption2))
                             .foregroundColor(.white)
                             .offset(x: 14, y: 14)
                     }
@@ -482,14 +480,14 @@ struct WeekPillView: View {
 
                 // Date range
                 Text(dateRangeText)
-                    .font(.body)
+                    .font(.montserrat(.body))
                     .foregroundColor(isExcluded ? .secondary : .primary)
 
                 Spacer()
 
                 if isExcluded {
                     Text("Already added")
-                        .font(.caption)
+                        .font(.montserrat(.caption))
                         .foregroundColor(.secondary)
                 }
             }
@@ -553,7 +551,7 @@ struct MonthlyCalendarView: View {
             if fixedYear != nil {
                 // Fixed year mode: static text, no navigation
                 Text(String(effectiveYear))
-                    .font(.headline)
+                    .font(.montserrat(.headline))
                     .padding(.vertical, 8)
             } else {
                 // Navigable year mode
@@ -572,7 +570,7 @@ struct MonthlyCalendarView: View {
                         showingYearPicker = true
                     } label: {
                         Text(yearText)
-                            .font(.headline)
+                            .font(.montserrat(.headline))
                             .foregroundColor(.primary)
                     }
                     .buttonStyle(.plain)
@@ -710,8 +708,7 @@ struct MonthButton: View {
         } label: {
             ZStack {
                 Text(monthName)
-                    .font(.body)
-                    .fontWeight(.medium)
+                    .font(.montserrat(.body, weight: .medium))
                     .foregroundColor(isSelected ? .white : (isExcluded ? .secondary : .primary))
                     .frame(maxWidth: .infinity)
                     .frame(height: 50)
@@ -724,7 +721,7 @@ struct MonthButton: View {
 
                 if isExcluded {
                     Image(systemName: "checkmark")
-                        .font(.caption)
+                        .font(.montserrat(.caption))
                         .foregroundColor(.green)
                         .offset(x: 25, y: -15)
                 }
@@ -817,8 +814,7 @@ struct YearButton: View {
             toggleSelection()
         } label: {
             Text(String(year))
-                .font(.title3)
-                .fontWeight(.medium)
+                .font(.montserrat(.title3, weight: .medium))
                 .foregroundColor(isSelected ? .white : .primary)
                 .frame(maxWidth: .infinity)
                 .frame(height: 60)

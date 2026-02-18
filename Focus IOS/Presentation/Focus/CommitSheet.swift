@@ -50,13 +50,13 @@ struct CommitSheet: View {
                 // Header info
                 VStack(alignment: .leading, spacing: 8) {
                     Text(task.title)
-                        .font(.headline)
+                        .font(.montserrat(.headline))
 
                     HStack {
                         Image(systemName: "arrow.down.forward.circle")
                             .foregroundColor(.blue)
                         Text("Commit to lower timeframe")
-                            .font(.subheadline)
+                            .font(.montserrat(.subheadline))
                             .foregroundColor(.secondary)
                     }
                 }
@@ -71,7 +71,7 @@ struct CommitSheet: View {
                         Image(systemName: "checkmark.circle.fill")
                             .foregroundColor(.green)
                         Text("\(existingChildrenForTimeframe.count) already committed to \(selectedTargetTimeframe.displayName.lowercased())")
-                            .font(.caption)
+                            .font(.montserrat(.caption))
                             .foregroundColor(.secondary)
                     }
                     .padding(.horizontal)
@@ -207,13 +207,13 @@ struct SubtaskCommitSheet: View {
                 // Header info
                 VStack(alignment: .leading, spacing: 8) {
                     Text(subtask.title)
-                        .font(.headline)
+                        .font(.montserrat(.headline))
 
                     HStack {
                         Image(systemName: "arrow.down.forward.circle")
                             .foregroundColor(.blue)
                         Text("Commit subtask to lower timeframe")
-                            .font(.subheadline)
+                            .font(.montserrat(.subheadline))
                             .foregroundColor(.secondary)
                     }
                 }

@@ -63,7 +63,7 @@ struct EditModeActionBar<VM: LogFilterable>: View {
                     VStack(alignment: .trailing, spacing: 0) {
                         ForEach(Array(actions.reversed().enumerated()), id: \.element.id) { _, item in
                             Text(LocalizedStringKey(item.label))
-                                .font(.subheadline.weight(.medium))
+                                .font(.montserrat(.subheadline, weight: .medium))
                                 .foregroundColor(item.isDestructive ? .red : .primary)
                                 .frame(height: 52)
                                 .contentShape(Rectangle())
@@ -80,7 +80,7 @@ struct EditModeActionBar<VM: LogFilterable>: View {
                                 item.action()
                             } label: {
                                 Image(systemName: item.icon)
-                                    .font(.title3)
+                                    .font(.montserrat(.title3))
                                     .foregroundColor(item.isDestructive ? .red : .primary)
                                     .frame(width: 52, height: 52)
                                     .contentShape(Rectangle())

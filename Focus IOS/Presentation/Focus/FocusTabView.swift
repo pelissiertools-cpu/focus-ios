@@ -141,7 +141,7 @@ struct FocusTabView: View {
                                             }
                                         } label: {
                                             Image(systemName: "plus")
-                                                .font(.outfit(.title2, weight: .semibold))
+                                                .font(.montserrat(.title2, weight: .semibold))
                                                 .foregroundColor(.white)
                                                 .frame(width: 56, height: 56)
                                                 .glassEffect(.regular.tint(.blue).interactive(), in: .circle)
@@ -319,7 +319,7 @@ struct FocusTabView: View {
                     FocusSectionHeaderRow(section: section, viewModel: viewModel)
                         .moveDisabled(true)
                         .listRowBackground(Color.clear)
-                        .listRowInsets(EdgeInsets(top: isExtraHeader ? 20 : 8, leading: 16, bottom: 0, trailing: 16))
+                        .listRowInsets(EdgeInsets(top: isExtraHeader ? 20 : 8, leading: 4, bottom: 0, trailing: 4))
                         .listRowSeparator(.hidden)
 
                 case .commitment(let commitment):
@@ -335,8 +335,9 @@ struct FocusTabView: View {
                         )
                         .moveDisabled(false)
                         .listRowBackground(Color.clear)
-                        .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
-                        .listRowSeparator(.hidden)
+                        .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+                        .listRowSeparator(.visible)
+                        .listRowSeparatorTint(Color.secondary.opacity(0.2))
                     }
 
                 case .subtask(let subtask, let parentCommitment):
@@ -345,8 +346,9 @@ struct FocusTabView: View {
                         .padding(.trailing, 12)
                         .moveDisabled(subtask.isCompleted)
                         .listRowBackground(Color.clear)
-                        .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
-                        .listRowSeparator(.hidden)
+                        .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+                        .listRowSeparator(.visible)
+                        .listRowSeparatorTint(Color.secondary.opacity(0.2))
 
                 case .addSubtaskRow(let parentId, _):
                     FocusInlineAddSubtaskRow(parentId: parentId, viewModel: viewModel)
@@ -354,7 +356,7 @@ struct FocusTabView: View {
                         .padding(.trailing, 12)
                         .moveDisabled(true)
                         .listRowBackground(Color.clear)
-                        .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
+                        .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
                         .listRowSeparator(.hidden)
 
                 case .completedCommitment(let commitment):
@@ -371,8 +373,9 @@ struct FocusTabView: View {
                         .moveDisabled(true)
                         .opacity(commitment.section == .focus ? config.completedOpacity : 1.0)
                         .listRowBackground(Color.clear)
-                        .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
-                        .listRowSeparator(.hidden)
+                        .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+                        .listRowSeparator(.visible)
+                        .listRowSeparatorTint(Color.secondary.opacity(0.2))
                     }
 
                 case .emptyState(let section):
@@ -380,11 +383,11 @@ struct FocusTabView: View {
                         if section == .focus {
                             VStack(spacing: 4) {
                                 Text("Nothing to focus on yet.")
-                                    .font(.outfit(.headline))
+                                    .font(.montserrat(.headline))
                                     .bold()
                                 if !viewModel.showAddTaskSheet {
                                     Text("Tap + to start")
-                                        .font(.outfit(.subheadline))
+                                        .font(.montserrat(.subheadline))
                                         .foregroundColor(.secondary)
                                 }
                             }
@@ -407,10 +410,10 @@ struct FocusTabView: View {
                 case .allDoneState:
                     VStack(spacing: 8) {
                         Image(systemName: "checkmark.circle")
-                            .font(.outfit(.largeTitle))
+                            .font(.montserrat(.largeTitle))
                             .foregroundColor(.green.opacity(0.6))
                         Text("All done!")
-                            .font(.outfit(.title3, weight: .medium))
+                            .font(.montserrat(.title3, weight: .medium))
                             .foregroundColor(.secondary)
                     }
                     .frame(maxWidth: .infinity, minHeight: 120)
@@ -480,7 +483,7 @@ struct FocusTabView: View {
         VStack(spacing: 0) {
             // Task title row
             TextField("Add new task", text: $addTaskTitle)
-                .font(.outfit(.title3))
+                .font(.montserrat(.title3))
                 .textFieldStyle(.plain)
                 .focused($isAddTaskFieldFocused)
                 .submitLabel(.return)
@@ -500,11 +503,11 @@ struct FocusTabView: View {
                     ForEach(addTaskSubtasks) { subtask in
                         HStack(spacing: 8) {
                             Image(systemName: "circle")
-                                .font(.outfit(.caption2))
+                                .font(.montserrat(.caption2))
                                 .foregroundColor(.secondary.opacity(0.5))
 
                             TextField("Subtask", text: subtaskBinding(for: subtask.id), axis: .vertical)
-                                .font(.outfit(.body))
+                                .font(.montserrat(.body))
                                 .textFieldStyle(.plain)
                                 .focused($focusedSubtaskId, equals: subtask.id)
                                 .lineLimit(1)
@@ -522,7 +525,7 @@ struct FocusTabView: View {
                                 removeSubtask(id: subtask.id)
                             } label: {
                                 Image(systemName: "xmark.circle.fill")
-                                    .font(.outfit(.caption))
+                                    .font(.montserrat(.caption))
                                     .foregroundColor(.secondary)
                             }
                             .buttonStyle(.plain)
@@ -541,9 +544,9 @@ struct FocusTabView: View {
                 } label: {
                     HStack(spacing: 4) {
                         Image(systemName: "plus")
-                            .font(.outfit(.caption))
+                            .font(.montserrat(.caption))
                         Text("Sub-task")
-                            .font(.outfit(.caption))
+                            .font(.montserrat(.caption))
                     }
                     .foregroundColor(.white)
                     .padding(.horizontal, 10)
@@ -569,10 +572,10 @@ struct FocusTabView: View {
                                 .tint(.primary)
                         } else {
                             Image(systemName: hasGeneratedBreakdown ? "arrow.clockwise" : "sparkles")
-                                .font(.outfit(.body, weight: .semibold))
+                                .font(.montserrat(.body, weight: .semibold))
                         }
                         Text(LocalizedStringKey(hasGeneratedBreakdown ? "Regenerate" : "Break Down task"))
-                            .font(.outfit(.subheadline, weight: .medium))
+                            .font(.montserrat(.subheadline, weight: .medium))
                     }
                     .foregroundColor(.primary)
                     .frame(maxWidth: .infinity)
@@ -609,7 +612,7 @@ struct FocusTabView: View {
                     saveCompactTask()
                 } label: {
                     Image(systemName: "checkmark")
-                        .font(.outfit(.body, weight: .semibold))
+                        .font(.montserrat(.body, weight: .semibold))
                         .foregroundColor(addTaskTitle.trimmingCharacters(in: .whitespaces).isEmpty ? .secondary : .white)
                         .frame(width: 36, height: 36)
                         .background(
@@ -766,22 +769,18 @@ struct SectionView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             // Section Header
-            HStack(spacing: 12) {
-                // Section icon
-                Image(systemName: section == .focus ? "target" : "tray.full")
-                    .foregroundColor(.secondary)
-
+            HStack(alignment: .lastTextBaseline, spacing: 12) {
                 Text(title)
-                    .font(.outfit(.title2, weight: .bold))
+                    .font(.montserrat(size: section == .focus ? 30 : 22, weight: .medium))
 
                 // Count display
                 if let maxTasks = section.maxTasks(for: viewModel.selectedTimeframe) {
                     Text("\(sectionCommitments.count)/\(maxTasks)")
-                        .font(.outfit(.subheadline))
+                        .font(.montserrat(size: 10))
                         .foregroundColor(.secondary)
                 } else if !sectionCommitments.isEmpty {
                     Text("\(sectionCommitments.count)")
-                        .font(.outfit(.subheadline))
+                        .font(.montserrat(size: 10))
                         .foregroundColor(.secondary)
                 }
 
@@ -800,9 +799,9 @@ struct SectionView: View {
                     }
                 } label: {
                     Image(systemName: "plus")
-                        .font(.outfit(.body, weight: .semibold))
-                        .foregroundColor(.blue)
-                        .frame(width: 32, height: 32)
+                        .font(.montserrat(.caption, weight: .semibold))
+                        .foregroundColor(.black)
+                        .frame(width: 26, height: 26)
                         .glassEffect(.regular.interactive(), in: .circle)
                 }
                 .buttonStyle(.plain)
@@ -811,12 +810,12 @@ struct SectionView: View {
                     let max = Section.focus.maxTasks(for: viewModel.selectedTimeframe) ?? 0
                     VStack(spacing: 4) {
                         Text("Focus section")
-                            .font(.outfit(.caption))
+                            .font(.montserrat(.caption))
                             .foregroundStyle(.secondary)
                         Text("Section full")
-                            .font(.outfit(.subheadline, weight: .semibold))
+                            .font(.montserrat(.subheadline, weight: .semibold))
                         Text("\(current)/\(max)")
-                            .font(.outfit(.title3, weight: .bold))
+                            .font(.montserrat(.title3, weight: .bold))
                             .foregroundStyle(.blue)
                     }
                     .padding()
@@ -833,9 +832,8 @@ struct SectionView: View {
                     }
                 }
             }
-            .padding(.vertical, 10)
+            .padding(.vertical, 8)
             .padding(.horizontal, 14)
-            .background(.ultraThinMaterial, in: Capsule())
 
             // Committed Tasks (hidden when collapsed)
             if !viewModel.isSectionCollapsed(section) {
@@ -847,11 +845,11 @@ struct SectionView: View {
                             if section == .focus {
                                 VStack(spacing: 4) {
                                     Text("Nothing to focus on yet.")
-                                        .font(.outfit(.headline))
+                                        .font(.montserrat(.headline))
                                         .bold()
                                     if !viewModel.showAddTaskSheet {
                                         Text("Tap + to start")
-                                            .font(.outfit(.subheadline))
+                                            .font(.montserrat(.subheadline))
                                             .foregroundColor(.secondary)
                                     }
                                 }
@@ -880,10 +878,10 @@ struct SectionView: View {
                                 // All-done state
                                 VStack(spacing: 8) {
                                     Image(systemName: "checkmark.circle")
-                                        .font(.outfit(.largeTitle))
+                                        .font(.montserrat(.largeTitle))
                                         .foregroundColor(.green.opacity(0.6))
                                     Text("All done!")
-                                        .font(.outfit(.title3, weight: .medium))
+                                        .font(.montserrat(.title3, weight: .medium))
                                         .foregroundColor(.secondary)
                                 }
                             } else {
@@ -977,15 +975,15 @@ struct DonePillView: View {
             } label: {
                 HStack(spacing: 8) {
                     Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
-                        .font(.outfit(.caption))
+                        .font(.montserrat(.caption))
                         .foregroundColor(.secondary)
 
                     Text("Done")
-                        .font(.outfit(.subheadline, weight: .medium))
+                        .font(.montserrat(.subheadline, weight: .medium))
                         .foregroundColor(.secondary)
 
                     Text("(\(completedCommitments.count))")
-                        .font(.outfit(.subheadline))
+                        .font(.montserrat(.subheadline))
                         .foregroundColor(.secondary)
 
                     Spacer()
@@ -1030,23 +1028,20 @@ struct FocusSectionHeaderRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            // Section icon (hidden for Extra to remove visual icon while preserving alignment)
-            Image(systemName: section == .focus ? "target" : "tray.full")
-                .foregroundColor(.secondary)
-                .opacity(section == .focus ? 1 : 0)
+            HStack(alignment: .lastTextBaseline, spacing: 8) {
+                Text(section.displayName)
+                    .font(.montserrat(size: section == .focus ? 30 : 22, weight: .medium))
 
-            Text(section.displayName)
-                .font(.outfit(.title2, weight: .bold))
-
-            // Count display
-            if let maxTasks = section.maxTasks(for: viewModel.selectedTimeframe) {
-                Text("\(sectionCommitments.count)/\(maxTasks)")
-                    .font(.outfit(.subheadline))
-                    .foregroundColor(.secondary)
-            } else if !sectionCommitments.isEmpty {
-                Text("\(sectionCommitments.count)")
-                    .font(.outfit(.subheadline))
-                    .foregroundColor(.secondary)
+                // Count display
+                if let maxTasks = section.maxTasks(for: viewModel.selectedTimeframe) {
+                    Text("\(sectionCommitments.count)/\(maxTasks)")
+                        .font(.montserrat(size: 10))
+                        .foregroundColor(.secondary)
+                } else if !sectionCommitments.isEmpty {
+                    Text("\(sectionCommitments.count)")
+                        .font(.montserrat(size: 10))
+                        .foregroundColor(.secondary)
+                }
             }
 
             Spacer()
@@ -1064,10 +1059,10 @@ struct FocusSectionHeaderRow: View {
                 }
             } label: {
                 Image(systemName: "plus")
-                    .font(.outfit(.body, weight: .semibold))
-                    .foregroundColor(.blue)
-                    .frame(width: 32, height: 32)
-                    .background(.white.opacity(0.6), in: .circle)
+                    .font(.montserrat(.caption, weight: .semibold))
+                    .foregroundColor(.black)
+                    .frame(width: 26, height: 26)
+                    .glassEffect(.regular.interactive(), in: .circle)
             }
             .buttonStyle(.plain)
             .popover(isPresented: $showCapacityPopover) {
@@ -1075,12 +1070,12 @@ struct FocusSectionHeaderRow: View {
                 let max = Section.focus.maxTasks(for: viewModel.selectedTimeframe) ?? 0
                 VStack(spacing: 4) {
                     Text("Focus section")
-                        .font(.outfit(.caption))
+                        .font(.montserrat(.caption))
                         .foregroundStyle(.secondary)
                     Text("Section full")
-                        .font(.outfit(.subheadline, weight: .semibold))
+                        .font(.montserrat(.subheadline, weight: .semibold))
                     Text("\(current)/\(max)")
-                        .font(.outfit(.title3, weight: .bold))
+                        .font(.montserrat(.title3, weight: .bold))
                         .foregroundStyle(.blue)
                 }
                 .padding()
@@ -1097,9 +1092,12 @@ struct FocusSectionHeaderRow: View {
                 }
             }
         }
-        .padding(.vertical, 12)
-        .padding(.horizontal, 16)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .padding(.vertical, 6)
+        .padding(.horizontal, 12)
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(Color.secondary.opacity(0.2), lineWidth: 0.5)
+        )
     }
 }
 
@@ -1142,19 +1140,19 @@ struct CommitmentRow: View {
                 // Child commitment indicator (indentation)
                 if commitment.isChildCommitment {
                     Image(systemName: "arrow.turn.down.right")
-                        .font(.outfit(.caption))
+                        .font(.montserrat(.caption))
                         .foregroundColor(.secondary)
                 }
 
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 6) {
                         Text(task.title)
-                            .font(fontOverride ?? (section == .focus ? .outfit(.title3) : .outfit(.body)))
+                            .font(fontOverride ?? (section == .focus ? .montserrat(.title3) : .montserrat(.body)))
                             .strikethrough(task.isCompleted)
                             .foregroundColor(task.isCompleted ? .secondary : .primary)
                         if task.type == .list {
                             Image(systemName: "list.bullet")
-                                .font(fontOverride != nil ? .outfit(.subheadline) : (section == .focus ? .outfit(.subheadline) : .outfit(.caption)))
+                                .font(fontOverride != nil ? .montserrat(.subheadline) : (section == .focus ? .montserrat(.subheadline) : .montserrat(.caption)))
                                 .foregroundColor(.blue)
                         }
                     }
@@ -1163,14 +1161,14 @@ struct CommitmentRow: View {
                     if hasSubtasks {
                         let completedCount = subtasks.filter { $0.isCompleted }.count
                         Text("\(completedCount)/\(subtasks.count) subtasks")
-                            .font(.outfit(.caption))
+                            .font(.montserrat(.caption))
                             .foregroundColor(.secondary)
                     }
 
                     // Child commitment count indicator
                     if childCount > 0 {
                         Text("\(childCount) broken down")
-                            .font(.outfit(.caption))
+                            .font(.montserrat(.caption))
                             .foregroundColor(.blue)
                     }
                 }
@@ -1237,7 +1235,7 @@ struct CommitmentRow: View {
                         viewModel.showCommitSheet = true
                     } label: {
                         Image(systemName: "arrow.down.forward.circle")
-                            .font(.outfit(.title3))
+                            .font(.montserrat(.title3))
                             .foregroundColor(.blue)
                     }
                     .buttonStyle(.plain)
@@ -1250,7 +1248,7 @@ struct CommitmentRow: View {
                     }
                 } label: {
                     Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
-                        .font(.outfit(.title3))
+                        .font(.montserrat(.title3))
                         .foregroundColor(task.isCompleted ? .green : .gray)
                 }
                 .buttonStyle(.plain)
@@ -1295,7 +1293,7 @@ struct FocusSubtaskRow: View {
     var body: some View {
         HStack(spacing: 12) {
             Text(subtask.title)
-                .font(.outfit(.subheadline))
+                .font(.montserrat(.subheadline))
                 .strikethrough(subtask.isCompleted)
                 .foregroundColor(subtask.isCompleted ? .secondary : .primary)
 
@@ -1309,7 +1307,7 @@ struct FocusSubtaskRow: View {
                     viewModel.showSubtaskCommitSheet = true
                 } label: {
                     Image(systemName: "arrow.down.forward.circle")
-                        .font(.outfit(.subheadline))
+                        .font(.montserrat(.subheadline))
                         .foregroundColor(.blue)
                 }
                 .buttonStyle(.plain)
@@ -1322,7 +1320,7 @@ struct FocusSubtaskRow: View {
                 }
             } label: {
                 Image(systemName: subtask.isCompleted ? "checkmark.circle.fill" : "circle")
-                    .font(.outfit(.subheadline))
+                    .font(.montserrat(.subheadline))
                     .foregroundColor(subtask.isCompleted ? .green : .gray)
                     .frame(width: 22, alignment: .center)
             }
@@ -1361,7 +1359,7 @@ struct FocusInlineAddSubtaskRow: View {
         HStack(spacing: 12) {
             if isEditing {
                 TextField("Subtask", text: $newSubtaskTitle)
-                    .font(.outfit(.subheadline))
+                    .font(.montserrat(.subheadline))
                     .focused($isFocused)
                     .onSubmit {
                         submitSubtask()
@@ -1376,7 +1374,7 @@ struct FocusInlineAddSubtaskRow: View {
                 Spacer()
 
                 Image(systemName: "circle")
-                    .font(.outfit(.subheadline))
+                    .font(.montserrat(.subheadline))
                     .foregroundColor(.gray.opacity(0.5))
                     .frame(width: 22, alignment: .center)
             } else {
@@ -1386,9 +1384,9 @@ struct FocusInlineAddSubtaskRow: View {
                 } label: {
                     HStack(spacing: 8) {
                         Image(systemName: "plus")
-                            .font(.outfit(.subheadline))
+                            .font(.montserrat(.subheadline))
                         Text("Add subtask")
-                            .font(.outfit(.subheadline))
+                            .font(.montserrat(.subheadline))
                     }
                     .foregroundColor(.secondary)
                 }
@@ -1423,11 +1421,11 @@ private struct DragCancelBar: View {
     var body: some View {
         HStack(spacing: 10) {
             Image(systemName: "xmark.circle.fill")
-                .font(.outfit(.title3))
+                .font(.montserrat(.title3))
                 .foregroundColor(isHighlighted ? .white : .secondary)
 
             Text("Drop to cancel")
-                .font(.outfit(.subheadline, weight: .medium))
+                .font(.montserrat(.subheadline, weight: .medium))
                 .foregroundColor(isHighlighted ? .white : .secondary)
         }
         .frame(maxWidth: .infinity)
@@ -1451,19 +1449,19 @@ private struct ScheduleDragPreviewRow: View {
     var body: some View {
         HStack(spacing: 12) {
             Image(systemName: info.isCompleted ? "checkmark.circle.fill" : "circle")
-                .font(.outfit(.title3))
+                .font(.montserrat(.title3))
                 .foregroundColor(info.isCompleted ? .green : .gray)
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(info.taskTitle)
-                    .font(.outfit(.body))
+                    .font(.montserrat(.body))
                     .strikethrough(info.isCompleted)
                     .foregroundColor(info.isCompleted ? .secondary : .primary)
                     .lineLimit(1)
 
                 if let subtaskText = info.subtaskText {
                     Text(subtaskText)
-                        .font(.outfit(.caption))
+                        .font(.montserrat(.caption))
                         .foregroundColor(.secondary)
                 }
             }

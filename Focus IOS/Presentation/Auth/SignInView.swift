@@ -25,7 +25,7 @@ struct SignInView: View {
 
                 // App Title
                 Text("Focus")
-                    .font(.system(size: 48, weight: .bold))
+                    .font(.montserrat(size: 48, weight: .bold))
                     .foregroundColor(.black)
 
                 Spacer()
@@ -36,7 +36,7 @@ struct SignInView: View {
                     if let errorMessage = authService.errorMessage {
                         Text(errorMessage)
                             .foregroundColor(.red)
-                            .font(.caption)
+                            .font(.montserrat(.caption))
                             .padding(.horizontal)
                     }
 
@@ -44,9 +44,9 @@ struct SignInView: View {
                     Button(action: handleAppleSignIn) {
                         HStack(spacing: 8) {
                             Image(systemName: "apple.logo")
-                                .font(.system(size: 18))
+                                .font(.montserrat(size: 18))
                             Text("Continue with Apple")
-                                .fontWeight(.semibold)
+                                .font(.montserrat(.body, weight: .semibold))
                         }
                         .frame(maxWidth: .infinity)
                         .frame(height: 54)
@@ -62,7 +62,7 @@ struct SignInView: View {
                             GoogleLogoView()
                                 .frame(width: 18, height: 18)
                             Text("Continue with Google")
-                                .fontWeight(.semibold)
+                                .font(.montserrat(.body, weight: .semibold))
                         }
                         .frame(maxWidth: .infinity)
                         .frame(height: 54)
@@ -75,7 +75,7 @@ struct SignInView: View {
                     // Sign up
                     Button(action: { showAuth = true }) {
                         Text("Sign up")
-                            .fontWeight(.semibold)
+                            .font(.montserrat(.body, weight: .semibold))
                             .frame(maxWidth: .infinity)
                             .frame(height: 54)
                             .background(Color.white.opacity(0.12))
@@ -87,7 +87,7 @@ struct SignInView: View {
                     // Log in
                     Button(action: { showAuth = true }) {
                         Text("Log in")
-                            .fontWeight(.semibold)
+                            .font(.montserrat(.body, weight: .semibold))
                             .frame(maxWidth: .infinity)
                             .frame(height: 54)
                             .background(Color.clear)

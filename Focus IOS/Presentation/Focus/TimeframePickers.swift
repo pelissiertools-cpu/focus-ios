@@ -125,39 +125,43 @@ struct DateNavigator: View {
                 .padding(.top, 8)
                 .padding(.bottom, 14)
 
-                Divider()
-                    .padding(.horizontal, 16)
+                // Date navigator container: pills + date subtitle
+                VStack(spacing: 0) {
+                    timeframePillRow
+                        .frame(height: 64)
+                        .mask(
+                            HStack(spacing: 0) {
+                                LinearGradient(colors: [.clear, .black], startPoint: .leading, endPoint: .trailing)
+                                    .frame(width: 24)
+                                Color.black
+                                LinearGradient(colors: [.black, .clear], startPoint: .leading, endPoint: .trailing)
+                                    .frame(width: 24)
+                            }
+                        )
+                        .padding(.horizontal)
+                        .padding(.top, 12)
+                        .padding(.bottom, 8)
 
-                // Row 2: Horizontal scrollable pills with edge fade (fixed height)
-                timeframePillRow
-                    .frame(height: 64)
-                    .mask(
-                        HStack(spacing: 0) {
-                            LinearGradient(colors: [.clear, .black], startPoint: .leading, endPoint: .trailing)
-                                .frame(width: 24)
-                            Color.black
-                            LinearGradient(colors: [.black, .clear], startPoint: .leading, endPoint: .trailing)
-                                .frame(width: 24)
-                        }
-                    )
-                    .padding(.horizontal)
-                    .padding(.top, 12)
-                    .padding(.bottom, 12)
+                }
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .shadow(color: .black.opacity(0.04), radius: 4, y: 2)
+                .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 8))
+                .padding(.horizontal)
 
-                Divider()
-                    .padding(.horizontal, 16)
-
-                // Row 3: Tappable subtitle
+                // Date label container
                 Button(action: onCalendarTap) {
                     Text(subtitleText)
                         .font(.montserratHeader(.subheadline, weight: .medium))
                         .foregroundColor(.black)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
                 }
                 .buttonStyle(.plain)
-                .padding(.vertical, 8)
-
-                Divider()
-                    .padding(.horizontal, 16)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(Color.secondary.opacity(0.2), lineWidth: 0.5)
+                )
+                .padding(.top, 8)
             }
         }
     }

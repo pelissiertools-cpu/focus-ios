@@ -313,6 +313,12 @@ struct FocusTabView: View {
         return List {
             ForEach(Array(flat.enumerated()), id: \.element.id) { index, item in
                 let glassShape = glassShape(for: index, in: flat)
+                let nextIsSection: Bool = {
+                    let nextIdx = index + 1
+                    if nextIdx >= flat.count { return true }
+                    if case .sectionHeader = flat[nextIdx] { return true }
+                    return false
+                }()
                 switch item {
                 case .sectionHeader(let section):
                     let isExtraHeader = section == .extra && index > 0
@@ -336,7 +342,7 @@ struct FocusTabView: View {
                         .moveDisabled(false)
                         .listRowBackground(Color.clear)
                         .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
-                        .listRowSeparator(.visible)
+                        .listRowSeparator(nextIsSection ? .hidden : .visible)
                         .listRowSeparatorTint(Color.secondary.opacity(0.2))
                         .alignmentGuide(.listRowSeparatorLeading) { d in d[.leading] }
                         .alignmentGuide(.listRowSeparatorTrailing) { d in d[.trailing] }
@@ -349,7 +355,7 @@ struct FocusTabView: View {
                         .moveDisabled(subtask.isCompleted)
                         .listRowBackground(Color.clear)
                         .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
-                        .listRowSeparator(.visible)
+                        .listRowSeparator(nextIsSection ? .hidden : .visible)
                         .listRowSeparatorTint(Color.secondary.opacity(0.2))
                         .alignmentGuide(.listRowSeparatorLeading) { d in d[.leading] }
                         .alignmentGuide(.listRowSeparatorTrailing) { d in d[.trailing] }
@@ -378,7 +384,7 @@ struct FocusTabView: View {
                         .opacity(commitment.section == .focus ? config.completedOpacity : 1.0)
                         .listRowBackground(Color.clear)
                         .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
-                        .listRowSeparator(.visible)
+                        .listRowSeparator(nextIsSection ? .hidden : .visible)
                         .listRowSeparatorTint(Color.secondary.opacity(0.2))
                         .alignmentGuide(.listRowSeparatorLeading) { d in d[.leading] }
                         .alignmentGuide(.listRowSeparatorTrailing) { d in d[.trailing] }
@@ -1102,10 +1108,9 @@ struct FocusSectionHeaderRow: View {
         }
         .padding(.vertical, 6)
         .padding(.horizontal, 12)
-        .overlay(
-            RoundedRectangle(cornerRadius: 8)
-                .stroke(Color.secondary.opacity(0.2), lineWidth: 0.5)
-        )
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .shadow(color: .black.opacity(0.04), radius: 4, y: 2)
+        .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 8))
     }
 }
 

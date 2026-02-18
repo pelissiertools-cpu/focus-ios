@@ -41,6 +41,7 @@ struct DateNavigator: View {
                     .padding(.vertical, 8)
 
                 Divider()
+                    .padding(.horizontal, 16)
 
                 // Row 2: Daily pill row with edge fade (same as focus daily)
                 dailyPillRow
@@ -58,6 +59,7 @@ struct DateNavigator: View {
                     .padding(.vertical, 8)
 
                 Divider()
+                    .padding(.horizontal, 16)
 
                 // Row 3: Tappable date subtitle
                 Button(action: onCalendarTap) {
@@ -69,6 +71,7 @@ struct DateNavigator: View {
                 .padding(.vertical, 8)
 
                 Divider()
+                    .padding(.horizontal, 16)
             }
         } else {
             // Focus mode: full layout with dividers
@@ -123,6 +126,7 @@ struct DateNavigator: View {
                 .padding(.bottom, 14)
 
                 Divider()
+                    .padding(.horizontal, 16)
 
                 // Row 2: Horizontal scrollable pills with edge fade (fixed height)
                 timeframePillRow
@@ -141,6 +145,7 @@ struct DateNavigator: View {
                     .padding(.bottom, 12)
 
                 Divider()
+                    .padding(.horizontal, 16)
 
                 // Row 3: Tappable subtitle
                 Button(action: onCalendarTap) {
@@ -152,6 +157,7 @@ struct DateNavigator: View {
                 .padding(.vertical, 8)
 
                 Divider()
+                    .padding(.horizontal, 16)
             }
         }
     }

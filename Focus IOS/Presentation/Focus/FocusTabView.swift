@@ -319,7 +319,7 @@ struct FocusTabView: View {
                     FocusSectionHeaderRow(section: section, viewModel: viewModel)
                         .moveDisabled(true)
                         .listRowBackground(Color.clear)
-                        .listRowInsets(EdgeInsets(top: isExtraHeader ? 20 : 8, leading: 4, bottom: 0, trailing: 4))
+                        .listRowInsets(EdgeInsets(top: isExtraHeader ? 20 : 8, leading: 16, bottom: 0, trailing: 16))
                         .listRowSeparator(.hidden)
 
                 case .commitment(let commitment):
@@ -338,6 +338,8 @@ struct FocusTabView: View {
                         .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
                         .listRowSeparator(.visible)
                         .listRowSeparatorTint(Color.secondary.opacity(0.2))
+                        .alignmentGuide(.listRowSeparatorLeading) { d in d[.leading] }
+                        .alignmentGuide(.listRowSeparatorTrailing) { d in d[.trailing] }
                     }
 
                 case .subtask(let subtask, let parentCommitment):
@@ -349,6 +351,8 @@ struct FocusTabView: View {
                         .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
                         .listRowSeparator(.visible)
                         .listRowSeparatorTint(Color.secondary.opacity(0.2))
+                        .alignmentGuide(.listRowSeparatorLeading) { d in d[.leading] }
+                        .alignmentGuide(.listRowSeparatorTrailing) { d in d[.trailing] }
 
                 case .addSubtaskRow(let parentId, _):
                     FocusInlineAddSubtaskRow(parentId: parentId, viewModel: viewModel)
@@ -376,6 +380,8 @@ struct FocusTabView: View {
                         .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
                         .listRowSeparator(.visible)
                         .listRowSeparatorTint(Color.secondary.opacity(0.2))
+                        .alignmentGuide(.listRowSeparatorLeading) { d in d[.leading] }
+                        .alignmentGuide(.listRowSeparatorTrailing) { d in d[.trailing] }
                     }
 
                 case .emptyState(let section):
@@ -405,7 +411,7 @@ struct FocusTabView: View {
                     }
                     .moveDisabled(true)
                     .listRowBackground(Color.clear)
-                    .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
+                    .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
                     .listRowSeparator(.hidden)
 
                 case .allDoneState:
@@ -420,7 +426,7 @@ struct FocusTabView: View {
                     .frame(maxWidth: .infinity, minHeight: 120)
                     .moveDisabled(true)
                     .listRowBackground(Color.clear)
-                    .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
+                    .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
                     .listRowSeparator(.hidden)
 
                 case .donePill:
@@ -431,7 +437,7 @@ struct FocusTabView: View {
                     )
                     .moveDisabled(true)
                     .listRowBackground(Color.clear)
-                    .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
+                    .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
                     .listRowSeparator(.hidden)
 
                 }

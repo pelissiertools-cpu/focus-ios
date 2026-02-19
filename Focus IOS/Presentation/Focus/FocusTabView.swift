@@ -1208,7 +1208,7 @@ struct CommitmentRow: View {
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 6) {
                         Text(task.title)
-                            .font(fontOverride ?? .montserrat(.title3))
+                            .font(fontOverride ?? .golosText(.title3, weight: .regular))
                             .strikethrough(task.isCompleted)
                             .foregroundColor(task.isCompleted ? .secondary : .primary)
                         if task.type == .list {
@@ -1222,7 +1222,7 @@ struct CommitmentRow: View {
                     if hasSubtasks {
                         let completedCount = subtasks.filter { $0.isCompleted }.count
                         Text("\(completedCount)/\(subtasks.count) subtasks")
-                            .font(.montserrat(.caption))
+                            .font(.golosText(.caption, weight: .regular))
                             .foregroundColor(.secondary)
                     }
 
@@ -1354,7 +1354,7 @@ struct FocusSubtaskRow: View {
     var body: some View {
         HStack(spacing: 12) {
             Text(subtask.title)
-                .font(.montserrat(.subheadline))
+                .font(.golosText(.subheadline, weight: .regular))
                 .strikethrough(subtask.isCompleted)
                 .foregroundColor(subtask.isCompleted ? .secondary : .primary)
 
@@ -1445,9 +1445,9 @@ struct FocusInlineAddSubtaskRow: View {
                 } label: {
                     HStack(spacing: 8) {
                         Image(systemName: "plus")
-                            .font(.montserrat(.subheadline))
+                            .font(.golosText(.subheadline, weight: .regular))
                         Text("Add subtask")
-                            .font(.montserrat(.subheadline))
+                            .font(.golosText(.subheadline, weight: .regular))
                     }
                     .foregroundColor(.secondary)
                 }

@@ -26,8 +26,12 @@
 		<string>Montserrat-Bold.ttf</string>
 		<string>Montserrat-ExtraBold.ttf</string>
 		<string>Montserrat-Black.ttf</string>
-		<string>GolosText-SemiBold.ttf</string>
+		<string>GolosText-Regular.ttf</string>
 		<string>GolosText-Medium.ttf</string>
+		<string>GolosText-SemiBold.ttf</string>
+		<string>GolosText-Bold.ttf</string>
+		<string>GolosText-ExtraBold.ttf</string>
+		<string>GolosText-Black.ttf</string>
 	</array>
 </dict>
 </plist>

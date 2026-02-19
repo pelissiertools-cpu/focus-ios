@@ -87,12 +87,16 @@ extension Font.TextStyle {
 // MARK: - GolosText Weight Mapping
 
 enum GolosTextWeight {
-    case medium, semiBold
+    case regular, medium, semiBold, bold, extraBold, black
 
     var fontName: String {
         switch self {
-        case .medium:   "GolosText-Medium"
-        case .semiBold: "GolosText-SemiBold"
+        case .regular:   "GolosText-Regular"
+        case .medium:    "GolosText-Medium"
+        case .semiBold:  "GolosText-SemiBold"
+        case .bold:      "GolosText-Bold"
+        case .extraBold: "GolosText-ExtraBold"
+        case .black:     "GolosText-Black"
         }
     }
 }

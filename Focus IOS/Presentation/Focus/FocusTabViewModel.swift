@@ -868,10 +868,10 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
     func focusConfig(for section: Section) -> FocusSectionConfig {
         guard section == .focus else {
             return FocusSectionConfig(
-                taskFont: .montserrat(.body),
+                taskFont: .golosText(.body, weight: .regular),
                 verticalPadding: 8,
                 containerMinHeight: 0,
-                completedTaskFont: .montserrat(.body),
+                completedTaskFont: .golosText(.body, weight: .regular),
                 completedVerticalPadding: 6,
                 completedOpacity: 0.5
             )
@@ -879,10 +879,10 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
 
         // Fixed layout for focus section — font size never changes
         return FocusSectionConfig(
-            taskFont: .montserrat(.title3),
+            taskFont: .golosText(.title3, weight: .regular),
             verticalPadding: 14,
             containerMinHeight: 230,
-            completedTaskFont: .montserrat(.subheadline),
+            completedTaskFont: .golosText(.subheadline, weight: .regular),
             completedVerticalPadding: 6,
             completedOpacity: 0.45
         )

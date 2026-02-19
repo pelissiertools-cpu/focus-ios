@@ -792,7 +792,7 @@ struct SectionView: View {
             // Section Header
             HStack(alignment: .lastTextBaseline, spacing: 12) {
                 Text(title)
-                    .font(.montserratHeader(size: section == .focus ? 30 : 22, weight: .semibold))
+                    .font(.golosText(size: section == .focus ? 30 : 22))
 
                 // Count display
                 if let maxTasks = section.maxTasks(for: viewModel.selectedTimeframe) {
@@ -1052,7 +1052,7 @@ struct FocusSectionHeaderRow: View {
         HStack(spacing: 12) {
             HStack(alignment: .lastTextBaseline, spacing: 8) {
                 Text(section.displayName)
-                    .font(.montserratHeader(size: section == .focus ? 30 : 22, weight: .semibold))
+                    .font(.golosText(size: section == .focus ? 30 : 22))
 
                 // Count display
                 if let maxTasks = section.maxTasks(for: viewModel.selectedTimeframe) {
@@ -1168,7 +1168,7 @@ struct CommitmentRow: View {
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 6) {
                         Text(task.title)
-                            .font(fontOverride ?? (section == .focus ? .montserratHeader(.title3, weight: .bold) : .montserrat(.body)))
+                            .font(fontOverride ?? (section == .focus ? .golosText(.title3) : .golosText(.body, weight: .medium)))
                             .strikethrough(task.isCompleted)
                             .foregroundColor(task.isCompleted ? .secondary : .primary)
                         if task.type == .list {

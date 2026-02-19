@@ -30,6 +30,16 @@ extension Font {
     static func montserratHeader(_ style: TextStyle, weight: MontserratWeight = .regular) -> Font {
         .custom(weight.fontName, size: style.defaultSize, relativeTo: style)
     }
+
+    /// GolosText custom font — used for focus/extra section headers and task titles.
+    static func golosText(size: CGFloat, weight: GolosTextWeight = .semiBold) -> Font {
+        .custom(weight.fontName, size: size)
+    }
+
+    /// GolosText custom font matching a Dynamic Type text style.
+    static func golosText(_ style: TextStyle, weight: GolosTextWeight = .semiBold) -> Font {
+        .custom(weight.fontName, size: style.defaultSize, relativeTo: style)
+    }
 }
 
 // MARK: - Weight Mapping
@@ -70,6 +80,19 @@ extension Font.TextStyle {
         case .caption:     12
         case .caption2:    11
         @unknown default:  17
+        }
+    }
+}
+
+// MARK: - GolosText Weight Mapping
+
+enum GolosTextWeight {
+    case medium, semiBold
+
+    var fontName: String {
+        switch self {
+        case .medium:   "GolosText-Medium"
+        case .semiBold: "GolosText-SemiBold"
         }
     }
 }

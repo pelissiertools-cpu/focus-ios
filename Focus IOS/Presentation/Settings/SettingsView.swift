@@ -121,8 +121,8 @@ struct SettingsView: View {
                         }
                         .buttonStyle(.plain)
                     }
-                    .background(Color(.secondarySystemGroupedBackground))
                     .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 12))
                 }
                 .padding(.horizontal, 16)
 
@@ -271,8 +271,8 @@ struct SettingsView: View {
                             }
                         }
                     }
-                    .background(Color(.secondarySystemGroupedBackground))
                     .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 12))
                 }
                 .padding(.horizontal, 16)
                 .padding(.top, 20)
@@ -302,13 +302,13 @@ struct SettingsView: View {
                     }
                     .disabled(authService.isLoading)
                 }
-                .background(Color(.secondarySystemGroupedBackground))
                 .clipShape(RoundedRectangle(cornerRadius: 12))
+                .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 12))
                 .padding(.horizontal, 16)
                 .padding(.top, 20)
             }
         }
-        .background(Color(.systemGroupedBackground))
+        .background(Color(.systemBackground))
         .navigationTitle("Settings")
         .navigationBarTitleDisplayMode(.inline)
         .alert("Change Email", isPresented: $showChangeEmail) {

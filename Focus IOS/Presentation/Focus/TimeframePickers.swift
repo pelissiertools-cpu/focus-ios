@@ -76,20 +76,19 @@ struct DateNavigator: View {
         } else {
             // Focus mode: full layout with dividers
             VStack(spacing: 0) {
-                // Row 0: Profile button — own row, right-aligned
+                // Row 0: Profile button — own row, left-aligned
                 if let onProfileTap {
                     HStack {
-                        Spacer()
                         Button(action: onProfileTap) {
-                            Image(systemName: "person.circle")
+                            Image(systemName: "person")
                                 .font(.montserrat(.body, weight: .medium))
-                                .foregroundColor(.black)
+                                .foregroundColor(.primary)
                                 .frame(width: 36, height: 36)
                                 .glassEffect(.regular.interactive(), in: .circle)
                         }
+                        Spacer()
                     }
-                    .padding(.leading)
-                    .padding(.trailing, 50)
+                    .padding(.leading, 20)
                     .padding(.top, 2)
                     .padding(.bottom, 8)
                 }
@@ -111,7 +110,7 @@ struct DateNavigator: View {
                                 .background {
                                     if selectedTimeframe == timeframe {
                                         Color.clear
-                                            .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 12))
+                                            .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 16))
                                             .matchedGeometryEffect(id: "activeTimeframe", in: timeframeAnimation)
                                     }
                                 }
@@ -120,7 +119,7 @@ struct DateNavigator: View {
                     }
                 }
                 .padding(4)
-                .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 12))
+                .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 20))
                 .padding(.horizontal)
                 .padding(.top, 8)
                 .padding(.bottom, 14)
@@ -143,9 +142,9 @@ struct DateNavigator: View {
                         .padding(.bottom, 8)
 
                 }
-                .clipShape(RoundedRectangle(cornerRadius: 8))
-                .shadow(color: .black.opacity(0.04), radius: 4, y: 2)
-                .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 8))
+                .background(Color.white, in: RoundedRectangle(cornerRadius: 20))
+                .overlay(RoundedRectangle(cornerRadius: 20).stroke(Color.white, lineWidth: 1))
+                .shadow(color: .black.opacity(0.06), radius: 4, y: 2)
                 .padding(.horizontal)
 
                 // Date label container
@@ -157,10 +156,6 @@ struct DateNavigator: View {
                             .foregroundColor(.primary)
                             .padding(.horizontal, 12)
                             .padding(.vertical, 8)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 8)
-                                    .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
-                            )
                     }
                     .buttonStyle(.plain)
                 }

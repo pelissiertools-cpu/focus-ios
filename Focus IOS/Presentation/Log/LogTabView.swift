@@ -132,13 +132,12 @@ struct LogTabView: View {
     private var logContentStack: some View {
         ZStack(alignment: .bottom) {
             VStack(spacing: 0) {
-                // Row 0: Profile button — own row, right-aligned
+                // Row 0: Profile button — own row, left-aligned
                 HStack {
-                    Spacer()
                     profilePillButton
+                    Spacer()
                 }
-                .padding(.leading)
-                .padding(.trailing, 50)
+                .padding(.leading, 20)
                 .padding(.top, 2)
                 .padding(.bottom, 8)
 
@@ -173,7 +172,8 @@ struct LogTabView: View {
 
                     searchPillButton
                 }
-                .padding(.horizontal)
+                .padding(.leading, 20)
+                .padding(.trailing, 20)
                 .padding(.top, 8)
                 .padding(.bottom, 14)
 
@@ -278,9 +278,9 @@ struct LogTabView: View {
         Button {
             showSettings = true
         } label: {
-            Image(systemName: "person.circle")
+            Image(systemName: "person")
                 .font(.montserrat(.body, weight: .medium))
-                .foregroundColor(.secondary)
+                .foregroundColor(.primary)
                 .frame(width: 36, height: 36)
                 .glassEffect(.regular.interactive(), in: .circle)
         }

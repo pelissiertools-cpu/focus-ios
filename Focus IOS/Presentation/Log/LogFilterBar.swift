@@ -73,7 +73,7 @@ struct LogFilterBar<VM: LogFilterable>: View {
                 }
             }
             .buttonStyle(.plain)
-            .padding(.trailing, viewModel.isEditMode ? 4 : 12)
+            .padding(.trailing, viewModel.isEditMode ? 4 : 20)
         }
         .padding(.top, 2)
         .padding(.bottom, 2)

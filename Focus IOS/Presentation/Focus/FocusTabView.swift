@@ -1233,7 +1233,7 @@ struct CommitmentRow: View {
                             .foregroundColor(.blue)
                     }
                 }
-                .frame(maxWidth: .infinity, minHeight: section == .extra ? 36 : nil, alignment: .leading)
+                .frame(maxWidth: .infinity, minHeight: section == .focus ? 38 : (section == .extra ? 36 : nil), alignment: .leading)
                 .contentShape(Rectangle())
                 .onTapGesture {
                     withAnimation(.easeInOut(duration: 0.2)) {

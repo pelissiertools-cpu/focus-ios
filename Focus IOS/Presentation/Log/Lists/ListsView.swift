@@ -265,13 +265,14 @@ struct ListItemRow: View {
 
             // Checkbox
             Button {
+                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                 _Concurrency.Task {
                     await viewModel.toggleItemCompletion(item, listId: listId)
                 }
             } label: {
                 Image(systemName: item.isCompleted ? "checkmark.circle.fill" : "circle")
                     .font(.montserrat(.subheadline))
-                    .foregroundColor(item.isCompleted ? .green : .gray)
+                    .foregroundColor(item.isCompleted ? Color(red: 0x61/255.0, green: 0x10/255.0, blue: 0xF8/255.0).opacity(0.6) : .gray)
             }
             .buttonStyle(.plain)
         }

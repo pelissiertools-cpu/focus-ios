@@ -264,6 +264,7 @@ struct ProjectTaskRow: View {
 
             // Completion button
             Button {
+                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                 _Concurrency.Task {
                     await viewModel.toggleTaskCompletion(task, projectId: projectId)
                 }
@@ -324,6 +325,7 @@ struct ProjectSubtaskRow: View {
             Spacer()
 
             Button {
+                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                 _Concurrency.Task {
                     await viewModel.toggleSubtaskCompletion(subtask, parentId: parentId)
                 }

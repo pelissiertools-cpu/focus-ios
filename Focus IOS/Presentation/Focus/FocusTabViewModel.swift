@@ -40,7 +40,7 @@ enum FocusFlatDisplayItem: Identifiable {
         case .commitment(let c):
             return c.id.uuidString
         case .completedCommitment(let c):
-            return "done-\(c.id.uuidString)"
+            return c.id.uuidString  // Same ID as .commitment for smooth in-place transition
         case .subtask(let task, _):
             return "subtask-\(task.id.uuidString)"
         case .addSubtaskRow(let parentId, _):
@@ -87,6 +87,10 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
     // Section collapse and add task state
     @Published var isExtraSectionCollapsed: Bool = true
     @Published var isDoneSubsectionCollapsed: Bool = true  // Closed by default
+    @Published var isFocusDoneExpanded: Bool = false  // Focus "All Done" completed list hidden by default
+    @Published var isFocusDoneCollapsing: Bool = false  // True during staggered collapse animation
+    @Published var focusDoneHiddenIds: Set<UUID> = []  // IDs being animated out during collapse
+    @Published var allDoneCheckPulse: Bool = false  // Checkmark scale pulse after collapse
     @Published var showAddTaskSheet: Bool = false
     @Published var addTaskSection: Section = .extra
 
@@ -805,7 +809,7 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
 
         if focusUncompleted.isEmpty && focusCompleted.isEmpty {
             result.append(.emptyState(.focus))
-        } else if focusUncompleted.isEmpty && !focusCompleted.isEmpty {
+        } else if focusUncompleted.isEmpty && !focusCompleted.isEmpty && !isFocusDoneCollapsing {
             result.append(.allDoneState)
         }
 
@@ -822,15 +826,27 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
             }
         }
 
-        for c in focusCompleted {
-            result.append(.completedCommitment(c))
+        if isFocusDoneExpanded || !focusUncompleted.isEmpty || isFocusDoneCollapsing {
+            for c in focusCompleted where !focusDoneHiddenIds.contains(c.id) {
+                result.append(.completedCommitment(c))
+            }
         }
 
-        // Ensure focus section has minimum height of ~4 rows (skip when empty state is shown)
-        let focusRowCount = focusUncompleted.count + focusCompleted.count
-        if focusRowCount > 0 && focusRowCount < 4 {
-            let spacerHeight = CGFloat(4 - focusRowCount) * 48
-            result.append(.focusSpacer(spacerHeight))
+        // During collapse, use a FIXED spacer matching the post-collapse layout.
+        // This prevents discrete jumps — Extra section glides smoothly as items disappear.
+        if isFocusDoneCollapsing {
+            let focusRowCount = focusCompleted.count
+            if focusRowCount > 0 && focusRowCount < 4 {
+                let spacerHeight = CGFloat(4 - focusRowCount) * 48
+                result.append(.focusSpacer(spacerHeight))
+            }
+        } else {
+            // Ensure focus section has minimum height of ~4 rows (skip when empty state is shown)
+            let focusRowCount = focusUncompleted.count + focusCompleted.count
+            if focusRowCount > 0 && focusRowCount < 4 {
+                let spacerHeight = CGFloat(4 - focusRowCount) * 48
+                result.append(.focusSpacer(spacerHeight))
+            }
         }
 
         // -- Extra section --
@@ -871,9 +887,9 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
                 taskFont: .golosText(.body, weight: .regular),
                 verticalPadding: 8,
                 containerMinHeight: 0,
-                completedTaskFont: .golosText(.body, weight: .regular),
+                completedTaskFont: .golosText(.subheadline, weight: .regular),
                 completedVerticalPadding: 6,
-                completedOpacity: 0.5
+                completedOpacity: 0.45
             )
         }
 
@@ -1354,7 +1370,19 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
                 } else {
                     updatedTask.completedDate = nil
                 }
-                tasksMap[task.id] = updatedTask
+
+                // Pre-check: will this completion leave Focus with no uncompleted items?
+                // (Before updating tasksMap, this task is still "uncompleted" in the filter)
+                let willTriggerCollapse = updatedTask.isCompleted &&
+                    uncompletedCommitmentsForSection(.focus).allSatisfy { $0.taskId == task.id }
+
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    tasksMap[task.id] = updatedTask
+                    // Set collapse flag in SAME animation to prevent intermediate allDoneState flash
+                    if willTriggerCollapse {
+                        isFocusDoneCollapsing = true
+                    }
+                }
                 // Notify other views
                 postTaskCompletionNotification(
                     taskId: task.id,
@@ -1362,9 +1390,66 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
                     completedDate: updatedTask.completedDate,
                     subtasksChanged: didRestoreSubtasks
                 )
+
+                // Auto-collapse Focus completed list when last task is checked
+                if willTriggerCollapse {
+                    triggerFocusDoneCollapse()
+                }
             }
         } catch {
             errorMessage = error.localizedDescription
+        }
+    }
+
+    /// Staggered collapse animation: items slide up one by one, then checkmark pulses
+    func triggerFocusDoneCollapse() {
+        let completed = completedCommitmentsForSection(.focus)
+        guard !completed.isEmpty else {
+            isFocusDoneExpanded = false
+            return
+        }
+
+        // Only animate isFocusDoneCollapsing if not already set
+        // (callers may set it in the same animation block as the task state change)
+        if !isFocusDoneCollapsing {
+            withAnimation(.easeInOut(duration: 0.3)) {
+                isFocusDoneCollapsing = true
+            }
+        }
+        focusDoneHiddenIds = []
+
+        // Brief pause to let the completion state (strikethrough/opacity) settle visually
+        let initialDelay: Double = 0.5
+
+        // Stagger remove each item from bottom to top
+        let reversed = Array(completed.reversed())
+        for (index, commitment) in reversed.enumerated() {
+            DispatchQueue.main.asyncAfter(deadline: .now() + initialDelay + Double(index) * 0.3) {
+                withAnimation(.easeOut(duration: 0.3)) {
+                    _ = self.focusDoneHiddenIds.insert(commitment.id)
+                }
+            }
+        }
+
+        // After all items removed, show allDoneState and pulse checkmark
+        let totalDelay = initialDelay + Double(reversed.count) * 0.3 + 0.35
+        DispatchQueue.main.asyncAfter(deadline: .now() + totalDelay) {
+            // Haptic + pulse fire immediately as allDoneState appears
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            self.allDoneCheckPulse = true
+
+            withAnimation(.easeInOut(duration: 0.3)) {
+                self.isFocusDoneCollapsing = false
+                self.isFocusDoneExpanded = false
+                self.focusDoneHiddenIds = []
+            }
+
+            // Snap checkmark back after the pulse
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                    self.allDoneCheckPulse = false
+                }
+            }
         }
     }
 
@@ -1388,7 +1473,9 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
                 } else {
                     subtasks[index].completedDate = nil
                 }
-                subtasksMap[parentId] = subtasks
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    subtasksMap[parentId] = subtasks
+                }
 
                 // Notify other views about subtask change
                 postTaskCompletionNotification(
@@ -1407,12 +1494,26 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
                         try await taskRepository.completeTask(id: parentId)
                         parentTask.isCompleted = true
                         parentTask.completedDate = Date()
-                        tasksMap[parentId] = parentTask
+
+                        // Pre-check: will completing this parent leave Focus with no uncompleted items?
+                        let willTriggerCollapse = uncompletedCommitmentsForSection(.focus)
+                            .allSatisfy { $0.taskId == parentId }
+
+                        withAnimation(.easeInOut(duration: 0.3)) {
+                            tasksMap[parentId] = parentTask
+                            if willTriggerCollapse {
+                                isFocusDoneCollapsing = true
+                            }
+                        }
                         postTaskCompletionNotification(
                             taskId: parentId,
                             isCompleted: true,
                             completedDate: parentTask.completedDate
                         )
+                        // Auto-collapse Focus completed list when last task is checked
+                        if willTriggerCollapse {
+                            triggerFocusDoneCollapse()
+                        }
                     }
                 } else {
                     // If not all relevant subtasks complete and parent is completed, uncomplete parent
@@ -1420,7 +1521,9 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
                         try await taskRepository.uncompleteTask(id: parentId)
                         parentTask.isCompleted = false
                         parentTask.completedDate = nil
-                        tasksMap[parentId] = parentTask
+                        withAnimation(.easeInOut(duration: 0.3)) {
+                            tasksMap[parentId] = parentTask
+                        }
                         postTaskCompletionNotification(
                             taskId: parentId,
                             isCompleted: false,

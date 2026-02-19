@@ -172,13 +172,14 @@ struct ScheduleDrawer: View {
                     // Main task row
                     HStack(spacing: 12) {
                         Button {
+                            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                             _Concurrency.Task { @MainActor in
                                 await viewModel.toggleTaskCompletion(task)
                             }
                         } label: {
                             Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
                                 .font(.montserrat(.title3))
-                                .foregroundColor(task.isCompleted ? .green : .gray)
+                                .foregroundColor(task.isCompleted ? Color(red: 0x61/255.0, green: 0x10/255.0, blue: 0xF8/255.0).opacity(0.6) : .gray)
                         }
                         .buttonStyle(.plain)
 
@@ -282,13 +283,14 @@ struct ScheduleDrawer: View {
                 VStack(spacing: 0) {
                     HStack(spacing: 12) {
                         Button {
+                            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                             _Concurrency.Task { @MainActor in
                                 await toggleLogTaskCompletion(task)
                             }
                         } label: {
                             Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
                                 .font(.montserrat(.title3))
-                                .foregroundColor(task.isCompleted ? .green : .gray)
+                                .foregroundColor(task.isCompleted ? Color(red: 0x61/255.0, green: 0x10/255.0, blue: 0xF8/255.0).opacity(0.6) : .gray)
                         }
                         .buttonStyle(.plain)
 
@@ -374,13 +376,14 @@ struct ScheduleDrawer: View {
             Spacer()
 
             Button {
+                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                 _Concurrency.Task { @MainActor in
                     await toggleLogSubtaskCompletion(subtask, parentId: parentId)
                 }
             } label: {
                 Image(systemName: subtask.isCompleted ? "checkmark.circle.fill" : "circle")
                     .font(.montserrat(.subheadline))
-                    .foregroundColor(subtask.isCompleted ? .green : .gray)
+                    .foregroundColor(subtask.isCompleted ? Color(red: 0x61/255.0, green: 0x10/255.0, blue: 0xF8/255.0).opacity(0.6) : .gray)
             }
             .buttonStyle(.plain)
         }

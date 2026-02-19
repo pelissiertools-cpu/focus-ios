@@ -377,11 +377,11 @@ struct FocusTabView: View {
                             task: task,
                             section: commitment.section,
                             viewModel: viewModel,
-                            fontOverride: commitment.section == .focus ? config.completedTaskFont : nil,
-                            verticalPaddingOverride: commitment.section == .focus ? config.completedVerticalPadding : nil
+                            fontOverride: config.completedTaskFont,
+                            verticalPaddingOverride: config.completedVerticalPadding
                         )
                         .moveDisabled(true)
-                        .opacity(commitment.section == .focus ? config.completedOpacity : 1.0)
+                        .opacity(config.completedOpacity)
                         .listRowBackground(Color.clear)
                         .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
                         .listRowSeparator(nextIsSection ? .hidden : .visible)
@@ -423,13 +423,20 @@ struct FocusTabView: View {
                 case .allDoneState:
                     VStack(spacing: 8) {
                         Image(systemName: "checkmark.circle")
-                            .font(.montserrat(.largeTitle))
-                            .foregroundColor(.green.opacity(0.6))
+                            .font(.system(size: 34))
+                            .foregroundColor(Color(red: 0x61/255.0, green: 0x10/255.0, blue: 0xF8/255.0))
+                            .scaleEffect(viewModel.allDoneCheckPulse ? 1.35 : 1.0)
                         Text("All done!")
-                            .font(.montserrat(.title3, weight: .medium))
-                            .foregroundColor(.secondary)
+                            .font(.golosText(.title3, weight: .medium))
+                            .foregroundColor(.primary)
                     }
                     .frame(maxWidth: .infinity, minHeight: 120)
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        withAnimation(.easeInOut(duration: 0.25)) {
+                            viewModel.isFocusDoneExpanded.toggle()
+                        }
+                    }
                     .moveDisabled(true)
                     .listRowBackground(Color.clear)
                     .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
@@ -463,6 +470,7 @@ struct FocusTabView: View {
         .listStyle(.plain)
         .listRowSpacing(0)
         .scrollContentBackground(.hidden)
+        .animation(.easeInOut(duration: 0.25), value: viewModel.isFocusDoneExpanded)
         .refreshable {
             await withCheckedContinuation { continuation in
                 _Concurrency.Task { @MainActor in
@@ -837,7 +845,7 @@ struct SectionView: View {
                             .font(.montserrat(.subheadline, weight: .semibold))
                         Text("\(current)/\(max)")
                             .font(.montserrat(.title3, weight: .bold))
-                            .foregroundStyle(.blue)
+                            .foregroundStyle(Color(red: 0xF8/255, green: 0x1E/255, blue: 0x1D/255))
                     }
                     .padding()
                     .presentationCompactAdaptation(.popover)
@@ -900,11 +908,18 @@ struct SectionView: View {
                                 // All-done state
                                 VStack(spacing: 8) {
                                     Image(systemName: "checkmark.circle")
-                                        .font(.montserrat(.largeTitle))
-                                        .foregroundColor(.green.opacity(0.6))
+                                        .font(.system(size: 34))
+                                        .foregroundColor(Color(red: 0x61/255.0, green: 0x10/255.0, blue: 0xF8/255.0))
+                                        .scaleEffect(viewModel.allDoneCheckPulse ? 1.35 : 1.0)
                                     Text("All done!")
-                                        .font(.montserrat(.title3, weight: .medium))
-                                        .foregroundColor(.secondary)
+                                        .font(.golosText(.title3, weight: .medium))
+                                        .foregroundColor(.primary)
+                                }
+                                .contentShape(Rectangle())
+                                .onTapGesture {
+                                    withAnimation(.easeInOut(duration: 0.25)) {
+                                        viewModel.isFocusDoneExpanded.toggle()
+                                    }
                                 }
                             } else {
                                 // Uncompleted commitments
@@ -934,7 +949,7 @@ struct SectionView: View {
                         .frame(minHeight: focusConfig.containerMinHeight > 0 ? focusConfig.containerMinHeight : nil)
 
                         // Completed commitments — below the centering zone for Focus, Done pill for Extra
-                        if section == .focus && !completedCommitments.isEmpty {
+                        if section == .focus && !completedCommitments.isEmpty && (viewModel.isFocusDoneExpanded || !uncompletedCommitments.isEmpty) {
                             ForEach(Array(completedCommitments.enumerated()), id: \.element.id) { index, commitment in
                                 if let task = viewModel.tasksMap[commitment.taskId] {
                                     Divider()
@@ -1017,11 +1032,20 @@ struct DonePillView: View {
 
             // Expanded completed tasks
             if isExpanded {
+                let config = viewModel.focusConfig(for: section)
                 VStack(spacing: 0) {
                     ForEach(Array(completedCommitments.enumerated()), id: \.element.id) { index, commitment in
                         if let task = viewModel.tasksMap[commitment.taskId] {
                             Divider()
-                            CommitmentRow(commitment: commitment, task: task, section: section, viewModel: viewModel)
+                            CommitmentRow(
+                                commitment: commitment,
+                                task: task,
+                                section: section,
+                                viewModel: viewModel,
+                                fontOverride: config.completedTaskFont,
+                                verticalPaddingOverride: config.completedVerticalPadding
+                            )
+                            .opacity(config.completedOpacity)
                         }
                     }
                 }
@@ -1136,7 +1160,7 @@ struct FocusSectionHeaderRow: View {
                         .font(.montserrat(.subheadline, weight: .semibold))
                     Text("\(current)/\(max)")
                         .font(.montserrat(.title3, weight: .bold))
-                        .foregroundStyle(.blue)
+                        .foregroundStyle(Color(red: 0xF8/255, green: 0x1E/255, blue: 0x1D/255))
                 }
                 .padding()
                 .presentationCompactAdaptation(.popover)
@@ -1304,13 +1328,14 @@ struct CommitmentRow: View {
 
                 // Completion button (right side for thumb access)
                 Button {
+                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                     Task {
                         await viewModel.toggleTaskCompletion(task)
                     }
                 } label: {
                     Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
                         .font(.montserrat(.title3))
-                        .foregroundColor(task.isCompleted ? .green : .gray)
+                        .foregroundColor(task.isCompleted ? Color(red: 0x61/255.0, green: 0x10/255.0, blue: 0xF8/255.0).opacity(0.6) : .gray)
                 }
                 .buttonStyle(.plain)
             }
@@ -1376,13 +1401,14 @@ struct FocusSubtaskRow: View {
 
             // Checkbox on right for thumb access
             Button {
+                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                 Task {
                     await viewModel.toggleSubtaskCompletion(subtask, parentId: parentId)
                 }
             } label: {
                 Image(systemName: subtask.isCompleted ? "checkmark.circle.fill" : "circle")
                     .font(.montserrat(.subheadline))
-                    .foregroundColor(subtask.isCompleted ? .green : .gray)
+                    .foregroundColor(subtask.isCompleted ? Color(red: 0x61/255.0, green: 0x10/255.0, blue: 0xF8/255.0).opacity(0.6) : .gray)
                     .frame(width: 22, alignment: .center)
             }
             .buttonStyle(.plain)
@@ -1511,7 +1537,7 @@ private struct ScheduleDragPreviewRow: View {
         HStack(spacing: 12) {
             Image(systemName: info.isCompleted ? "checkmark.circle.fill" : "circle")
                 .font(.montserrat(.title3))
-                .foregroundColor(info.isCompleted ? .green : .gray)
+                .foregroundColor(info.isCompleted ? Color(red: 0x61/255.0, green: 0x10/255.0, blue: 0xF8/255.0).opacity(0.6) : .gray)
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(info.taskTitle)

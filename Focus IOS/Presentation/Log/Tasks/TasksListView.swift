@@ -302,6 +302,7 @@ struct FlatTaskRow: View {
             // Completion checkbox (hidden in edit mode)
             if !isEditMode {
                 Button {
+                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                     _Concurrency.Task {
                         if isParent {
                             await viewModel.toggleCompletion(task)
@@ -312,7 +313,7 @@ struct FlatTaskRow: View {
                 } label: {
                     Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
                         .font(isParent ? .montserrat(.title3) : .montserrat(.subheadline))
-                        .foregroundColor(task.isCompleted ? .green : .gray)
+                        .foregroundColor(task.isCompleted ? Color(red: 0x61/255.0, green: 0x10/255.0, blue: 0xF8/255.0).opacity(0.6) : .gray)
                 }
                 .buttonStyle(.plain)
             }
@@ -426,13 +427,14 @@ struct ExpandableTaskRow: View {
             // Completion button (hidden in edit mode)
             if !isEditMode {
                 Button {
+                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                     _Concurrency.Task {
                         await viewModel.toggleCompletion(task)
                     }
                 } label: {
                     Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
                         .font(.montserrat(.title3))
-                        .foregroundColor(task.isCompleted ? .green : .gray)
+                        .foregroundColor(task.isCompleted ? Color(red: 0x61/255.0, green: 0x10/255.0, blue: 0xF8/255.0).opacity(0.6) : .gray)
                 }
                 .buttonStyle(.plain)
             }
@@ -519,13 +521,14 @@ struct SubtaskRow: View {
 
             // Checkbox on right for thumb access
             Button {
+                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                 Task {
                     await viewModel.toggleSubtaskCompletion(subtask, parentId: parentId)
                 }
             } label: {
                 Image(systemName: subtask.isCompleted ? "checkmark.circle.fill" : "circle")
                     .font(.montserrat(.subheadline))
-                    .foregroundColor(subtask.isCompleted ? .green : .gray)
+                    .foregroundColor(subtask.isCompleted ? Color(red: 0x61/255.0, green: 0x10/255.0, blue: 0xF8/255.0).opacity(0.6) : .gray)
             }
             .buttonStyle(.plain)
         }

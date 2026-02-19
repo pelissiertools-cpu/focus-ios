@@ -159,7 +159,7 @@ struct LogTabView: View {
                                     .background {
                                         if selectedTab == index {
                                             Color.clear
-                                                .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 12))
+                                                .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 16))
                                                 .matchedGeometryEffect(id: "activeTab", in: segmentedAnimation)
                                         }
                                     }
@@ -168,12 +168,11 @@ struct LogTabView: View {
                         }
                     }
                     .padding(4)
-                    .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 12))
+                    .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 20))
 
                     searchPillButton
                 }
-                .padding(.leading, 20)
-                .padding(.trailing, 20)
+                .padding(.horizontal)
                 .padding(.top, 8)
                 .padding(.bottom, 14)
 

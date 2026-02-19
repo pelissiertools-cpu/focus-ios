@@ -316,15 +316,11 @@ struct DateNavigator: View {
                                 Text(shortWeekRange(from: weekStart))
                                     .font(.montserratHeader(.caption2))
                             }
-                            .foregroundColor(isSelected ? .white : .primary)
+                            .foregroundColor(isSelected ? .white : (isCurrent ? Color(red: 0xF8/255, green: 0x1E/255, blue: 0x1D/255) : .primary))
                             .frame(width: 68, height: 48)
                             .background(
                                 RoundedRectangle(cornerRadius: 12)
-                                    .fill(isSelected ? Color.blue : Color(.secondarySystemBackground))
-                            )
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 12)
-                                    .stroke(isCurrent && !isSelected ? Color.blue : Color.clear, lineWidth: 2)
+                                    .fill(isSelected ? Color(red: 0xF8/255, green: 0x1E/255, blue: 0x1D/255) : Color(.secondarySystemBackground))
                             )
                         }
                         .buttonStyle(.plain)
@@ -393,15 +389,11 @@ struct DateNavigator: View {
                                 return formatter.string(from: monthDate).uppercased()
                             }())
                                 .font(.montserratHeader(.subheadline, weight: .medium))
-                                .foregroundColor(isSelected ? .white : .primary)
+                                .foregroundColor(isSelected ? .white : (isCurrent ? Color(red: 0xF8/255, green: 0x1E/255, blue: 0x1D/255) : .primary))
                                 .frame(width: 64, height: 40)
                                 .background(
                                     RoundedRectangle(cornerRadius: 10)
-                                        .fill(isSelected ? Color.blue : Color(.secondarySystemBackground))
-                                )
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 10)
-                                        .stroke(isCurrent && !isSelected ? Color.blue : Color.clear, lineWidth: 2)
+                                        .fill(isSelected ? Color(red: 0xF8/255, green: 0x1E/255, blue: 0x1D/255) : Color(.secondarySystemBackground))
                                 )
                         }
                         .buttonStyle(.plain)
@@ -448,15 +440,11 @@ struct DateNavigator: View {
                         } label: {
                             Text(String(year))
                                 .font(.montserratHeader(.subheadline, weight: .medium))
-                                .foregroundColor(isSelected ? .white : .primary)
+                                .foregroundColor(isSelected ? .white : (isCurrent ? Color(red: 0xF8/255, green: 0x1E/255, blue: 0x1D/255) : .primary))
                                 .frame(width: 64, height: 40)
                                 .background(
                                     RoundedRectangle(cornerRadius: 10)
-                                        .fill(isSelected ? Color.blue : Color(.secondarySystemBackground))
-                                )
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 10)
-                                        .stroke(isCurrent && !isSelected ? Color.blue : Color.clear, lineWidth: 2)
+                                        .fill(isSelected ? Color(red: 0xF8/255, green: 0x1E/255, blue: 0x1D/255) : Color(.secondarySystemBackground))
                                 )
                         }
                         .buttonStyle(.plain)

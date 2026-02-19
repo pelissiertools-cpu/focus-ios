@@ -42,7 +42,7 @@ struct LogFilterBar<VM: LogFilterable>: View {
                         SharedCategoryFilterPill(viewModel: viewModel, showDropdown: $showCategoryDropdown)
                         SharedCommitmentFilterPills(viewModel: viewModel)
                     }
-                    .padding(.leading)
+                    .padding(.leading, 20)
                     .padding(.vertical, 6)
                 }
                 .scrollClipDisabled()

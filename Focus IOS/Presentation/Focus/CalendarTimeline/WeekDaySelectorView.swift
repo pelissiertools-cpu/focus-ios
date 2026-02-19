@@ -44,11 +44,11 @@ struct WeekDaySelectorView: View {
 
                         Text("\(dayNumber)")
                             .font(.montserratHeader(.body, weight: isSelected ? .bold : .regular))
-                            .foregroundColor(isSelected ? .white : (isToday ? .blue : .primary))
+                            .foregroundColor(isSelected ? .white : (isToday ? Color(red: 1.0, green: 0.443, blue: 0.129) : .primary))
                             .frame(width: 32, height: 32)
                             .background(
                                 Circle()
-                                    .fill(isSelected ? Color.blue : Color.clear)
+                                    .fill(isSelected ? Color(red: 1.0, green: 0.443, blue: 0.129) : Color.clear)
                             )
                     }
                 }

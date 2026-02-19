@@ -159,7 +159,7 @@ struct DateNavigator: View {
                             .padding(.vertical, 8)
                             .overlay(
                                 RoundedRectangle(cornerRadius: 8)
-                                    .stroke(Color.secondary.opacity(0.2), lineWidth: 0.5)
+                                    .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
                             )
                     }
                     .buttonStyle(.plain)
@@ -226,22 +226,17 @@ struct DateNavigator: View {
                             }
                         } label: {
                             VStack(spacing: 4) {
-                                Text(dayAbbreviations[weekdayIndex])
+                                Text(String(dayAbbreviations[weekdayIndex].prefix(1)))
                                     .font(.montserratHeader(.caption2, weight: .medium))
-                                    .foregroundColor(isSelected ? .blue : .secondary)
+                                    .foregroundColor(.primary)
 
                                 Text("\(dayNumber)")
                                     .font(.montserratHeader(.body, weight: isSelected || isToday ? .bold : .regular))
-                                    .foregroundColor(isSelected ? .white : (isToday ? .blue : .primary))
-                                    .frame(width: 40, height: 40)
+                                    .foregroundColor(isSelected ? .white : (isToday ? Color(red: 0xF8/255, green: 0x1E/255, blue: 0x1D/255) : .primary))
+                                    .frame(width: 32, height: 32)
                                     .background(
                                         Circle()
-                                            .fill(isSelected ? Color.blue : Color.clear)
-                                    )
-                                    .overlay(
-                                        Circle()
-                                            .stroke(isToday && !isSelected ? Color.blue : Color.clear, lineWidth: 2)
-                                            .frame(width: 32, height: 32)
+                                            .fill(isSelected ? Color(red: 0xF8/255, green: 0x1E/255, blue: 0x1D/255) : Color.clear)
                                     )
                             }
                             .frame(width: 44)

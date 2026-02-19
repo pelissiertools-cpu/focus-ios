@@ -1049,6 +1049,7 @@ struct FocusSectionHeaderRow: View {
     }
 
     var body: some View {
+        VStack(spacing: 0) {
         HStack(spacing: 12) {
             HStack(alignment: .lastTextBaseline, spacing: 8) {
                 Text(section.displayName)
@@ -1056,13 +1057,49 @@ struct FocusSectionHeaderRow: View {
 
                 // Count display
                 if let maxTasks = section.maxTasks(for: viewModel.selectedTimeframe) {
-                    Text("\(sectionCommitments.count)/\(maxTasks)")
-                        .font(.montserrat(size: 10))
-                        .foregroundColor(.secondary)
+                    HStack(spacing: 4) {
+                        Text("\(sectionCommitments.count)/\(maxTasks)")
+                            .font(.montserrat(size: 10))
+                            .foregroundColor(.secondary)
+                        if section == .extra {
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 8, weight: .semibold))
+                                .foregroundColor(.secondary)
+                                .rotationEffect(.degrees(viewModel.isSectionCollapsed(.extra) ? 0 : 90))
+                        }
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .clipShape(Capsule())
+                    .glassEffect(.regular.interactive(), in: .capsule)
+                    .alignmentGuide(.lastTextBaseline) { d in d[.bottom] - 1 }
                 } else if !sectionCommitments.isEmpty {
-                    Text("\(sectionCommitments.count)")
-                        .font(.montserrat(size: 10))
+                    HStack(spacing: 4) {
+                        Text("\(sectionCommitments.count)")
+                            .font(.montserrat(size: 10))
+                            .foregroundColor(.secondary)
+                        if section == .extra {
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 8, weight: .semibold))
+                                .foregroundColor(.secondary)
+                                .rotationEffect(.degrees(viewModel.isSectionCollapsed(.extra) ? 0 : 90))
+                        }
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .clipShape(Capsule())
+                    .glassEffect(.regular.interactive(), in: .capsule)
+                    .alignmentGuide(.lastTextBaseline) { d in d[.bottom] - 1 }
+                } else if section == .extra {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 8, weight: .semibold))
                         .foregroundColor(.secondary)
+                        .rotationEffect(.degrees(viewModel.isSectionCollapsed(.extra) ? 0 : 90))
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .clipShape(Capsule())
+                        .glassEffect(.regular.interactive(), in: .capsule)
+                        .alignmentGuide(.lastTextBaseline) { d in d[.bottom] - 1 }
                 }
             }
 
@@ -1070,6 +1107,7 @@ struct FocusSectionHeaderRow: View {
 
             // Add button - hidden when adding task
             Button {
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
                 if section == .focus && !viewModel.canAddTask(to: .focus) {
                     showCapacityPopover = true
                     DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
@@ -1116,9 +1154,11 @@ struct FocusSectionHeaderRow: View {
         }
         .padding(.vertical, 6)
         .padding(.horizontal, 12)
-        .clipShape(RoundedRectangle(cornerRadius: 8))
-        .shadow(color: .black.opacity(0.04), radius: 4, y: 2)
-        .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 8))
+
+            Rectangle()
+                .fill(Color.secondary.opacity(0.7))
+                .frame(height: 1)
+        }
     }
 }
 
@@ -1168,12 +1208,12 @@ struct CommitmentRow: View {
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 6) {
                         Text(task.title)
-                            .font(fontOverride ?? (section == .focus ? .golosText(.title3) : .golosText(.body, weight: .medium)))
+                            .font(fontOverride ?? .montserrat(.title3))
                             .strikethrough(task.isCompleted)
                             .foregroundColor(task.isCompleted ? .secondary : .primary)
                         if task.type == .list {
                             Image(systemName: "list.bullet")
-                                .font(fontOverride != nil ? .montserrat(.subheadline) : (section == .focus ? .montserrat(.subheadline) : .montserrat(.caption)))
+                                .font(.montserrat(.subheadline))
                                 .foregroundColor(.blue)
                         }
                     }

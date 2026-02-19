@@ -409,7 +409,7 @@ struct FocusTabView: View {
                         }
                     }
                     .padding(.horizontal, 16)
-                    .frame(maxWidth: .infinity, minHeight: section == .focus ? 120 : 60, alignment: .leading)
+                    .frame(maxWidth: .infinity, minHeight: section == .focus ? 192 : 60, alignment: .leading)
                     .contentShape(Rectangle())
                     .onTapGesture {
                         viewModel.addTaskSection = section
@@ -445,6 +445,14 @@ struct FocusTabView: View {
                     .listRowBackground(Color.clear)
                     .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
                     .listRowSeparator(.hidden)
+
+                case .focusSpacer(let height):
+                    Color.clear
+                        .frame(height: height)
+                        .moveDisabled(true)
+                        .listRowBackground(Color.clear)
+                        .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+                        .listRowSeparator(.hidden)
 
                 }
             }
@@ -962,8 +970,8 @@ struct SectionView: View {
         .frame(maxHeight: viewModel.showAddTaskSheet && viewModel.addTaskSection == section ? .infinity : nil, alignment: .top)
         .padding(.vertical)
         .padding(.horizontal, 8)
-        .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
-        .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 4))
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 20))
         .shadow(color: .black.opacity(0.08), radius: 10, y: 4)
     }
 }
@@ -1160,7 +1168,7 @@ struct CommitmentRow: View {
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 6) {
                         Text(task.title)
-                            .font(fontOverride ?? (section == .focus ? .montserrat(.title3) : .montserrat(.body)))
+                            .font(fontOverride ?? (section == .focus ? .montserratHeader(.title3, weight: .bold) : .montserrat(.body)))
                             .strikethrough(task.isCompleted)
                             .foregroundColor(task.isCompleted ? .secondary : .primary)
                         if task.type == .list {

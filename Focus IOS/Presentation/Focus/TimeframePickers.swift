@@ -149,19 +149,24 @@ struct DateNavigator: View {
                 .padding(.horizontal)
 
                 // Date label container
-                Button(action: onCalendarTap) {
-                    Text(subtitleText)
-                        .font(.montserratHeader(.subheadline, weight: .medium))
-                        .foregroundColor(.black)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 8)
+                HStack {
+                    Spacer()
+                    Button(action: onCalendarTap) {
+                        Text(subtitleText)
+                            .font(.montserratHeader(.subheadline, weight: .medium))
+                            .foregroundColor(.primary)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .stroke(Color.secondary.opacity(0.2), lineWidth: 0.5)
+                            )
+                    }
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 8)
-                        .stroke(Color.secondary.opacity(0.2), lineWidth: 0.5)
-                )
+                .padding(.horizontal, 16)
                 .padding(.top, 8)
+                .padding(.bottom, 12)
             }
         }
     }

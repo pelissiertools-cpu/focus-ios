@@ -31,6 +31,7 @@ enum FocusFlatDisplayItem: Identifiable {
     case emptyState(Section)
     case allDoneState
     case donePill
+    case focusSpacer(CGFloat)
 
     var id: String {
         switch self {
@@ -50,6 +51,8 @@ enum FocusFlatDisplayItem: Identifiable {
             return "all-done"
         case .donePill:
             return "done-pill"
+        case .focusSpacer:
+            return "focus-spacer"
         }
     }
 }
@@ -823,6 +826,13 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
             result.append(.completedCommitment(c))
         }
 
+        // Ensure focus section has minimum height of ~4 rows (skip when empty state is shown)
+        let focusRowCount = focusUncompleted.count + focusCompleted.count
+        if focusRowCount > 0 && focusRowCount < 4 {
+            let spacerHeight = CGFloat(4 - focusRowCount) * 48
+            result.append(.focusSpacer(spacerHeight))
+        }
+
         // -- Extra section --
         result.append(.sectionHeader(.extra))
 
@@ -867,48 +877,15 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
             )
         }
 
-        // Yearly supports up to 10 tasks — use compact layout, no scaling
-        guard selectedTimeframe != .yearly else {
-            return FocusSectionConfig(
-                taskFont: .montserrat(.body),
-                verticalPadding: 10,
-                containerMinHeight: 0,
-                completedTaskFont: .montserrat(.footnote),
-                completedVerticalPadding: 6,
-                completedOpacity: 0.45
-            )
-        }
-
-        let count = uncompletedCommitmentsForSection(.focus).count
-        switch count {
-        case 0, 1:
-            return FocusSectionConfig(
-                taskFont: .montserrat(.title),
-                verticalPadding: 24,
-                containerMinHeight: 150,
-                completedTaskFont: .montserrat(.subheadline),
-                completedVerticalPadding: 6,
-                completedOpacity: 0.45
-            )
-        case 2:
-            return FocusSectionConfig(
-                taskFont: .montserrat(.title2),
-                verticalPadding: 18,
-                containerMinHeight: 150,
-                completedTaskFont: .montserrat(.subheadline),
-                completedVerticalPadding: 6,
-                completedOpacity: 0.45
-            )
-        default:
-            return FocusSectionConfig(
-                taskFont: .montserrat(.title3),
-                verticalPadding: 14,
-                containerMinHeight: 0,
-                completedTaskFont: .montserrat(.subheadline),
-                completedVerticalPadding: 6,
-                completedOpacity: 0.45
-            )
-        }
+        // Fixed layout for focus section — font size never changes
+        return FocusSectionConfig(
+            taskFont: .montserrat(.title3),
+            verticalPadding: 14,
+            containerMinHeight: 230,
+            completedTaskFont: .montserrat(.subheadline),
+            completedVerticalPadding: 6,
+            completedOpacity: 0.45
+        )
     }
 
     // MARK: - Flat Move Handler
@@ -1017,6 +994,7 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
             if case .emptyState = $0 { return true }
             if case .donePill = $0 { return true }
             if case .allDoneState = $0 { return true }
+            if case .focusSpacer = $0 { return true }
             return false
         }) ?? flat.count
 

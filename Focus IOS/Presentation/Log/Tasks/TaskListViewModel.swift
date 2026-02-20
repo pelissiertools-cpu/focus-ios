@@ -984,6 +984,93 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
         }
     }
 
+    /// Rename a category
+    func renameCategory(id: UUID, newName: String) async {
+        let trimmed = newName.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return }
+
+        do {
+            if let index = categories.firstIndex(where: { $0.id == id }) {
+                var updated = categories[index]
+                updated.name = trimmed
+                try await categoryRepository.updateCategory(updated)
+                categories[index].name = trimmed
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    /// Delete selected categories and nullify tasks' categoryIds
+    func deleteCategories(ids: Set<UUID>) async {
+        do {
+            for categoryId in ids {
+                // Nullify category_id on all tasks in this category
+                try await repository.nullifyCategoryId(categoryId: categoryId)
+                // Delete the category
+                try await categoryRepository.deleteCategory(id: categoryId)
+            }
+
+            // Update local task state
+            for i in tasks.indices {
+                if let catId = tasks[i].categoryId, ids.contains(catId) {
+                    tasks[i].categoryId = nil
+                }
+            }
+
+            // Remove from local categories
+            categories.removeAll { ids.contains($0.id) }
+
+            // Reset filter if current filter was deleted
+            if let selected = selectedCategoryId, ids.contains(selected) {
+                selectedCategoryId = nil
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    /// Merge selected categories into the first one (by sort order)
+    func mergeCategories(ids: Set<UUID>) async {
+        let sorted = categories.filter { ids.contains($0.id) }.sorted { $0.sortOrder < $1.sortOrder }
+        guard sorted.count >= 2, let target = sorted.first else { return }
+
+        let sourceIds = Set(sorted.dropFirst().map { $0.id })
+
+        do {
+            // Reassign tasks from source categories to target
+            for sourceId in sourceIds {
+                try await repository.reassignCategory(from: sourceId, to: target.id)
+                try await categoryRepository.deleteCategory(id: sourceId)
+            }
+
+            // Update local task state
+            for i in tasks.indices {
+                if let catId = tasks[i].categoryId, sourceIds.contains(catId) {
+                    tasks[i].categoryId = target.id
+                }
+            }
+
+            // Remove merged categories from local state
+            categories.removeAll { sourceIds.contains($0.id) }
+
+            // If filter was on a merged category, switch to target
+            if let selected = selectedCategoryId, sourceIds.contains(selected) {
+                selectedCategoryId = target.id
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    /// Get the merge target name (first selected category by sort order)
+    func mergeTargetName(for ids: Set<UUID>) -> String {
+        categories
+            .filter { ids.contains($0.id) }
+            .sorted { $0.sortOrder < $1.sortOrder }
+            .first?.name ?? ""
+    }
+
     // MARK: - Commitment Filter
 
     func moveTaskToCategory(_ task: FocusTask, categoryId: UUID?) async {

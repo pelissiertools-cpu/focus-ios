@@ -269,6 +269,46 @@ class TaskRepository {
         return try await createTask(task)
     }
 
+    /// Nullify category_id for all tasks in a given category
+    func nullifyCategoryId(categoryId: UUID) async throws {
+        struct CategoryNullUpdate: Encodable {
+            let categoryId: UUID?
+            let modifiedDate: Date
+
+            enum CodingKeys: String, CodingKey {
+                case categoryId = "category_id"
+                case modifiedDate = "modified_date"
+            }
+        }
+
+        let update = CategoryNullUpdate(categoryId: nil, modifiedDate: Date())
+        try await supabase
+            .from("tasks")
+            .update(update)
+            .eq("category_id", value: categoryId.uuidString)
+            .execute()
+    }
+
+    /// Reassign all tasks from one category to another
+    func reassignCategory(from sourceCategoryId: UUID, to targetCategoryId: UUID) async throws {
+        struct CategoryReassignUpdate: Encodable {
+            let categoryId: UUID
+            let modifiedDate: Date
+
+            enum CodingKeys: String, CodingKey {
+                case categoryId = "category_id"
+                case modifiedDate = "modified_date"
+            }
+        }
+
+        let update = CategoryReassignUpdate(categoryId: targetCategoryId, modifiedDate: Date())
+        try await supabase
+            .from("tasks")
+            .update(update)
+            .eq("category_id", value: sourceCategoryId.uuidString)
+            .execute()
+    }
+
     /// Restore subtasks to specific completion states
     func restoreSubtaskStates(parentId: UUID, completionStates: [Bool]) async throws {
         let subtasks = try await fetchSubtasks(parentId: parentId)

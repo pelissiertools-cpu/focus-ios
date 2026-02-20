@@ -8,7 +8,6 @@
 import Foundation
 import Combine
 import SwiftUI
-import Auth
 
 // MARK: - Flat Display Item
 

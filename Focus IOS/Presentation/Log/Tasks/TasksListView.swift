@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-import Auth
 
 // MARK: - Row Frame Preference Key (used by FocusTabView, ProjectsListView)
 
@@ -23,13 +22,11 @@ struct TasksListView: View {
     @ObservedObject var viewModel: TaskListViewModel
 
     let searchText: String
-    @Binding var isSearchFocused: Bool
     @State private var isInlineAddFocused = false
 
-    init(viewModel: TaskListViewModel, searchText: String = "", isSearchFocused: Binding<Bool> = .constant(false)) {
+    init(viewModel: TaskListViewModel, searchText: String = "") {
         self.viewModel = viewModel
         self.searchText = searchText
-        self._isSearchFocused = isSearchFocused
     }
 
     var body: some View {
@@ -43,14 +40,6 @@ struct TasksListView: View {
                 taskList
             }
 
-            // Tap-to-dismiss overlay when search is focused
-            if isSearchFocused {
-                Color.clear
-                    .contentShape(Rectangle())
-                    .onTapGesture {
-                        isSearchFocused = false
-                    }
-            }
         }
         .padding(.top, 44)
         .sheet(item: $viewModel.selectedTaskForDetails) { task in

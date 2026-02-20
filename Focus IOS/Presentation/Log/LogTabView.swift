@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-import Auth
 
 struct LogTabView: View {
     @Binding var mainTab: Int
@@ -180,7 +179,7 @@ struct LogTabView: View {
                 ZStack(alignment: .topLeading) {
                     // Tab content — all views stay alive to preserve scroll/state
                     ZStack {
-                        TasksListView(viewModel: taskListVM, searchText: searchText, isSearchFocused: .constant(false))
+                        TasksListView(viewModel: taskListVM, searchText: searchText)
                             .opacity(selectedTab == 0 ? 1 : 0)
                             .allowsHitTesting(selectedTab == 0)
 

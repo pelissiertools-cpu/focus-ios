@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-import Auth
 
 struct SettingsView: View {
     @EnvironmentObject var authService: AuthService

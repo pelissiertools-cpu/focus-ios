@@ -312,7 +312,6 @@ struct FocusTabView: View {
         let flat = viewModel.flattenedDisplayItems
         return List {
             ForEach(Array(flat.enumerated()), id: \.element.id) { index, item in
-                let glassShape = glassShape(for: index, in: flat)
                 let nextIsSection: Bool = {
                     let nextIdx = index + 1
                     if nextIdx >= flat.count { return true }
@@ -490,31 +489,6 @@ struct FocusTabView: View {
                     continuation.resume()
                 }
             }
-        }
-    }
-
-    /// Determine glass shape rounding for a row based on its position within its section
-    private func glassShape(for index: Int, in flat: [FocusFlatDisplayItem]) -> some Shape {
-        let isFirst: Bool = {
-            if case .sectionHeader = flat[index] { return true }
-            return false
-        }()
-
-        let isLast: Bool = {
-            let nextIdx = index + 1
-            if nextIdx >= flat.count { return true }
-            if case .sectionHeader = flat[nextIdx] { return true }
-            return false
-        }()
-
-        if isFirst && isLast {
-            return UnevenRoundedRectangle(topLeadingRadius: 16, bottomLeadingRadius: 16, bottomTrailingRadius: 16, topTrailingRadius: 16)
-        } else if isFirst {
-            return UnevenRoundedRectangle(topLeadingRadius: 16, bottomLeadingRadius: 0, bottomTrailingRadius: 0, topTrailingRadius: 16)
-        } else if isLast {
-            return UnevenRoundedRectangle(topLeadingRadius: 0, bottomLeadingRadius: 16, bottomTrailingRadius: 16, topTrailingRadius: 0)
-        } else {
-            return UnevenRoundedRectangle(topLeadingRadius: 0, bottomLeadingRadius: 0, bottomTrailingRadius: 0, topTrailingRadius: 0)
         }
     }
 

@@ -166,13 +166,6 @@ struct DateNavigator: View {
         }
     }
 
-    // MARK: - View Mode Toggle Icons (Schedule mode hidden)
-    // To re-enable schedule mode, restore the HStack with focus/calendar toggle buttons below.
-
-    private var viewModeIcons: some View {
-        EmptyView()
-    }
-
     // MARK: - Pill Row (switches on timeframe)
 
     @ViewBuilder

@@ -28,6 +28,7 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
     @State private var newSubtaskTitle: String = ""
     @State private var showNewSubtaskField = false
     @State private var selectedCategoryId: UUID?
+    @State private var selectedPriority: Priority
     @State private var showingDeleteConfirmation = false
     @State private var isGeneratingBreakdown = false
     @State private var hasGeneratedBreakdown = false
@@ -59,6 +60,7 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
         self.categories = categories
         _taskTitle = State(initialValue: task.title)
         _selectedCategoryId = State(initialValue: task.categoryId)
+        _selectedPriority = State(initialValue: task.priority)
     }
 
     private var commitPillIsActive: Bool {
@@ -71,7 +73,7 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
     }
 
     private var hasChanges: Bool {
-        taskTitle != task.title || selectedCategoryId != task.categoryId || !pendingDeletions.isEmpty || !newSubtaskTitle.trimmingCharacters(in: .whitespaces).isEmpty || !draftSuggestions.isEmpty || hasCommitChanges
+        taskTitle != task.title || selectedCategoryId != task.categoryId || selectedPriority != task.priority || !pendingDeletions.isEmpty || !newSubtaskTitle.trimmingCharacters(in: .whitespaces).isEmpty || !draftSuggestions.isEmpty || hasCommitChanges
     }
 
     var body: some View {
@@ -81,6 +83,7 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
             trailingButton: .check(action: {
                 saveTitle()
                 saveCategory()
+                savePriority()
                 addSubtask()
                 commitDraftSuggestions()
                 commitPendingDeletions()
@@ -401,6 +404,34 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
     @ViewBuilder
     private var actionPillsRow: some View {
         HStack(spacing: 8) {
+            // Priority pill (parent tasks only)
+            if !isSubtask {
+                Menu {
+                    ForEach(Priority.allCases, id: \.self) { priority in
+                        Button {
+                            selectedPriority = priority
+                        } label: {
+                            if selectedPriority == priority {
+                                Label(priority.displayName, systemImage: "checkmark")
+                            } else {
+                                Text(priority.displayName)
+                            }
+                        }
+                    }
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "flag")
+                            .font(.sf(.subheadline))
+                        Text(LocalizedStringKey(selectedPriority.displayName))
+                            .font(.sf(.subheadline, weight: .medium))
+                    }
+                    .foregroundColor(.primary)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .glassEffect(.regular.interactive(), in: .capsule)
+                }
+            }
+
             // Category pill (only in Log view, parent tasks)
             if !isSubtask && commitment == nil {
                 Menu {
@@ -718,6 +749,13 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
         guard selectedCategoryId != task.categoryId else { return }
         _Concurrency.Task {
             await viewModel.moveTaskToCategory(task, categoryId: selectedCategoryId)
+        }
+    }
+
+    private func savePriority() {
+        guard selectedPriority != task.priority else { return }
+        _Concurrency.Task {
+            await viewModel.updateTaskPriority(task, priority: selectedPriority)
         }
     }
 

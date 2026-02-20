@@ -15,11 +15,13 @@ import Auth
 enum FlatDisplayItem: Identifiable {
     case task(FocusTask)
     case addSubtaskRow(parentId: UUID)
+    case priorityHeader(Priority)
 
     var id: String {
         switch self {
         case .task(let task): return task.id.uuidString
         case .addSubtaskRow(let parentId): return "add-\(parentId.uuidString)"
+        case .priorityHeader(let priority): return "priority-\(priority.rawValue)"
         }
     }
 }
@@ -42,6 +44,9 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
 
     // Tasks section collapse state
     @Published var isTasksSectionCollapsed: Bool = false
+
+    // Priority section collapse states
+    @Published var collapsedPriorities: Set<Priority> = []
 
     // Search
     @Published var searchText: String = ""
@@ -199,23 +204,51 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
         }
     }
 
-    /// Flat display array: parents interleaved with their expanded subtasks + add rows.
+    /// Tasks grouped by priority for count display
+    func uncompletedTasks(for priority: Priority) -> [FocusTask] {
+        uncompletedTasks.filter { $0.priority == priority }
+    }
+
+    /// Flat display array: priority headers → parents → expanded subtasks + add rows.
     /// Fed to a single ForEach so every item is a top-level list citizen.
     var flattenedDisplayItems: [FlatDisplayItem] {
         var result: [FlatDisplayItem] = []
-        for task in uncompletedTasks {
-            result.append(.task(task))
-            if expandedTasks.contains(task.id) {
-                for subtask in getUncompletedSubtasks(for: task.id) {
-                    result.append(.task(subtask))
+        for priority in Priority.allCases {
+            let tasksForPriority = uncompletedTasks.filter { $0.priority == priority }
+            guard !tasksForPriority.isEmpty else { continue }
+
+            result.append(.priorityHeader(priority))
+
+            if !collapsedPriorities.contains(priority) {
+                for task in tasksForPriority {
+                    result.append(.task(task))
+                    if expandedTasks.contains(task.id) {
+                        for subtask in getUncompletedSubtasks(for: task.id) {
+                            result.append(.task(subtask))
+                        }
+                        for subtask in getCompletedSubtasks(for: task.id) {
+                            result.append(.task(subtask))
+                        }
+                        result.append(.addSubtaskRow(parentId: task.id))
+                    }
                 }
-                for subtask in getCompletedSubtasks(for: task.id) {
-                    result.append(.task(subtask))
-                }
-                result.append(.addSubtaskRow(parentId: task.id))
             }
         }
         return result
+    }
+
+    /// Toggle priority section collapse state
+    func togglePriorityCollapsed(_ priority: Priority) {
+        if collapsedPriorities.contains(priority) {
+            collapsedPriorities.remove(priority)
+        } else {
+            collapsedPriorities.insert(priority)
+        }
+    }
+
+    /// Check if priority section is collapsed
+    func isPriorityCollapsed(_ priority: Priority) -> Bool {
+        collapsedPriorities.contains(priority)
     }
 
     // MARK: - Subtask Expansion
@@ -532,6 +565,24 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
         }
     }
 
+    /// Update task priority
+    func updateTaskPriority(_ task: FocusTask, priority: Priority) async {
+        do {
+            var updatedTask = task
+            updatedTask.priority = priority
+            updatedTask.modifiedDate = Date()
+
+            try await repository.updateTask(updatedTask)
+
+            if let index = tasks.firstIndex(where: { $0.id == task.id }) {
+                tasks[index].priority = priority
+                tasks[index].modifiedDate = Date()
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
     /// Update task title
     func updateTask(_ task: FocusTask, newTitle: String) async {
         guard !newTitle.trimmingCharacters(in: .whitespaces).isEmpty else {
@@ -591,15 +642,17 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
 
         if movedTask.parentTaskId == nil {
             // --- Parent task moved ---
-            // Map flat indices to parent-only indices, then use Array.move
+            let movedPriority = movedTask.priority
+
+            // Only consider parents within the same priority section
             let parentIndices = flat.enumerated().compactMap { (i, item) -> (flatIdx: Int, task: FocusTask)? in
-                if case .task(let t) = item, t.parentTaskId == nil, !t.isCompleted { return (i, t) }
+                if case .task(let t) = item, t.parentTaskId == nil, !t.isCompleted, t.priority == movedPriority { return (i, t) }
                 return nil
             }
 
             guard let parentFrom = parentIndices.firstIndex(where: { $0.task.id == movedTask.id }) else { return }
 
-            // Map flat destination to parent-only destination
+            // Map flat destination to parent-only destination (within same priority)
             var parentTo = parentIndices.count // default: end
             for (pi, entry) in parentIndices.enumerated() {
                 if destination <= entry.flatIdx {
@@ -612,12 +665,12 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
 
             guard parentFrom != parentTo && parentFrom + 1 != parentTo else { return }
 
-            // Apply move using same pattern as moveTask(from:to:)
-            var uncompleted = uncompletedTasks
-            uncompleted.move(fromOffsets: IndexSet(integer: parentFrom), toOffset: parentTo)
+            // Apply move within the same priority group
+            var samePriorityTasks = uncompletedTasks.filter { $0.priority == movedPriority }
+            samePriorityTasks.move(fromOffsets: IndexSet(integer: parentFrom), toOffset: parentTo)
 
             var updates: [(id: UUID, sortOrder: Int)] = []
-            for (index, task) in uncompleted.enumerated() {
+            for (index, task) in samePriorityTasks.enumerated() {
                 if let taskIndex = tasks.firstIndex(where: { $0.id == task.id }) {
                     tasks[taskIndex].sortOrder = index
                 }

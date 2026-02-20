@@ -23,32 +23,52 @@ struct TasksListView: View {
 
     let searchText: String
     @State private var isInlineAddFocused = false
+    @State private var isCategoryExpanded = false
 
     init(viewModel: TaskListViewModel, searchText: String = "") {
         self.viewModel = viewModel
         self.searchText = searchText
     }
 
+    private var categoryTitle: String {
+        if let id = viewModel.selectedCategoryId,
+           let cat = viewModel.categories.first(where: { $0.id == id }) {
+            return cat.name
+        }
+        return "All"
+    }
+
     var body: some View {
         VStack(spacing: 0) {
-            // Section header
-            LogSectionHeader(
-                title: "Tasks",
+            // Category selector header
+            CategorySelectorHeader(
+                title: categoryTitle,
                 count: viewModel.uncompletedTasks.count + viewModel.completedTasks.count,
-                isCollapsed: $viewModel.isTasksSectionCollapsed
+                isExpanded: $isCategoryExpanded,
+                categories: viewModel.categories,
+                selectedCategoryId: viewModel.selectedCategoryId,
+                onSelectCategory: { categoryId in
+                    viewModel.selectedCategoryId = categoryId
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        isCategoryExpanded = false
+                    }
+                },
+                onCreateCategory: { name in
+                    _Concurrency.Task {
+                        await viewModel.createCategory(name: name)
+                    }
+                }
             )
             .padding(.top, 44)
 
-            if !viewModel.isTasksSectionCollapsed {
-                ZStack {
-                    if viewModel.isLoading {
-                        ProgressView("Loading tasks...")
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    } else if viewModel.tasks.isEmpty {
-                        emptyState
-                    } else {
-                        taskList
-                    }
+            ZStack {
+                if viewModel.isLoading {
+                    ProgressView("Loading tasks...")
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if viewModel.tasks.isEmpty {
+                    emptyState
+                } else {
+                    taskList
                 }
             }
 
@@ -125,9 +145,25 @@ struct TasksListView: View {
 
     private var taskList: some View {
         List {
-            // Flat array: parents + expanded subtasks + add rows — all top-level ForEach citizens
+            // Flat array: priority headers + parents + expanded subtasks + add rows
             ForEach(viewModel.flattenedDisplayItems) { item in
                 switch item {
+                case .priorityHeader(let priority):
+                    PrioritySectionHeader(
+                        priority: priority,
+                        count: viewModel.uncompletedTasks(for: priority).count,
+                        isCollapsed: viewModel.isPriorityCollapsed(priority),
+                        onToggle: {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                viewModel.togglePriorityCollapsed(priority)
+                            }
+                        }
+                    )
+                    .moveDisabled(true)
+                    .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color(.systemBackground))
+
                 case .task(let task):
                     FlatTaskRow(
                         task: task,
@@ -182,6 +218,205 @@ struct TasksListView: View {
         }
     }
 
+}
+
+// MARK: - Priority Section Header
+
+struct PrioritySectionHeader: View {
+    let priority: Priority
+    let count: Int
+    let isCollapsed: Bool
+    let onToggle: () -> Void
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 12) {
+                HStack(alignment: .lastTextBaseline, spacing: 8) {
+                    Text(priority.displayName)
+                        .font(.golosText(size: 14))
+
+                    HStack(spacing: 4) {
+                        if count > 0 {
+                            Text("\(count)")
+                                .font(.sf(size: 10))
+                                .foregroundColor(.secondary)
+                        }
+                        Image(systemName: "chevron.right")
+                            .font(.sf(size: 8, weight: .semibold))
+                            .foregroundColor(.secondary)
+                            .rotationEffect(.degrees(isCollapsed ? 0 : 90))
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .clipShape(Capsule())
+                    .glassEffect(.regular.interactive(), in: .capsule)
+                    .alignmentGuide(.lastTextBaseline) { d in d[.bottom] - 1 }
+                }
+
+                Spacer()
+            }
+            .contentShape(Rectangle())
+            .onTapGesture {
+                onToggle()
+            }
+            .padding(.vertical, 6)
+            .padding(.horizontal, 12)
+
+            Rectangle()
+                .fill(Color.secondary.opacity(0.7))
+                .frame(height: 1)
+        }
+    }
+}
+
+// MARK: - Category Selector Header
+
+struct CategorySelectorHeader: View {
+    let title: String
+    let count: Int
+    @Binding var isExpanded: Bool
+    let categories: [Category]
+    let selectedCategoryId: UUID?
+    let onSelectCategory: (UUID?) -> Void
+    let onCreateCategory: (String) -> Void
+
+    @State private var newCategoryName = ""
+    @State private var isAddingCategory = false
+    @FocusState private var isTextFieldFocused: Bool
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // Header row
+            HStack(spacing: 12) {
+                HStack(alignment: .lastTextBaseline, spacing: 8) {
+                    Text(title)
+                        .font(.golosText(size: 22))
+
+                    HStack(spacing: 4) {
+                        if count > 0 {
+                            Text("\(count)")
+                                .font(.sf(size: 10))
+                                .foregroundColor(.secondary)
+                        }
+                        Image(systemName: "chevron.right")
+                            .font(.sf(size: 8, weight: .semibold))
+                            .foregroundColor(.secondary)
+                            .rotationEffect(.degrees(isExpanded ? 90 : 0))
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .clipShape(Capsule())
+                    .glassEffect(.regular.interactive(), in: .capsule)
+                    .alignmentGuide(.lastTextBaseline) { d in d[.bottom] - 1 }
+                }
+
+                Spacer()
+            }
+            .contentShape(Rectangle())
+            .onTapGesture {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    isExpanded.toggle()
+                }
+            }
+            .padding(.vertical, 6)
+            .padding(.horizontal, 12)
+
+            Rectangle()
+                .fill(Color.secondary.opacity(0.7))
+                .frame(height: 1)
+
+            // Expanded category choices
+            if isExpanded {
+                // "All" option
+                categoryRow(name: "All", isSelected: selectedCategoryId == nil) {
+                    onSelectCategory(nil)
+                }
+
+                // Category list
+                ForEach(categories) { category in
+                    categoryRow(name: category.name, isSelected: selectedCategoryId == category.id) {
+                        onSelectCategory(category.id)
+                    }
+                }
+
+                // Add new category
+                if isAddingCategory {
+                    HStack(spacing: 8) {
+                        TextField("Category name", text: $newCategoryName)
+                            .font(.sf(.body))
+                            .focused($isTextFieldFocused)
+                            .onSubmit { submitNewCategory() }
+                        Button {
+                            submitNewCategory()
+                        } label: {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.sf(.body))
+                                .foregroundColor(
+                                    newCategoryName.trimmingCharacters(in: .whitespaces).isEmpty
+                                    ? .gray : .appRed
+                                )
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(newCategoryName.trimmingCharacters(in: .whitespaces).isEmpty)
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 10)
+                } else {
+                    Button {
+                        isAddingCategory = true
+                        isTextFieldFocused = true
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "plus")
+                                .font(.sf(.subheadline))
+                            Text("New Category")
+                                .font(.sf(.subheadline))
+                        }
+                        .foregroundColor(.appRed)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 10)
+                    }
+                    .buttonStyle(.plain)
+                }
+
+                Rectangle()
+                    .fill(Color.secondary.opacity(0.7))
+                    .frame(height: 1)
+            }
+        }
+        .padding(.horizontal, 16)
+    }
+
+    @ViewBuilder
+    private func categoryRow(name: String, isSelected: Bool, action: @escaping () -> Void) -> some View {
+        Button {
+            action()
+        } label: {
+            HStack {
+                Text(name)
+                    .font(.sf(.body))
+                    .foregroundColor(.primary)
+                Spacer()
+                if isSelected {
+                    Image(systemName: "checkmark")
+                        .font(.sf(.body))
+                        .foregroundColor(.appRed)
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func submitNewCategory() {
+        let name = newCategoryName.trimmingCharacters(in: .whitespaces)
+        guard !name.isEmpty else { return }
+        onCreateCategory(name)
+        newCategoryName = ""
+        isAddingCategory = false
+    }
 }
 
 // MARK: - Log Done Pill View
@@ -359,6 +594,23 @@ struct FlatTaskRow: View {
                 }
 
                 if isParent {
+                    // Priority submenu
+                    Menu {
+                        ForEach(Priority.allCases, id: \.self) { priority in
+                            Button {
+                                _Concurrency.Task { await viewModel.updateTaskPriority(task, priority: priority) }
+                            } label: {
+                                if task.priority == priority {
+                                    Label(priority.displayName, systemImage: "checkmark")
+                                } else {
+                                    Text(priority.displayName)
+                                }
+                            }
+                        }
+                    } label: {
+                        Label("Priority", systemImage: "flag")
+                    }
+
                     ContextMenuItems.categorySubmenu(
                         currentCategoryId: task.categoryId,
                         categories: viewModel.categories

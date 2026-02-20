@@ -22,6 +22,7 @@ struct FocusTask: Codable, Identifiable {
     var sortOrder: Int
     var isInLog: Bool
     var previousCompletionState: [Bool]?
+    var priority: Priority
 
     // Foreign keys
     var categoryId: UUID?
@@ -42,6 +43,7 @@ struct FocusTask: Codable, Identifiable {
         case sortOrder = "sort_order"
         case isInLog = "is_in_library"
         case previousCompletionState = "previous_completion_state"
+        case priority
         case categoryId = "category_id"
         case projectId = "project_id"
         case parentTaskId = "parent_task_id"
@@ -61,6 +63,7 @@ struct FocusTask: Codable, Identifiable {
         sortOrder: Int = 0,
         isInLog: Bool = true,
         previousCompletionState: [Bool]? = nil,
+        priority: Priority = .medium,
         categoryId: UUID? = nil,
         projectId: UUID? = nil,
         parentTaskId: UUID? = nil
@@ -77,6 +80,7 @@ struct FocusTask: Codable, Identifiable {
         self.sortOrder = sortOrder
         self.isInLog = isInLog
         self.previousCompletionState = previousCompletionState
+        self.priority = priority
         self.categoryId = categoryId
         self.projectId = projectId
         self.parentTaskId = parentTaskId

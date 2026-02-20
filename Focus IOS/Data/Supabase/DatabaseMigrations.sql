@@ -66,6 +66,7 @@ CREATE TABLE IF NOT EXISTS tasks (
   sort_order INTEGER DEFAULT 0,
   is_in_library BOOLEAN DEFAULT true,
   previous_completion_state JSONB,
+  priority TEXT NOT NULL DEFAULT 'medium' CHECK (priority IN ('high', 'medium', 'low')),
 
   -- Foreign keys
   category_id UUID REFERENCES categories(id) ON DELETE SET NULL,
@@ -189,6 +190,24 @@ ALTER TABLE commitments ADD COLUMN IF NOT EXISTS duration_minutes INTEGER DEFAUL
 CREATE INDEX IF NOT EXISTS idx_commitments_scheduled_time
 ON commitments(user_id, scheduled_time)
 WHERE scheduled_time IS NOT NULL;
+
+-- ==============================================
+-- TASK PRIORITY SUPPORT
+-- Categorize tasks by priority level (high, medium, low)
+-- ==============================================
+
+-- Add priority column with default 'medium'
+ALTER TABLE tasks ADD COLUMN IF NOT EXISTS priority TEXT NOT NULL DEFAULT 'medium';
+
+-- Add check constraint (safe for existing rows since default is 'medium')
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'tasks_priority_check'
+  ) THEN
+    ALTER TABLE tasks ADD CONSTRAINT tasks_priority_check CHECK (priority IN ('high', 'medium', 'low'));
+  END IF;
+END$$;
 
 -- ==============================================
 -- VERIFICATION QUERIES

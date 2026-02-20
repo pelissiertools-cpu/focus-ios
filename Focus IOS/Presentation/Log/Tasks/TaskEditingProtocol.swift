@@ -43,6 +43,9 @@ protocol TaskEditingViewModel: ObservableObject {
 
     /// Create a new category and move the task to it
     func createCategoryAndMove(name: String, task: FocusTask) async
+
+    /// Update a task's priority
+    func updateTaskPriority(_ task: FocusTask, priority: Priority) async
 }
 
 // Default empty implementations for category operations.
@@ -51,6 +54,7 @@ extension TaskEditingViewModel {
     func refreshSubtasks(for parentId: UUID) async {}
     func moveTaskToCategory(_ task: FocusTask, categoryId: UUID?) async {}
     func createCategoryAndMove(name: String, task: FocusTask) async {}
+    func updateTaskPriority(_ task: FocusTask, priority: Priority) async {}
 
     /// Get uncompleted subtasks sorted by sortOrder
     func getUncompletedSubtasks(for taskId: UUID) -> [FocusTask] {

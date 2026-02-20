@@ -10,6 +10,7 @@ import SwiftUI
 struct LogFilterBar<VM: LogFilterable>: View {
     @ObservedObject var viewModel: VM
     @Binding var showCategoryDropdown: Bool
+    var hideCategoryPill: Bool = false
     @EnvironmentObject var languageManager: LanguageManager
 
     var body: some View {
@@ -39,7 +40,9 @@ struct LogFilterBar<VM: LogFilterable>: View {
                 // Normal mode: filter pills
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {
-                        SharedCategoryFilterPill(viewModel: viewModel, showDropdown: $showCategoryDropdown)
+                        if !hideCategoryPill {
+                            SharedCategoryFilterPill(viewModel: viewModel, showDropdown: $showCategoryDropdown)
+                        }
                         SharedCommitmentFilterPills(viewModel: viewModel)
                     }
                     .padding(.leading, 20)

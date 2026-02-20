@@ -2262,6 +2262,9 @@
         }
       }
     },
+    "Nothing to do" : {
+
+    },
     "Nothing to focus on" : {
 
     },
@@ -3022,6 +3025,9 @@
           }
         }
       }
+    },
+    "Tap + to add tasks" : {
+
     },
     "Tap + to start" : {
 

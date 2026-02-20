@@ -115,27 +115,27 @@ struct ListsView: View {
                         onSelectToggle: { viewModel.toggleListSelection(list.id) }
                     )
                     .moveDisabled(viewModel.isEditMode)
-                    .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+                    .listRowInsets(EdgeInsets(top: 0, leading: 32, bottom: 0, trailing: 32))
                     .listRowBackground(Color(.systemBackground))
 
                 case .item(let item, let listId):
                     ListItemRow(item: item, listId: listId, viewModel: viewModel)
                         .padding(.leading, 32)
                         .moveDisabled(item.isCompleted || viewModel.isEditMode)
-                        .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+                        .listRowInsets(EdgeInsets(top: 0, leading: 32, bottom: 0, trailing: 32))
                         .listRowBackground(Color(.systemBackground))
 
                 case .doneSection(let listId):
                     ListDoneSection(listId: listId, viewModel: viewModel)
                         .moveDisabled(true)
-                        .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+                        .listRowInsets(EdgeInsets(top: 0, leading: 32, bottom: 0, trailing: 32))
                         .listRowSeparator(.hidden)
                         .listRowBackground(Color(.systemBackground))
 
                 case .addItemRow(let listId):
                     InlineAddItemRow(listId: listId, viewModel: viewModel, isAnyAddFieldActive: $isInlineAddFocused)
                         .moveDisabled(true)
-                        .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+                        .listRowInsets(EdgeInsets(top: 0, leading: 32, bottom: 0, trailing: 32))
                         .listRowBackground(Color(.systemBackground))
                 }
             }

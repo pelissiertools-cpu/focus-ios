@@ -137,13 +137,13 @@ struct TasksListView: View {
                     )
                     .padding(.leading, task.parentTaskId != nil ? 32 : 0)
                     .moveDisabled(task.isCompleted || viewModel.isEditMode)
-                    .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+                    .listRowInsets(EdgeInsets(top: 0, leading: 32, bottom: 0, trailing: 32))
                     .listRowBackground(Color(.systemBackground))
 
                 case .addSubtaskRow(let parentId):
                     InlineAddSubtaskRow(parentId: parentId, viewModel: viewModel, isAnyAddFieldActive: $isInlineAddFocused)
                         .moveDisabled(true)
-                        .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+                        .listRowInsets(EdgeInsets(top: 0, leading: 32, bottom: 0, trailing: 32))
                         .listRowBackground(Color(.systemBackground))
                 }
             }
@@ -154,7 +154,7 @@ struct TasksListView: View {
             // Done pill (when there are completed tasks, hidden in edit mode)
             if !viewModel.isEditMode && !viewModel.completedTasks.isEmpty {
                 LogDonePillView(completedTasks: viewModel.completedTasks, viewModel: viewModel, isInlineAddFocused: $isInlineAddFocused)
-                    .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+                    .listRowInsets(EdgeInsets(top: 0, leading: 32, bottom: 0, trailing: 32))
                     .listRowSeparator(.hidden)
                     .listRowBackground(Color(.systemBackground))
             }

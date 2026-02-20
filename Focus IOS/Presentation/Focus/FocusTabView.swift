@@ -398,18 +398,30 @@ struct FocusTabView: View {
                                     .font(.montserrat(.headline))
                                     .bold()
                                 if !viewModel.showAddTaskSheet {
-                                    Text("Tap + to start")
+                                    Text("Tap + to add tasks")
                                         .font(.montserrat(.subheadline))
                                         .foregroundColor(.secondary)
                                 }
                             }
                         } else {
-                            Text("No task yet. Tap + to add one.")
-                                .foregroundColor(.secondary)
+                            VStack(alignment: .leading) {
+                                Spacer(minLength: 0)
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("Nothing to do")
+                                        .font(.montserrat(.headline))
+                                        .bold()
+                                    if !viewModel.showAddTaskSheet {
+                                        Text("Tap + to add tasks")
+                                            .font(.montserrat(.subheadline))
+                                            .foregroundColor(.secondary)
+                                    }
+                                }
+                                Spacer(minLength: 0)
+                            }
                         }
                     }
                     .padding(.horizontal, 16)
-                    .frame(maxWidth: .infinity, minHeight: section == .focus ? 192 : 60, alignment: .leading)
+                    .frame(maxWidth: .infinity, minHeight: section == .focus ? 192 : 240, alignment: .leading)
                     .contentShape(Rectangle())
                     .onTapGesture {
                         viewModel.addTaskSection = section

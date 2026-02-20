@@ -184,7 +184,7 @@ struct ProjectCard: View {
                                     }
                                 }
                                 .moveDisabled(task.isCompleted || viewModel.isEditMode)
-                                .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+                                .listRowInsets(EdgeInsets(top: 0, leading: 32, bottom: 0, trailing: 32))
                                 .listRowBackground(Color.clear)
                                 .listRowSeparator(.visible)
 
@@ -196,7 +196,7 @@ struct ProjectCard: View {
                                 )
                                 .padding(.leading, 32)
                                 .moveDisabled(true)
-                                .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+                                .listRowInsets(EdgeInsets(top: 0, leading: 32, bottom: 0, trailing: 32))
                                 .listRowBackground(Color.clear)
                                 .listRowSeparator(.hidden)
 
@@ -207,7 +207,7 @@ struct ProjectCard: View {
                                     isAnyAddFieldActive: $isInlineAddFocused
                                 )
                                 .moveDisabled(true)
-                                .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+                                .listRowInsets(EdgeInsets(top: 0, leading: 32, bottom: 0, trailing: 32))
                                 .listRowBackground(Color.clear)
                                 .listRowSeparator(.hidden)
                             }

@@ -170,22 +170,27 @@ struct ProjectsListView: View {
             Button {
                 viewModel.toggleDoneCollapsed()
             } label: {
-                HStack(spacing: 8) {
-                    Image(systemName: viewModel.isDoneCollapsed ? "chevron.right" : "chevron.down")
-                        .font(.sf(.caption))
-                        .foregroundColor(.secondary)
-
+                HStack(spacing: 5) {
                     Text("Completed")
                         .font(.sf(.subheadline, weight: .medium))
                         .foregroundColor(.secondary)
 
-                    Text("(\(viewModel.completedProjects.count))")
+                    Text("\(viewModel.completedProjects.count)")
                         .font(.sf(.subheadline))
                         .foregroundColor(.secondary)
+
+                    Image(systemName: viewModel.isDoneCollapsed ? "chevron.right" : "chevron.down")
+                        .font(.sf(size: 10, weight: .semibold))
+                        .foregroundColor(.secondary)
                 }
-                .contentShape(Rectangle())
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .clipShape(Capsule())
+                .glassEffect(.regular.interactive(), in: .capsule)
             }
             .buttonStyle(.plain)
+
+            Spacer()
 
             if !viewModel.isDoneCollapsed {
                 Button {
@@ -193,18 +198,13 @@ struct ProjectsListView: View {
                 } label: {
                     Text("Clear list")
                         .font(.sf(.caption))
-                        .foregroundColor(.secondary)
+                        .foregroundColor(.white)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 4)
-                        .background(
-                            Capsule()
-                                .fill(Color.secondary.opacity(0.15))
-                        )
+                        .background(Color.appRed, in: Capsule())
                 }
                 .buttonStyle(.plain)
             }
-
-            Spacer()
         }
         .padding(.vertical, 10)
         .alert("Clear completed projects?", isPresented: $showClearCompletedConfirmation) {

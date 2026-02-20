@@ -319,47 +319,49 @@ struct ListDoneSection: View {
         if !completedItems.isEmpty {
             VStack(spacing: 0) {
                 // Done pill header
-                Button {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        viewModel.toggleDoneSectionCollapsed(for: listId)
-                    }
-                } label: {
-                    HStack(spacing: 8) {
-                        Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
-                            .font(.sf(.caption))
-                            .foregroundColor(.secondary)
-
-                        Text("Completed")
-                            .font(.sf(.subheadline, weight: .medium))
-                            .foregroundColor(.secondary)
-
-                        Text("(\(completedItems.count))")
-                            .font(.sf(.subheadline))
-                            .foregroundColor(.secondary)
-
-                        if isExpanded {
-                            Button {
-                                showClearConfirmation = true
-                            } label: {
-                                Text("Clear list")
-                                    .font(.sf(.caption))
-                                    .foregroundColor(.secondary)
-                                    .padding(.horizontal, 10)
-                                    .padding(.vertical, 4)
-                                    .background(
-                                        Capsule()
-                                            .fill(Color.secondary.opacity(0.15))
-                                    )
-                            }
-                            .buttonStyle(.plain)
+                HStack(spacing: 8) {
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            viewModel.toggleDoneSectionCollapsed(for: listId)
                         }
+                    } label: {
+                        HStack(spacing: 5) {
+                            Text("Completed")
+                                .font(.sf(.subheadline, weight: .medium))
+                                .foregroundColor(.secondary)
 
-                        Spacer()
+                            Text("\(completedItems.count)")
+                                .font(.sf(.subheadline))
+                                .foregroundColor(.secondary)
+
+                            Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
+                                .font(.sf(size: 10, weight: .semibold))
+                                .foregroundColor(.secondary)
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .clipShape(Capsule())
+                        .glassEffect(.regular.interactive(), in: .capsule)
                     }
-                    .padding(.vertical, 10)
-                    .contentShape(Rectangle())
+                    .buttonStyle(.plain)
+
+                    Spacer()
+
+                    if isExpanded {
+                        Button {
+                            showClearConfirmation = true
+                        } label: {
+                            Text("Clear list")
+                                .font(.sf(.caption))
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 4)
+                                .background(Color.appRed, in: Capsule())
+                        }
+                        .buttonStyle(.plain)
+                    }
                 }
-                .buttonStyle(.plain)
+                .padding(.vertical, 10)
 
                 // Expanded completed items
                 if isExpanded {

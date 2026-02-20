@@ -89,7 +89,7 @@ struct TasksListView: View {
                     }
                 } else {
                     HStack(spacing: 8) {
-                        SharedCommitmentFilterPills(viewModel: viewModel)
+                        SortMenuButton(viewModel: viewModel)
 
                         Button {
                             viewModel.enterEditMode()
@@ -349,12 +349,12 @@ struct CategorySelectorHeader<TrailingContent: View>: View {
         VStack(spacing: 0) {
             // Header row
             HStack(spacing: 8) {
-                HStack(spacing: 8) {
+                HStack(alignment: .lastTextBaseline, spacing: 8) {
                     Text(title)
                         .font(.golosText(size: 30))
 
                     if count > 0 {
-                        Text("\(count)")
+                        Text("\(count) task\(count == 1 ? "" : "s")")
                             .font(.sf(size: 12))
                             .foregroundColor(.secondary)
                     }
@@ -374,8 +374,8 @@ struct CategorySelectorHeader<TrailingContent: View>: View {
             .padding(.horizontal, 12)
 
             Rectangle()
-                .fill(Color.secondary)
-                .frame(height: 2)
+                .fill(Color.black)
+                .frame(height: 1)
 
             // Expanded category choices
             if isExpanded {
@@ -449,12 +449,12 @@ struct CategorySelectorHeader<TrailingContent: View>: View {
                 Text(name)
                     .font(.sf(.body))
                     .foregroundColor(.primary)
-                Spacer()
                 if isSelected {
                     Image(systemName: "checkmark")
                         .font(.sf(.body))
                         .foregroundColor(.appRed)
                 }
+                Spacer()
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 10)
@@ -859,6 +859,86 @@ struct SubtaskRow: View {
         .onTapGesture {
             viewModel.selectedTaskForDetails = subtask
         }
+    }
+}
+
+// MARK: - Sort Menu Button
+
+struct SortMenuButton: View {
+    @ObservedObject var viewModel: TaskListViewModel
+
+    var body: some View {
+        Menu {
+            // Sort options
+            ForEach(SortOption.allCases, id: \.self) { option in
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        viewModel.sortOption = option
+                    }
+                } label: {
+                    if viewModel.sortOption == option {
+                        Label(option.displayName, systemImage: "checkmark")
+                    } else {
+                        Text(option.displayName)
+                    }
+                }
+            }
+
+            // Commitment filter
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    viewModel.commitmentFilter = viewModel.commitmentFilter == .committed ? nil : .committed
+                }
+            } label: {
+                if viewModel.commitmentFilter == .committed {
+                    Label("Committed", systemImage: "checkmark")
+                } else {
+                    Text("Committed")
+                }
+            }
+
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    viewModel.commitmentFilter = viewModel.commitmentFilter == .uncommitted ? nil : .uncommitted
+                }
+            } label: {
+                if viewModel.commitmentFilter == .uncommitted {
+                    Label("Not committed", systemImage: "checkmark")
+                } else {
+                    Text("Not committed")
+                }
+            }
+
+            Divider()
+
+            // Direction
+            ForEach(SortDirection.allCases, id: \.self) { direction in
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        viewModel.sortDirection = direction
+                    }
+                } label: {
+                    if viewModel.sortDirection == direction {
+                        Label(direction.displayName, systemImage: "checkmark")
+                    } else {
+                        Text(direction.displayName)
+                    }
+                }
+            }
+        } label: {
+            Color.clear
+                .frame(width: 36, height: 36)
+        }
+        .menuIndicator(.hidden)
+        .tint(.appRed)
+        .background(
+            Image(systemName: "arrow.up.arrow.down")
+                .font(.sf(.subheadline, weight: .medium))
+                .foregroundColor(.primary)
+                .frame(width: 36, height: 36)
+                .glassEffect(.regular.interactive(), in: .circle)
+                .allowsHitTesting(false)
+        )
     }
 }
 

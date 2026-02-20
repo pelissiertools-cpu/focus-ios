@@ -59,6 +59,10 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
     @Published var commitmentFilter: CommitmentFilter? = nil
     @Published var committedTaskIds: Set<UUID> = []
 
+    // Sort
+    @Published var sortOption: SortOption = .creationDate
+    @Published var sortDirection: SortDirection = .lowestFirst
+
     // Edit mode
     @Published var isEditMode: Bool = false
     @Published var selectedTaskIds: Set<UUID> = []
@@ -165,7 +169,7 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
 
     // MARK: - Computed Properties
 
-    /// Uncompleted top-level tasks sorted by sortOrder, filtered by category, commitment status, and search text
+    /// Uncompleted top-level tasks filtered by category, commitment status, search text, and sorted by current sort option
     var uncompletedTasks: [FocusTask] {
         var filtered = tasks.filter { !$0.isCompleted }
         if let categoryId = selectedCategoryId {
@@ -182,7 +186,31 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
         let searched = searchText.isEmpty ? filtered : filtered.filter {
             $0.title.localizedCaseInsensitiveContains(searchText)
         }
-        return searched.sorted { $0.sortOrder < $1.sortOrder }
+        return applySorting(to: searched)
+    }
+
+    /// Apply current sort option and direction to a list of tasks
+    private func applySorting(to tasks: [FocusTask]) -> [FocusTask] {
+        let ascending = sortDirection == .lowestFirst
+        switch sortOption {
+        case .priority:
+            // Sort by priority index, then by sortOrder within same priority
+            return tasks.sorted { a, b in
+                if a.priority.sortIndex != b.priority.sortIndex {
+                    return ascending ? a.priority.sortIndex < b.priority.sortIndex : a.priority.sortIndex > b.priority.sortIndex
+                }
+                return a.sortOrder < b.sortOrder
+            }
+        case .dueDate:
+            // No due date field yet — fall back to creation date
+            return tasks.sorted {
+                ascending ? $0.createdDate < $1.createdDate : $0.createdDate > $1.createdDate
+            }
+        case .creationDate:
+            return tasks.sorted {
+                ascending ? $0.createdDate < $1.createdDate : $0.createdDate > $1.createdDate
+            }
+        }
     }
 
     /// Completed top-level tasks, filtered by category, commitment status, and search text
@@ -213,27 +241,47 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
     /// Fed to a single ForEach so every item is a top-level list citizen.
     var flattenedDisplayItems: [FlatDisplayItem] {
         var result: [FlatDisplayItem] = []
-        for priority in Priority.allCases {
-            let tasksForPriority = uncompletedTasks.filter { $0.priority == priority }
-            guard !tasksForPriority.isEmpty else { continue }
 
-            result.append(.priorityHeader(priority))
+        if sortOption == .priority {
+            // Group by priority with section headers
+            let priorities = sortDirection == .highestFirst ? Priority.allCases : Priority.allCases.reversed()
+            for priority in priorities {
+                let tasksForPriority = uncompletedTasks.filter { $0.priority == priority }
+                guard !tasksForPriority.isEmpty else { continue }
 
-            if !collapsedPriorities.contains(priority) {
-                for task in tasksForPriority {
-                    result.append(.task(task))
-                    if expandedTasks.contains(task.id) {
-                        for subtask in getUncompletedSubtasks(for: task.id) {
-                            result.append(.task(subtask))
+                result.append(.priorityHeader(priority))
+
+                if !collapsedPriorities.contains(priority) {
+                    for task in tasksForPriority {
+                        result.append(.task(task))
+                        if expandedTasks.contains(task.id) {
+                            for subtask in getUncompletedSubtasks(for: task.id) {
+                                result.append(.task(subtask))
+                            }
+                            for subtask in getCompletedSubtasks(for: task.id) {
+                                result.append(.task(subtask))
+                            }
+                            result.append(.addSubtaskRow(parentId: task.id))
                         }
-                        for subtask in getCompletedSubtasks(for: task.id) {
-                            result.append(.task(subtask))
-                        }
-                        result.append(.addSubtaskRow(parentId: task.id))
                     }
                 }
             }
+        } else {
+            // Flat list sorted by the selected option
+            for task in uncompletedTasks {
+                result.append(.task(task))
+                if expandedTasks.contains(task.id) {
+                    for subtask in getUncompletedSubtasks(for: task.id) {
+                        result.append(.task(subtask))
+                    }
+                    for subtask in getCompletedSubtasks(for: task.id) {
+                        result.append(.task(subtask))
+                    }
+                    result.append(.addSubtaskRow(parentId: task.id))
+                }
+            }
         }
+
         return result
     }
 

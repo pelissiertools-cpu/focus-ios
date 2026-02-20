@@ -25,7 +25,7 @@ struct SignInView: View {
 
                 // App Title
                 Text("Focus")
-                    .font(.montserrat(size: 48, weight: .bold))
+                    .font(.sf(size: 48, weight: .bold))
                     .foregroundColor(.black)
 
                 Spacer()
@@ -36,7 +36,7 @@ struct SignInView: View {
                     if let errorMessage = authService.errorMessage {
                         Text(errorMessage)
                             .foregroundColor(.red)
-                            .font(.montserrat(.caption))
+                            .font(.sf(.caption))
                             .padding(.horizontal)
                     }
 
@@ -44,9 +44,9 @@ struct SignInView: View {
                     Button(action: handleAppleSignIn) {
                         HStack(spacing: 8) {
                             Image(systemName: "apple.logo")
-                                .font(.montserrat(size: 18))
+                                .font(.sf(size: 18))
                             Text("Continue with Apple")
-                                .font(.montserrat(.body, weight: .semibold))
+                                .font(.sf(.body, weight: .semibold))
                         }
                         .frame(maxWidth: .infinity)
                         .frame(height: 54)
@@ -63,7 +63,7 @@ struct SignInView: View {
                             GoogleLogoView()
                                 .frame(width: 18, height: 18)
                             Text("Continue with Google")
-                                .font(.montserrat(.body, weight: .semibold))
+                                .font(.sf(.body, weight: .semibold))
                         }
                         .frame(maxWidth: .infinity)
                         .frame(height: 54)
@@ -77,7 +77,7 @@ struct SignInView: View {
                     // Sign up
                     Button(action: { showAuth = true }) {
                         Text("Sign up")
-                            .font(.montserrat(.body, weight: .semibold))
+                            .font(.sf(.body, weight: .semibold))
                             .frame(maxWidth: .infinity)
                             .frame(height: 54)
                             .contentShape(Rectangle())
@@ -90,7 +90,7 @@ struct SignInView: View {
                     // Log in
                     Button(action: { showAuth = true }) {
                         Text("Log in")
-                            .font(.montserrat(.body, weight: .semibold))
+                            .font(.sf(.body, weight: .semibold))
                             .frame(maxWidth: .infinity)
                             .frame(height: 54)
                             .contentShape(Rectangle())

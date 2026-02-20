@@ -90,11 +90,11 @@ struct ProjectsListView: View {
     private var emptyState: some View {
         VStack(spacing: 16) {
             Image(systemName: "folder")
-                .font(.montserrat(size: 60))
+                .font(.sf(size: 60))
                 .foregroundColor(.secondary)
 
             Text("No Projects Yet")
-                .font(.montserrat(.title2, weight: .semibold))
+                .font(.sf(.title2, weight: .semibold))
 
             Text("Tap the + button to create your first project")
                 .foregroundColor(.secondary)
@@ -172,15 +172,15 @@ struct ProjectsListView: View {
             } label: {
                 HStack(spacing: 8) {
                     Image(systemName: viewModel.isDoneCollapsed ? "chevron.right" : "chevron.down")
-                        .font(.montserrat(.caption))
+                        .font(.sf(.caption))
                         .foregroundColor(.secondary)
 
                     Text("Completed")
-                        .font(.montserrat(.subheadline, weight: .medium))
+                        .font(.sf(.subheadline, weight: .medium))
                         .foregroundColor(.secondary)
 
                     Text("(\(viewModel.completedProjects.count))")
-                        .font(.montserrat(.subheadline))
+                        .font(.sf(.subheadline))
                         .foregroundColor(.secondary)
                 }
                 .contentShape(Rectangle())
@@ -192,7 +192,7 @@ struct ProjectsListView: View {
                     showClearCompletedConfirmation = true
                 } label: {
                     Text("Clear list")
-                        .font(.montserrat(.caption))
+                        .font(.sf(.caption))
                         .foregroundColor(.secondary)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 4)

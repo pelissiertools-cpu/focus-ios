@@ -4,24 +4,24 @@ import SwiftUI
 
 extension Font {
 
-    /// System font matching a Dynamic Type text style with weight mapping.
-    /// Usage: `.font(.montserrat(.title2))` or `.font(.montserrat(.body, weight: .semibold))`
-    static func montserrat(_ style: TextStyle, weight: MontserratWeight = .regular) -> Font {
+    /// SF System font matching a Dynamic Type text style with weight mapping.
+    /// Usage: `.font(.sf(.title2))` or `.font(.sf(.body, weight: .semibold))`
+    static func sf(_ style: TextStyle, weight: SFWeight = .regular) -> Font {
         .system(style, weight: weight.systemWeight)
     }
 
-    /// System font with explicit point size and weight.
-    /// Usage: `.font(.montserrat(size: 16, weight: .semibold))`
-    static func montserrat(size: CGFloat, weight: MontserratWeight = .regular) -> Font {
+    /// SF System font with explicit point size and weight.
+    /// Usage: `.font(.sf(size: 16, weight: .semibold))`
+    static func sf(size: CGFloat, weight: SFWeight = .regular) -> Font {
         .system(size: size, weight: weight.systemWeight)
     }
 
-    /// System font with explicit size, relative to a text style for Dynamic Type scaling.
-    static func montserrat(size: CGFloat, weight: MontserratWeight = .regular, relativeTo style: TextStyle) -> Font {
+    /// SF System font with explicit size, relative to a text style for Dynamic Type scaling.
+    static func sf(size: CGFloat, weight: SFWeight = .regular, relativeTo style: TextStyle) -> Font {
         .system(size: size, weight: weight.systemWeight)
     }
 
-    /// Montserrat custom font — used for section headers and date navigator.
+    /// Montserrat custom font — used for date navigator.
     static func montserratHeader(size: CGFloat, weight: MontserratWeight = .regular) -> Font {
         .custom(weight.fontName, size: size)
     }
@@ -42,7 +42,27 @@ extension Font {
     }
 }
 
-// MARK: - Weight Mapping
+// MARK: - SF Weight Mapping
+
+enum SFWeight {
+    case thin, extraLight, light, regular, medium, semibold, bold, extraBold, black
+
+    var systemWeight: Font.Weight {
+        switch self {
+        case .thin:       .thin
+        case .extraLight: .ultraLight
+        case .light:      .light
+        case .regular:    .regular
+        case .medium:     .medium
+        case .semibold:   .semibold
+        case .bold:       .bold
+        case .extraBold:  .heavy
+        case .black:      .black
+        }
+    }
+}
+
+// MARK: - Montserrat Weight Mapping (custom font for date navigator)
 
 enum MontserratWeight {
     case thin, extraLight, light, regular, medium, semibold, bold, extraBold, black
@@ -60,7 +80,6 @@ enum MontserratWeight {
         case .black:      "Montserrat-Black"
         }
     }
-
 }
 
 // MARK: - TextStyle Size Mapping
@@ -101,20 +120,3 @@ enum GolosTextWeight {
     }
 }
 
-// MARK: - System Weight Mapping
-
-extension MontserratWeight {
-    var systemWeight: Font.Weight {
-        switch self {
-        case .thin:       .thin
-        case .extraLight: .ultraLight
-        case .light:      .light
-        case .regular:    .regular
-        case .medium:     .medium
-        case .semibold:   .semibold
-        case .bold:       .bold
-        case .extraBold:  .heavy
-        case .black:      .black
-        }
-    }
-}

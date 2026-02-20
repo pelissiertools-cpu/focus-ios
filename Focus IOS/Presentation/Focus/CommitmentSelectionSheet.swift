@@ -46,12 +46,12 @@ struct CommitmentSelectionSheet: View {
             Form {
                 SwiftUI.Section(task.type == .list ? "List" : "Task") {
                     Text(task.title)
-                        .font(.montserrat(.headline))
+                        .font(.sf(.headline))
 
                     if isParentTask {
                         let itemLabel = task.type == .list ? "item" : "subtask"
                         Text("Includes \(subtaskCount) \(itemLabel)\(subtaskCount == 1 ? "" : "s")")
-                            .font(.montserrat(.caption))
+                            .font(.sf(.caption))
                             .foregroundColor(.secondary)
                     }
                 }

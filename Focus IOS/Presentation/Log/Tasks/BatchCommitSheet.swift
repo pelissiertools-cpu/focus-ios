@@ -31,7 +31,7 @@ struct BatchCommitSheet<VM: LogFilterable>: View {
             Form {
                 SwiftUI.Section("Items") {
                     Text("\(viewModel.selectedCount) item\(viewModel.selectedCount == 1 ? "" : "s") selected")
-                        .font(.montserrat(.headline))
+                        .font(.sf(.headline))
                 }
 
                 SwiftUI.Section("Section") {

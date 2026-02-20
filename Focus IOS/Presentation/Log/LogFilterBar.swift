@@ -25,13 +25,13 @@ struct LogFilterBar<VM: LogFilterable>: View {
                         }
                     } label: {
                         Text(LocalizedStringKey(viewModel.allUncompletedSelected ? "Deselect All" : "Select All"))
-                            .font(.montserrat(.subheadline, weight: .medium))
+                            .font(.sf(.subheadline, weight: .medium))
                             .foregroundColor(.blue)
                     }
                     .buttonStyle(.plain)
 
                     Text("\(viewModel.selectedCount) selected")
-                        .font(.montserrat(.subheadline))
+                        .font(.sf(.subheadline))
                         .foregroundColor(.secondary)
                 }
                 .padding(.leading)
@@ -60,13 +60,13 @@ struct LogFilterBar<VM: LogFilterable>: View {
             } label: {
                 if viewModel.isEditMode {
                     Text("Done")
-                        .font(.montserrat(.subheadline, weight: .medium))
+                        .font(.sf(.subheadline, weight: .medium))
                         .foregroundColor(.blue)
                         .padding(.horizontal, 16)
                         .padding(.vertical, 8)
                 } else {
                     Image(systemName: "ellipsis")
-                        .font(.montserrat(.body, weight: .semibold))
+                        .font(.sf(.body, weight: .semibold))
                         .foregroundColor(.primary)
                         .frame(width: 36, height: 36)
                         .glassEffect(.regular.interactive(), in: .circle)

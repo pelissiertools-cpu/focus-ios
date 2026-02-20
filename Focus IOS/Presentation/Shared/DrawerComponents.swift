@@ -64,16 +64,16 @@ struct DrawerContainer<Content: View>: View {
             Button("Cancel", action: action)
         case .save(let action, let disabled):
             Button("Save", action: action)
-                .font(.montserrat(.body, weight: .semibold))
+                .font(.sf(.body, weight: .semibold))
                 .disabled(disabled)
         case .add(let action, let disabled):
             Button("Add", action: action)
-                .font(.montserrat(.body, weight: .semibold))
+                .font(.sf(.body, weight: .semibold))
                 .disabled(disabled)
         case .close(let action):
             Button(action: action) {
                 Image(systemName: "xmark")
-                    .font(.montserrat(.subheadline, weight: .semibold))
+                    .font(.sf(.subheadline, weight: .semibold))
                     .foregroundColor(.primary)
                     .frame(width: 30, height: 30)
                     .background(.white, in: Circle())
@@ -81,7 +81,7 @@ struct DrawerContainer<Content: View>: View {
         case .check(let action, let highlighted):
             Button(action: action) {
                 Image(systemName: "checkmark")
-                    .font(.montserrat(.subheadline, weight: .semibold))
+                    .font(.sf(.subheadline, weight: .semibold))
                     .foregroundColor(highlighted ? .white : .secondary)
                     .frame(width: 30, height: 30)
             }
@@ -259,16 +259,16 @@ struct DrawerActionLabel: View {
     var body: some View {
         HStack(spacing: 10) {
             Image(systemName: icon)
-                .font(.montserrat(.body))
+                .font(.sf(.body))
                 .foregroundColor(iconColor)
                 .frame(width: 24)
             Text(LocalizedStringKey(text))
-                .font(.montserrat(.body))
+                .font(.sf(.body))
                 .foregroundColor(.primary)
             Spacer()
             if let trailing {
                 Text(trailing)
-                    .font(.montserrat(.subheadline))
+                    .font(.sf(.subheadline))
                     .foregroundColor(.secondary)
             }
         }

@@ -108,11 +108,11 @@ struct TasksListView: View {
     private var emptyState: some View {
         VStack(spacing: 16) {
             Image(systemName: "checklist")
-                .font(.montserrat(size: 60))
+                .font(.sf(size: 60))
                 .foregroundColor(.secondary)
 
             Text("No Tasks Yet")
-                .font(.montserrat(.title2, weight: .semibold))
+                .font(.sf(.title2, weight: .semibold))
 
             Text("Tap the + button to add your first task")
                 .foregroundColor(.secondary)
@@ -198,15 +198,15 @@ struct LogDonePillView: View {
             } label: {
                 HStack(spacing: 8) {
                     Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
-                        .font(.montserrat(.caption))
+                        .font(.sf(.caption))
                         .foregroundColor(.secondary)
 
                     Text("Completed")
-                        .font(.montserrat(.subheadline, weight: .medium))
+                        .font(.sf(.subheadline, weight: .medium))
                         .foregroundColor(.secondary)
 
                     Text("(\(completedTasks.count))")
-                        .font(.montserrat(.subheadline))
+                        .font(.sf(.subheadline))
                         .foregroundColor(.secondary)
 
                     if isExpanded {
@@ -214,7 +214,7 @@ struct LogDonePillView: View {
                             showClearConfirmation = true
                         } label: {
                             Text("Clear list")
-                                .font(.montserrat(.caption))
+                                .font(.sf(.caption))
                                 .foregroundColor(.secondary)
                                 .padding(.horizontal, 10)
                                 .padding(.vertical, 4)
@@ -278,14 +278,14 @@ struct FlatTaskRow: View {
             // Edit mode: selection circle (uncompleted parent tasks only)
             if isEditMode && !task.isCompleted && isParent {
                 Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                    .font(.montserrat(.title3))
+                    .font(.sf(.title3))
                     .foregroundColor(isSelected ? .blue : .gray)
             }
 
             // Task content
             VStack(alignment: .leading, spacing: 4) {
                 Text(task.title)
-                    .font(isParent ? .montserrat(.body) : .montserrat(.subheadline))
+                    .font(isParent ? .sf(.body) : .sf(.subheadline))
                     .strikethrough(task.isCompleted)
                     .foregroundColor(task.isCompleted ? .secondary : .primary)
 
@@ -293,7 +293,7 @@ struct FlatTaskRow: View {
                 if isParent, let subtasks = viewModel.subtasksMap[task.id], !subtasks.isEmpty {
                     let completedCount = subtasks.filter { $0.isCompleted }.count
                     Text("\(completedCount)/\(subtasks.count) subtasks")
-                        .font(.montserrat(.caption))
+                        .font(.sf(.caption))
                         .foregroundColor(.secondary)
                 }
             }
@@ -312,7 +312,7 @@ struct FlatTaskRow: View {
                     }
                 } label: {
                     Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
-                        .font(isParent ? .montserrat(.title3) : .montserrat(.subheadline))
+                        .font(isParent ? .sf(.title3) : .sf(.subheadline))
                         .foregroundColor(task.isCompleted ? Color(red: 0x61/255.0, green: 0x10/255.0, blue: 0xF8/255.0).opacity(0.6) : .gray)
                 }
                 .buttonStyle(.plain)
@@ -404,7 +404,7 @@ struct ExpandableTaskRow: View {
             // Edit mode: selection circle (uncompleted tasks only)
             if isEditMode && !task.isCompleted {
                 Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                    .font(.montserrat(.title3))
+                    .font(.sf(.title3))
                     .foregroundColor(isSelected ? .blue : .gray)
             }
 
@@ -418,7 +418,7 @@ struct ExpandableTaskRow: View {
                 if let subtasks = viewModel.subtasksMap[task.id], !subtasks.isEmpty {
                     let completedCount = subtasks.filter { $0.isCompleted }.count
                     Text("\(completedCount)/\(subtasks.count) subtasks")
-                        .font(.montserrat(.caption))
+                        .font(.sf(.caption))
                         .foregroundColor(.secondary)
                 }
             }
@@ -433,7 +433,7 @@ struct ExpandableTaskRow: View {
                     }
                 } label: {
                     Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
-                        .font(.montserrat(.title3))
+                        .font(.sf(.title3))
                         .foregroundColor(task.isCompleted ? Color(red: 0x61/255.0, green: 0x10/255.0, blue: 0xF8/255.0).opacity(0.6) : .gray)
                 }
                 .buttonStyle(.plain)
@@ -513,7 +513,7 @@ struct SubtaskRow: View {
     var body: some View {
         HStack(spacing: 12) {
             Text(subtask.title)
-                .font(.montserrat(.subheadline))
+                .font(.sf(.subheadline))
                 .strikethrough(subtask.isCompleted)
                 .foregroundColor(subtask.isCompleted ? .secondary : .primary)
 
@@ -527,7 +527,7 @@ struct SubtaskRow: View {
                 }
             } label: {
                 Image(systemName: subtask.isCompleted ? "checkmark.circle.fill" : "circle")
-                    .font(.montserrat(.subheadline))
+                    .font(.sf(.subheadline))
                     .foregroundColor(subtask.isCompleted ? Color(red: 0x61/255.0, green: 0x10/255.0, blue: 0xF8/255.0).opacity(0.6) : .gray)
             }
             .buttonStyle(.plain)
@@ -555,7 +555,7 @@ struct InlineAddSubtaskRow: View {
         HStack(spacing: 12) {
             if isEditing {
                 TextField("Subtask title", text: $newSubtaskTitle)
-                    .font(.montserrat(.subheadline))
+                    .font(.sf(.subheadline))
                     .focused($isFocused)
                     .onSubmit {
                         submitSubtask()
@@ -564,7 +564,7 @@ struct InlineAddSubtaskRow: View {
                 Spacer()
 
                 Image(systemName: "circle")
-                    .font(.montserrat(.subheadline))
+                    .font(.sf(.subheadline))
                     .foregroundColor(.gray.opacity(0.5))
             } else {
                 Button {
@@ -573,9 +573,9 @@ struct InlineAddSubtaskRow: View {
                 } label: {
                     HStack(spacing: 8) {
                         Image(systemName: "plus")
-                            .font(.montserrat(.subheadline))
+                            .font(.sf(.subheadline))
                         Text("Add subtask")
-                            .font(.montserrat(.subheadline))
+                            .font(.sf(.subheadline))
                     }
                     .foregroundColor(.secondary)
                 }

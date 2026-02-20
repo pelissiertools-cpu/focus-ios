@@ -81,7 +81,7 @@ struct DateNavigator: View {
                     HStack {
                         Button(action: onProfileTap) {
                             Image(systemName: "person")
-                                .font(.montserrat(.body, weight: .medium))
+                                .font(.sf(.body, weight: .medium))
                                 .foregroundColor(.primary)
                                 .frame(width: 36, height: 36)
                                 .glassEffect(.regular.interactive(), in: .circle)
@@ -102,7 +102,7 @@ struct DateNavigator: View {
                             }
                         } label: {
                             Text(LocalizedStringKey(timeframe.displayName))
-                                .font(.montserrat(.subheadline, weight: selectedTimeframe == timeframe ? .semibold : .medium))
+                                .font(.sf(.subheadline, weight: selectedTimeframe == timeframe ? .semibold : .medium))
                                 .foregroundStyle(selectedTimeframe == timeframe ? .primary : .secondary)
                                 .padding(.horizontal, 12)
                                 .padding(.vertical, 8)

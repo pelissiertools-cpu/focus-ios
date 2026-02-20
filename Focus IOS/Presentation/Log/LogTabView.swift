@@ -151,7 +151,7 @@ struct LogTabView: View {
                                 }
                             } label: {
                                 Text(LocalizedStringKey(key))
-                                    .font(.montserrat(.subheadline, weight: selectedTab == index ? .semibold : .medium))
+                                    .font(.sf(.subheadline, weight: selectedTab == index ? .semibold : .medium))
                                     .foregroundStyle(selectedTab == index ? .primary : .secondary)
                                     .padding(.horizontal, 16)
                                     .padding(.vertical, 8)
@@ -266,7 +266,7 @@ struct LogTabView: View {
             }
         } label: {
             Image(systemName: "magnifyingglass")
-                .font(.montserrat(.body, weight: .medium))
+                .font(.sf(.body, weight: .medium))
                 .foregroundColor(.secondary)
                 .frame(width: 36, height: 36)
                 .glassEffect(.regular.interactive(), in: .circle)
@@ -278,7 +278,7 @@ struct LogTabView: View {
             showSettings = true
         } label: {
             Image(systemName: "person")
-                .font(.montserrat(.body, weight: .medium))
+                .font(.sf(.body, weight: .medium))
                 .foregroundColor(.primary)
                 .frame(width: 36, height: 36)
                 .glassEffect(.regular.interactive(), in: .circle)
@@ -313,7 +313,7 @@ struct LogTabView: View {
                 }
             } label: {
                 Image(systemName: "xmark")
-                    .font(.montserrat(.body, weight: .medium))
+                    .font(.sf(.body, weight: .medium))
                     .foregroundColor(.secondary)
                     .frame(width: 30, height: 30)
                     .background(Color(.systemGray5))
@@ -450,7 +450,7 @@ struct LogTabView: View {
                     action()
                 } label: {
                     Image(systemName: "plus")
-                        .font(.montserrat(.title2, weight: .semibold))
+                        .font(.sf(.title2, weight: .semibold))
                         .foregroundColor(.white)
                         .frame(width: 56, height: 56)
                         .background(Color(red: 40/255, green: 45/255, blue: 46/255), in: Circle())
@@ -468,7 +468,7 @@ struct LogTabView: View {
         VStack(spacing: 0) {
             // Task title row
             TextField("Create a new task", text: $addTaskTitle)
-                .font(.montserrat(.title3))
+                .font(.sf(.title3))
                 .textFieldStyle(.plain)
                 .focused($isAddTaskFieldFocused)
                 .submitLabel(.return)
@@ -488,11 +488,11 @@ struct LogTabView: View {
                     ForEach(addTaskSubtasks) { subtask in
                         HStack(spacing: 8) {
                             Image(systemName: "circle")
-                                .font(.montserrat(.caption2))
+                                .font(.sf(.caption2))
                                 .foregroundColor(.secondary.opacity(0.5))
 
                             TextField("Subtask", text: subtaskBinding(for: subtask.id), axis: .vertical)
-                                .font(.montserrat(.body))
+                                .font(.sf(.body))
                                 .textFieldStyle(.plain)
                                 .focused($focusedSubtaskId, equals: subtask.id)
                                 .lineLimit(1)
@@ -509,7 +509,7 @@ struct LogTabView: View {
                                 removeSubtask(id: subtask.id)
                             } label: {
                                 Image(systemName: "xmark.circle.fill")
-                                    .font(.montserrat(.caption))
+                                    .font(.sf(.caption))
                                     .foregroundColor(.secondary)
                             }
                             .buttonStyle(.plain)
@@ -555,9 +555,9 @@ struct LogTabView: View {
                 } label: {
                     HStack(spacing: 4) {
                         Image(systemName: "plus")
-                            .font(.montserrat(.caption))
+                            .font(.sf(.caption))
                         Text("Sub-task")
-                            .font(.montserrat(.caption))
+                            .font(.sf(.caption))
                     }
                     .foregroundColor(.white)
                     .padding(.horizontal, 10)
@@ -593,9 +593,9 @@ struct LogTabView: View {
                 } label: {
                     HStack(spacing: 4) {
                         Image(systemName: "folder")
-                            .font(.montserrat(.caption))
+                            .font(.sf(.caption))
                         Text(LocalizedStringKey(categoryPillLabel))
-                            .font(.montserrat(.caption))
+                            .font(.sf(.caption))
                     }
                     .foregroundColor(.white)
                     .padding(.horizontal, 10)
@@ -611,9 +611,9 @@ struct LogTabView: View {
                 } label: {
                     HStack(spacing: 4) {
                         Image(systemName: "arrow.right.circle")
-                            .font(.montserrat(.caption))
+                            .font(.sf(.caption))
                         Text("Commit")
-                            .font(.montserrat(.caption))
+                            .font(.sf(.caption))
                     }
                     .foregroundColor(.white)
                     .padding(.horizontal, 10)
@@ -638,10 +638,10 @@ struct LogTabView: View {
                                 .tint(.primary)
                         } else {
                             Image(systemName: hasGeneratedBreakdown ? "arrow.clockwise" : "sparkles")
-                                .font(.montserrat(.body, weight: .semibold))
+                                .font(.sf(.body, weight: .semibold))
                         }
                         Text(LocalizedStringKey(hasGeneratedBreakdown ? "Regenerate" : "Break Down task"))
-                            .font(.montserrat(.subheadline, weight: .medium))
+                            .font(.sf(.subheadline, weight: .medium))
                     }
                     .foregroundColor(.primary)
                     .frame(maxWidth: .infinity)
@@ -678,7 +678,7 @@ struct LogTabView: View {
                     saveLogTask()
                 } label: {
                     Image(systemName: "checkmark")
-                        .font(.montserrat(.body, weight: .semibold))
+                        .font(.sf(.body, weight: .semibold))
                         .foregroundColor(isAddTaskTitleEmpty ? .secondary : .white)
                         .frame(width: 36, height: 36)
                         .background(
@@ -704,7 +704,7 @@ struct LogTabView: View {
         VStack(spacing: 0) {
             // List title row
             TextField("Create a new list", text: $addListTitle)
-                .font(.montserrat(.title3))
+                .font(.sf(.title3))
                 .textFieldStyle(.plain)
                 .focused($isAddListFieldFocused)
                 .submitLabel(.return)
@@ -724,11 +724,11 @@ struct LogTabView: View {
                     ForEach(addListItems) { item in
                         HStack(spacing: 8) {
                             Image(systemName: "circle")
-                                .font(.montserrat(.caption2))
+                                .font(.sf(.caption2))
                                 .foregroundColor(.secondary.opacity(0.5))
 
                             TextField("Item", text: listItemBinding(for: item.id), axis: .vertical)
-                                .font(.montserrat(.body))
+                                .font(.sf(.body))
                                 .textFieldStyle(.plain)
                                 .focused($focusedListItemId, equals: item.id)
                                 .lineLimit(1)
@@ -745,7 +745,7 @@ struct LogTabView: View {
                                 removeListItem(id: item.id)
                             } label: {
                                 Image(systemName: "xmark.circle.fill")
-                                    .font(.montserrat(.caption))
+                                    .font(.sf(.caption))
                                     .foregroundColor(.secondary)
                             }
                             .buttonStyle(.plain)
@@ -788,9 +788,9 @@ struct LogTabView: View {
                 } label: {
                     HStack(spacing: 4) {
                         Image(systemName: "plus")
-                            .font(.montserrat(.caption))
+                            .font(.sf(.caption))
                         Text("Item")
-                            .font(.montserrat(.caption))
+                            .font(.sf(.caption))
                     }
                     .foregroundColor(.white)
                     .padding(.horizontal, 10)
@@ -826,9 +826,9 @@ struct LogTabView: View {
                 } label: {
                     HStack(spacing: 4) {
                         Image(systemName: "folder")
-                            .font(.montserrat(.caption))
+                            .font(.sf(.caption))
                         Text(LocalizedStringKey(listCategoryPillLabel))
-                            .font(.montserrat(.caption))
+                            .font(.sf(.caption))
                     }
                     .foregroundColor(.white)
                     .padding(.horizontal, 10)
@@ -844,9 +844,9 @@ struct LogTabView: View {
                 } label: {
                     HStack(spacing: 4) {
                         Image(systemName: "arrow.right.circle")
-                            .font(.montserrat(.caption))
+                            .font(.sf(.caption))
                         Text("Commit")
-                            .font(.montserrat(.caption))
+                            .font(.sf(.caption))
                     }
                     .foregroundColor(.white)
                     .padding(.horizontal, 10)
@@ -860,7 +860,7 @@ struct LogTabView: View {
                     saveLogList()
                 } label: {
                     Image(systemName: "checkmark")
-                        .font(.montserrat(.body, weight: .semibold))
+                        .font(.sf(.body, weight: .semibold))
                         .foregroundColor(isAddListTitleEmpty ? .secondary : .white)
                         .frame(width: 36, height: 36)
                         .background(
@@ -884,7 +884,7 @@ struct LogTabView: View {
         VStack(spacing: 0) {
             // Project title row
             TextField("Create a new project.", text: $addProjectTitle)
-                .font(.montserrat(.title3))
+                .font(.sf(.title3))
                 .textFieldStyle(.plain)
                 .focused($isAddProjectFieldFocused)
                 .submitLabel(.return)
@@ -944,9 +944,9 @@ struct LogTabView: View {
                 } label: {
                     HStack(spacing: 4) {
                         Image(systemName: "plus")
-                            .font(.montserrat(.caption))
+                            .font(.sf(.caption))
                         Text("Task")
-                            .font(.montserrat(.caption))
+                            .font(.sf(.caption))
                     }
                     .foregroundColor(.white)
                     .padding(.horizontal, 10)
@@ -982,9 +982,9 @@ struct LogTabView: View {
                 } label: {
                     HStack(spacing: 4) {
                         Image(systemName: "folder")
-                            .font(.montserrat(.caption))
+                            .font(.sf(.caption))
                         Text(LocalizedStringKey(projectCategoryPillLabel))
-                            .font(.montserrat(.caption))
+                            .font(.sf(.caption))
                     }
                     .foregroundColor(.white)
                     .padding(.horizontal, 10)
@@ -1000,9 +1000,9 @@ struct LogTabView: View {
                 } label: {
                     HStack(spacing: 4) {
                         Image(systemName: "arrow.right.circle")
-                            .font(.montserrat(.caption))
+                            .font(.sf(.caption))
                         Text("Commit")
-                            .font(.montserrat(.caption))
+                            .font(.sf(.caption))
                     }
                     .foregroundColor(.white)
                     .padding(.horizontal, 10)
@@ -1016,7 +1016,7 @@ struct LogTabView: View {
                     saveLogProject()
                 } label: {
                     Image(systemName: "checkmark")
-                        .font(.montserrat(.body, weight: .semibold))
+                        .font(.sf(.body, weight: .semibold))
                         .foregroundColor(isAddProjectTitleEmpty ? .secondary : .white)
                         .frame(width: 36, height: 36)
                         .background(
@@ -1041,11 +1041,11 @@ struct LogTabView: View {
         // Task row
         HStack(spacing: 8) {
             Image(systemName: "circle")
-                .font(.montserrat(.caption2))
+                .font(.sf(.caption2))
                 .foregroundColor(.secondary.opacity(0.5))
 
             TextField("Task", text: projectTaskBinding(for: task.id), axis: .vertical)
-                .font(.montserrat(.title3))
+                .font(.sf(.title3))
                 .textFieldStyle(.plain)
                 .focused($focusedProjectTaskId, equals: task.id)
                 .lineLimit(1)
@@ -1062,7 +1062,7 @@ struct LogTabView: View {
                 removeProjectTask(id: task.id)
             } label: {
                 Image(systemName: "xmark.circle.fill")
-                    .font(.montserrat(.caption))
+                    .font(.sf(.caption))
                     .foregroundColor(.secondary)
             }
             .buttonStyle(.plain)
@@ -1072,11 +1072,11 @@ struct LogTabView: View {
         ForEach(task.subtasks) { subtask in
             HStack(spacing: 8) {
                 Image(systemName: "circle")
-                    .font(.montserrat(.caption2))
+                    .font(.sf(.caption2))
                     .foregroundColor(.secondary.opacity(0.5))
 
                 TextField("Sub-task", text: projectSubtaskBinding(forSubtask: subtask.id, inTask: task.id), axis: .vertical)
-                    .font(.montserrat(.body))
+                    .font(.sf(.body))
                     .textFieldStyle(.plain)
                     .focused($focusedProjectTaskId, equals: subtask.id)
                     .lineLimit(1)
@@ -1094,7 +1094,7 @@ struct LogTabView: View {
                     removeProjectSubtask(id: subtask.id, fromTask: task.id)
                 } label: {
                     Image(systemName: "xmark.circle.fill")
-                        .font(.montserrat(.caption))
+                        .font(.sf(.caption))
                         .foregroundColor(.secondary)
                 }
                 .buttonStyle(.plain)
@@ -1111,9 +1111,9 @@ struct LogTabView: View {
         } label: {
             HStack(spacing: 4) {
                 Image(systemName: "plus")
-                    .font(.montserrat(.subheadline))
+                    .font(.sf(.subheadline))
                 Text("Sub-task")
-                    .font(.montserrat(.subheadline))
+                    .font(.sf(.subheadline))
             }
             .foregroundColor(.secondary)
             .padding(.vertical, 4)

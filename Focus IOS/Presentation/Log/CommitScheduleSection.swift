@@ -17,7 +17,7 @@ struct CommitScheduleSection: View {
         VStack(alignment: .leading, spacing: 12) {
             Toggle(isOn: $commitAfterCreate.animation(.easeInOut(duration: 0.2))) {
                 Label("Commit", systemImage: "arrow.right.circle")
-                    .font(.montserrat(.subheadline, weight: .medium))
+                    .font(.sf(.subheadline, weight: .medium))
             }
             .tint(.blue)
 
@@ -38,7 +38,7 @@ struct CommitScheduleSection: View {
                         Image(systemName: "clock")
                             .foregroundColor(.blue)
                         Text("Select a time")
-                            .font(.montserrat(.subheadline, weight: .medium))
+                            .font(.sf(.subheadline, weight: .medium))
                     }
                 }
                 .tint(.blue)

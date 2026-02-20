@@ -180,14 +180,9 @@ struct FocusTabView: View {
                 }
             }
             .toolbar(showScheduleDrawer && viewMode == .schedule ? .hidden : .visible, for: .tabBar)
-            .background(
-                NavigationLink(isActive: $showSettings) {
-                    SettingsView()
-                } label: {
-                    EmptyView()
-                }
-                .hidden()
-            )
+            .navigationDestination(isPresented: $showSettings) {
+                SettingsView()
+            }
             .animation(.easeInOut(duration: 0.25), value: showScheduleDrawer)
             .animation(.easeInOut(duration: 0.25), value: viewModel.timelineVM.isDrawerRetractedForDrag)
             .onChange(of: selectedTab) {

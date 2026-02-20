@@ -42,7 +42,7 @@ struct ScheduleDrawer: View {
                 f.dateFormat = "MMM d"
                 return f.string(from: viewModel.selectedDate)
             }()
-            (Text(LocalizedStringKey("Today")) + Text(", \(formatted)"))
+            Text("Today, \(formatted)")
         case .all:
             Text(LocalizedStringKey("All Tasks"))
         case .category(let id):

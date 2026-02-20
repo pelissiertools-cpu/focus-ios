@@ -115,14 +115,9 @@ struct LogTabView: View {
                     dismissAddList: dismissAddList,
                     dismissAddProject: dismissAddProject
                 )
-                .background(
-                    NavigationLink(isActive: $showSettings) {
-                        SettingsView()
-                    } label: {
-                        EmptyView()
-                    }
-                    .hidden()
-                )
+                .navigationDestination(isPresented: $showSettings) {
+                    SettingsView()
+                }
                 .onChange(of: mainTab) {
                     showSettings = false
                 }

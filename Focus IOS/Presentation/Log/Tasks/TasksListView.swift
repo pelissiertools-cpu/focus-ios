@@ -130,10 +130,17 @@ struct TasksListView: View {
                     .listRowBackground(Color(.systemBackground))
 
                 case .addSubtaskRow(let parentId):
-                    InlineAddSubtaskRow(parentId: parentId, viewModel: viewModel, isAnyAddFieldActive: $isInlineAddFocused)
-                        .moveDisabled(true)
-                        .listRowInsets(EdgeInsets(top: 0, leading: 32, bottom: 0, trailing: 32))
-                        .listRowBackground(Color(.systemBackground))
+                    InlineAddRow(
+                        placeholder: "Subtask title",
+                        buttonLabel: "Add subtask",
+                        onSubmit: { title in await viewModel.createSubtask(title: title, parentId: parentId) },
+                        isAnyAddFieldActive: $isInlineAddFocused,
+                        verticalPadding: 12
+                    )
+                    .padding(.leading, 32)
+                    .moveDisabled(true)
+                    .listRowInsets(EdgeInsets(top: 0, leading: 32, bottom: 0, trailing: 32))
+                    .listRowBackground(Color(.systemBackground))
                 }
             }
             .onMove { from, to in
@@ -231,7 +238,14 @@ struct LogDonePillView: View {
 
                         if viewModel.isExpanded(task.id) {
                             SubtasksList(parentTask: task, viewModel: viewModel)
-                            InlineAddSubtaskRow(parentId: task.id, viewModel: viewModel, isAnyAddFieldActive: $isInlineAddFocused)
+                            InlineAddRow(
+                                placeholder: "Subtask title",
+                                buttonLabel: "Add subtask",
+                                onSubmit: { title in await viewModel.createSubtask(title: title, parentId: task.id) },
+                                isAnyAddFieldActive: $isInlineAddFocused,
+                                verticalPadding: 12
+                            )
+                            .padding(.leading, 32)
                         }
                     }
                 }
@@ -527,88 +541,6 @@ struct SubtaskRow: View {
             viewModel.selectedTaskForDetails = subtask
         }
     }
-}
-
-// MARK: - Inline Add Subtask Row
-
-struct InlineAddSubtaskRow: View {
-    let parentId: UUID
-    @ObservedObject var viewModel: TaskListViewModel
-    @Binding var isAnyAddFieldActive: Bool
-    @State private var newSubtaskTitle = ""
-    @State private var isEditing = false
-    @State private var isSubmitting = false
-    @FocusState private var isFocused: Bool
-
-    var body: some View {
-        HStack(spacing: 12) {
-            if isEditing {
-                TextField("Subtask title", text: $newSubtaskTitle)
-                    .font(.sf(.subheadline))
-                    .focused($isFocused)
-                    .onSubmit {
-                        submitSubtask()
-                    }
-
-                Spacer()
-
-                Image(systemName: "circle")
-                    .font(.sf(.subheadline))
-                    .foregroundColor(.gray.opacity(0.5))
-            } else {
-                Button {
-                    isEditing = true
-                    isFocused = true
-                } label: {
-                    HStack(spacing: 8) {
-                        Image(systemName: "plus")
-                            .font(.sf(.subheadline))
-                        Text("Add subtask")
-                            .font(.sf(.subheadline))
-                    }
-                    .foregroundColor(.secondary)
-                }
-                .buttonStyle(.plain)
-
-                Spacer()
-            }
-        }
-        .padding(.vertical, 12)
-        .padding(.leading, 32)
-        .onChange(of: isFocused) { _, focused in
-            if focused {
-                isAnyAddFieldActive = true
-            } else if !isSubmitting {
-                isAnyAddFieldActive = false
-                isEditing = false
-                newSubtaskTitle = ""
-            }
-        }
-    }
-
-    private func submitSubtask() {
-        let title = newSubtaskTitle.trimmingCharacters(in: .whitespaces)
-        guard !title.isEmpty else {
-            isEditing = false
-            return
-        }
-
-        isSubmitting = true
-        _Concurrency.Task {
-            await viewModel.createSubtask(title: title, parentId: parentId)
-            newSubtaskTitle = ""
-            isFocused = true
-            isSubmitting = false
-        }
-    }
-}
-
-// MARK: - Draft Subtask Entry
-
-struct DraftSubtaskEntry: Identifiable {
-    let id = UUID()
-    var title: String = ""
-    var isAISuggested: Bool = false
 }
 
 #Preview {

@@ -133,10 +133,17 @@ struct ListsView: View {
                         .listRowBackground(Color(.systemBackground))
 
                 case .addItemRow(let listId):
-                    InlineAddItemRow(listId: listId, viewModel: viewModel, isAnyAddFieldActive: $isInlineAddFocused)
-                        .moveDisabled(true)
-                        .listRowInsets(EdgeInsets(top: 0, leading: 32, bottom: 0, trailing: 32))
-                        .listRowBackground(Color(.systemBackground))
+                    InlineAddRow(
+                        placeholder: "Item title",
+                        buttonLabel: "Add items",
+                        onSubmit: { title in await viewModel.createItem(title: title, listId: listId) },
+                        isAnyAddFieldActive: $isInlineAddFocused,
+                        verticalPadding: 12
+                    )
+                    .padding(.leading, 32)
+                    .moveDisabled(true)
+                    .listRowInsets(EdgeInsets(top: 0, leading: 32, bottom: 0, trailing: 32))
+                    .listRowBackground(Color(.systemBackground))
                 }
             }
             .onMove { from, to in
@@ -375,80 +382,6 @@ struct ListDoneSection: View {
             } message: {
                 Text("This will permanently delete \(completedItems.count) completed item\(completedItems.count == 1 ? "" : "s").")
             }
-        }
-    }
-}
-
-// MARK: - Inline Add Item Row
-
-struct InlineAddItemRow: View {
-    let listId: UUID
-    @ObservedObject var viewModel: ListsViewModel
-    @Binding var isAnyAddFieldActive: Bool
-    @State private var newItemTitle = ""
-    @State private var isEditing = false
-    @State private var isSubmitting = false
-    @FocusState private var isFocused: Bool
-
-    var body: some View {
-        HStack(spacing: 12) {
-            if isEditing {
-                TextField("Item title", text: $newItemTitle)
-                    .font(.sf(.subheadline))
-                    .focused($isFocused)
-                    .onSubmit {
-                        submitItem()
-                    }
-
-                Spacer()
-
-                Image(systemName: "circle")
-                    .font(.sf(.subheadline))
-                    .foregroundColor(.gray.opacity(0.5))
-            } else {
-                Button {
-                    isEditing = true
-                    isFocused = true
-                } label: {
-                    HStack(spacing: 8) {
-                        Image(systemName: "plus")
-                            .font(.sf(.subheadline))
-                        Text("Add items")
-                            .font(.sf(.subheadline))
-                    }
-                    .foregroundColor(.secondary)
-                }
-                .buttonStyle(.plain)
-
-                Spacer()
-            }
-        }
-        .padding(.vertical, 12)
-        .padding(.leading, 32)
-        .onChange(of: isFocused) { _, focused in
-            if focused {
-                isAnyAddFieldActive = true
-            } else if !isSubmitting {
-                isAnyAddFieldActive = false
-                isEditing = false
-                newItemTitle = ""
-            }
-        }
-    }
-
-    private func submitItem() {
-        let title = newItemTitle.trimmingCharacters(in: .whitespaces)
-        guard !title.isEmpty else {
-            isEditing = false
-            return
-        }
-
-        isSubmitting = true
-        _Concurrency.Task {
-            await viewModel.createItem(title: title, listId: listId)
-            newItemTitle = ""
-            isFocused = true
-            isSubmitting = false
         }
     }
 }

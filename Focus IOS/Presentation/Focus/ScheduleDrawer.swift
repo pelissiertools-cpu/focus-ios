@@ -250,7 +250,12 @@ struct ScheduleDrawer: View {
                                 }
                             }
                             Divider()
-                            FocusInlineAddSubtaskRow(parentId: task.id, viewModel: viewModel)
+                            InlineAddRow(
+                                placeholder: "Subtask",
+                                buttonLabel: "Add subtask",
+                                onSubmit: { title in await viewModel.createSubtask(title: title, parentId: task.id) },
+                                verticalPadding: 6
+                            )
                         }
                         .padding(.leading, 32)
                         .padding(.trailing, 16)

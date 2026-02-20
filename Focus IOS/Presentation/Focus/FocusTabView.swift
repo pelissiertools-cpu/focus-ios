@@ -359,9 +359,14 @@ struct FocusTabView: View {
                         .alignmentGuide(.listRowSeparatorTrailing) { d in d[.trailing] }
 
                 case .addSubtaskRow(let parentId, _):
-                    FocusInlineAddSubtaskRow(parentId: parentId, viewModel: viewModel)
-                        .padding(.leading, 32)
-                        .padding(.trailing, 12)
+                    InlineAddRow(
+                        placeholder: "Subtask",
+                        buttonLabel: "Add subtask",
+                        onSubmit: { title in await viewModel.createSubtask(title: title, parentId: parentId) },
+                        verticalPadding: 6
+                    )
+                    .padding(.leading, 32)
+                    .padding(.trailing, 12)
                         .listRowBackground(Color.clear)
                         .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
                         .listRowSeparator(.hidden)
@@ -503,47 +508,11 @@ struct FocusTabView: View {
                 .padding(.bottom, 10)
 
             // Sub-tasks (expand downward when present)
-            if !addTaskSubtasks.isEmpty {
-                Divider()
-                    .padding(.horizontal, 14)
-
-                VStack(spacing: 14) {
-                    ForEach(addTaskSubtasks) { subtask in
-                        HStack(spacing: 8) {
-                            Image(systemName: "circle")
-                                .font(.sf(.caption2))
-                                .foregroundColor(.secondary.opacity(0.5))
-
-                            TextField("Subtask", text: subtaskBinding(for: subtask.id), axis: .vertical)
-                                .font(.sf(.body))
-                                .textFieldStyle(.plain)
-                                .focused($focusedSubtaskId, equals: subtask.id)
-                                .lineLimit(1)
-                                .onChange(of: subtaskBinding(for: subtask.id).wrappedValue) { _, newValue in
-                                    if newValue.contains("\n") {
-                                        // Strip the newline and add a new subtask
-                                        if let idx = addTaskSubtasks.firstIndex(where: { $0.id == subtask.id }) {
-                                            addTaskSubtasks[idx].title = newValue.replacingOccurrences(of: "\n", with: "")
-                                        }
-                                        addNewSubtask()
-                                    }
-                                }
-
-                            Button {
-                                removeSubtask(id: subtask.id)
-                            } label: {
-                                Image(systemName: "xmark.circle.fill")
-                                    .font(.sf(.caption))
-                                    .foregroundColor(.secondary)
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
-                }
-                .padding(.horizontal, 14)
-                .padding(.top, 10)
-                .padding(.bottom, 18)
-            }
+            DraftSubtaskListEditor(
+                subtasks: $addTaskSubtasks,
+                focusedSubtaskId: $focusedSubtaskId,
+                onAddNew: { addNewSubtask() }
+            )
 
             // Add sub-task button row
             HStack(spacing: 8) {
@@ -570,50 +539,12 @@ struct FocusTabView: View {
 
             // AI Breakdown + Submit row
             HStack(spacing: 10) {
-                // AI Breakdown button
-                Button {
-                    generateBreakdown()
-                } label: {
-                    HStack(spacing: 8) {
-                        if isGeneratingBreakdown {
-                            ProgressView()
-                                .tint(.primary)
-                        } else {
-                            Image(systemName: hasGeneratedBreakdown ? "arrow.clockwise" : "sparkles")
-                                .font(.sf(.body, weight: .semibold))
-                        }
-                        Text(LocalizedStringKey(hasGeneratedBreakdown ? "Regenerate" : "Break Down task"))
-                            .font(.sf(.subheadline, weight: .medium))
-                    }
-                    .foregroundColor(.primary)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
-                    .background {
-                        if !addTaskTitle.trimmingCharacters(in: .whitespaces).isEmpty {
-                            // Blue glow behind the button
-                            Capsule()
-                                .stroke(
-                                    AngularGradient(
-                                        colors: [
-                                            Color.commitGradientDark,
-                                            Color.commitGradientLight,
-                                            Color.commitGradientDark,
-                                        ],
-                                        center: .center
-                                    ),
-                                    lineWidth: 2.5
-                                )
-                                .blur(radius: 6)
-                        }
-                    }
-                    .overlay {
-                        Capsule()
-                            .stroke(.white.opacity(0.5), lineWidth: 1.5)
-                    }
-                    .glassEffect(.regular.interactive(), in: .capsule)
-                }
-                .buttonStyle(.plain)
-                .disabled(addTaskTitle.trimmingCharacters(in: .whitespaces).isEmpty || isGeneratingBreakdown)
+                AIBreakdownButton(
+                    isEnabled: !addTaskTitle.trimmingCharacters(in: .whitespaces).isEmpty,
+                    isGenerating: isGeneratingBreakdown,
+                    hasGenerated: hasGeneratedBreakdown,
+                    action: { generateBreakdown() }
+                )
 
                 // Submit button
                 Button {
@@ -666,17 +597,6 @@ struct FocusTabView: View {
         }
     }
 
-    private func subtaskBinding(for id: UUID) -> Binding<String> {
-        Binding(
-            get: { addTaskSubtasks.first(where: { $0.id == id })?.title ?? "" },
-            set: { newValue in
-                if let idx = addTaskSubtasks.firstIndex(where: { $0.id == id }) {
-                    addTaskSubtasks[idx].title = newValue
-                }
-            }
-        )
-    }
-
     private func addNewSubtask() {
         // Hold focus on title to prevent keyboard drop during transition
         isAddTaskFieldFocused = true
@@ -687,16 +607,6 @@ struct FocusTabView: View {
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
             focusedSubtaskId = newEntry.id
-        }
-    }
-
-    private func removeSubtask(id: UUID) {
-        // Move focus to title — SwiftUI auto-clears subtask focus
-        isAddTaskFieldFocused = true
-
-        // Remove the subtask entry
-        withAnimation(.easeInOut(duration: 0.15)) {
-            addTaskSubtasks.removeAll { $0.id == id }
         }
     }
 
@@ -1408,73 +1318,6 @@ struct FocusSubtaskRow: View {
                     await viewModel.deleteSubtask(subtask, parentId: parentId)
                 }
             }
-        }
-    }
-}
-
-// MARK: - Inline Add Subtask Row
-
-struct FocusInlineAddSubtaskRow: View {
-    let parentId: UUID
-    @ObservedObject var viewModel: FocusTabViewModel
-    @State private var newSubtaskTitle = ""
-    @State private var isEditing = false
-    @FocusState private var isFocused: Bool
-
-    var body: some View {
-        HStack(spacing: 12) {
-            if isEditing {
-                TextField("Subtask", text: $newSubtaskTitle)
-                    .font(.sf(.subheadline))
-                    .focused($isFocused)
-                    .onSubmit {
-                        submitSubtask()
-                    }
-                    .onChange(of: isFocused) { _, focused in
-                        if !focused {
-                            newSubtaskTitle = ""
-                            isEditing = false
-                        }
-                    }
-
-                Spacer()
-
-                Image(systemName: "circle")
-                    .font(.sf(.subheadline))
-                    .foregroundColor(.gray.opacity(0.5))
-                    .frame(width: 22, alignment: .center)
-            } else {
-                Button {
-                    isEditing = true
-                    isFocused = true
-                } label: {
-                    HStack(spacing: 8) {
-                        Image(systemName: "plus")
-                            .font(.sf(.subheadline))
-                        Text("Add subtask")
-                            .font(.sf(.subheadline))
-                    }
-                    .foregroundColor(.secondary)
-                }
-                .buttonStyle(.plain)
-
-                Spacer()
-            }
-        }
-        .padding(.vertical, 6)
-    }
-
-    private func submitSubtask() {
-        let title = newSubtaskTitle.trimmingCharacters(in: .whitespaces)
-        guard !title.isEmpty else {
-            isEditing = false
-            return
-        }
-
-        Task {
-            await viewModel.createSubtask(title: title, parentId: parentId)
-            newSubtaskTitle = ""
-            isFocused = true
         }
     }
 }

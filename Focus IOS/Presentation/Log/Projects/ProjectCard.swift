@@ -155,10 +155,12 @@ struct ProjectCard: View {
                         .foregroundColor(.secondary)
                         .padding()
 
-                    InlineAddProjectTaskRow(
-                        projectId: project.id,
-                        viewModel: viewModel,
-                        isAnyAddFieldActive: $isInlineAddFocused
+                    InlineAddRow(
+                        placeholder: "Task title",
+                        buttonLabel: "Add task",
+                        onSubmit: { title in await viewModel.createProjectTask(title: title, projectId: project.id) },
+                        isAnyAddFieldActive: $isInlineAddFocused,
+                        verticalPadding: 8
                     )
                     .padding(.horizontal, 16)
                 } else {
@@ -188,10 +190,13 @@ struct ProjectCard: View {
                                 .listRowSeparator(.visible)
 
                             case .addSubtaskRow(let parentId):
-                                InlineAddSubtaskForProjectRow(
-                                    parentId: parentId,
-                                    viewModel: viewModel,
-                                    isAnyAddFieldActive: $isInlineAddFocused
+                                InlineAddRow(
+                                    placeholder: "Subtask title",
+                                    buttonLabel: "Add subtask",
+                                    onSubmit: { title in await viewModel.createSubtask(title: title, parentId: parentId) },
+                                    isAnyAddFieldActive: $isInlineAddFocused,
+                                    iconFont: .sf(.caption),
+                                    verticalPadding: 6
                                 )
                                 .padding(.leading, 32)
                                 .moveDisabled(true)
@@ -200,10 +205,12 @@ struct ProjectCard: View {
                                 .listRowSeparator(.hidden)
 
                             case .addTaskRow:
-                                InlineAddProjectTaskRow(
-                                    projectId: project.id,
-                                    viewModel: viewModel,
-                                    isAnyAddFieldActive: $isInlineAddFocused
+                                InlineAddRow(
+                                    placeholder: "Task title",
+                                    buttonLabel: "Add task",
+                                    onSubmit: { title in await viewModel.createProjectTask(title: title, projectId: project.id) },
+                                    isAnyAddFieldActive: $isInlineAddFocused,
+                                    verticalPadding: 8
                                 )
                                 .moveDisabled(true)
                                 .listRowInsets(EdgeInsets(top: 0, leading: 32, bottom: 0, trailing: 32))
@@ -354,152 +361,6 @@ struct ProjectSubtaskRow: View {
                     }
                 }
             }
-        }
-    }
-}
-
-// MARK: - Inline Add Project Task Row
-
-struct InlineAddProjectTaskRow: View {
-    let projectId: UUID
-    @ObservedObject var viewModel: ProjectsViewModel
-    @Binding var isAnyAddFieldActive: Bool
-    @State private var newTaskTitle = ""
-    @State private var isEditing = false
-    @State private var isSubmitting = false
-    @FocusState private var isFocused: Bool
-
-    var body: some View {
-        HStack(spacing: 12) {
-            if isEditing {
-                TextField("Task title", text: $newTaskTitle)
-                    .font(.sf(.subheadline))
-                    .focused($isFocused)
-                    .onSubmit {
-                        submitTask()
-                    }
-
-                Spacer()
-
-                Image(systemName: "circle")
-                    .font(.sf(.subheadline))
-                    .foregroundColor(.gray.opacity(0.5))
-            } else {
-                Button {
-                    isEditing = true
-                    isFocused = true
-                } label: {
-                    HStack(spacing: 8) {
-                        Image(systemName: "plus")
-                            .font(.sf(.subheadline))
-                        Text("Add task")
-                            .font(.sf(.subheadline))
-                    }
-                    .foregroundColor(.secondary)
-                }
-                .buttonStyle(.plain)
-
-                Spacer()
-            }
-        }
-        .padding(.vertical, 8)
-        .onChange(of: isFocused) { _, focused in
-            if focused {
-                isAnyAddFieldActive = true
-            } else if !isSubmitting {
-                isAnyAddFieldActive = false
-                isEditing = false
-                newTaskTitle = ""
-            }
-        }
-    }
-
-    private func submitTask() {
-        let title = newTaskTitle.trimmingCharacters(in: .whitespaces)
-        guard !title.isEmpty else {
-            isEditing = false
-            return
-        }
-
-        isSubmitting = true
-        _Concurrency.Task {
-            await viewModel.createProjectTask(title: title, projectId: projectId)
-            newTaskTitle = ""
-            isFocused = true
-            isSubmitting = false
-        }
-    }
-}
-
-// MARK: - Inline Add Subtask For Project Row
-
-struct InlineAddSubtaskForProjectRow: View {
-    let parentId: UUID
-    @ObservedObject var viewModel: ProjectsViewModel
-    @Binding var isAnyAddFieldActive: Bool
-    @State private var newTitle = ""
-    @State private var isEditing = false
-    @State private var isSubmitting = false
-    @FocusState private var isFocused: Bool
-
-    var body: some View {
-        HStack(spacing: 12) {
-            if isEditing {
-                TextField("Subtask title", text: $newTitle)
-                    .font(.sf(.subheadline))
-                    .focused($isFocused)
-                    .onSubmit {
-                        submitSubtask()
-                    }
-
-                Spacer()
-
-                Image(systemName: "circle")
-                    .font(.sf(.caption))
-                    .foregroundColor(.gray.opacity(0.5))
-            } else {
-                Button {
-                    isEditing = true
-                    isFocused = true
-                } label: {
-                    HStack(spacing: 8) {
-                        Image(systemName: "plus")
-                            .font(.sf(.subheadline))
-                        Text("Add subtask")
-                            .font(.sf(.subheadline))
-                    }
-                    .foregroundColor(.secondary)
-                }
-                .buttonStyle(.plain)
-
-                Spacer()
-            }
-        }
-        .padding(.vertical, 6)
-        .onChange(of: isFocused) { _, focused in
-            if focused {
-                isAnyAddFieldActive = true
-            } else if !isSubmitting {
-                isAnyAddFieldActive = false
-                isEditing = false
-                newTitle = ""
-            }
-        }
-    }
-
-    private func submitSubtask() {
-        let title = newTitle.trimmingCharacters(in: .whitespaces)
-        guard !title.isEmpty else {
-            isEditing = false
-            return
-        }
-
-        isSubmitting = true
-        _Concurrency.Task {
-            await viewModel.createSubtask(title: title, parentId: parentId)
-            newTitle = ""
-            isFocused = true
-            isSubmitting = false
         }
     }
 }

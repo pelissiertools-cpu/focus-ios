@@ -480,46 +480,11 @@ struct LogTabView: View {
                 .padding(.bottom, 10)
 
             // Subtasks (expand when present)
-            if !addTaskSubtasks.isEmpty {
-                Divider()
-                    .padding(.horizontal, 14)
-
-                VStack(spacing: 14) {
-                    ForEach(addTaskSubtasks) { subtask in
-                        HStack(spacing: 8) {
-                            Image(systemName: "circle")
-                                .font(.sf(.caption2))
-                                .foregroundColor(.secondary.opacity(0.5))
-
-                            TextField("Subtask", text: subtaskBinding(for: subtask.id), axis: .vertical)
-                                .font(.sf(.body))
-                                .textFieldStyle(.plain)
-                                .focused($focusedSubtaskId, equals: subtask.id)
-                                .lineLimit(1)
-                                .onChange(of: subtaskBinding(for: subtask.id).wrappedValue) { _, newValue in
-                                    if newValue.contains("\n") {
-                                        if let idx = addTaskSubtasks.firstIndex(where: { $0.id == subtask.id }) {
-                                            addTaskSubtasks[idx].title = newValue.replacingOccurrences(of: "\n", with: "")
-                                        }
-                                        addNewSubtask()
-                                    }
-                                }
-
-                            Button {
-                                removeSubtask(id: subtask.id)
-                            } label: {
-                                Image(systemName: "xmark.circle.fill")
-                                    .font(.sf(.caption))
-                                    .foregroundColor(.secondary)
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
-                }
-                .padding(.horizontal, 14)
-                .padding(.top, 10)
-                .padding(.bottom, 18)
-            }
+            DraftSubtaskListEditor(
+                subtasks: $addTaskSubtasks,
+                focusedSubtaskId: $focusedSubtaskId,
+                onAddNew: { addNewSubtask() }
+            )
 
             // Commit expansion (calendar section)
             if addTaskCommitExpanded {
@@ -628,50 +593,12 @@ struct LogTabView: View {
 
             // AI Breakdown + Submit row
             HStack(spacing: 10) {
-                // AI Breakdown button
-                Button {
-                    generateBreakdown()
-                } label: {
-                    HStack(spacing: 8) {
-                        if isGeneratingBreakdown {
-                            ProgressView()
-                                .tint(.primary)
-                        } else {
-                            Image(systemName: hasGeneratedBreakdown ? "arrow.clockwise" : "sparkles")
-                                .font(.sf(.body, weight: .semibold))
-                        }
-                        Text(LocalizedStringKey(hasGeneratedBreakdown ? "Regenerate" : "Break Down task"))
-                            .font(.sf(.subheadline, weight: .medium))
-                    }
-                    .foregroundColor(.primary)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
-                    .background {
-                        if !isAddTaskTitleEmpty {
-                            // Blue glow behind the button
-                            Capsule()
-                                .stroke(
-                                    AngularGradient(
-                                        colors: [
-                                            Color.commitGradientDark,
-                                            Color.commitGradientLight,
-                                            Color.commitGradientDark,
-                                        ],
-                                        center: .center
-                                    ),
-                                    lineWidth: 2.5
-                                )
-                                .blur(radius: 6)
-                        }
-                    }
-                    .overlay {
-                        Capsule()
-                            .stroke(.white.opacity(0.5), lineWidth: 1.5)
-                    }
-                    .glassEffect(.regular.interactive(), in: .capsule)
-                }
-                .buttonStyle(.plain)
-                .disabled(isAddTaskTitleEmpty || isGeneratingBreakdown)
+                AIBreakdownButton(
+                    isEnabled: !isAddTaskTitleEmpty,
+                    isGenerating: isGeneratingBreakdown,
+                    hasGenerated: hasGeneratedBreakdown,
+                    action: { generateBreakdown() }
+                )
 
                 // Submit button (checkmark)
                 Button {
@@ -1199,17 +1126,6 @@ struct LogTabView: View {
         }
     }
 
-    private func subtaskBinding(for id: UUID) -> Binding<String> {
-        Binding(
-            get: { addTaskSubtasks.first(where: { $0.id == id })?.title ?? "" },
-            set: { newValue in
-                if let idx = addTaskSubtasks.firstIndex(where: { $0.id == id }) {
-                    addTaskSubtasks[idx].title = newValue
-                }
-            }
-        )
-    }
-
     private func addNewSubtask() {
         isAddTaskFieldFocused = true
         let newEntry = DraftSubtaskEntry()
@@ -1218,13 +1134,6 @@ struct LogTabView: View {
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
             focusedSubtaskId = newEntry.id
-        }
-    }
-
-    private func removeSubtask(id: UUID) {
-        isAddTaskFieldFocused = true
-        withAnimation(.easeInOut(duration: 0.15)) {
-            addTaskSubtasks.removeAll { $0.id == id }
         }
     }
 

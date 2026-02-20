@@ -71,16 +71,14 @@ struct ProjectCard: View {
 
             // Project icon
             ProjectIconShape()
-                .frame(width: 64, height: 64)
-                .padding(.leading, -18)
-                .padding(.trailing, -12)
-                .padding(.vertical, -16)
+                .frame(width: 32, height: 32)
+                .foregroundColor(.orange)
                 .opacity(project.isCompleted ? 0.4 : 1.0)
 
             // Title and progress
             VStack(alignment: .leading, spacing: 6) {
                 Text(project.title)
-                    .font(.sf(.title3))
+                    .font(.sf(.title3, weight: .bold))
                     .lineLimit(1)
                     .strikethrough(project.isCompleted)
                     .foregroundColor(project.isCompleted ? .secondary : .primary)
@@ -164,8 +162,9 @@ struct ProjectCard: View {
                 if items.count <= 1 {
                     // Only the addTaskRow — no tasks yet
                     Text("No tasks yet")
-                        .font(.sf(.subheadline))
-                        .foregroundColor(.secondary)
+                        .font(.sf(.headline))
+                        .bold()
+                        .frame(maxWidth: .infinity, alignment: .leading)
                         .padding()
 
                     InlineAddRow(

@@ -65,7 +65,7 @@ struct DailyCalendarView: View {
                     displayMonth = calendar.date(byAdding: .month, value: -1, to: displayMonth) ?? displayMonth
                 } label: {
                     Image(systemName: "chevron.left")
-                        .foregroundColor(.blue)
+                        .foregroundColor(Color(red: 0xF8/255, green: 0x1E/255, blue: 0x1D/255))
                 }
                 .buttonStyle(.borderless)
 
@@ -81,7 +81,7 @@ struct DailyCalendarView: View {
                     displayMonth = calendar.date(byAdding: .month, value: 1, to: displayMonth) ?? displayMonth
                 } label: {
                     Image(systemName: "chevron.right")
-                        .foregroundColor(.blue)
+                        .foregroundColor(Color(red: 0xF8/255, green: 0x1E/255, blue: 0x1D/255))
                 }
                 .buttonStyle(.borderless)
             }
@@ -190,7 +190,7 @@ struct DayCell: View {
         if isExcluded {
             return Color.green.opacity(0.3)
         } else if isSelected {
-            return .blue
+            return Color(red: 0xF8/255, green: 0x1E/255, blue: 0x1D/255)
         } else if isToday {
             return Color.gray.opacity(0.3)
         } else {
@@ -265,7 +265,7 @@ struct WeeklyCalendarView: View {
                     displayMonth = calendar.date(byAdding: .month, value: -1, to: displayMonth) ?? displayMonth
                 } label: {
                     Image(systemName: "chevron.left")
-                        .foregroundColor(.blue)
+                        .foregroundColor(Color(red: 0xF8/255, green: 0x1E/255, blue: 0x1D/255))
                 }
                 .buttonStyle(.borderless)
 
@@ -292,7 +292,7 @@ struct WeeklyCalendarView: View {
                     displayMonth = calendar.date(byAdding: .month, value: 1, to: displayMonth) ?? displayMonth
                 } label: {
                     Image(systemName: "chevron.right")
-                        .foregroundColor(.blue)
+                        .foregroundColor(Color(red: 0xF8/255, green: 0x1E/255, blue: 0x1D/255))
                 }
                 .buttonStyle(.borderless)
             }
@@ -300,7 +300,7 @@ struct WeeklyCalendarView: View {
             .padding(.vertical, 8)
 
             Divider()
-                .padding(.bottom, 8)
+                .padding(.bottom, 13)
 
             // Week pills for the month
             ScrollView {
@@ -446,11 +446,11 @@ struct WeekPillView: View {
         if isExcluded {
             return .green.opacity(0.6)
         } else if isSelected {
-            return .blue
+            return Color(red: 0xF8/255, green: 0x1E/255, blue: 0x1D/255)
         } else if isCurrentWeek {
-            return Color.gray.opacity(0.4)
+            return Color.gray.opacity(0.3)
         } else {
-            return Color.gray.opacity(0.2)
+            return .white
         }
     }
 
@@ -465,7 +465,7 @@ struct WeekPillView: View {
                 ZStack {
                     Text("W\(weekNumber)")
                         .font(.sf(.body, weight: .medium))
-                        .foregroundColor(isSelected ? .white : (isExcluded ? .secondary : .primary))
+                        .foregroundColor(isSelected ? .white : (isExcluded ? .secondary : .black))
                         .frame(width: 44, height: 44)
                         .background(badgeColor)
                         .clipShape(Circle())
@@ -496,7 +496,7 @@ struct WeekPillView: View {
             .cornerRadius(12)
             .overlay(
                 RoundedRectangle(cornerRadius: 12)
-                    .stroke(isSelected ? Color.blue : Color.clear, lineWidth: 2)
+                    .stroke(isSelected ? Color(red: 0xF8/255, green: 0x1E/255, blue: 0x1D/255) : Color.clear, lineWidth: 2)
             )
         }
         .buttonStyle(.plain)
@@ -560,7 +560,7 @@ struct MonthlyCalendarView: View {
                         displayYear = calendar.date(byAdding: .year, value: -1, to: displayYear) ?? displayYear
                     } label: {
                         Image(systemName: "chevron.left")
-                            .foregroundColor(.blue)
+                            .foregroundColor(Color(red: 0xF8/255, green: 0x1E/255, blue: 0x1D/255))
                     }
                     .buttonStyle(.borderless)
 
@@ -581,7 +581,7 @@ struct MonthlyCalendarView: View {
                         displayYear = calendar.date(byAdding: .year, value: 1, to: displayYear) ?? displayYear
                     } label: {
                         Image(systemName: "chevron.right")
-                            .foregroundColor(.blue)
+                            .foregroundColor(Color(red: 0xF8/255, green: 0x1E/255, blue: 0x1D/255))
                     }
                     .buttonStyle(.borderless)
                 }
@@ -692,7 +692,7 @@ struct MonthButton: View {
         if isExcluded {
             return .green.opacity(0.3)
         } else if isSelected {
-            return .blue
+            return Color(red: 0xF8/255, green: 0x1E/255, blue: 0x1D/255)
         } else if isCurrentMonth {
             return Color.gray.opacity(0.3)
         } else {
@@ -716,7 +716,7 @@ struct MonthButton: View {
                     .cornerRadius(12)
                     .overlay(
                         RoundedRectangle(cornerRadius: 12)
-                            .stroke(isSelected ? Color.blue : Color.clear, lineWidth: 2)
+                            .stroke(isSelected ? Color(red: 0xF8/255, green: 0x1E/255, blue: 0x1D/255) : Color.clear, lineWidth: 2)
                     )
 
                 if isExcluded {
@@ -801,7 +801,7 @@ struct YearButton: View {
 
     private var backgroundColor: Color {
         if isSelected {
-            return .blue
+            return Color(red: 0xF8/255, green: 0x1E/255, blue: 0x1D/255)
         } else if isCurrentYear {
             return Color.gray.opacity(0.3)
         } else {
@@ -822,7 +822,7 @@ struct YearButton: View {
                 .cornerRadius(12)
                 .overlay(
                     RoundedRectangle(cornerRadius: 12)
-                        .stroke(isSelected ? Color.blue : Color.clear, lineWidth: 2)
+                        .stroke(isSelected ? Color(red: 0xF8/255, green: 0x1E/255, blue: 0x1D/255) : Color.clear, lineWidth: 2)
                 )
         }
         .buttonStyle(.plain)

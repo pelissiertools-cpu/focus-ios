@@ -17,7 +17,7 @@ struct DateNavigator: View {
     var onProfileTap: (() -> Void)? = nil
     @EnvironmentObject var languageManager: LanguageManager
     @Environment(\.colorScheme) private var colorScheme
-    @Namespace private var timeframeAnimation
+    @Binding var showTimeframePicker: Bool
 
     private var calendar: Calendar {
         var cal = Calendar.current
@@ -92,42 +92,60 @@ struct DateNavigator: View {
                     .padding(.leading, 20)
                     .padding(.top, 2)
                     .padding(.bottom, 8)
-                }
-
-                // Row 1: Glass timeframe picker
-                HStack(spacing: 0) {
-                    ForEach(Timeframe.allCases, id: \.self) { timeframe in
-                        Button {
-                            withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
-                                selectedTimeframe = timeframe
-                            }
-                        } label: {
-                            Text(LocalizedStringKey(timeframe.displayName))
-                                .font(.sf(.subheadline, weight: selectedTimeframe == timeframe ? .semibold : .medium))
-                                .foregroundStyle(selectedTimeframe == timeframe ? .primary : .secondary)
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 8)
-                                .frame(maxWidth: .infinity)
-                                .background {
-                                    if selectedTimeframe == timeframe {
-                                        Color.clear
-                                            .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 16))
-                                            .matchedGeometryEffect(id: "activeTimeframe", in: timeframeAnimation)
+                    .overlay {
+                        if showTimeframePicker {
+                            Color.clear
+                                .contentShape(Rectangle())
+                                .onTapGesture {
+                                    withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) {
+                                        showTimeframePicker = false
                                     }
                                 }
                         }
-                        .buttonStyle(.plain)
                     }
                 }
-                .padding(4)
-                .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 20))
-                .id("timeframe-picker-\(colorScheme)")
-                .padding(.horizontal)
-                .padding(.top, 8)
-                .padding(.bottom, 14)
 
-                // Date navigator container: pills + date subtitle
+                // Date navigator container: timeframe label + pills + date subtitle
                 VStack(spacing: 0) {
+                    // Timeframe selector — center row stays anchored via negative padding
+                    ZStack {
+                        Picker("Timeframe", selection: $selectedTimeframe) {
+                            ForEach(Timeframe.allCases, id: \.self) { timeframe in
+                                Text(LocalizedStringKey(timeframe.displayName))
+                                    .tag(timeframe)
+                            }
+                        }
+                        .pickerStyle(.wheel)
+                        .frame(height: 120)
+                        .allowsHitTesting(showTimeframePicker)
+                        .opacity(showTimeframePicker ? 1 : 0)
+                        .padding(.horizontal)
+                        .onChange(of: selectedTimeframe) {
+                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) {
+                                showTimeframePicker = false
+                            }
+                        }
+
+                        if !showTimeframePicker {
+                            Button {
+                                withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) {
+                                    showTimeframePicker = true
+                                }
+                            } label: {
+                                Text(LocalizedStringKey(selectedTimeframe.displayName))
+                                    .font(.system(size: 23.5, weight: .regular))
+                                    .foregroundStyle(.primary)
+                            }
+                            .buttonStyle(.plain)
+                            .transition(.opacity)
+                        }
+                    }
+                    .frame(height: showTimeframePicker ? 120 : 34, alignment: .center)
+                    .clipped()
+                    .padding(.top, showTimeframePicker ? -33 : 10)
+
+                    // Pill row
                     timeframePillRow
                         .frame(height: 64)
                         .mask(
@@ -140,14 +158,21 @@ struct DateNavigator: View {
                             }
                         )
                         .padding(.horizontal)
-                        .padding(.top, 12)
+                        .padding(.top, 8)
                         .padding(.bottom, 8)
-
                 }
+                .clipShape(RoundedRectangle(cornerRadius: 20))
                 .background(Color(.systemBackground), in: RoundedRectangle(cornerRadius: 20))
-                .overlay(RoundedRectangle(cornerRadius: 20).stroke(Color(.systemBackground), lineWidth: 1))
                 .shadow(color: .black.opacity(0.06), radius: 4, y: 2)
                 .padding(.horizontal)
+                .animation(.spring(response: 0.3, dampingFraction: 0.85), value: showTimeframePicker)
+                .onChange(of: selectedDate) {
+                    if showTimeframePicker {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) {
+                            showTimeframePicker = false
+                        }
+                    }
+                }
 
                 // Date label container
                 HStack {
@@ -164,6 +189,17 @@ struct DateNavigator: View {
                 .padding(.horizontal, 16)
                 .padding(.top, 8)
                 .padding(.bottom, 12)
+                .overlay {
+                    if showTimeframePicker {
+                        Color.clear
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) {
+                                    showTimeframePicker = false
+                                }
+                            }
+                    }
+                }
             }
         }
     }

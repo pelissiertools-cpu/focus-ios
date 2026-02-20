@@ -33,6 +33,7 @@ struct FocusTabView: View {
 
     @State private var showScheduleDrawer = false
     @State private var showSettings = false
+    @State private var showTimeframePicker = false
 
     // Compact add-task bar state
     @State private var addTaskTitle = ""
@@ -53,7 +54,8 @@ struct FocusTabView: View {
                     viewMode: $viewMode,
                     compact: viewMode == .schedule,
                     onCalendarTap: { showCalendarPicker = true },
-                    onProfileTap: { showSettings = true }
+                    onProfileTap: { showSettings = true },
+                    showTimeframePicker: $showTimeframePicker
                 )
                 .opacity(viewModel.showAddTaskSheet ? 0 : 1)
                 .allowsHitTesting(!viewModel.showAddTaskSheet)
@@ -80,6 +82,17 @@ struct FocusTabView: View {
                         focusList
                         .opacity(viewModel.showAddTaskSheet ? 0 : 1)
                         .allowsHitTesting(!viewModel.showAddTaskSheet)
+                        .overlay {
+                            if showTimeframePicker {
+                                Color.clear
+                                    .contentShape(Rectangle())
+                                    .onTapGesture {
+                                        withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) {
+                                            showTimeframePicker = false
+                                        }
+                                    }
+                            }
+                        }
                     }
                 } else {
                     // MARK: - Schedule Mode Content

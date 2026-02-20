@@ -4,6 +4,7 @@
 //
 
 import Foundation
+import SwiftUI
 
 /// Represents task priority levels
 enum Priority: String, Codable, CaseIterable {
@@ -24,6 +25,14 @@ enum Priority: String, Codable, CaseIterable {
         case .high: return 0
         case .medium: return 1
         case .low: return 2
+        }
+    }
+
+    var dotColor: Color {
+        switch self {
+        case .high: return .appRed
+        case .medium: return .priorityOrange
+        case .low: return .priorityYellow
         }
     }
 }

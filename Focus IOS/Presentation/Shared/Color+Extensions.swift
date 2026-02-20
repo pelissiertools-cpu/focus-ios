@@ -3,6 +3,10 @@ import SwiftUI
 extension Color {
     /// App-wide red accent color (#F81E1D)
     static let appRed = Color(red: 0xF8/255, green: 0x1E/255, blue: 0x1D/255)
+    /// Priority orange (#F0883E)
+    static let priorityOrange = Color(red: 0xF0/255, green: 0x88/255, blue: 0x3E/255)
+    /// Priority yellow (#F0C53E)
+    static let priorityYellow = Color(red: 0xF0/255, green: 0xC5/255, blue: 0x3E/255)
     /// Purple for completed checkmarks (#6110F8)
     static let completedPurple = Color(red: 0x61/255.0, green: 0x10/255.0, blue: 0xF8/255.0)
     /// Dark gray for FAB and filter pill backgrounds

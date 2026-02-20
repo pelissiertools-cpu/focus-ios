@@ -293,6 +293,10 @@ struct PrioritySectionHeader: View {
             Spacer(minLength: 0)
 
             HStack(spacing: 12) {
+                Circle()
+                    .fill(priority.dotColor)
+                    .frame(width: 8, height: 8)
+
                 Text(priority.displayName)
                     .font(.golosText(size: 14))
 

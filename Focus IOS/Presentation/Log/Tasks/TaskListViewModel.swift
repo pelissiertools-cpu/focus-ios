@@ -59,9 +59,21 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
     @Published var commitmentFilter: CommitmentFilter? = nil
     @Published var committedTaskIds: Set<UUID> = []
 
-    // Sort
-    @Published var sortOption: SortOption = .creationDate
-    @Published var sortDirection: SortDirection = .lowestFirst
+    // Sort (persisted via UserDefaults)
+    @Published var sortOption: SortOption {
+        didSet {
+            UserDefaults.standard.set(sortOption.rawValue, forKey: "taskList.sortOption")
+            if sortOption == .priority {
+                // Collapse all priority sections by default when switching to priority sort
+                collapsedPriorities = Set(Priority.allCases)
+            }
+        }
+    }
+    @Published var sortDirection: SortDirection {
+        didSet {
+            UserDefaults.standard.set(sortDirection.rawValue, forKey: "taskList.sortDirection")
+        }
+    }
 
     // Edit mode
     @Published var isEditMode: Bool = false
@@ -86,6 +98,26 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
         self.commitmentRepository = commitmentRepository
         self.categoryRepository = categoryRepository
         self.authService = authService
+
+        // Restore persisted sort preferences (default: creationDate, highestFirst)
+        if let savedSort = UserDefaults.standard.string(forKey: "taskList.sortOption"),
+           let option = SortOption(rawValue: savedSort) {
+            self.sortOption = option
+        } else {
+            self.sortOption = .creationDate
+        }
+        if let savedDirection = UserDefaults.standard.string(forKey: "taskList.sortDirection"),
+           let direction = SortDirection(rawValue: savedDirection) {
+            self.sortDirection = direction
+        } else {
+            self.sortDirection = .highestFirst
+        }
+
+        // If restored sort is priority, start with sections collapsed
+        if self.sortOption == .priority {
+            self.collapsedPriorities = Set(Priority.allCases)
+        }
+
         setupNotificationObserver()
     }
 

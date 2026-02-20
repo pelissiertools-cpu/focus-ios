@@ -30,18 +30,30 @@ struct TasksListView: View {
     }
 
     var body: some View {
-        ZStack {
-            if viewModel.isLoading {
-                ProgressView("Loading tasks...")
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if viewModel.tasks.isEmpty {
-                emptyState
-            } else {
-                taskList
+        VStack(spacing: 0) {
+            // Section header
+            LogSectionHeader(
+                title: "Tasks",
+                count: viewModel.uncompletedTasks.count + viewModel.completedTasks.count,
+                isCollapsed: $viewModel.isTasksSectionCollapsed
+            )
+            .padding(.top, 44)
+
+            if !viewModel.isTasksSectionCollapsed {
+                ZStack {
+                    if viewModel.isLoading {
+                        ProgressView("Loading tasks...")
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    } else if viewModel.tasks.isEmpty {
+                        emptyState
+                    } else {
+                        taskList
+                    }
+                }
             }
 
+            Spacer(minLength: 0)
         }
-        .padding(.top, 44)
         .sheet(item: $viewModel.selectedTaskForDetails) { task in
             TaskDetailsDrawer(task: task, viewModel: viewModel, categories: viewModel.categories)
                 .drawerStyle()

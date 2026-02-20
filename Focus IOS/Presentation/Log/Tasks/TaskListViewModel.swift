@@ -40,6 +40,9 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
     // Done subsection state
     @Published var isDoneSubsectionCollapsed: Bool = true  // Closed by default
 
+    // Tasks section collapse state
+    @Published var isTasksSectionCollapsed: Bool = false
+
     // Search
     @Published var searchText: String = ""
 

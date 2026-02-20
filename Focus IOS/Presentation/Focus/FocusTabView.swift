@@ -322,7 +322,6 @@ struct FocusTabView: View {
                 case .sectionHeader(let section):
                     let isExtraHeader = section == .extra && index > 0
                     FocusSectionHeaderRow(section: section, viewModel: viewModel)
-                        .moveDisabled(true)
                         .listRowBackground(Color.clear)
                         .listRowInsets(EdgeInsets(top: isExtraHeader ? 20 : 8, leading: 16, bottom: 0, trailing: 16))
                         .listRowSeparator(.hidden)
@@ -363,7 +362,6 @@ struct FocusTabView: View {
                     FocusInlineAddSubtaskRow(parentId: parentId, viewModel: viewModel)
                         .padding(.leading, 32)
                         .padding(.trailing, 12)
-                        .moveDisabled(true)
                         .listRowBackground(Color.clear)
                         .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
                         .listRowSeparator(.hidden)
@@ -379,7 +377,6 @@ struct FocusTabView: View {
                             fontOverride: config.completedTaskFont,
                             verticalPaddingOverride: config.completedVerticalPadding
                         )
-                        .moveDisabled(true)
                         .opacity(config.completedOpacity)
                         .listRowBackground(Color.clear)
                         .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
@@ -426,7 +423,6 @@ struct FocusTabView: View {
                         viewModel.addTaskSection = section
                         viewModel.showAddTaskSheet = true
                     }
-                    .moveDisabled(true)
                     .listRowBackground(Color.clear)
                     .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
                     .listRowSeparator(.hidden)
@@ -448,7 +444,6 @@ struct FocusTabView: View {
                             viewModel.isFocusDoneExpanded.toggle()
                         }
                     }
-                    .moveDisabled(true)
                     .listRowBackground(Color.clear)
                     .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
                     .listRowSeparator(.hidden)
@@ -459,7 +454,6 @@ struct FocusTabView: View {
                         section: .extra,
                         viewModel: viewModel
                     )
-                    .moveDisabled(true)
                     .listRowBackground(Color.clear)
                     .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
                     .listRowSeparator(.hidden)
@@ -467,7 +461,6 @@ struct FocusTabView: View {
                 case .focusSpacer(let height):
                     Color.clear
                         .frame(height: height)
-                        .moveDisabled(true)
                         .listRowBackground(Color.clear)
                         .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
                         .listRowSeparator(.hidden)

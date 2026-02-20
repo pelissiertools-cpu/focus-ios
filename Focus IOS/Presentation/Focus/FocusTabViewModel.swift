@@ -841,11 +841,14 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
             // with the same natural margin whether 1 or 5 items are done.
             let allCompleted = focusUncompleted.isEmpty && !focusCompleted.isEmpty
             if !allCompleted {
-                // Ensure focus section has minimum height of ~4 rows (skip when empty state is shown)
+                // Ensure focus section has minimum height of ~4 rows, plus a
+                // minimum drop-zone gap so cross-section drag always has room.
                 let focusRowCount = focusUncompleted.count + focusCompleted.count
                 if focusRowCount > 0 && focusRowCount < 4 {
                     let spacerHeight = CGFloat(4 - focusRowCount) * 48
                     result.append(.focusSpacer(spacerHeight))
+                } else if focusRowCount >= 4 && canAddTask(to: .focus) {
+                    result.append(.focusSpacer(48))
                 }
             }
         }

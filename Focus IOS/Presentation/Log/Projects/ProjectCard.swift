@@ -62,6 +62,13 @@ struct ProjectCard: View {
 
     private var projectHeader: some View {
         HStack(spacing: 12) {
+            // Edit mode: selection circle
+            if viewModel.isEditMode && !project.isCompleted {
+                Image(systemName: viewModel.selectedProjectIds.contains(project.id) ? "checkmark.circle.fill" : "circle")
+                    .font(.sf(.title3))
+                    .foregroundColor(viewModel.selectedProjectIds.contains(project.id) ? .appRed : .gray)
+            }
+
             // Project icon
             ProjectIconShape()
                 .frame(width: 64, height: 64)
@@ -113,20 +120,26 @@ struct ProjectCard: View {
                             .onChanged { value in onDragChanged(value) }
                             .onEnded { _ in onDragEnded() }
                     )
-            } else {
+            } else if !viewModel.isEditMode {
                 DragHandleView()
             }
         }
         .padding()
         .contentShape(Rectangle())
         .onTapGesture {
-            _Concurrency.Task { @MainActor in
-                await viewModel.toggleExpanded(project.id)
+            if viewModel.isEditMode && !project.isCompleted {
+                viewModel.toggleProjectSelection(project.id)
+            } else if !viewModel.isEditMode {
+                _Concurrency.Task { @MainActor in
+                    await viewModel.toggleExpanded(project.id)
+                }
             }
         }
         .onLongPressGesture(minimumDuration: 0.35) {
-            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-            viewModel.selectedProjectForDetails = project
+            if !viewModel.isEditMode {
+                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                viewModel.selectedProjectForDetails = project
+            }
         }
     }
 

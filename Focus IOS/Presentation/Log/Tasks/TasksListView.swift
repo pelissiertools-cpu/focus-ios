@@ -451,7 +451,7 @@ struct CategorySelectorHeader<TrailingContent: View>: View {
                         } label: {
                             HStack {
                                 Text("All")
-                                    .font(.sf(.body))
+                                    .font(.sf(.body, weight: .medium))
                                     .foregroundColor(.primary)
                                 if selectedCategoryId == nil {
                                     Image(systemName: "checkmark")
@@ -623,7 +623,7 @@ struct CategorySelectorHeader<TrailingContent: View>: View {
                     }
             } else {
                 Text(category.name)
-                    .font(.sf(.body))
+                    .font(.sf(.body, weight: .medium))
                     .foregroundColor(.primary)
                     .onTapGesture {
                         commitRenameIfNeeded()
@@ -649,7 +649,7 @@ struct CategorySelectorHeader<TrailingContent: View>: View {
         } label: {
             HStack {
                 Text(name)
-                    .font(.sf(.body))
+                    .font(.sf(.body, weight: .medium))
                     .foregroundColor(.primary)
                 if isSelected {
                     Image(systemName: "checkmark")

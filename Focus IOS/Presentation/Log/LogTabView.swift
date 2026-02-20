@@ -88,7 +88,7 @@ struct LogTabView: View {
     private let tabKeys = ["Tasks", "Lists", "Projects"]
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             logContentStack
                 .logTabHandlers(
                     selectedTab: $selectedTab,

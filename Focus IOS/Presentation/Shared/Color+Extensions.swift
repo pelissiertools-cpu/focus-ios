@@ -10,6 +10,10 @@ extension Color {
     /// Blue gradient colors for commit pills
     static let commitGradientDark = Color(red: 0.0, green: 0.2, blue: 1.0)
     static let commitGradientLight = Color(red: 0.15, green: 0.35, blue: 1.0)
-    /// Near-white background
-    static let lightBackground = Color(red: 0xFC/255.0, green: 0xFC/255.0, blue: 0xFC/255.0)
+    /// Near-white background (adapts to dark mode)
+    static let lightBackground = Color(UIColor { traits in
+        traits.userInterfaceStyle == .dark
+            ? UIColor.systemBackground
+            : UIColor(red: 0xFC/255.0, green: 0xFC/255.0, blue: 0xFC/255.0, alpha: 1)
+    })
 }

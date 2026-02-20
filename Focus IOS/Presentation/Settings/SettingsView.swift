@@ -163,6 +163,7 @@ struct SettingsView: View {
                             }
                             .padding(.horizontal, 16)
                             .padding(.vertical, 14)
+                            .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
 
@@ -196,6 +197,7 @@ struct SettingsView: View {
                                     }
                                     .padding(.horizontal, 16)
                                     .padding(.vertical, 12)
+                                    .contentShape(Rectangle())
                                 }
                                 .buttonStyle(.plain)
                             }
@@ -233,6 +235,7 @@ struct SettingsView: View {
                             }
                             .padding(.horizontal, 16)
                             .padding(.vertical, 14)
+                            .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
 
@@ -266,6 +269,7 @@ struct SettingsView: View {
                                     }
                                     .padding(.horizontal, 16)
                                     .padding(.vertical, 12)
+                                    .contentShape(Rectangle())
                                 }
                                 .buttonStyle(.plain)
                             }
@@ -311,44 +315,57 @@ struct SettingsView: View {
         .background(Color(.systemBackground))
         .navigationTitle("Settings")
         .navigationBarTitleDisplayMode(.inline)
-        .alert("Change Email", isPresented: $showChangeEmail) {
-            TextField("New email", text: $newEmail)
-                .textContentType(.emailAddress)
-                .autocapitalization(.none)
-            Button("Update") {
-                _Concurrency.Task { @MainActor in
-                    do {
-                        try await authService.updateEmail(newEmail: newEmail)
-                        emailChangeSuccess = true
-                    } catch {
-                        // Error handled in AuthService
+        .overlay {
+            if showChangeEmail {
+                SettingsAlertOverlay(
+                    title: "Change Email",
+                    message: "Enter your new email address. You'll receive a confirmation email.",
+                    isPresented: $showChangeEmail
+                ) {
+                    TextField("New email", text: $newEmail)
+                        .textContentType(.emailAddress)
+                        .autocapitalization(.none)
+                } onUpdate: {
+                    _Concurrency.Task { @MainActor in
+                        do {
+                            try await authService.updateEmail(newEmail: newEmail)
+                            showChangeEmail = false
+                            emailChangeSuccess = true
+                        } catch {
+                            // Error handled in AuthService
+                        }
                     }
+                } hasInput: {
+                    !newEmail.trimmingCharacters(in: .whitespaces).isEmpty
                 }
             }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("Enter your new email address. You'll receive a confirmation email.")
-        }
-        .alert("Change Password", isPresented: $showChangePassword) {
-            SecureField("New password", text: $newPassword)
-            SecureField("Confirm password", text: $confirmNewPassword)
-            Button("Update") {
-                guard newPassword == confirmNewPassword, newPassword.count >= 6 else {
-                    authService.errorMessage = "Passwords must match and be at least 6 characters."
-                    return
-                }
-                _Concurrency.Task { @MainActor in
-                    do {
-                        try await authService.updatePassword(newPassword: newPassword)
-                        passwordChangeSuccess = true
-                    } catch {
-                        // Error handled in AuthService
+
+            if showChangePassword {
+                SettingsAlertOverlay(
+                    title: "Change Password",
+                    message: "Enter a new password (minimum 6 characters).",
+                    isPresented: $showChangePassword
+                ) {
+                    SecureField("New password", text: $newPassword)
+                    SecureField("Confirm password", text: $confirmNewPassword)
+                } onUpdate: {
+                    guard newPassword == confirmNewPassword, newPassword.count >= 6 else {
+                        authService.errorMessage = "Passwords must match and be at least 6 characters."
+                        return
                     }
+                    _Concurrency.Task { @MainActor in
+                        do {
+                            try await authService.updatePassword(newPassword: newPassword)
+                            showChangePassword = false
+                            passwordChangeSuccess = true
+                        } catch {
+                            // Error handled in AuthService
+                        }
+                    }
+                } hasInput: {
+                    !newPassword.isEmpty
                 }
             }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("Enter a new password (minimum 6 characters).")
         }
         .alert("Email Updated", isPresented: $emailChangeSuccess) {
             Button("OK", role: .cancel) {}
@@ -396,11 +413,90 @@ struct SettingsView: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 14)
+        .contentShape(Rectangle())
+    }
+}
+
+// MARK: - Custom Alert Overlay
+
+private struct SettingsAlertOverlay<Fields: View>: View {
+    let title: String
+    let message: String
+    @Binding var isPresented: Bool
+    @ViewBuilder let fields: () -> Fields
+    let onUpdate: () -> Void
+    let hasInput: () -> Bool
+
+    var body: some View {
+        ZStack {
+            Color.black.opacity(0.3)
+                .ignoresSafeArea()
+                .onTapGesture {
+                    isPresented = false
+                }
+
+            VStack(spacing: 0) {
+                // Title + message
+                VStack(spacing: 4) {
+                    Text(title)
+                        .font(.sf(.headline))
+                    Text(message)
+                        .font(.sf(.caption))
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+                .padding(.top, 20)
+                .padding(.horizontal, 16)
+                .padding(.bottom, 16)
+
+                // Text fields
+                VStack(spacing: 8) {
+                    fields()
+                }
+                .textFieldStyle(.roundedBorder)
+                .padding(.horizontal, 16)
+                .padding(.bottom, 16)
+
+                Divider()
+
+                // Buttons
+                HStack(spacing: 0) {
+                    Button {
+                        isPresented = false
+                    } label: {
+                        Text("Cancel")
+                            .font(.sf(.body))
+                            .foregroundColor(.primary)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+
+                    Divider()
+                        .frame(height: 44)
+
+                    Button(action: onUpdate) {
+                        Text("Update")
+                            .font(.sf(.body, weight: hasInput() ? .semibold : .regular))
+                            .foregroundColor(hasInput() ? Color.appRed : .secondary)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
+            .frame(width: 270)
+        }
+        .transition(.opacity)
+        .animation(.easeInOut(duration: 0.2), value: isPresented)
     }
 }
 
 #Preview {
-    NavigationView {
+    NavigationStack {
         SettingsView()
             .environmentObject(AuthService())
             .environmentObject(LanguageManager.shared)

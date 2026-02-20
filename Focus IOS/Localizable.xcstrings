@@ -1454,6 +1454,7 @@
       }
     },
     "Enter a new password (minimum 6 characters)." : {
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -1504,6 +1505,7 @@
       }
     },
     "Enter your new email address. You'll receive a confirmation email." : {
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {

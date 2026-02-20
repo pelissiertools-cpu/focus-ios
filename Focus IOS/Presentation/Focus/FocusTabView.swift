@@ -43,7 +43,7 @@ struct FocusTabView: View {
     @State private var hasGeneratedBreakdown = false
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ZStack(alignment: .bottom) {
             VStack(spacing: 0) {
                 // Date Navigator with integrated timeframe picker and pill row
@@ -713,7 +713,7 @@ struct SectionView: View {
                 } label: {
                     Image(systemName: "plus")
                         .font(.sf(.caption, weight: .semibold))
-                        .foregroundColor(.black)
+                        .foregroundColor(.primary)
                         .frame(width: 26, height: 26)
                         .glassEffect(.regular.interactive(), in: .circle)
                 }
@@ -1028,7 +1028,7 @@ struct FocusSectionHeaderRow: View {
             } label: {
                 Image(systemName: "plus")
                     .font(.sf(.caption, weight: .semibold))
-                    .foregroundColor(.black)
+                    .foregroundColor(.primary)
                     .frame(width: 26, height: 26)
                     .glassEffect(.regular.interactive(), in: .circle)
             }

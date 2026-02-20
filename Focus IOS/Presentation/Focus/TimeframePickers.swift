@@ -16,6 +16,7 @@ struct DateNavigator: View {
     let onCalendarTap: () -> Void
     var onProfileTap: (() -> Void)? = nil
     @EnvironmentObject var languageManager: LanguageManager
+    @Environment(\.colorScheme) private var colorScheme
     @Namespace private var timeframeAnimation
 
     private var calendar: Calendar {
@@ -65,7 +66,7 @@ struct DateNavigator: View {
                 Button(action: onCalendarTap) {
                     Text(compactSubtitleText)
                         .font(.montserratHeader(.subheadline, weight: .medium))
-                        .foregroundColor(.black)
+                        .foregroundColor(.primary)
                 }
                 .buttonStyle(.plain)
                 .padding(.vertical, 8)
@@ -120,6 +121,7 @@ struct DateNavigator: View {
                 }
                 .padding(4)
                 .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 20))
+                .id("timeframe-picker-\(colorScheme)")
                 .padding(.horizontal)
                 .padding(.top, 8)
                 .padding(.bottom, 14)
@@ -142,8 +144,8 @@ struct DateNavigator: View {
                         .padding(.bottom, 8)
 
                 }
-                .background(Color.white, in: RoundedRectangle(cornerRadius: 20))
-                .overlay(RoundedRectangle(cornerRadius: 20).stroke(Color.white, lineWidth: 1))
+                .background(Color(.systemBackground), in: RoundedRectangle(cornerRadius: 20))
+                .overlay(RoundedRectangle(cornerRadius: 20).stroke(Color(.systemBackground), lineWidth: 1))
                 .shadow(color: .black.opacity(0.06), radius: 4, y: 2)
                 .padding(.horizontal)
 

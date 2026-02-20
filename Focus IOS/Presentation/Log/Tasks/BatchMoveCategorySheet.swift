@@ -12,7 +12,6 @@ struct BatchMoveCategorySheet<VM: LogFilterable>: View {
     @Environment(\.dismiss) private var dismiss
     @State private var showingNewCategoryAlert = false
     @State private var newCategoryName = ""
-    @State private var selectedTab = 0
 
     var body: some View {
         DrawerContainer(
@@ -20,14 +19,6 @@ struct BatchMoveCategorySheet<VM: LogFilterable>: View {
             leadingButton: .cancel { dismiss() }
         ) {
             VStack(spacing: 0) {
-                Picker("Move To", selection: $selectedTab) {
-                    Text("Tasks").tag(0)
-                    Text("Projects").tag(1)
-                    Text("Lists").tag(2)
-                }
-                .pickerStyle(.segmented)
-                .padding()
-
                 List {
                     Button {
                         _Concurrency.Task {

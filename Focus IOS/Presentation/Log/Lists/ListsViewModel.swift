@@ -129,8 +129,6 @@ class ListsViewModel: ObservableObject, LogFilterable, TaskEditingViewModel {
 
     // MARK: - LogFilterable Conformance
 
-    var categoryType: String { "list" }
-
     var showingAddItem: Bool {
         get { showingAddList }
         set { showingAddList = newValue }
@@ -161,8 +159,7 @@ class ListsViewModel: ObservableObject, LogFilterable, TaskEditingViewModel {
             let newCategory = Category(
                 userId: userId,
                 name: trimmed,
-                sortOrder: categories.count,
-                type: .list
+                sortOrder: categories.count
             )
             let created = try await categoryRepository.createCategory(newCategory)
             categories.append(created)
@@ -221,7 +218,7 @@ class ListsViewModel: ObservableObject, LogFilterable, TaskEditingViewModel {
 
         do {
             self.lists = try await repository.fetchTasks(ofType: .list)
-            self.categories = try await categoryRepository.fetchCategories(type: .list)
+            self.categories = try await categoryRepository.fetchCategories()
             await fetchCommittedTaskIds()
 
             // Pre-fetch items for all lists
@@ -252,7 +249,7 @@ class ListsViewModel: ObservableObject, LogFilterable, TaskEditingViewModel {
 
     func fetchCategories() async {
         do {
-            self.categories = try await categoryRepository.fetchCategories(type: .list)
+            self.categories = try await categoryRepository.fetchCategories()
         } catch {
             if !Task.isCancelled { errorMessage = error.localizedDescription }
         }
@@ -719,8 +716,7 @@ class ListsViewModel: ObservableObject, LogFilterable, TaskEditingViewModel {
             let newCategory = Category(
                 userId: userId,
                 name: trimmed,
-                sortOrder: categories.count,
-                type: .list
+                sortOrder: categories.count
             )
             let created = try await categoryRepository.createCategory(newCategory)
             categories.append(created)

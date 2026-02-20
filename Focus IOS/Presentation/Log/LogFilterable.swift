@@ -11,7 +11,6 @@ protocol LogFilterable: ObservableObject {
     // MARK: - Category filter
     var categories: [Category] { get }
     var selectedCategoryId: UUID? { get set }
-    var categoryType: String { get }
     func selectCategory(_ categoryId: UUID?)
     func createCategory(name: String) async
 

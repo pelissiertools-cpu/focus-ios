@@ -163,14 +163,17 @@ ADD COLUMN IF NOT EXISTS parent_commitment_id UUID REFERENCES commitments(id) ON
 CREATE INDEX IF NOT EXISTS idx_commitments_parent_id ON commitments(parent_commitment_id);
 
 -- ==============================================
--- CATEGORY TYPE SUPPORT
--- Separate task categories from project categories
+-- CATEGORY TYPE COLUMN (VESTIGIAL)
+-- Previously used to separate task/list/project categories.
+-- Categories are now shared across all item types.
+-- The column remains for backward compatibility but is no longer
+-- filtered on or set explicitly by the app.
 -- ==============================================
 
 -- Add type column to categories (default 'task' for backward compatibility)
 ALTER TABLE categories ADD COLUMN IF NOT EXISTS type TEXT DEFAULT 'task';
 
--- Index for type-filtered lookups
+-- Index for type-filtered lookups (kept for backward compatibility)
 CREATE INDEX IF NOT EXISTS idx_categories_type ON categories(type);
 
 -- ==============================================

@@ -498,7 +498,7 @@ struct ScheduleDrawer: View {
 
     private func fetchCategories() async {
         do {
-            categories = try await categoryRepository.fetchCategories(type: .task)
+            categories = try await categoryRepository.fetchCategories()
         } catch {
             // Silent fail — pills just won't show categories
         }

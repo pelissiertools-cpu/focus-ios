@@ -121,6 +121,27 @@ struct LogTabView: View {
                 .onChange(of: mainTab) {
                     showSettings = false
                 }
+                .onChange(of: taskListVM.selectedCategoryId) { _, newId in
+                    if listsVM.selectedCategoryId != newId { listsVM.selectedCategoryId = newId }
+                    if projectsVM.selectedCategoryId != newId { projectsVM.selectedCategoryId = newId }
+                }
+                .onChange(of: listsVM.selectedCategoryId) { _, newId in
+                    if taskListVM.selectedCategoryId != newId { taskListVM.selectedCategoryId = newId }
+                    if projectsVM.selectedCategoryId != newId { projectsVM.selectedCategoryId = newId }
+                }
+                .onChange(of: projectsVM.selectedCategoryId) { _, newId in
+                    if taskListVM.selectedCategoryId != newId { taskListVM.selectedCategoryId = newId }
+                    if listsVM.selectedCategoryId != newId { listsVM.selectedCategoryId = newId }
+                }
+                .onChange(of: taskListVM.categories.count) { _, _ in
+                    syncCategories(from: 0)
+                }
+                .onChange(of: listsVM.categories.count) { _, _ in
+                    syncCategories(from: 1)
+                }
+                .onChange(of: projectsVM.categories.count) { _, _ in
+                    syncCategories(from: 2)
+                }
         }
     }
 
@@ -1398,6 +1419,22 @@ struct LogTabView: View {
         case 2: dismissAddProject()
         default: break
         }
+    }
+
+    // MARK: - Category Sync
+
+    /// Copy the active tab's categories to the other VMs so all tabs share the same list.
+    private func syncCategories(from sourceTab: Int) {
+        let sourceCategories: [Category]
+        switch sourceTab {
+        case 0: sourceCategories = taskListVM.categories
+        case 1: sourceCategories = listsVM.categories
+        case 2: sourceCategories = projectsVM.categories
+        default: return
+        }
+        if sourceTab != 0 { taskListVM.categories = sourceCategories }
+        if sourceTab != 1 { listsVM.categories = sourceCategories }
+        if sourceTab != 2 { projectsVM.categories = sourceCategories }
     }
 }
 

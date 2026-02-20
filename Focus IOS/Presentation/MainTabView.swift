@@ -38,6 +38,17 @@ struct MainTabView: View {
                 }
                 .tag(1)
                 .environmentObject(focusViewModel)
+
+            Color.clear
+                .tabItem {
+                    Label("Rituals", systemImage: "moon.stars")
+                }
+                .tag(2)
+        }
+        .onChange(of: selectedTab) { oldValue, newValue in
+            if newValue == 2 {
+                selectedTab = oldValue
+            }
         }
         .background(TabBarSelectedImageSetter())
     }
@@ -59,7 +70,7 @@ private class TabBarSetterView: UIView {
 
     private func configureTabBar(in window: UIWindow) {
         guard let tabBar = window.findSubview(ofType: UITabBar.self),
-              let items = tabBar.items, items.count >= 2 else {
+              let items = tabBar.items, items.count >= 3 else {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
                 guard let window = self?.window else { return }
                 self?.configureTabBar(in: window)
@@ -69,6 +80,8 @@ private class TabBarSetterView: UIView {
         items[0].selectedImage = UIImage(systemName: "target")?
             .withTintColor(.label, renderingMode: .alwaysOriginal)
         items[1].selectedImage = UIImage(systemName: "tray.full")?
+            .withTintColor(.label, renderingMode: .alwaysOriginal)
+        items[2].selectedImage = UIImage(systemName: "moon.stars")?
             .withTintColor(.label, renderingMode: .alwaysOriginal)
     }
 }

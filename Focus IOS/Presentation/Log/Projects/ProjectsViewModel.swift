@@ -135,8 +135,6 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
 
     // MARK: - LogFilterable Conformance
 
-    var categoryType: String { "project" }
-
     var showingAddItem: Bool {
         get { showingAddProject }
         set { showingAddProject = newValue }
@@ -279,7 +277,7 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
 
         do {
             self.projects = try await repository.fetchProjects()
-            self.categories = try await categoryRepository.fetchCategories(type: .project)
+            self.categories = try await categoryRepository.fetchCategories()
             await fetchCommittedTaskIds()
 
             // Pre-fetch task counts for all projects
@@ -754,8 +752,7 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
             let newCategory = Category(
                 userId: userId,
                 name: trimmed,
-                sortOrder: categories.count,
-                type: .project
+                sortOrder: categories.count
             )
             let created = try await categoryRepository.createCategory(newCategory)
             categories.append(created)
@@ -964,8 +961,7 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
             let newCategory = Category(
                 userId: userId,
                 name: trimmed,
-                sortOrder: categories.count,
-                type: .project
+                sortOrder: categories.count
             )
             let created = try await categoryRepository.createCategory(newCategory)
             categories.append(created)

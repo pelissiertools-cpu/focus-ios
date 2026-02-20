@@ -141,8 +141,6 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
 
     // MARK: - LogFilterable Conformance
 
-    var categoryType: String { "task" }
-
     var showingAddItem: Bool {
         get { showingAddTask }
         set { showingAddTask = newValue }
@@ -779,7 +777,7 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
 
     func fetchCategories() async {
         do {
-            self.categories = try await categoryRepository.fetchCategories(type: .task)
+            self.categories = try await categoryRepository.fetchCategories()
         } catch {
             if !Task.isCancelled { errorMessage = error.localizedDescription }
         }

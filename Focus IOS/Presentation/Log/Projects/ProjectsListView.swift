@@ -20,24 +20,117 @@ struct ProjectsListView: View {
     @State private var lastReorderTime: Date = .distantPast
     @State private var rowFrames: [UUID: CGRect] = [:]
     @State private var showClearCompletedConfirmation = false
+    @State private var isCategoryExpanded = false
 
     init(viewModel: ProjectsViewModel, searchText: String = "") {
         self.viewModel = viewModel
         self.searchText = searchText
     }
 
-    var body: some View {
-        ZStack {
-            if viewModel.isLoading {
-                ProgressView("Loading projects...")
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if viewModel.projects.isEmpty {
-                emptyState
-            } else {
-                projectList
-            }
+    private var categoryTitle: String {
+        if let id = viewModel.selectedCategoryId,
+           let cat = viewModel.categories.first(where: { $0.id == id }) {
+            return cat.name
         }
-        .padding(.top, 44)
+        return "All"
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            CategorySelectorHeader(
+                title: categoryTitle,
+                count: viewModel.filteredProjects.count,
+                countSuffix: "project",
+                isExpanded: $isCategoryExpanded,
+                categories: viewModel.categories,
+                selectedCategoryId: viewModel.selectedCategoryId,
+                onSelectCategory: { categoryId in
+                    viewModel.selectedCategoryId = categoryId
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        isCategoryExpanded = false
+                    }
+                },
+                onCreateCategory: { name in
+                    _Concurrency.Task {
+                        await viewModel.createCategory(name: name)
+                    }
+                },
+                onDeleteCategories: { ids in
+                    _Concurrency.Task {
+                        await viewModel.deleteCategories(ids: ids)
+                    }
+                },
+                onMergeCategories: { ids in
+                    _Concurrency.Task {
+                        await viewModel.mergeCategories(ids: ids)
+                    }
+                },
+                onRenameCategory: { id, name in
+                    _Concurrency.Task {
+                        await viewModel.renameCategory(id: id, newName: name)
+                    }
+                }
+            ) {
+                if viewModel.isEditMode {
+                    HStack(spacing: 8) {
+                        Button {
+                            if viewModel.allUncompletedSelected {
+                                viewModel.deselectAll()
+                            } else {
+                                viewModel.selectAllUncompleted()
+                            }
+                        } label: {
+                            Text(LocalizedStringKey(viewModel.allUncompletedSelected ? "Deselect All" : "Select All"))
+                                .font(.sf(.subheadline, weight: .medium))
+                                .foregroundColor(.appRed)
+                        }
+                        .buttonStyle(.plain)
+
+                        Text("\(viewModel.selectedCount) selected")
+                            .font(.sf(.subheadline))
+                            .foregroundColor(.secondary)
+
+                        Button {
+                            viewModel.exitEditMode()
+                        } label: {
+                            Text("Done")
+                                .font(.sf(.subheadline, weight: .medium))
+                                .foregroundColor(.appRed)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                } else {
+                    HStack(spacing: 8) {
+                        SortMenuButton(viewModel: viewModel)
+
+                        Button {
+                            viewModel.enterEditMode()
+                        } label: {
+                            Image(systemName: "ellipsis")
+                                .font(.sf(.body, weight: .semibold))
+                                .foregroundColor(.primary)
+                                .frame(width: 36, height: 36)
+                                .glassEffect(.regular.interactive(), in: .circle)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+            .padding(.top, 8)
+
+            ZStack {
+                if viewModel.isLoading {
+                    ProgressView("Loading projects...")
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if viewModel.projects.isEmpty {
+                    emptyState
+                } else {
+                    projectList
+                }
+            }
+
+            Spacer(minLength: 0)
+        }
         .sheet(item: $viewModel.selectedProjectForDetails) { project in
             ProjectDetailsDrawer(project: project, viewModel: viewModel)
                 .drawerStyle()

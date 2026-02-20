@@ -64,6 +64,10 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
     // Search
     @Published var searchText: String = ""
 
+    // Sort
+    @Published var sortOption: SortOption = .creationDate
+    @Published var sortDirection: SortDirection = .lowestFirst
+
     // Done section
     @Published var isDoneCollapsed: Bool = true
 
@@ -180,11 +184,32 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
     }
 
     var filteredProjects: [FocusTask] {
-        baseFilteredProjects.filter { !$0.isCompleted }.sorted { $0.sortOrder < $1.sortOrder }
+        applySorting(to: baseFilteredProjects.filter { !$0.isCompleted })
     }
 
     var completedProjects: [FocusTask] {
         baseFilteredProjects.filter { $0.isCompleted }
+    }
+
+    private func applySorting(to items: [FocusTask]) -> [FocusTask] {
+        let ascending = sortDirection == .lowestFirst
+        switch sortOption {
+        case .priority:
+            return items.sorted { a, b in
+                if a.priority.sortIndex != b.priority.sortIndex {
+                    return ascending ? a.priority.sortIndex < b.priority.sortIndex : a.priority.sortIndex > b.priority.sortIndex
+                }
+                return a.sortOrder < b.sortOrder
+            }
+        case .dueDate:
+            return items.sorted {
+                ascending ? $0.createdDate < $1.createdDate : $0.createdDate > $1.createdDate
+            }
+        case .creationDate:
+            return items.sorted {
+                ascending ? $0.createdDate < $1.createdDate : $0.createdDate > $1.createdDate
+            }
+        }
     }
 
     func toggleDoneCollapsed() {
@@ -757,6 +782,66 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
             let created = try await categoryRepository.createCategory(newCategory)
             categories.append(created)
             selectedCategoryId = created.id
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func renameCategory(id: UUID, newName: String) async {
+        let trimmed = newName.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return }
+
+        do {
+            if let index = categories.firstIndex(where: { $0.id == id }) {
+                var updated = categories[index]
+                updated.name = trimmed
+                try await categoryRepository.updateCategory(updated)
+                categories[index].name = trimmed
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func deleteCategories(ids: Set<UUID>) async {
+        do {
+            for categoryId in ids {
+                try await repository.nullifyCategoryId(categoryId: categoryId)
+                try await categoryRepository.deleteCategory(id: categoryId)
+            }
+            for i in projects.indices {
+                if let catId = projects[i].categoryId, ids.contains(catId) {
+                    projects[i].categoryId = nil
+                }
+            }
+            categories.removeAll { ids.contains($0.id) }
+            if let selected = selectedCategoryId, ids.contains(selected) {
+                selectedCategoryId = nil
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func mergeCategories(ids: Set<UUID>) async {
+        let sorted = categories.filter { ids.contains($0.id) }.sorted { $0.sortOrder < $1.sortOrder }
+        guard sorted.count >= 2, let target = sorted.first else { return }
+        let sourceIds = Set(sorted.dropFirst().map { $0.id })
+
+        do {
+            for sourceId in sourceIds {
+                try await repository.reassignCategory(from: sourceId, to: target.id)
+                try await categoryRepository.deleteCategory(id: sourceId)
+            }
+            for i in projects.indices {
+                if let catId = projects[i].categoryId, sourceIds.contains(catId) {
+                    projects[i].categoryId = target.id
+                }
+            }
+            categories.removeAll { sourceIds.contains($0.id) }
+            if let selected = selectedCategoryId, sourceIds.contains(selected) {
+                selectedCategoryId = target.id
+            }
         } catch {
             errorMessage = error.localizedDescription
         }

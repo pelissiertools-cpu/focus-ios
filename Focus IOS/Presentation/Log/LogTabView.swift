@@ -17,9 +17,6 @@ struct LogTabView: View {
     @State private var isSearchActive = false
     @FocusState private var isSearchFieldFocused: Bool
 
-    // Shared filter state
-    @State private var showCategoryDropdown = false
-
     // Batch create alerts (Tasks tab only)
     @State private var showCreateProjectAlert = false
     @State private var showCreateListAlert = false
@@ -105,7 +102,6 @@ struct LogTabView: View {
                     addProjectCommitExpanded: $addProjectCommitExpanded,
                     focusedProjectTaskId: $focusedProjectTaskId,
                     addProjectDraftTasks: $addProjectDraftTasks,
-                    showCategoryDropdown: $showCategoryDropdown,
                     showCreateProjectAlert: $showCreateProjectAlert,
                     showCreateListAlert: $showCreateListAlert,
                     newProjectTitle: $newProjectTitle,
@@ -208,14 +204,6 @@ struct LogTabView: View {
                             .opacity(selectedTab == 2 ? 1 : 0)
                             .allowsHitTesting(selectedTab == 2)
                     }
-
-                    // Shared filter bar (floats on top)
-                    filterBar
-                        .zIndex(10)
-
-                    // Shared category dropdown overlay
-                    categoryDropdown
-                        .zIndex(20)
 
                     // Shared floating bottom area (FAB or EditModeActionBar)
                     floatingBottomArea
@@ -346,40 +334,6 @@ struct LogTabView: View {
         searchText = ""
         isSearchActive = false
         isSearchFieldFocused = false
-    }
-
-    // MARK: - Shared Filter Bar
-
-    @ViewBuilder
-    private var filterBar: some View {
-        switch selectedTab {
-        case 0:
-            EmptyView()
-        case 1:
-            LogFilterBar(viewModel: listsVM, showCategoryDropdown: $showCategoryDropdown)
-        case 2:
-            LogFilterBar(viewModel: projectsVM, showCategoryDropdown: $showCategoryDropdown)
-        default:
-            EmptyView()
-        }
-    }
-
-    // MARK: - Shared Category Dropdown
-
-    @ViewBuilder
-    private var categoryDropdown: some View {
-        if showCategoryDropdown {
-            switch selectedTab {
-            case 0:
-                SharedCategoryDropdownMenu(viewModel: taskListVM, showDropdown: $showCategoryDropdown)
-            case 1:
-                SharedCategoryDropdownMenu(viewModel: listsVM, showDropdown: $showCategoryDropdown)
-            case 2:
-                SharedCategoryDropdownMenu(viewModel: projectsVM, showDropdown: $showCategoryDropdown)
-            default:
-                EmptyView()
-            }
-        }
     }
 
     // MARK: - Shared Floating Bottom Area (FAB / Edit Action Bar)
@@ -1449,7 +1403,6 @@ private struct LogTabChangeModifier: ViewModifier {
     @ObservedObject var taskListVM: TaskListViewModel
     @ObservedObject var listsVM: ListsViewModel
     @ObservedObject var projectsVM: ProjectsViewModel
-    @Binding var showCategoryDropdown: Bool
     var dismissSearch: () -> Void
     var dismissAddTask: () -> Void
     var dismissAddList: () -> Void
@@ -1459,7 +1412,6 @@ private struct LogTabChangeModifier: ViewModifier {
         content
             .onChange(of: selectedTab) { _, _ in
                 dismissSearch()
-                showCategoryDropdown = false
                 taskListVM.exitEditMode()
                 projectsVM.exitEditMode()
                 listsVM.exitEditMode()
@@ -1646,7 +1598,6 @@ private extension View {
         addProjectCommitExpanded: Binding<Bool>,
         focusedProjectTaskId: FocusState<UUID?>.Binding,
         addProjectDraftTasks: Binding<[DraftTask]>,
-        showCategoryDropdown: Binding<Bool>,
         showCreateProjectAlert: Binding<Bool>,
         showCreateListAlert: Binding<Bool>,
         newProjectTitle: Binding<String>,
@@ -1662,7 +1613,6 @@ private extension View {
                 taskListVM: taskListVM,
                 listsVM: listsVM,
                 projectsVM: projectsVM,
-                showCategoryDropdown: showCategoryDropdown,
                 dismissSearch: dismissSearch,
                 dismissAddTask: dismissAddTask,
                 dismissAddList: dismissAddList,

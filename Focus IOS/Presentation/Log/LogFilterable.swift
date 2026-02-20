@@ -13,6 +13,13 @@ protocol LogFilterable: ObservableObject {
     var selectedCategoryId: UUID? { get set }
     func selectCategory(_ categoryId: UUID?)
     func createCategory(name: String) async
+    func deleteCategories(ids: Set<UUID>) async
+    func mergeCategories(ids: Set<UUID>) async
+    func renameCategory(id: UUID, newName: String) async
+
+    // MARK: - Sort
+    var sortOption: SortOption { get set }
+    var sortDirection: SortDirection { get set }
 
     // MARK: - Commitment filter
     var commitmentFilter: CommitmentFilter? { get set }

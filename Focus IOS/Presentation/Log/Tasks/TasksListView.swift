@@ -333,6 +333,7 @@ struct PrioritySectionHeader: View {
 struct CategorySelectorHeader<TrailingContent: View>: View {
     let title: String
     let count: Int
+    let countSuffix: String
     @Binding var isExpanded: Bool
     let categories: [Category]
     let selectedCategoryId: UUID?
@@ -359,6 +360,7 @@ struct CategorySelectorHeader<TrailingContent: View>: View {
     init(
         title: String,
         count: Int,
+        countSuffix: String = "task",
         isExpanded: Binding<Bool>,
         categories: [Category],
         selectedCategoryId: UUID?,
@@ -371,6 +373,7 @@ struct CategorySelectorHeader<TrailingContent: View>: View {
     ) {
         self.title = title
         self.count = count
+        self.countSuffix = countSuffix
         self._isExpanded = isExpanded
         self.categories = categories
         self.selectedCategoryId = selectedCategoryId
@@ -391,7 +394,7 @@ struct CategorySelectorHeader<TrailingContent: View>: View {
                         .font(.golosText(size: 30))
 
                     if count > 0 {
-                        Text("\(count) task\(count == 1 ? "" : "s")")
+                        Text("\(count) \(countSuffix)\(count == 1 ? "" : "s")")
                             .font(.sf(size: 12))
                             .foregroundColor(.secondary)
                     }
@@ -1130,8 +1133,8 @@ struct SubtaskRow: View {
 
 // MARK: - Sort Menu Button
 
-struct SortMenuButton: View {
-    @ObservedObject var viewModel: TaskListViewModel
+struct SortMenuButton<VM: LogFilterable>: View {
+    @ObservedObject var viewModel: VM
 
     var body: some View {
         Menu {

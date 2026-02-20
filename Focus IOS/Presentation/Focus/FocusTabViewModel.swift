@@ -7,6 +7,7 @@
 
 import SwiftUI
 import Combine
+import Auth
 
 // MARK: - Focus Section Config
 
@@ -770,27 +771,23 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
 
     // MARK: - Drag Reorder Methods
 
-    /// Get uncompleted commitments for a section, sorted by sortOrder, filtered to current timeframe/date
-    func uncompletedCommitmentsForSection(_ section: Section) -> [Commitment] {
-        commitments
-            .filter { commitment in
-                commitment.section == section &&
-                commitment.parentCommitmentId == nil &&
-                isSameTimeframe(commitment.commitmentDate, timeframe: selectedTimeframe, selectedDate: selectedDate) &&
-                !(tasksMap[commitment.taskId]?.isCompleted ?? false)
-            }
-            .sorted { $0.sortOrder < $1.sortOrder }
+    /// Get commitments for a section filtered to current timeframe/date, by completion state
+    private func commitmentsForSection(_ section: Section, completed: Bool) -> [Commitment] {
+        let filtered = commitments.filter { commitment in
+            commitment.section == section &&
+            commitment.parentCommitmentId == nil &&
+            isSameTimeframe(commitment.commitmentDate, timeframe: selectedTimeframe, selectedDate: selectedDate) &&
+            (tasksMap[commitment.taskId]?.isCompleted ?? false) == completed
+        }
+        return completed ? filtered : filtered.sorted { $0.sortOrder < $1.sortOrder }
     }
 
-    /// Get completed commitments for a section, filtered to current timeframe/date
+    func uncompletedCommitmentsForSection(_ section: Section) -> [Commitment] {
+        commitmentsForSection(section, completed: false)
+    }
+
     func completedCommitmentsForSection(_ section: Section) -> [Commitment] {
-        commitments
-            .filter { commitment in
-                commitment.section == section &&
-                commitment.parentCommitmentId == nil &&
-                isSameTimeframe(commitment.commitmentDate, timeframe: selectedTimeframe, selectedDate: selectedDate) &&
-                (tasksMap[commitment.taskId]?.isCompleted ?? false)
-            }
+        commitmentsForSection(section, completed: true)
     }
 
     // MARK: - Flat Display Items

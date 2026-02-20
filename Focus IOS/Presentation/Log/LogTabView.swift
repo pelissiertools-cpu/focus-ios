@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import Auth
 
 struct LogTabView: View {
     @Binding var mainTab: Int

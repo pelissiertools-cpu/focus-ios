@@ -629,6 +629,17 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
 
     // MARK: - Flat List Move Handler
 
+    /// Determine which priority section contains the given destination index
+    private func resolveDestinationPriority(flat: [FlatDisplayItem], destination: Int) -> Priority {
+        let lookupIndex = max(0, min(destination - 1, flat.count - 1))
+        for i in stride(from: lookupIndex, through: 0, by: -1) {
+            if case .priorityHeader(let priority) = flat[i] {
+                return priority
+            }
+        }
+        return .medium // fallback
+    }
+
     /// Handle .onMove from the flat ForEach.
     /// Uses Array.move(fromOffsets:toOffset:) to match SwiftUI's visual move exactly,
     /// preventing the snap/overlap glitch that occurs with droppedId/targetId mapping.
@@ -642,41 +653,105 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
 
         if movedTask.parentTaskId == nil {
             // --- Parent task moved ---
-            let movedPriority = movedTask.priority
+            let sourcePriority = movedTask.priority
+            let destinationPriority = resolveDestinationPriority(flat: flat, destination: destination)
 
-            // Only consider parents within the same priority section
-            let parentIndices = flat.enumerated().compactMap { (i, item) -> (flatIdx: Int, task: FocusTask)? in
-                if case .task(let t) = item, t.parentTaskId == nil, !t.isCompleted, t.priority == movedPriority { return (i, t) }
-                return nil
-            }
+            if destinationPriority == sourcePriority {
+                // Same-section reorder
+                let parentIndices = flat.enumerated().compactMap { (i, item) -> (flatIdx: Int, task: FocusTask)? in
+                    if case .task(let t) = item, t.parentTaskId == nil, !t.isCompleted, t.priority == sourcePriority { return (i, t) }
+                    return nil
+                }
 
-            guard let parentFrom = parentIndices.firstIndex(where: { $0.task.id == movedTask.id }) else { return }
+                guard let parentFrom = parentIndices.firstIndex(where: { $0.task.id == movedTask.id }) else { return }
 
-            // Map flat destination to parent-only destination (within same priority)
-            var parentTo = parentIndices.count // default: end
-            for (pi, entry) in parentIndices.enumerated() {
-                if destination <= entry.flatIdx {
-                    parentTo = pi
-                    break
+                var parentTo = parentIndices.count
+                for (pi, entry) in parentIndices.enumerated() {
+                    if destination <= entry.flatIdx {
+                        parentTo = pi
+                        break
+                    }
+                }
+                if parentTo > parentFrom { parentTo = min(parentTo, parentIndices.count) }
+
+                guard parentFrom != parentTo && parentFrom + 1 != parentTo else { return }
+
+                var samePriorityTasks = uncompletedTasks.filter { $0.priority == sourcePriority }
+                samePriorityTasks.move(fromOffsets: IndexSet(integer: parentFrom), toOffset: parentTo)
+
+                var updates: [(id: UUID, sortOrder: Int)] = []
+                for (index, task) in samePriorityTasks.enumerated() {
+                    if let taskIndex = tasks.firstIndex(where: { $0.id == task.id }) {
+                        tasks[taskIndex].sortOrder = index
+                    }
+                    updates.append((id: task.id, sortOrder: index))
+                }
+                _Concurrency.Task { await persistSortOrders(updates) }
+            } else {
+                // Cross-section move: change priority and insert into destination section
+
+                // Find insertion position within destination priority section
+                let destParents = flat.enumerated().compactMap { (i, item) -> (flatIdx: Int, task: FocusTask)? in
+                    if case .task(let t) = item, t.parentTaskId == nil, !t.isCompleted, t.priority == destinationPriority { return (i, t) }
+                    return nil
+                }
+
+                var insertIndex = destParents.count // default: append at end
+                for (pi, entry) in destParents.enumerated() {
+                    if destination <= entry.flatIdx {
+                        insertIndex = pi
+                        break
+                    }
+                }
+
+                // Update priority locally
+                if let taskIndex = tasks.firstIndex(where: { $0.id == movedTask.id }) {
+                    tasks[taskIndex].priority = destinationPriority
+                    tasks[taskIndex].modifiedDate = Date()
+                }
+
+                // Build destination section task list (excluding moved task, then insert it)
+                var destTasks = uncompletedTasks
+                    .filter { $0.priority == destinationPriority && $0.id != movedTask.id }
+                let clampedIndex = min(insertIndex, destTasks.count)
+                if let updatedTask = tasks.first(where: { $0.id == movedTask.id }) {
+                    destTasks.insert(updatedTask, at: clampedIndex)
+                }
+
+                // Reassign sort orders in destination section
+                var updates: [(id: UUID, sortOrder: Int)] = []
+                for (index, task) in destTasks.enumerated() {
+                    if let taskIndex = tasks.firstIndex(where: { $0.id == task.id }) {
+                        tasks[taskIndex].sortOrder = index
+                    }
+                    updates.append((id: task.id, sortOrder: index))
+                }
+
+                // Reassign sort orders in source section (task was removed)
+                let sourceTasks = uncompletedTasks
+                    .filter { $0.priority == sourcePriority }
+                for (index, task) in sourceTasks.enumerated() {
+                    if let taskIndex = tasks.firstIndex(where: { $0.id == task.id }) {
+                        tasks[taskIndex].sortOrder = index
+                    }
+                    updates.append((id: task.id, sortOrder: index))
+                }
+
+                // Persist priority change + sort orders
+                _Concurrency.Task {
+                    // Save the moved task with new priority
+                    if let updatedTask = self.tasks.first(where: { $0.id == movedTask.id }) {
+                        do {
+                            try await self.repository.updateTask(updatedTask)
+                        } catch {
+                            self.errorMessage = "Failed to update priority: \(error.localizedDescription)"
+                        }
+                    }
+                    // Save sort orders for all other affected tasks
+                    let otherUpdates = updates.filter { $0.id != movedTask.id }
+                    await self.persistSortOrders(otherUpdates)
                 }
             }
-            // Adjust for Array.move semantics (same side adjustment)
-            if parentTo > parentFrom { parentTo = min(parentTo, parentIndices.count) }
-
-            guard parentFrom != parentTo && parentFrom + 1 != parentTo else { return }
-
-            // Apply move within the same priority group
-            var samePriorityTasks = uncompletedTasks.filter { $0.priority == movedPriority }
-            samePriorityTasks.move(fromOffsets: IndexSet(integer: parentFrom), toOffset: parentTo)
-
-            var updates: [(id: UUID, sortOrder: Int)] = []
-            for (index, task) in samePriorityTasks.enumerated() {
-                if let taskIndex = tasks.firstIndex(where: { $0.id == task.id }) {
-                    tasks[taskIndex].sortOrder = index
-                }
-                updates.append((id: task.id, sortOrder: index))
-            }
-            _Concurrency.Task { await persistSortOrders(updates) }
 
         } else {
             // --- Subtask moved ---

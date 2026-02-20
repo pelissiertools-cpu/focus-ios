@@ -231,29 +231,21 @@ struct PrioritySectionHeader: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: 12) {
-                HStack(alignment: .lastTextBaseline, spacing: 8) {
-                    Text(priority.displayName)
-                        .font(.golosText(size: 14))
+                Text(priority.displayName)
+                    .font(.golosText(size: 14))
 
-                    HStack(spacing: 4) {
-                        if count > 0 {
-                            Text("\(count)")
-                                .font(.sf(size: 10))
-                                .foregroundColor(.secondary)
-                        }
-                        Image(systemName: "chevron.right")
-                            .font(.sf(size: 8, weight: .semibold))
-                            .foregroundColor(.secondary)
-                            .rotationEffect(.degrees(isCollapsed ? 0 : 90))
-                    }
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .clipShape(Capsule())
-                    .glassEffect(.regular.interactive(), in: .capsule)
-                    .alignmentGuide(.lastTextBaseline) { d in d[.bottom] - 1 }
+                if count > 0 {
+                    Text("\(count)")
+                        .font(.sf(size: 10))
+                        .foregroundColor(.secondary)
                 }
 
                 Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.sf(size: 8, weight: .semibold))
+                    .foregroundColor(.secondary)
+                    .rotationEffect(.degrees(isCollapsed ? 0 : 90))
             }
             .contentShape(Rectangle())
             .onTapGesture {
@@ -287,27 +279,14 @@ struct CategorySelectorHeader: View {
     var body: some View {
         VStack(spacing: 0) {
             // Header row
-            HStack(spacing: 12) {
-                HStack(alignment: .lastTextBaseline, spacing: 8) {
-                    Text(title)
-                        .font(.golosText(size: 22))
+            HStack(spacing: 8) {
+                Text(title)
+                    .font(.golosText(size: 30))
 
-                    HStack(spacing: 4) {
-                        if count > 0 {
-                            Text("\(count)")
-                                .font(.sf(size: 10))
-                                .foregroundColor(.secondary)
-                        }
-                        Image(systemName: "chevron.right")
-                            .font(.sf(size: 8, weight: .semibold))
-                            .foregroundColor(.secondary)
-                            .rotationEffect(.degrees(isExpanded ? 90 : 0))
-                    }
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .clipShape(Capsule())
-                    .glassEffect(.regular.interactive(), in: .capsule)
-                    .alignmentGuide(.lastTextBaseline) { d in d[.bottom] - 1 }
+                if count > 0 {
+                    Text("\(count)")
+                        .font(.sf(size: 12))
+                        .foregroundColor(.secondary)
                 }
 
                 Spacer()
@@ -373,6 +352,7 @@ struct CategorySelectorHeader: View {
                                 .font(.sf(.subheadline))
                         }
                         .foregroundColor(.appRed)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.horizontal, 12)
                         .padding(.vertical, 10)
                     }

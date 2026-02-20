@@ -354,7 +354,7 @@ struct LogTabView: View {
     private var filterBar: some View {
         switch selectedTab {
         case 0:
-            LogFilterBar(viewModel: taskListVM, showCategoryDropdown: $showCategoryDropdown, hideCategoryPill: true)
+            EmptyView()
         case 1:
             LogFilterBar(viewModel: listsVM, showCategoryDropdown: $showCategoryDropdown)
         case 2:

@@ -58,8 +58,53 @@ struct TasksListView: View {
                         await viewModel.createCategory(name: name)
                     }
                 }
-            )
-            .padding(.top, 44)
+            ) {
+                if viewModel.isEditMode {
+                    HStack(spacing: 8) {
+                        Button {
+                            if viewModel.allUncompletedSelected {
+                                viewModel.deselectAll()
+                            } else {
+                                viewModel.selectAllUncompleted()
+                            }
+                        } label: {
+                            Text(LocalizedStringKey(viewModel.allUncompletedSelected ? "Deselect All" : "Select All"))
+                                .font(.sf(.subheadline, weight: .medium))
+                                .foregroundColor(.appRed)
+                        }
+                        .buttonStyle(.plain)
+
+                        Text("\(viewModel.selectedCount) selected")
+                            .font(.sf(.subheadline))
+                            .foregroundColor(.secondary)
+
+                        Button {
+                            viewModel.exitEditMode()
+                        } label: {
+                            Text("Done")
+                                .font(.sf(.subheadline, weight: .medium))
+                                .foregroundColor(.appRed)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                } else {
+                    HStack(spacing: 8) {
+                        SharedCommitmentFilterPills(viewModel: viewModel)
+
+                        Button {
+                            viewModel.enterEditMode()
+                        } label: {
+                            Image(systemName: "ellipsis")
+                                .font(.sf(.body, weight: .semibold))
+                                .foregroundColor(.primary)
+                                .frame(width: 36, height: 36)
+                                .glassEffect(.regular.interactive(), in: .circle)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+            .padding(.top, 8)
 
             ZStack {
                 if viewModel.isLoading {
@@ -230,6 +275,8 @@ struct PrioritySectionHeader: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            Spacer(minLength: 0)
+
             HStack(spacing: 12) {
                 Text(priority.displayName)
                     .font(.golosText(size: 14))
@@ -247,12 +294,13 @@ struct PrioritySectionHeader: View {
                     .foregroundColor(.secondary)
                     .rotationEffect(.degrees(isCollapsed ? 0 : 90))
             }
+            .padding(.horizontal, 12)
+            .padding(.bottom, 8)
             .contentShape(Rectangle())
             .onTapGesture {
                 onToggle()
             }
-            .padding(.vertical, 6)
-            .padding(.horizontal, 12)
+            .frame(minHeight: 70, alignment: .bottom)
 
             Rectangle()
                 .fill(Color.secondary.opacity(0.7))
@@ -263,7 +311,7 @@ struct PrioritySectionHeader: View {
 
 // MARK: - Category Selector Header
 
-struct CategorySelectorHeader: View {
+struct CategorySelectorHeader<TrailingContent: View>: View {
     let title: String
     let count: Int
     @Binding var isExpanded: Bool
@@ -271,38 +319,63 @@ struct CategorySelectorHeader: View {
     let selectedCategoryId: UUID?
     let onSelectCategory: (UUID?) -> Void
     let onCreateCategory: (String) -> Void
+    let trailingContent: TrailingContent
 
     @State private var newCategoryName = ""
     @State private var isAddingCategory = false
     @FocusState private var isTextFieldFocused: Bool
 
+    init(
+        title: String,
+        count: Int,
+        isExpanded: Binding<Bool>,
+        categories: [Category],
+        selectedCategoryId: UUID?,
+        onSelectCategory: @escaping (UUID?) -> Void,
+        onCreateCategory: @escaping (String) -> Void,
+        @ViewBuilder trailingContent: () -> TrailingContent
+    ) {
+        self.title = title
+        self.count = count
+        self._isExpanded = isExpanded
+        self.categories = categories
+        self.selectedCategoryId = selectedCategoryId
+        self.onSelectCategory = onSelectCategory
+        self.onCreateCategory = onCreateCategory
+        self.trailingContent = trailingContent()
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             // Header row
             HStack(spacing: 8) {
-                Text(title)
-                    .font(.golosText(size: 30))
+                HStack(spacing: 8) {
+                    Text(title)
+                        .font(.golosText(size: 30))
 
-                if count > 0 {
-                    Text("\(count)")
-                        .font(.sf(size: 12))
-                        .foregroundColor(.secondary)
+                    if count > 0 {
+                        Text("\(count)")
+                            .font(.sf(size: 12))
+                            .foregroundColor(.secondary)
+                    }
+                }
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        isExpanded.toggle()
+                    }
                 }
 
                 Spacer()
-            }
-            .contentShape(Rectangle())
-            .onTapGesture {
-                withAnimation(.easeInOut(duration: 0.2)) {
-                    isExpanded.toggle()
-                }
+
+                trailingContent
             }
             .padding(.vertical, 6)
             .padding(.horizontal, 12)
 
             Rectangle()
-                .fill(Color.secondary.opacity(0.7))
-                .frame(height: 1)
+                .fill(Color.secondary)
+                .frame(height: 2)
 
             // Expanded category choices
             if isExpanded {

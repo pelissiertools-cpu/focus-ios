@@ -85,7 +85,7 @@ struct DrawerContainer<Content: View>: View {
                     .foregroundColor(highlighted ? .white : .secondary)
                     .frame(width: 30, height: 30)
             }
-            .background(highlighted ? Color.accentColor : Color(.systemGray5))
+            .background(highlighted ? Color.appRed : Color(.systemGray5))
             .clipShape(Circle())
             .buttonStyle(.plain)
         }
@@ -220,7 +220,7 @@ struct DrawerActionRow: View {
     let icon: String
     let text: String
     var trailing: String? = nil
-    var iconColor: Color = .accentColor
+    var iconColor: Color = .appRed
     let action: () -> Void
 
     var body: some View {
@@ -236,7 +236,7 @@ struct DrawerActionMenuRow: View {
     let icon: String
     let text: String
     var trailing: String? = nil
-    var iconColor: Color = .accentColor
+    var iconColor: Color = .appRed
     @ViewBuilder let menuContent: () -> AnyView
 
     var body: some View {
@@ -254,7 +254,7 @@ struct DrawerActionLabel: View {
     let icon: String
     let text: String
     var trailing: String? = nil
-    var iconColor: Color = .accentColor
+    var iconColor: Color = .appRed
 
     var body: some View {
         HStack(spacing: 10) {

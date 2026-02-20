@@ -279,7 +279,7 @@ struct FlatTaskRow: View {
             if isEditMode && !task.isCompleted && isParent {
                 Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
                     .font(.sf(.title3))
-                    .foregroundColor(isSelected ? .blue : .gray)
+                    .foregroundColor(isSelected ? .appRed : .gray)
             }
 
             // Task content
@@ -405,7 +405,7 @@ struct ExpandableTaskRow: View {
             if isEditMode && !task.isCompleted {
                 Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
                     .font(.sf(.title3))
-                    .foregroundColor(isSelected ? .blue : .gray)
+                    .foregroundColor(isSelected ? .appRed : .gray)
             }
 
             // Task content

@@ -26,7 +26,7 @@ struct LogFilterBar<VM: LogFilterable>: View {
                     } label: {
                         Text(LocalizedStringKey(viewModel.allUncompletedSelected ? "Deselect All" : "Select All"))
                             .font(.sf(.subheadline, weight: .medium))
-                            .foregroundColor(.blue)
+                            .foregroundColor(.appRed)
                     }
                     .buttonStyle(.plain)
 
@@ -61,7 +61,7 @@ struct LogFilterBar<VM: LogFilterable>: View {
                 if viewModel.isEditMode {
                     Text("Done")
                         .font(.sf(.subheadline, weight: .medium))
-                        .foregroundColor(.blue)
+                        .foregroundColor(.appRed)
                         .padding(.horizontal, 16)
                         .padding(.vertical, 8)
                 } else {

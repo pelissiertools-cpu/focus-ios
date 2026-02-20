@@ -179,7 +179,7 @@ struct ListRow: View {
             if isEditMode {
                 Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
                     .font(.sf(.title3))
-                    .foregroundColor(isSelected ? .blue : .gray)
+                    .foregroundColor(isSelected ? .appRed : .gray)
             }
 
             // Title + item count

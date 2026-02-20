@@ -41,7 +41,7 @@ struct ProjectCard: View {
                             .frame(height: 3)
 
                         Rectangle()
-                            .fill(Color.blue)
+                            .fill(Color.appRed)
                             .frame(width: geometry.size.width * progressPercentage, height: 3)
                     }
                 }
@@ -101,10 +101,10 @@ struct ProjectCard: View {
             Spacer()
 
             if project.isCompleted {
-                // Blue checkmark for completed projects
+                // Checkmark for completed projects
                 Image(systemName: "checkmark.circle.fill")
                     .font(.sf(.title3))
-                    .foregroundColor(.blue)
+                    .foregroundColor(.appRed)
             } else if !viewModel.isEditMode, let onDragChanged, let onDragEnded {
                 // Drag handle
                 DragHandleView()
@@ -271,7 +271,7 @@ struct ProjectTaskRow: View {
             } label: {
                 Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
                     .font(.sf(.title3))
-                    .foregroundColor(task.isCompleted ? .blue : .gray)
+                    .foregroundColor(task.isCompleted ? .appRed : .gray)
             }
             .buttonStyle(.plain)
         }
@@ -332,7 +332,7 @@ struct ProjectSubtaskRow: View {
             } label: {
                 Image(systemName: subtask.isCompleted ? "checkmark.circle.fill" : "circle")
                     .font(.sf(.subheadline))
-                    .foregroundColor(subtask.isCompleted ? .blue : .gray)
+                    .foregroundColor(subtask.isCompleted ? .appRed : .gray)
             }
             .buttonStyle(.plain)
         }

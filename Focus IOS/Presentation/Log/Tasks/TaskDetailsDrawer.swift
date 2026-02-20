@@ -467,7 +467,7 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                     .padding(.vertical, 10)
                     .glassEffect(
                         commitPillIsActive
-                            ? .regular.tint(.blue).interactive()
+                            ? .regular.tint(.appRed).interactive()
                             : .regular.interactive(),
                         in: .capsule
                     )

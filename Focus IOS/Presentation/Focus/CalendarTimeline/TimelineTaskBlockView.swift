@@ -47,15 +47,15 @@ struct TimelineTaskBlockView: View {
 
             // Main block body with overlay-based resize handles
             RoundedRectangle(cornerRadius: 6)
-                .fill(Color.blue.opacity(0.15))
+                .fill(Color.appRed.opacity(0.15))
                 .overlay(
                     RoundedRectangle(cornerRadius: 6)
-                        .strokeBorder(Color.blue, lineWidth: 1.5)
+                        .strokeBorder(Color.appRed, lineWidth: 1.5)
                 )
                 .overlay(
                     Text(task.title)
                         .font(.sf(.caption, weight: .medium))
-                        .foregroundColor(.blue)
+                        .foregroundColor(.appRed)
                         .lineLimit(1)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4),
@@ -66,7 +66,7 @@ struct TimelineTaskBlockView: View {
                 .overlay(alignment: .topTrailing) {
                     Circle()
                         .fill(Color.white)
-                        .overlay(Circle().strokeBorder(Color.blue, lineWidth: 1.5))
+                        .overlay(Circle().strokeBorder(Color.appRed, lineWidth: 1.5))
                         .frame(width: dotSize, height: dotSize)
                         .offset(x: dotSize / 2, y: -dotSize / 2)
                         .frame(width: handleTapSize, height: handleTapSize)
@@ -85,7 +85,7 @@ struct TimelineTaskBlockView: View {
                 .overlay(alignment: .bottomLeading) {
                     Circle()
                         .fill(Color.white)
-                        .overlay(Circle().strokeBorder(Color.blue, lineWidth: 1.5))
+                        .overlay(Circle().strokeBorder(Color.appRed, lineWidth: 1.5))
                         .frame(width: dotSize, height: dotSize)
                         .offset(x: -dotSize / 2, y: dotSize / 2)
                         .frame(width: handleTapSize, height: handleTapSize)

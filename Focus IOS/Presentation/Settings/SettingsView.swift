@@ -191,7 +191,7 @@ struct SettingsView: View {
                                         if languageManager.currentLanguage == language {
                                             Image(systemName: "checkmark")
                                                 .font(.sf(.body, weight: .semibold))
-                                                .foregroundStyle(.blue)
+                                                .foregroundColor(Color.appRed)
                                         }
                                     }
                                     .padding(.horizontal, 16)
@@ -261,7 +261,7 @@ struct SettingsView: View {
                                         if appearanceManager.currentAppearance == appearance {
                                             Image(systemName: "checkmark")
                                                 .font(.sf(.body, weight: .semibold))
-                                                .foregroundStyle(.blue)
+                                                .foregroundColor(Color.appRed)
                                         }
                                     }
                                     .padding(.horizontal, 16)

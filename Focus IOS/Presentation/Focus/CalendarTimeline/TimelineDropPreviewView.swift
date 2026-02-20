@@ -48,20 +48,20 @@ struct TimelineDropPreviewView: View {
             Spacer().frame(width: labelWidth + 8)
 
             RoundedRectangle(cornerRadius: 6)
-                .fill(Color.blue.opacity(0.15))
+                .fill(Color.appRed.opacity(0.15))
                 .overlay(
                     RoundedRectangle(cornerRadius: 6)
-                        .strokeBorder(Color.blue, style: StrokeStyle(lineWidth: 1.5, dash: [5]))
+                        .strokeBorder(Color.appRed, style: StrokeStyle(lineWidth: 1.5, dash: [5]))
                 )
                 .overlay(
                     VStack(alignment: .leading, spacing: 2) {
                         Text(taskTitle)
                             .font(.sf(.caption, weight: .medium))
-                            .foregroundColor(.blue)
+                            .foregroundColor(.appRed)
                             .lineLimit(1)
                         Text(timeLabel)
                             .font(.sf(.caption2))
-                            .foregroundColor(.blue.opacity(0.6))
+                            .foregroundColor(.appRed.opacity(0.6))
                     }
                     .padding(.horizontal, 8)
                     .padding(.top, 4),

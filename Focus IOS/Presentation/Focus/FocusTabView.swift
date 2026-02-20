@@ -144,7 +144,7 @@ struct FocusTabView: View {
                                                 .font(.sf(.title2, weight: .semibold))
                                                 .foregroundColor(.white)
                                                 .frame(width: 56, height: 56)
-                                                .glassEffect(.regular.tint(.blue).interactive(), in: .circle)
+                                                .glassEffect(.regular.tint(.appRed).interactive(), in: .circle)
                                                 .shadow(radius: 4, y: 2)
                                         }
                                         .padding(.trailing, 20)
@@ -659,7 +659,7 @@ struct FocusTabView: View {
                         .background(
                             addTaskTitle.trimmingCharacters(in: .whitespaces).isEmpty
                                 ? Color(.systemGray4)
-                                : Color.blue,
+                                : Color.appRed,
                             in: Circle()
                         )
                 }
@@ -1250,7 +1250,7 @@ struct CommitmentRow: View {
                         if task.type == .list {
                             Image(systemName: "list.bullet")
                                 .font(.sf(.subheadline))
-                                .foregroundColor(.blue)
+                                .foregroundColor(.appRed)
                         }
                     }
 
@@ -1266,7 +1266,7 @@ struct CommitmentRow: View {
                     if childCount > 0 {
                         Text("\(childCount) broken down")
                             .font(.sf(.caption))
-                            .foregroundColor(.blue)
+                            .foregroundColor(.appRed)
                     }
                 }
                 .frame(maxWidth: .infinity, minHeight: section == .focus ? 38 : (section == .extra ? 36 : nil), alignment: .leading)
@@ -1333,7 +1333,7 @@ struct CommitmentRow: View {
                     } label: {
                         Image(systemName: "arrow.down.forward.circle")
                             .font(.sf(.title3))
-                            .foregroundColor(.blue)
+                            .foregroundColor(.appRed)
                     }
                     .buttonStyle(.plain)
                 }
@@ -1406,7 +1406,7 @@ struct FocusSubtaskRow: View {
                 } label: {
                     Image(systemName: "arrow.down.forward.circle")
                         .font(.sf(.subheadline))
-                        .foregroundColor(.blue)
+                        .foregroundColor(.appRed)
                 }
                 .buttonStyle(.plain)
             }

@@ -531,7 +531,7 @@ private struct FilterPill: View {
                 .padding(.vertical, 8)
                 .background(
                     Capsule()
-                        .fill(isSelected ? Color.blue : Color(.systemGray5))
+                        .fill(isSelected ? Color.appRed : Color(.systemGray5))
                 )
         }
         .buttonStyle(.plain)

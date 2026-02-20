@@ -106,7 +106,7 @@ struct SharedCategoryDropdownMenu<VM: LogFilterable>: View {
                         if viewModel.selectedCategoryId == nil {
                             Image(systemName: "checkmark")
                                 .font(.sf(.body))
-                                .foregroundColor(.blue)
+                                .foregroundColor(.appRed)
                         }
                     }
                     .padding(.horizontal, 20)
@@ -129,7 +129,7 @@ struct SharedCategoryDropdownMenu<VM: LogFilterable>: View {
                             if viewModel.selectedCategoryId == category.id {
                                 Image(systemName: "checkmark")
                                     .font(.sf(.body))
-                                    .foregroundColor(.blue)
+                                    .foregroundColor(.appRed)
                             }
                         }
                         .padding(.horizontal, 20)
@@ -156,7 +156,7 @@ struct SharedCategoryDropdownMenu<VM: LogFilterable>: View {
                                 .font(.sf(.body))
                                 .foregroundColor(
                                     newCategoryName.trimmingCharacters(in: .whitespaces).isEmpty
-                                    ? .gray : .blue
+                                    ? .gray : .appRed
                                 )
                         }
                         .buttonStyle(.plain)
@@ -175,7 +175,7 @@ struct SharedCategoryDropdownMenu<VM: LogFilterable>: View {
                             Text("New Category")
                                 .font(.sf(.body))
                         }
-                        .foregroundColor(.blue)
+                        .foregroundColor(.appRed)
                         .padding(.horizontal, 20)
                         .padding(.vertical, 12)
                     }
@@ -243,7 +243,7 @@ struct SharedCommitmentFilterPills<VM: LogFilterable>: View {
                 .frame(height: 32)
                 .glassEffect(
                     isActive
-                        ? .regular.tint(.blue).interactive()
+                        ? .regular.tint(.appRed).interactive()
                         : .regular.interactive(),
                     in: .capsule
                 )

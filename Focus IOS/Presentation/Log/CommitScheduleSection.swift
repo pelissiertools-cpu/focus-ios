@@ -19,7 +19,7 @@ struct CommitScheduleSection: View {
                 Label("Commit", systemImage: "arrow.right.circle")
                     .font(.sf(.subheadline, weight: .medium))
             }
-            .tint(.blue)
+            .tint(.appRed)
 
             if commitAfterCreate {
                 Picker("Section", selection: $selectedSection) {
@@ -36,12 +36,12 @@ struct CommitScheduleSection: View {
                 Toggle(isOn: $hasScheduledTime.animation(.easeInOut(duration: 0.2))) {
                     HStack(spacing: 8) {
                         Image(systemName: "clock")
-                            .foregroundColor(.blue)
+                            .foregroundColor(.appRed)
                         Text("Select a time")
                             .font(.sf(.subheadline, weight: .medium))
                     }
                 }
-                .tint(.blue)
+                .tint(.appRed)
 
                 if hasScheduledTime {
                     DatePicker(

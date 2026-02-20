@@ -600,7 +600,7 @@ struct LogTabView: View {
                     .foregroundColor(.white)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
-                    .background(addTaskCategoryId != nil ? Color.blue : Color.black, in: Capsule())
+                    .background(addTaskCategoryId != nil ? Color.appRed : Color.black, in: Capsule())
                 }
 
                 // Commit toggle pill
@@ -618,7 +618,7 @@ struct LogTabView: View {
                     .foregroundColor(.white)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
-                    .background(!addTaskDates.isEmpty ? Color.blue : Color.black, in: Capsule())
+                    .background(!addTaskDates.isEmpty ? Color.appRed : Color.black, in: Capsule())
                 }
                 .buttonStyle(.plain)
             }
@@ -682,7 +682,7 @@ struct LogTabView: View {
                         .foregroundColor(isAddTaskTitleEmpty ? .secondary : .white)
                         .frame(width: 36, height: 36)
                         .background(
-                            isAddTaskTitleEmpty ? Color(.systemGray4) : Color.blue,
+                            isAddTaskTitleEmpty ? Color(.systemGray4) : Color.appRed,
                             in: Circle()
                         )
                 }
@@ -833,7 +833,7 @@ struct LogTabView: View {
                     .foregroundColor(.white)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
-                    .background(addListCategoryId != nil ? Color.blue : Color.black, in: Capsule())
+                    .background(addListCategoryId != nil ? Color.appRed : Color.black, in: Capsule())
                 }
 
                 // Commit toggle pill
@@ -851,7 +851,7 @@ struct LogTabView: View {
                     .foregroundColor(.white)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
-                    .background(!addListDates.isEmpty ? Color.blue : Color.black, in: Capsule())
+                    .background(!addListDates.isEmpty ? Color.appRed : Color.black, in: Capsule())
                 }
                 .buttonStyle(.plain)
 
@@ -864,7 +864,7 @@ struct LogTabView: View {
                         .foregroundColor(isAddListTitleEmpty ? .secondary : .white)
                         .frame(width: 36, height: 36)
                         .background(
-                            isAddListTitleEmpty ? Color(.systemGray4) : Color.blue,
+                            isAddListTitleEmpty ? Color(.systemGray4) : Color.appRed,
                             in: Circle()
                         )
                 }
@@ -989,7 +989,7 @@ struct LogTabView: View {
                     .foregroundColor(.white)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
-                    .background(addProjectCategoryId != nil ? Color.blue : Color.black, in: Capsule())
+                    .background(addProjectCategoryId != nil ? Color.appRed : Color.black, in: Capsule())
                 }
 
                 // Commit toggle pill
@@ -1007,7 +1007,7 @@ struct LogTabView: View {
                     .foregroundColor(.white)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
-                    .background(!addProjectDates.isEmpty ? Color.blue : Color.black, in: Capsule())
+                    .background(!addProjectDates.isEmpty ? Color.appRed : Color.black, in: Capsule())
                 }
                 .buttonStyle(.plain)
 
@@ -1020,7 +1020,7 @@ struct LogTabView: View {
                         .foregroundColor(isAddProjectTitleEmpty ? .secondary : .white)
                         .frame(width: 36, height: 36)
                         .background(
-                            isAddProjectTitleEmpty ? Color(.systemGray4) : Color.blue,
+                            isAddProjectTitleEmpty ? Color(.systemGray4) : Color.appRed,
                             in: Circle()
                         )
                 }

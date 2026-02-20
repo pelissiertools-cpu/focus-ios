@@ -54,7 +54,7 @@ struct CommitSheet: View {
 
                     HStack {
                         Image(systemName: "arrow.down.forward.circle")
-                            .foregroundColor(.blue)
+                            .foregroundColor(.appRed)
                         Text("Commit to lower timeframe")
                             .font(.sf(.subheadline))
                             .foregroundColor(.secondary)
@@ -211,7 +211,7 @@ struct SubtaskCommitSheet: View {
 
                     HStack {
                         Image(systemName: "arrow.down.forward.circle")
-                            .foregroundColor(.blue)
+                            .foregroundColor(.appRed)
                         Text("Commit subtask to lower timeframe")
                             .font(.sf(.subheadline))
                             .foregroundColor(.secondary)

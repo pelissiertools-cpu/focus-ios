@@ -55,7 +55,7 @@ struct BatchMoveCategorySheet<VM: LogFilterable>: View {
                         showingNewCategoryAlert = true
                     } label: {
                         Label("New Category", systemImage: "plus")
-                            .foregroundColor(.blue)
+                            .foregroundColor(.appRed)
                     }
                 }
             }

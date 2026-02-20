@@ -37,6 +37,7 @@ class ListsViewModel: ObservableObject, LogFilterable, TaskEditingViewModel {
 
     // Items state management (items = subtasks of a list)
     @Published var itemsMap: [UUID: [FocusTask]] = [:]
+    var subtasksMap: [UUID: [FocusTask]] { itemsMap }
     @Published var expandedLists: Set<UUID> = []
     @Published var isLoadingItems: Set<UUID> = []
 

@@ -291,7 +291,7 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
                 }
             }
         } catch {
-            print("Error fetching tasks: \(error)")
+            errorMessage = error.localizedDescription
         }
     }
 
@@ -312,16 +312,6 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
     func getSubtasks(for taskId: UUID) -> [FocusTask] {
         let subtasks = subtasksMap[taskId] ?? []
         return subtasks.sorted { !$0.isCompleted && $1.isCompleted }
-    }
-
-    /// Get uncompleted subtasks sorted by sortOrder
-    func getUncompletedSubtasks(for taskId: UUID) -> [FocusTask] {
-        (subtasksMap[taskId] ?? []).filter { !$0.isCompleted }.sorted { $0.sortOrder < $1.sortOrder }
-    }
-
-    /// Get completed subtasks
-    func getCompletedSubtasks(for taskId: UUID) -> [FocusTask] {
-        (subtasksMap[taskId] ?? []).filter { $0.isCompleted }
     }
 
     /// Find a task by ID (searches both tasksMap and subtasksMap)
@@ -468,70 +458,6 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
             }
         } catch {
             errorMessage = error.localizedDescription
-        }
-    }
-
-    /// Create a plain subtask (no child commitment — just a task-level child)
-    func createPlainSubtask(title: String, parentId: UUID) async {
-        guard let userId = authService.currentUser?.id else {
-            errorMessage = "No authenticated user"
-            return
-        }
-
-        guard !title.trimmingCharacters(in: .whitespaces).isEmpty else {
-            return
-        }
-
-        do {
-            let newSubtask = try await taskRepository.createSubtask(
-                title: title,
-                parentTaskId: parentId,
-                userId: userId
-            )
-
-            if var subtasks = subtasksMap[parentId] {
-                subtasks.append(newSubtask)
-                subtasksMap[parentId] = subtasks
-            } else {
-                subtasksMap[parentId] = [newSubtask]
-            }
-
-            tasksMap[newSubtask.id] = newSubtask
-        } catch {
-            errorMessage = error.localizedDescription
-        }
-    }
-
-    /// Batch-create plain subtasks, updating the view once at the end
-    func createPlainSubtasks(titles: [String], parentId: UUID) async {
-        guard let userId = authService.currentUser?.id else {
-            errorMessage = "No authenticated user"
-            return
-        }
-
-        var created: [FocusTask] = []
-        for title in titles {
-            guard !title.trimmingCharacters(in: .whitespaces).isEmpty else { continue }
-            do {
-                let newSubtask = try await taskRepository.createSubtask(
-                    title: title,
-                    parentTaskId: parentId,
-                    userId: userId
-                )
-                created.append(newSubtask)
-            } catch {
-                errorMessage = error.localizedDescription
-            }
-        }
-
-        // Single batch update — one view re-render
-        if !created.isEmpty {
-            var existing = subtasksMap[parentId] ?? []
-            existing.append(contentsOf: created)
-            subtasksMap[parentId] = existing
-            for subtask in created {
-                tasksMap[subtask.id] = subtask
-            }
         }
     }
 
@@ -1059,38 +985,6 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
         _Concurrency.Task { await persistSubtaskSortOrders(updates) }
     }
 
-    /// Reorder a commitment within the same section
-    func reorderCommitment(droppedId: UUID, targetId: UUID) {
-        // Find both commitments
-        guard let dropped = commitments.first(where: { $0.id == droppedId }),
-              let target = commitments.first(where: { $0.id == targetId }),
-              dropped.section == target.section else { return }
-
-        var sectionCommitments = uncompletedCommitmentsForSection(dropped.section)
-
-        guard let fromIndex = sectionCommitments.firstIndex(where: { $0.id == droppedId }),
-              let toIndex = sectionCommitments.firstIndex(where: { $0.id == targetId }),
-              fromIndex != toIndex else { return }
-
-        let moved = sectionCommitments.remove(at: fromIndex)
-        sectionCommitments.insert(moved, at: toIndex)
-
-        // Reassign sort orders in the main commitments array
-        for (index, commitment) in sectionCommitments.enumerated() {
-            if let mainIndex = commitments.firstIndex(where: { $0.id == commitment.id }) {
-                commitments[mainIndex].sortOrder = index
-            }
-        }
-
-        // Persist in background
-        let updates = sectionCommitments.enumerated().map { (index, c) in
-            (id: c.id, sortOrder: index)
-        }
-        Task {
-            await persistCommitmentSortOrders(updates)
-        }
-    }
-
     /// Move a commitment to a different section at a specific index
     func moveCommitmentToSectionAtIndex(_ commitment: Commitment, to targetSection: Section, atIndex: Int) {
         guard commitment.section != targetSection else { return }
@@ -1595,7 +1489,7 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
                 await fetchChildrenRecursively(for: child)
             }
         } catch {
-            print("Error fetching children for \(commitment.id): \(error)")
+            errorMessage = error.localizedDescription
         }
     }
 

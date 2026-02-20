@@ -880,16 +880,6 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
         }
     }
 
-    // MARK: - Subtask Helpers
-
-    func getUncompletedSubtasks(for taskId: UUID) -> [FocusTask] {
-        (subtasksMap[taskId] ?? []).filter { !$0.isCompleted }.sorted { $0.sortOrder < $1.sortOrder }
-    }
-
-    func getCompletedSubtasks(for taskId: UUID) -> [FocusTask] {
-        (subtasksMap[taskId] ?? []).filter { $0.isCompleted }.sorted { $0.sortOrder < $1.sortOrder }
-    }
-
     // MARK: - TaskEditingViewModel Conformance
 
     func findTask(byId id: UUID) -> FocusTask? {

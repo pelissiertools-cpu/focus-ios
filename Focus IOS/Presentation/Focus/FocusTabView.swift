@@ -301,7 +301,7 @@ struct FocusTabView: View {
                     .zIndex(100)
                 }
             } // ZStack
-            .background(Color(red: 0xFC/255.0, green: 0xFC/255.0, blue: 0xFC/255.0).ignoresSafeArea())
+            .background(Color.lightBackground.ignoresSafeArea())
             .animation(.spring(response: 0.35, dampingFraction: 0.85), value: viewModel.showAddTaskSheet)
         }
     }
@@ -431,7 +431,7 @@ struct FocusTabView: View {
                     VStack(spacing: 8) {
                         Image(systemName: "checkmark.circle")
                             .font(.sf(size: 34))
-                            .foregroundColor(Color(red: 0x61/255.0, green: 0x10/255.0, blue: 0xF8/255.0))
+                            .foregroundColor(Color.completedPurple)
                             .scaleEffect(viewModel.allDoneCheckPulse ? 1.35 : 1.0)
                         Text("All done!")
                             .font(.sf(.title3, weight: .medium))
@@ -595,9 +595,9 @@ struct FocusTabView: View {
                                 .stroke(
                                     AngularGradient(
                                         colors: [
-                                            Color(red: 0.0, green: 0.2, blue: 1.0),
-                                            Color(red: 0.15, green: 0.35, blue: 1.0),
-                                            Color(red: 0.0, green: 0.2, blue: 1.0),
+                                            Color.commitGradientDark,
+                                            Color.commitGradientLight,
+                                            Color.commitGradientDark,
                                         ],
                                         center: .center
                                     ),
@@ -824,7 +824,7 @@ struct SectionView: View {
                             .font(.sf(.subheadline, weight: .semibold))
                         Text("\(current)/\(max)")
                             .font(.sf(.title3, weight: .bold))
-                            .foregroundStyle(Color(red: 0xF8/255, green: 0x1E/255, blue: 0x1D/255))
+                            .foregroundStyle(Color.appRed)
                     }
                     .padding()
                     .presentationCompactAdaptation(.popover)
@@ -888,7 +888,7 @@ struct SectionView: View {
                                 VStack(spacing: 8) {
                                     Image(systemName: "checkmark.circle")
                                         .font(.sf(size: 34))
-                                        .foregroundColor(Color(red: 0x61/255.0, green: 0x10/255.0, blue: 0xF8/255.0))
+                                        .foregroundColor(Color.completedPurple)
                                         .scaleEffect(viewModel.allDoneCheckPulse ? 1.35 : 1.0)
                                     Text("All done!")
                                         .font(.sf(.title3, weight: .medium))
@@ -1139,7 +1139,7 @@ struct FocusSectionHeaderRow: View {
                         .font(.sf(.subheadline, weight: .semibold))
                     Text("\(current)/\(max)")
                         .font(.sf(.title3, weight: .bold))
-                        .foregroundStyle(Color(red: 0xF8/255, green: 0x1E/255, blue: 0x1D/255))
+                        .foregroundStyle(Color.appRed)
                 }
                 .padding()
                 .presentationCompactAdaptation(.popover)
@@ -1314,7 +1314,7 @@ struct CommitmentRow: View {
                 } label: {
                     Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
                         .font(.sf(.title3))
-                        .foregroundColor(task.isCompleted ? Color(red: 0x61/255.0, green: 0x10/255.0, blue: 0xF8/255.0).opacity(0.6) : .gray)
+                        .foregroundColor(task.isCompleted ? Color.completedPurple.opacity(0.6) : .gray)
                 }
                 .buttonStyle(.plain)
             }
@@ -1387,7 +1387,7 @@ struct FocusSubtaskRow: View {
             } label: {
                 Image(systemName: subtask.isCompleted ? "checkmark.circle.fill" : "circle")
                     .font(.sf(.subheadline))
-                    .foregroundColor(subtask.isCompleted ? Color(red: 0x61/255.0, green: 0x10/255.0, blue: 0xF8/255.0).opacity(0.6) : .gray)
+                    .foregroundColor(subtask.isCompleted ? Color.completedPurple.opacity(0.6) : .gray)
                     .frame(width: 22, alignment: .center)
             }
             .buttonStyle(.plain)
@@ -1516,7 +1516,7 @@ private struct ScheduleDragPreviewRow: View {
         HStack(spacing: 12) {
             Image(systemName: info.isCompleted ? "checkmark.circle.fill" : "circle")
                 .font(.sf(.title3))
-                .foregroundColor(info.isCompleted ? Color(red: 0x61/255.0, green: 0x10/255.0, blue: 0xF8/255.0).opacity(0.6) : .gray)
+                .foregroundColor(info.isCompleted ? Color.completedPurple.opacity(0.6) : .gray)
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(info.taskTitle)

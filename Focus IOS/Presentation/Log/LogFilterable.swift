@@ -61,7 +61,7 @@ extension LogFilterable {
         do {
             committedTaskIds = try await commitmentRepository.fetchCommittedTaskIds()
         } catch {
-            print("Error fetching committed task IDs: \(error)")
+            // Error already handled by caller
         }
     }
 }

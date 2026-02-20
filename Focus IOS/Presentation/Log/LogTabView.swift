@@ -453,7 +453,7 @@ struct LogTabView: View {
                         .font(.sf(.title2, weight: .semibold))
                         .foregroundColor(.white)
                         .frame(width: 56, height: 56)
-                        .background(Color(red: 40/255, green: 45/255, blue: 46/255), in: Circle())
+                        .background(Color.darkGray, in: Circle())
                         .shadow(radius: 4, y: 2)
                 }
                 .padding(.trailing, 20)
@@ -653,9 +653,9 @@ struct LogTabView: View {
                                 .stroke(
                                     AngularGradient(
                                         colors: [
-                                            Color(red: 0.0, green: 0.2, blue: 1.0),
-                                            Color(red: 0.15, green: 0.35, blue: 1.0),
-                                            Color(red: 0.0, green: 0.2, blue: 1.0),
+                                            Color.commitGradientDark,
+                                            Color.commitGradientLight,
+                                            Color.commitGradientDark,
                                         ],
                                         center: .center
                                     ),

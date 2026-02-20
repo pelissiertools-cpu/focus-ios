@@ -248,9 +248,9 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                                 .stroke(
                                     AngularGradient(
                                         colors: [
-                                            Color(red: 0.0, green: 0.2, blue: 1.0),
-                                            Color(red: 0.15, green: 0.35, blue: 1.0),
-                                            Color(red: 0.0, green: 0.2, blue: 1.0),
+                                            Color.commitGradientDark,
+                                            Color.commitGradientLight,
+                                            Color.commitGradientDark,
                                         ],
                                         center: .center
                                     ),
@@ -369,7 +369,7 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
         HStack(spacing: 8) {
             Image(systemName: subtask.isCompleted ? "checkmark.circle.fill" : "circle")
                 .font(.sf(.caption2))
-                .foregroundColor(subtask.isCompleted ? Color(red: 0x61/255.0, green: 0x10/255.0, blue: 0xF8/255.0).opacity(0.6) : .secondary.opacity(0.5))
+                .foregroundColor(subtask.isCompleted ? Color.completedPurple.opacity(0.6) : .secondary.opacity(0.5))
 
             // Editable title
             SubtaskTextField(subtask: subtask, viewModel: viewModel, focusedId: $focusedSubtaskId)

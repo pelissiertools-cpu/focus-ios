@@ -6,7 +6,6 @@
 //
 
 import Foundation
-import SwiftUI
 
 /// Represents the section where a task is committed (Focus or Extra)
 enum Section: String, Codable, CaseIterable {

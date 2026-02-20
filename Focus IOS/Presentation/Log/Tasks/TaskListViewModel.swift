@@ -250,16 +250,6 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
         return uncompleted + completed
     }
 
-    /// Get uncompleted subtasks sorted by sortOrder
-    func getUncompletedSubtasks(for taskId: UUID) -> [FocusTask] {
-        (subtasksMap[taskId] ?? []).filter { !$0.isCompleted }.sorted { $0.sortOrder < $1.sortOrder }
-    }
-
-    /// Get completed subtasks sorted by sortOrder
-    func getCompletedSubtasks(for taskId: UUID) -> [FocusTask] {
-        (subtasksMap[taskId] ?? []).filter { $0.isCompleted }.sorted { $0.sortOrder < $1.sortOrder }
-    }
-
     /// Find a task by ID (searches both tasks and subtasks)
     func findTask(byId id: UUID) -> FocusTask? {
         if let task = tasks.first(where: { $0.id == id }) {

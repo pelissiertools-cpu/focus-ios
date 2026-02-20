@@ -220,11 +220,11 @@ struct DateNavigator: View {
 
                                 Text("\(dayNumber)")
                                     .font(.montserratHeader(.body, weight: isSelected || isToday ? .bold : .regular))
-                                    .foregroundColor(isSelected ? .white : (isToday ? Color(red: 0xF8/255, green: 0x1E/255, blue: 0x1D/255) : .primary))
+                                    .foregroundColor(isSelected ? .white : (isToday ? Color.appRed : .primary))
                                     .frame(width: 32, height: 32)
                                     .background(
                                         Circle()
-                                            .fill(isSelected ? Color(red: 0xF8/255, green: 0x1E/255, blue: 0x1D/255) : Color.clear)
+                                            .fill(isSelected ? Color.appRed : Color.clear)
                                     )
                             }
                             .frame(width: 44)
@@ -309,11 +309,11 @@ struct DateNavigator: View {
                                 Text(shortWeekRange(from: weekStart))
                                     .font(.montserratHeader(.caption2))
                             }
-                            .foregroundColor(isSelected ? .white : (isCurrent ? Color(red: 0xF8/255, green: 0x1E/255, blue: 0x1D/255) : .primary))
+                            .foregroundColor(isSelected ? .white : (isCurrent ? Color.appRed : .primary))
                             .frame(width: 68, height: 48)
                             .background(
                                 RoundedRectangle(cornerRadius: 12)
-                                    .fill(isSelected ? Color(red: 0xF8/255, green: 0x1E/255, blue: 0x1D/255) : Color(.secondarySystemBackground))
+                                    .fill(isSelected ? Color.appRed : Color(.secondarySystemBackground))
                             )
                         }
                         .buttonStyle(.plain)
@@ -382,11 +382,11 @@ struct DateNavigator: View {
                                 return formatter.string(from: monthDate).uppercased()
                             }())
                                 .font(.montserratHeader(.subheadline, weight: .medium))
-                                .foregroundColor(isSelected ? .white : (isCurrent ? Color(red: 0xF8/255, green: 0x1E/255, blue: 0x1D/255) : .primary))
+                                .foregroundColor(isSelected ? .white : (isCurrent ? Color.appRed : .primary))
                                 .frame(width: 64, height: 40)
                                 .background(
                                     RoundedRectangle(cornerRadius: 10)
-                                        .fill(isSelected ? Color(red: 0xF8/255, green: 0x1E/255, blue: 0x1D/255) : Color(.secondarySystemBackground))
+                                        .fill(isSelected ? Color.appRed : Color(.secondarySystemBackground))
                                 )
                         }
                         .buttonStyle(.plain)
@@ -433,11 +433,11 @@ struct DateNavigator: View {
                         } label: {
                             Text(String(year))
                                 .font(.montserratHeader(.subheadline, weight: .medium))
-                                .foregroundColor(isSelected ? .white : (isCurrent ? Color(red: 0xF8/255, green: 0x1E/255, blue: 0x1D/255) : .primary))
+                                .foregroundColor(isSelected ? .white : (isCurrent ? Color.appRed : .primary))
                                 .frame(width: 64, height: 40)
                                 .background(
                                     RoundedRectangle(cornerRadius: 10)
-                                        .fill(isSelected ? Color(red: 0xF8/255, green: 0x1E/255, blue: 0x1D/255) : Color(.secondarySystemBackground))
+                                        .fill(isSelected ? Color.appRed : Color(.secondarySystemBackground))
                                 )
                         }
                         .buttonStyle(.plain)

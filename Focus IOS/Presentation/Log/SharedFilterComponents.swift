@@ -42,7 +42,7 @@ struct SharedCategoryFilterPill<VM: LogFilterable>: View {
             .frame(height: 32)
             .glassEffect(
                 viewModel.selectedCategoryId != nil
-                    ? .regular.tint(Color(red: 40/255, green: 45/255, blue: 46/255)).interactive()
+                    ? .regular.tint(Color.darkGray).interactive()
                     : .regular.interactive(),
                 in: .capsule
             )

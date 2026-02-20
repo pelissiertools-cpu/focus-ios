@@ -11,6 +11,9 @@ import Foundation
 /// Allows TaskDetailsDrawer to work with both TaskListViewModel and FocusTabViewModel.
 @MainActor
 protocol TaskEditingViewModel: ObservableObject {
+    /// Subtask storage keyed by parent task ID
+    var subtasksMap: [UUID: [FocusTask]] { get }
+
     /// Find a task by its ID
     func findTask(byId id: UUID) -> FocusTask?
 
@@ -48,4 +51,14 @@ extension TaskEditingViewModel {
     func refreshSubtasks(for parentId: UUID) async {}
     func moveTaskToCategory(_ task: FocusTask, categoryId: UUID?) async {}
     func createCategoryAndMove(name: String, task: FocusTask) async {}
+
+    /// Get uncompleted subtasks sorted by sortOrder
+    func getUncompletedSubtasks(for taskId: UUID) -> [FocusTask] {
+        (subtasksMap[taskId] ?? []).filter { !$0.isCompleted }.sorted { $0.sortOrder < $1.sortOrder }
+    }
+
+    /// Get completed subtasks sorted by sortOrder
+    func getCompletedSubtasks(for taskId: UUID) -> [FocusTask] {
+        (subtasksMap[taskId] ?? []).filter { $0.isCompleted }.sorted { $0.sortOrder < $1.sortOrder }
+    }
 }

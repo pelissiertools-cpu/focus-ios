@@ -272,7 +272,7 @@ struct ListItemRow: View {
             } label: {
                 Image(systemName: item.isCompleted ? "checkmark.circle.fill" : "circle")
                     .font(.sf(.subheadline))
-                    .foregroundColor(item.isCompleted ? Color(red: 0x61/255.0, green: 0x10/255.0, blue: 0xF8/255.0).opacity(0.6) : .gray)
+                    .foregroundColor(item.isCompleted ? Color.completedPurple.opacity(0.6) : .gray)
             }
             .buttonStyle(.plain)
         }

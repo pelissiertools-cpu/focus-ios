@@ -302,7 +302,7 @@ struct FlatTaskRow: View {
                 } label: {
                     Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
                         .font(isParent ? .sf(.title3) : .sf(.subheadline))
-                        .foregroundColor(task.isCompleted ? Color(red: 0x61/255.0, green: 0x10/255.0, blue: 0xF8/255.0).opacity(0.6) : .gray)
+                        .foregroundColor(task.isCompleted ? Color.completedPurple.opacity(0.6) : .gray)
                 }
                 .buttonStyle(.plain)
             }
@@ -423,7 +423,7 @@ struct ExpandableTaskRow: View {
                 } label: {
                     Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
                         .font(.sf(.title3))
-                        .foregroundColor(task.isCompleted ? Color(red: 0x61/255.0, green: 0x10/255.0, blue: 0xF8/255.0).opacity(0.6) : .gray)
+                        .foregroundColor(task.isCompleted ? Color.completedPurple.opacity(0.6) : .gray)
                 }
                 .buttonStyle(.plain)
             }
@@ -517,7 +517,7 @@ struct SubtaskRow: View {
             } label: {
                 Image(systemName: subtask.isCompleted ? "checkmark.circle.fill" : "circle")
                     .font(.sf(.subheadline))
-                    .foregroundColor(subtask.isCompleted ? Color(red: 0x61/255.0, green: 0x10/255.0, blue: 0xF8/255.0).opacity(0.6) : .gray)
+                    .foregroundColor(subtask.isCompleted ? Color.completedPurple.opacity(0.6) : .gray)
             }
             .buttonStyle(.plain)
         }

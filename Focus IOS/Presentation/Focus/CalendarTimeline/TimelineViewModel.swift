@@ -78,7 +78,7 @@ class TimelineViewModel: ObservableObject {
                 }
             }
         } catch {
-            print("Error fetching timed commitments: \(error)")
+            parent.errorMessage = error.localizedDescription
         }
     }
 

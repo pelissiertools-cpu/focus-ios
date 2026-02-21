@@ -486,7 +486,7 @@ struct LogTabView: View {
                 .frame(width: 36, height: 36)
                 .glassEffect(
                     isActive
-                        ? .regular.tint(.appRed).interactive()
+                        ? .regular.tint(.black).interactive()
                         : .regular.interactive(),
                     in: .circle
                 )
@@ -598,7 +598,7 @@ struct LogTabView: View {
                     }
                     .foregroundColor(.white)
                     .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
+                    .padding(.vertical, 8)
                     .background(Color.black, in: Capsule())
                 }
                 .buttonStyle(.plain)
@@ -612,8 +612,9 @@ struct LogTabView: View {
                     Image(systemName: "ellipsis")
                         .font(.sf(.caption, weight: .bold))
                         .foregroundColor(.black)
-                        .frame(height: subtaskPillHeight)
+                        .frame(minHeight: UIFont.preferredFont(forTextStyle: .caption1).lineHeight)
                         .padding(.horizontal, 10)
+                        .padding(.vertical, 8)
                         .background(Color.white, in: Capsule())
                 }
                 .buttonStyle(.plain)
@@ -631,35 +632,18 @@ struct LogTabView: View {
                         } else {
                             Image(systemName: hasGeneratedBreakdown ? "arrow.clockwise" : "sparkles")
                                 .font(.sf(.subheadline, weight: .semibold))
+                                .foregroundColor(!isAddTaskTitleEmpty ? .blue : .primary)
                         }
                         Text(LocalizedStringKey(hasGeneratedBreakdown ? "Regenerate" : "Suggest Breakdown"))
                             .font(.sf(.caption, weight: .medium))
+                            .foregroundColor(.primary)
                     }
-                    .foregroundColor(.primary)
                     .padding(.horizontal, 14)
                     .padding(.vertical, 8)
-                    .background {
-                        if !isAddTaskTitleEmpty {
-                            Capsule()
-                                .stroke(
-                                    AngularGradient(
-                                        colors: [
-                                            Color.commitGradientDark,
-                                            Color.commitGradientLight,
-                                            Color.commitGradientDark,
-                                        ],
-                                        center: .center
-                                    ),
-                                    lineWidth: 2.5
-                                )
-                                .blur(radius: 6)
-                        }
-                    }
-                    .overlay {
-                        Capsule()
-                            .stroke(.white.opacity(0.5), lineWidth: 1.5)
-                    }
-                    .glassEffect(.regular.interactive(), in: .capsule)
+                    .background(
+                        !isAddTaskTitleEmpty ? Color.white : Color.clear,
+                        in: Capsule()
+                    )
                 }
                 .buttonStyle(.plain)
                 .disabled(isAddTaskTitleEmpty || isGeneratingBreakdown)
@@ -718,7 +702,7 @@ struct LogTabView: View {
                     }
                     .foregroundColor(.black)
                     .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
+                    .padding(.vertical, 8)
                     .background(Color.white, in: Capsule())
                 }
 
@@ -739,7 +723,7 @@ struct LogTabView: View {
                     }
                     .foregroundColor(!addTaskDates.isEmpty ? .white : .black)
                     .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
+                    .padding(.vertical, 8)
                     .background(!addTaskDates.isEmpty ? Color.appRed : Color.white, in: Capsule())
                 }
                 .buttonStyle(.plain)
@@ -767,7 +751,7 @@ struct LogTabView: View {
                     }
                     .foregroundColor(.black)
                     .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
+                    .padding(.vertical, 8)
                     .background(Color.white, in: Capsule())
                 }
 

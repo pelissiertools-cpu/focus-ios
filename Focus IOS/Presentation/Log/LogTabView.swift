@@ -37,6 +37,7 @@ struct LogTabView: View {
     @State private var addTaskDates: Set<Date> = []
     @State private var addTaskPriority: Priority = .low
     @State private var addTaskOptionsExpanded = false
+    @State private var addTaskDatesSnapshot: Set<Date> = []
     @State private var isGeneratingBreakdown = false
     @State private var hasGeneratedBreakdown = false
     @FocusState private var focusedSubtaskId: UUID?
@@ -556,18 +557,21 @@ struct LogTabView: View {
 
                     Spacer()
 
-                    // Submit button — highlighted when dates are selected
+                    // Submit button — highlighted only when dates changed
+                    let hasDateChanges = addTaskDates != addTaskDatesSnapshot
                     Button {
                         let generator = UIImpactFeedbackGenerator(style: .medium)
                         generator.impactOccurred()
-                        saveLogTask()
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            addTaskCommitExpanded = false
+                        }
                     } label: {
                         Image(systemName: "checkmark")
                             .font(.sf(.body, weight: .semibold))
-                            .foregroundColor(!addTaskDates.isEmpty ? .white : .secondary)
+                            .foregroundColor(hasDateChanges ? .white : .secondary)
                             .frame(width: 36, height: 36)
                             .background(
-                                !addTaskDates.isEmpty ? Color.appRed : Color(.systemGray4),
+                                hasDateChanges ? Color.appRed : Color(.systemGray4),
                                 in: Circle()
                             )
                     }
@@ -718,6 +722,9 @@ struct LogTabView: View {
 
                 // Commit toggle pill
                 Button {
+                    if !addTaskCommitExpanded {
+                        addTaskDatesSnapshot = addTaskDates
+                    }
                     withAnimation(.easeInOut(duration: 0.2)) {
                         addTaskCommitExpanded.toggle()
                     }
@@ -728,10 +735,10 @@ struct LogTabView: View {
                         Text("Commit")
                             .font(.sf(.caption))
                     }
-                    .foregroundColor(.black)
+                    .foregroundColor(!addTaskDates.isEmpty ? .white : .black)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
-                    .background(Color.white, in: Capsule())
+                    .background(!addTaskDates.isEmpty ? Color.appRed : Color.white, in: Capsule())
                 }
                 .buttonStyle(.plain)
 

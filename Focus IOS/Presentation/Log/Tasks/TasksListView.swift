@@ -22,12 +22,14 @@ struct TasksListView: View {
     @ObservedObject var viewModel: TaskListViewModel
 
     let searchText: String
+    var onSearchTap: (() -> Void)? = nil
     @State private var isInlineAddFocused = false
     @State private var isCategoryExpanded = false
 
-    init(viewModel: TaskListViewModel, searchText: String = "") {
+    init(viewModel: TaskListViewModel, searchText: String = "", onSearchTap: (() -> Void)? = nil) {
         self.viewModel = viewModel
         self.searchText = searchText
+        self.onSearchTap = onSearchTap
     }
 
     private var categoryTitle: String {
@@ -116,6 +118,17 @@ struct TasksListView: View {
                                 .glassEffect(.regular.interactive(), in: .circle)
                         }
                         .buttonStyle(.plain)
+
+                        if let onSearchTap {
+                            Button(action: onSearchTap) {
+                                Image(systemName: "magnifyingglass")
+                                    .font(.sf(.body, weight: .medium))
+                                    .foregroundColor(.primary)
+                                    .frame(width: 36, height: 36)
+                                    .glassEffect(.regular.interactive(), in: .circle)
+                            }
+                            .buttonStyle(.plain)
+                        }
                     }
                 }
             }

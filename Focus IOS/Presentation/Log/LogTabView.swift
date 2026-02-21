@@ -145,46 +145,42 @@ struct LogTabView: View {
     private var logContentStack: some View {
         ZStack(alignment: .bottom) {
             VStack(spacing: 0) {
-                // Row 0: Profile button — own row, left-aligned
+                // Row 0: Profile button — own row, right-aligned
                 HStack {
-                    profilePillButton
                     Spacer()
+                    profilePillButton
                 }
-                .padding(.leading, 32)
+                .padding(.trailing, 32)
                 .padding(.top, 2)
                 .padding(.bottom, 8)
 
-                // Picker row with search pill
-                HStack(spacing: 12) {
-                    HStack(spacing: 0) {
-                        ForEach(Array(tabKeys.enumerated()), id: \.offset) { index, key in
-                            Button {
-                                withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
-                                    selectedTab = index
-                                }
-                            } label: {
-                                Text(LocalizedStringKey(key))
-                                    .font(.sf(.subheadline, weight: selectedTab == index ? .semibold : .medium))
-                                    .foregroundStyle(selectedTab == index ? .primary : .secondary)
-                                    .padding(.horizontal, 16)
-                                    .padding(.vertical, 8)
-                                    .frame(maxWidth: .infinity)
-                                    .background {
-                                        if selectedTab == index {
-                                            Color.clear
-                                                .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 16))
-                                                .matchedGeometryEffect(id: "activeTab", in: segmentedAnimation)
-                                        }
-                                    }
+                // Picker row
+                HStack(spacing: 0) {
+                    ForEach(Array(tabKeys.enumerated()), id: \.offset) { index, key in
+                        Button {
+                            withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                                selectedTab = index
                             }
-                            .buttonStyle(.plain)
+                        } label: {
+                            Text(LocalizedStringKey(key))
+                                .font(.sf(.subheadline, weight: selectedTab == index ? .semibold : .medium))
+                                .foregroundStyle(selectedTab == index ? .primary : .secondary)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 8)
+                                .frame(maxWidth: .infinity)
+                                .background {
+                                    if selectedTab == index {
+                                        Color.clear
+                                            .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 16))
+                                            .matchedGeometryEffect(id: "activeTab", in: segmentedAnimation)
+                                    }
+                                }
                         }
+                        .buttonStyle(.plain)
                     }
-                    .padding(4)
-                    .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 20))
-
-                    searchPillButton
                 }
+                .padding(4)
+                .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 20))
                 .padding(.horizontal, 32)
                 .padding(.top, 8)
                 .padding(.bottom, 14)
@@ -193,15 +189,15 @@ struct LogTabView: View {
                 ZStack(alignment: .topLeading) {
                     // Tab content — all views stay alive to preserve scroll/state
                     ZStack {
-                        TasksListView(viewModel: taskListVM, searchText: searchText)
+                        TasksListView(viewModel: taskListVM, searchText: searchText, onSearchTap: activateSearch)
                             .opacity(selectedTab == 0 ? 1 : 0)
                             .allowsHitTesting(selectedTab == 0)
 
-                        ListsView(viewModel: listsVM, searchText: searchText)
+                        ListsView(viewModel: listsVM, searchText: searchText, onSearchTap: activateSearch)
                             .opacity(selectedTab == 1 ? 1 : 0)
                             .allowsHitTesting(selectedTab == 1)
 
-                        ProjectsListView(viewModel: projectsVM, searchText: searchText)
+                        ProjectsListView(viewModel: projectsVM, searchText: searchText, onSearchTap: activateSearch)
                             .opacity(selectedTab == 2 ? 1 : 0)
                             .allowsHitTesting(selectedTab == 2)
                     }
@@ -259,25 +255,6 @@ struct LogTabView: View {
         }
     }
 
-    // MARK: - Search Pill Button
-
-    private var searchPillButton: some View {
-        Button {
-            withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
-                isSearchActive = true
-            }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                isSearchFieldFocused = true
-            }
-        } label: {
-            Image(systemName: "magnifyingglass")
-                .font(.sf(.body, weight: .medium))
-                .foregroundColor(.secondary)
-                .frame(width: 40, height: 40)
-                .glassEffect(.regular.interactive(), in: .circle)
-        }
-    }
-
     private var profilePillButton: some View {
         Button {
             showSettings = true
@@ -329,6 +306,15 @@ struct LogTabView: View {
         .padding(.vertical, 10)
         .glassEffect(.regular.interactive(), in: .capsule)
         .padding(.horizontal)
+    }
+
+    private func activateSearch() {
+        withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+            isSearchActive = true
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            isSearchFieldFocused = true
+        }
     }
 
     private func dismissSearch() {

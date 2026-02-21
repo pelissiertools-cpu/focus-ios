@@ -73,6 +73,7 @@ struct DateNavigator: View {
                 // Profile button row
                 if let onProfileTap {
                     HStack {
+                        Spacer()
                         Button(action: onProfileTap) {
                             Image(systemName: "person")
                                 .font(.sf(.body, weight: .medium))
@@ -80,9 +81,8 @@ struct DateNavigator: View {
                                 .frame(width: 36, height: 36)
                                 .glassEffect(.regular.interactive(), in: .circle)
                         }
-                        Spacer()
                     }
-                    .padding(.leading, 20)
+                    .padding(.trailing, 32)
                     .padding(.top, 2)
                     .padding(.bottom, 8)
                 }
@@ -169,10 +169,7 @@ struct DateNavigator: View {
                         .padding(.top, 4)
                         .padding(.bottom, showPills ? 4 : 12)
                     }
-                    .background(Color.lightBackground)
-                    .zIndex(1)
-
-                    // Pill row (togglable, slides under the date display)
+                    // Pill row (togglable)
                     if showPills {
                         timeframePillRow
                             .frame(height: 64)
@@ -187,10 +184,11 @@ struct DateNavigator: View {
                             )
                             .padding(.horizontal)
                             .padding(.bottom, 8)
-                            .transition(.opacity.combined(with: .move(edge: .top)))
+                            .transition(.opacity)
                     }
                 }
                 .padding(.horizontal)
+                .clipped()
                 .animation(.spring(response: 0.3, dampingFraction: 0.85), value: showPills)
             }
         }

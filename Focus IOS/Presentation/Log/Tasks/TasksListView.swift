@@ -249,6 +249,18 @@ struct TasksListView: View {
                     .moveDisabled(true)
                     .listRowInsets(EdgeInsets(top: 0, leading: 32, bottom: 0, trailing: 32))
                     .listRowBackground(Color.clear)
+
+                case .addTaskRow(let priority):
+                    InlineAddRow(
+                        placeholder: "Task title",
+                        buttonLabel: "Add task",
+                        onSubmit: { title in await viewModel.createTask(title: title, categoryId: viewModel.selectedCategoryId, priority: priority) },
+                        isAnyAddFieldActive: $isInlineAddFocused,
+                        verticalPadding: 12
+                    )
+                    .moveDisabled(true)
+                    .listRowInsets(EdgeInsets(top: 0, leading: 32, bottom: 0, trailing: 32))
+                    .listRowBackground(Color.clear)
                 }
             }
             .onMove { from, to in

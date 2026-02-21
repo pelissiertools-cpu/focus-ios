@@ -16,12 +16,14 @@ enum FlatDisplayItem: Identifiable {
     case task(FocusTask)
     case addSubtaskRow(parentId: UUID)
     case priorityHeader(Priority)
+    case addTaskRow(priority: Priority)
 
     var id: String {
         switch self {
         case .task(let task): return task.id.uuidString
         case .addSubtaskRow(let parentId): return "add-\(parentId.uuidString)"
         case .priorityHeader(let priority): return "priority-\(priority.rawValue)"
+        case .addTaskRow(let priority): return "addTask-\(priority.rawValue)"
         }
     }
 }
@@ -275,11 +277,10 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
         var result: [FlatDisplayItem] = []
 
         if sortOption == .priority {
-            // Group by priority with section headers
+            // Group by priority with section headers — always show all priority levels
             let priorities = sortDirection == .highestFirst ? Priority.allCases : Priority.allCases.reversed()
             for priority in priorities {
                 let tasksForPriority = uncompletedTasks.filter { $0.priority == priority }
-                guard !tasksForPriority.isEmpty else { continue }
 
                 result.append(.priorityHeader(priority))
 
@@ -296,6 +297,7 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
                             result.append(.addSubtaskRow(parentId: task.id))
                         }
                     }
+                    result.append(.addTaskRow(priority: priority))
                 }
             }
         } else {
@@ -436,7 +438,7 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
 
     /// Create a new task (inserted at the top with sortOrder 0)
     @discardableResult
-    func createTask(title: String, categoryId: UUID? = nil) async -> UUID? {
+    func createTask(title: String, categoryId: UUID? = nil, priority: Priority = .medium) async -> UUID? {
         guard let userId = authService.currentUser?.id else {
             errorMessage = "No authenticated user"
             return nil
@@ -451,6 +453,7 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
                 type: .task,
                 isCompleted: false,
                 sortOrder: 0,
+                priority: priority,
                 categoryId: categoryId
             )
 
@@ -944,6 +947,7 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
     func createTaskWithCommitments(
         title: String,
         categoryId: UUID?,
+        priority: Priority = .medium,
         subtaskTitles: [String],
         commitAfterCreate: Bool,
         selectedTimeframe: Timeframe,
@@ -953,7 +957,7 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
         scheduledTime: Date?
     ) async -> UUID? {
         // 1. Create the task
-        guard let parentId = await createTask(title: title, categoryId: categoryId) else {
+        guard let parentId = await createTask(title: title, categoryId: categoryId, priority: priority) else {
             return nil
         }
 

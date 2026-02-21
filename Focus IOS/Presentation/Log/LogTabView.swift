@@ -31,6 +31,7 @@ struct LogTabView: View {
     @State private var addTaskTimeframe: Timeframe = .daily
     @State private var addTaskSection: Section = .focus
     @State private var addTaskDates: Set<Date> = []
+    @State private var addTaskPriority: Priority = .medium
     @State private var isGeneratingBreakdown = false
     @State private var hasGeneratedBreakdown = false
     @FocusState private var isAddTaskFieldFocused: Bool
@@ -149,7 +150,7 @@ struct LogTabView: View {
                     profilePillButton
                     Spacer()
                 }
-                .padding(.leading, 20)
+                .padding(.leading, 32)
                 .padding(.top, 2)
                 .padding(.bottom, 8)
 
@@ -184,7 +185,7 @@ struct LogTabView: View {
 
                     searchPillButton
                 }
-                .padding(.horizontal)
+                .padding(.horizontal, 32)
                 .padding(.top, 8)
                 .padding(.bottom, 14)
 
@@ -272,7 +273,7 @@ struct LogTabView: View {
             Image(systemName: "magnifyingglass")
                 .font(.sf(.body, weight: .medium))
                 .foregroundColor(.secondary)
-                .frame(width: 36, height: 36)
+                .frame(width: 40, height: 40)
                 .glassEffect(.regular.interactive(), in: .circle)
         }
     }
@@ -482,7 +483,7 @@ struct LogTabView: View {
                 .frame(maxHeight: 350)
             }
 
-            // Bottom row: [Sub-task] ... [Category pill] [Commit pill]
+            // Sub-task row: [Sub-task] ... [AI Breakdown (compact)]
             HStack(spacing: 8) {
                 // Add sub-task button
                 Button {
@@ -503,6 +504,55 @@ struct LogTabView: View {
 
                 Spacer()
 
+                // AI Breakdown (compact, sized like Suggest Breakdown in TaskDetails)
+                Button {
+                    generateBreakdown()
+                } label: {
+                    HStack(spacing: 6) {
+                        if isGeneratingBreakdown {
+                            ProgressView()
+                                .tint(.primary)
+                        } else {
+                            Image(systemName: hasGeneratedBreakdown ? "arrow.clockwise" : "sparkles")
+                                .font(.sf(.subheadline, weight: .semibold))
+                        }
+                        Text(LocalizedStringKey(hasGeneratedBreakdown ? "Regenerate" : "Suggest Breakdown"))
+                            .font(.sf(.caption, weight: .medium))
+                    }
+                    .foregroundColor(.primary)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
+                    .background {
+                        if !isAddTaskTitleEmpty {
+                            Capsule()
+                                .stroke(
+                                    AngularGradient(
+                                        colors: [
+                                            Color.commitGradientDark,
+                                            Color.commitGradientLight,
+                                            Color.commitGradientDark,
+                                        ],
+                                        center: .center
+                                    ),
+                                    lineWidth: 2.5
+                                )
+                                .blur(radius: 6)
+                        }
+                    }
+                    .overlay {
+                        Capsule()
+                            .stroke(.white.opacity(0.5), lineWidth: 1.5)
+                    }
+                    .glassEffect(.regular.interactive(), in: .capsule)
+                }
+                .buttonStyle(.plain)
+                .disabled(isAddTaskTitleEmpty || isGeneratingBreakdown)
+            }
+            .padding(.horizontal, 14)
+            .padding(.bottom, 4)
+
+            // Bottom row: [Category pill] [Commit pill] [Priority pill] ... [Checkmark]
+            HStack(spacing: 8) {
                 // Category pill
                 Menu {
                     Button {
@@ -556,19 +606,34 @@ struct LogTabView: View {
                     .background(!addTaskDates.isEmpty ? Color.appRed : Color.black, in: Capsule())
                 }
                 .buttonStyle(.plain)
-            }
-            .padding(.leading, 14)
-            .padding(.trailing, 60)
-            .padding(.bottom, 4)
 
-            // AI Breakdown + Submit row
-            HStack(spacing: 10) {
-                AIBreakdownButton(
-                    isEnabled: !isAddTaskTitleEmpty,
-                    isGenerating: isGeneratingBreakdown,
-                    hasGenerated: hasGeneratedBreakdown,
-                    action: { generateBreakdown() }
-                )
+                // Priority pill
+                Menu {
+                    ForEach(Priority.allCases, id: \.self) { priority in
+                        Button {
+                            addTaskPriority = priority
+                        } label: {
+                            if addTaskPriority == priority {
+                                Label(priority.displayName, systemImage: "checkmark")
+                            } else {
+                                Text(priority.displayName)
+                            }
+                        }
+                    }
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "flag.fill")
+                            .font(.sf(.caption))
+                        Text(addTaskPriority.displayName)
+                            .font(.sf(.caption))
+                    }
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(addTaskPriority != .medium ? addTaskPriority.dotColor : Color.black, in: Capsule())
+                }
+
+                Spacer()
 
                 // Submit button (checkmark)
                 Button {
@@ -1058,6 +1123,7 @@ struct LogTabView: View {
             .map { $0.title.trimmingCharacters(in: .whitespaces) }
             .filter { !$0.isEmpty }
         let categoryId = addTaskCategoryId
+        let priority = addTaskPriority
         let commitEnabled = !addTaskDates.isEmpty
         let timeframe = addTaskTimeframe
         let section = addTaskSection
@@ -1074,12 +1140,14 @@ struct LogTabView: View {
         addTaskSubtasks = []
         addTaskDates = []
         addTaskCommitExpanded = false
+        addTaskPriority = .medium
         hasGeneratedBreakdown = false
 
         _Concurrency.Task { @MainActor in
             await taskListVM.createTaskWithCommitments(
                 title: title,
                 categoryId: categoryId,
+                priority: priority,
                 subtaskTitles: subtasksToCreate,
                 commitAfterCreate: commitEnabled,
                 selectedTimeframe: timeframe,
@@ -1111,6 +1179,7 @@ struct LogTabView: View {
         addTaskTitle = ""
         addTaskSubtasks = []
         addTaskCategoryId = nil
+        addTaskPriority = .medium
         addTaskCommitExpanded = false
         addTaskDates = []
         hasGeneratedBreakdown = false

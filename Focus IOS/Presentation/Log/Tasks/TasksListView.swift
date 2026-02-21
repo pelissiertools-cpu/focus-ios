@@ -417,11 +417,9 @@ struct CategorySelectorHeader<TrailingContent: View>: View {
                     Text(title)
                         .font(.golosText(size: 30))
 
-                    if count > 0 {
-                        Text("\(count) \(countSuffix)\(count == 1 ? "" : "s")")
-                            .font(.sf(size: 12))
-                            .foregroundColor(.secondary)
-                    }
+                    Text("\(count) \(countSuffix)\(count == 1 ? "" : "s")")
+                        .font(.sf(size: 12))
+                        .foregroundColor(.secondary)
                 }
                 .contentShape(Rectangle())
                 .onTapGesture {

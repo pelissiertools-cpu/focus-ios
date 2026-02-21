@@ -297,11 +297,9 @@ struct ListRow: View {
                     .font(.sf(.body))
                     .lineLimit(1)
 
-                if itemCount.total > 0 {
-                    Text("\(itemCount.uncompleted) item\(itemCount.uncompleted == 1 ? "" : "s")")
-                        .font(.sf(.caption))
-                        .foregroundColor(.secondary)
-                }
+                Text("\(itemCount.uncompleted) item\(itemCount.uncompleted == 1 ? "" : "s")")
+                    .font(.sf(.caption))
+                    .foregroundColor(.secondary)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }

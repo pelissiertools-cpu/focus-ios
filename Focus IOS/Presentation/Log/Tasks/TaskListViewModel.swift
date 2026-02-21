@@ -438,7 +438,7 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
 
     /// Create a new task (inserted at the top with sortOrder 0)
     @discardableResult
-    func createTask(title: String, categoryId: UUID? = nil, priority: Priority = .medium) async -> UUID? {
+    func createTask(title: String, categoryId: UUID? = nil, priority: Priority = .low) async -> UUID? {
         guard let userId = authService.currentUser?.id else {
             errorMessage = "No authenticated user"
             return nil
@@ -720,7 +720,7 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
                 return priority
             }
         }
-        return .medium // fallback
+        return .low // fallback
     }
 
     /// Handle .onMove from the flat ForEach.
@@ -947,7 +947,7 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
     func createTaskWithCommitments(
         title: String,
         categoryId: UUID?,
-        priority: Priority = .medium,
+        priority: Priority = .low,
         subtaskTitles: [String],
         commitAfterCreate: Bool,
         selectedTimeframe: Timeframe,

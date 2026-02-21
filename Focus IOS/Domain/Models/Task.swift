@@ -63,7 +63,7 @@ struct FocusTask: Codable, Identifiable {
         sortOrder: Int = 0,
         isInLog: Bool = true,
         previousCompletionState: [Bool]? = nil,
-        priority: Priority = .medium,
+        priority: Priority = .low,
         categoryId: UUID? = nil,
         projectId: UUID? = nil,
         parentTaskId: UUID? = nil

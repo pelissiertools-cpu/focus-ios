@@ -31,7 +31,7 @@ struct LogTabView: View {
     @State private var addTaskTimeframe: Timeframe = .daily
     @State private var addTaskSection: Section = .focus
     @State private var addTaskDates: Set<Date> = []
-    @State private var addTaskPriority: Priority = .medium
+    @State private var addTaskPriority: Priority = .low
     @State private var isGeneratingBreakdown = false
     @State private var hasGeneratedBreakdown = false
     @FocusState private var isAddTaskFieldFocused: Bool
@@ -630,7 +630,7 @@ struct LogTabView: View {
                     .foregroundColor(.white)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
-                    .background(addTaskPriority != .medium ? addTaskPriority.dotColor : Color.black, in: Capsule())
+                    .background(addTaskPriority != .low ? addTaskPriority.dotColor : Color.black, in: Capsule())
                 }
 
                 Spacer()
@@ -1140,7 +1140,7 @@ struct LogTabView: View {
         addTaskSubtasks = []
         addTaskDates = []
         addTaskCommitExpanded = false
-        addTaskPriority = .medium
+        addTaskPriority = .low
         hasGeneratedBreakdown = false
 
         _Concurrency.Task { @MainActor in
@@ -1179,7 +1179,7 @@ struct LogTabView: View {
         addTaskTitle = ""
         addTaskSubtasks = []
         addTaskCategoryId = nil
-        addTaskPriority = .medium
+        addTaskPriority = .low
         addTaskCommitExpanded = false
         addTaskDates = []
         hasGeneratedBreakdown = false

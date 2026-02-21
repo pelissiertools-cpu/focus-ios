@@ -1153,9 +1153,9 @@ struct FocusSectionHeaderRow: View {
             } label: {
                 Image(systemName: "plus")
                     .font(.sf(.caption, weight: .semibold))
-                    .foregroundColor(.primary)
+                    .foregroundColor(.white)
                     .frame(width: 26, height: 26)
-                    .glassEffect(.regular.interactive(), in: .circle)
+                    .background(Color.darkGray, in: Circle())
             }
             .buttonStyle(.plain)
             .popover(isPresented: $showCapacityPopover) {

@@ -39,7 +39,7 @@ struct DraftSubtaskListEditor: View {
                             .font(.sf(.body))
                             .textFieldStyle(.plain)
                             .focused(focusedSubtaskId, equals: subtask.id)
-                            .lineLimit(1)
+                            .lineLimit(1...3)
                             .onChange(of: binding(for: subtask.id).wrappedValue) { _, newValue in
                                 if newValue.contains("\n") {
                                     if let idx = subtasks.firstIndex(where: { $0.id == subtask.id }) {

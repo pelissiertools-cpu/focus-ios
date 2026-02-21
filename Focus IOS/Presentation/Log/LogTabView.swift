@@ -91,6 +91,9 @@ struct LogTabView: View {
         addProjectTitle.trimmingCharacters(in: .whitespaces).isEmpty
     }
 
+    /// Shared pill height so the ellipsis pill matches the text pills
+    private let subtaskPillHeight: CGFloat = 28
+
     private let tabKeys = ["Tasks", "Lists", "Projects"]
 
     var body: some View {
@@ -556,6 +559,19 @@ struct LogTabView: View {
                 }
                 .buttonStyle(.plain)
 
+                // More options pill
+                Button {
+                    // TODO: action
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .font(.sf(.caption, weight: .bold))
+                        .foregroundColor(.black)
+                        .frame(height: subtaskPillHeight)
+                        .padding(.horizontal, 10)
+                        .background(Color.white, in: Capsule())
+                }
+                .buttonStyle(.plain)
+
                 Spacer()
 
                 // AI Breakdown (compact, sized like Suggest Breakdown in TaskDetails)
@@ -601,11 +617,27 @@ struct LogTabView: View {
                 }
                 .buttonStyle(.plain)
                 .disabled(isAddTaskTitleEmpty || isGeneratingBreakdown)
+
+                // Submit button (checkmark)
+                Button {
+                    saveLogTask()
+                } label: {
+                    Image(systemName: "checkmark")
+                        .font(.sf(.body, weight: .semibold))
+                        .foregroundColor(isAddTaskTitleEmpty ? .secondary : .white)
+                        .frame(width: 36, height: 36)
+                        .background(
+                            isAddTaskTitleEmpty ? Color(.systemGray4) : Color.appRed,
+                            in: Circle()
+                        )
+                }
+                .buttonStyle(.plain)
+                .disabled(isAddTaskTitleEmpty)
             }
             .padding(.horizontal, 14)
             .padding(.bottom, 4)
 
-            // Bottom row: [Category pill] [Commit pill] [Priority pill] ... [Checkmark]
+            // Bottom row: [Category pill] [Commit pill] [Priority pill] — left-aligned
             HStack(spacing: 8) {
                 // Category pill
                 Menu {
@@ -636,10 +668,10 @@ struct LogTabView: View {
                         Text(LocalizedStringKey(categoryPillLabel))
                             .font(.sf(.caption))
                     }
-                    .foregroundColor(.white)
+                    .foregroundColor(.black)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
-                    .background(addTaskCategoryId != nil ? Color.appRed : Color.black, in: Capsule())
+                    .background(Color.white, in: Capsule())
                 }
 
                 // Commit toggle pill
@@ -654,10 +686,10 @@ struct LogTabView: View {
                         Text("Commit")
                             .font(.sf(.caption))
                     }
-                    .foregroundColor(.white)
+                    .foregroundColor(.black)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
-                    .background(!addTaskDates.isEmpty ? Color.appRed : Color.black, in: Capsule())
+                    .background(Color.white, in: Capsule())
                 }
                 .buttonStyle(.plain)
 
@@ -682,29 +714,13 @@ struct LogTabView: View {
                         Text(addTaskPriority.displayName)
                             .font(.sf(.caption))
                     }
-                    .foregroundColor(.white)
+                    .foregroundColor(.black)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
-                    .background(addTaskPriority != .low ? addTaskPriority.dotColor : Color.black, in: Capsule())
+                    .background(Color.white, in: Capsule())
                 }
 
                 Spacer()
-
-                // Submit button (checkmark)
-                Button {
-                    saveLogTask()
-                } label: {
-                    Image(systemName: "checkmark")
-                        .font(.sf(.body, weight: .semibold))
-                        .foregroundColor(isAddTaskTitleEmpty ? .secondary : .white)
-                        .frame(width: 36, height: 36)
-                        .background(
-                            isAddTaskTitleEmpty ? Color(.systemGray4) : Color.appRed,
-                            in: Circle()
-                        )
-                }
-                .buttonStyle(.plain)
-                .disabled(isAddTaskTitleEmpty)
             }
             .padding(.horizontal, 14)
             .padding(.top, 6)

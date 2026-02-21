@@ -13,11 +13,10 @@ struct DateNavigator: View {
     @Binding var selectedTimeframe: Timeframe
     @Binding var viewMode: FocusViewMode
     let compact: Bool
-    let onCalendarTap: () -> Void
     var onProfileTap: (() -> Void)? = nil
     @EnvironmentObject var languageManager: LanguageManager
     @Environment(\.colorScheme) private var colorScheme
-    @Binding var showTimeframePicker: Bool
+    @State private var showPills = false
 
     private var calendar: Calendar {
         var cal = Calendar.current
@@ -35,7 +34,6 @@ struct DateNavigator: View {
         if compact {
             // Schedule mode: same day pill row, no segmented picker
             VStack(spacing: 0) {
-                // Row 1: (compact mode — currently unreachable, schedule hidden)
                 EmptyView()
                     .frame(height: 32)
                     .padding(.horizontal)
@@ -44,7 +42,6 @@ struct DateNavigator: View {
                 Divider()
                     .padding(.horizontal, 16)
 
-                // Row 2: Daily pill row with edge fade (same as focus daily)
                 dailyPillRow
                     .frame(height: 56)
                     .mask(
@@ -62,22 +59,18 @@ struct DateNavigator: View {
                 Divider()
                     .padding(.horizontal, 16)
 
-                // Row 3: Tappable date subtitle
-                Button(action: onCalendarTap) {
-                    Text(compactSubtitleText)
-                        .font(.montserratHeader(.subheadline, weight: .medium))
-                        .foregroundColor(.primary)
-                }
-                .buttonStyle(.plain)
-                .padding(.vertical, 8)
+                Text(compactSubtitleText)
+                    .font(.montserratHeader(.subheadline, weight: .medium))
+                    .foregroundColor(.primary)
+                    .padding(.vertical, 8)
 
                 Divider()
                     .padding(.horizontal, 16)
             }
         } else {
-            // Focus mode: full layout with dividers
+            // Focus mode: full layout
             VStack(spacing: 0) {
-                // Row 0: Profile button — own row, left-aligned
+                // Profile button row
                 if let onProfileTap {
                     HStack {
                         Button(action: onProfileTap) {
@@ -92,112 +85,184 @@ struct DateNavigator: View {
                     .padding(.leading, 20)
                     .padding(.top, 2)
                     .padding(.bottom, 8)
-                    .overlay {
-                        if showTimeframePicker {
-                            Color.clear
-                                .contentShape(Rectangle())
-                                .onTapGesture {
-                                    withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) {
-                                        showTimeframePicker = false
+                }
+
+                // Date navigator container
+                VStack(spacing: 0) {
+                    // Upper section: dropdown + date display (opaque, renders on top during pill transition)
+                    VStack(spacing: 0) {
+                        // Timeframe dropdown
+                        Menu {
+                            ForEach(Timeframe.allCases, id: \.self) { timeframe in
+                                Button {
+                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                    selectedTimeframe = timeframe
+                                } label: {
+                                    if selectedTimeframe == timeframe {
+                                        Label(timeframe.displayName, systemImage: "checkmark")
+                                    } else {
+                                        Text(timeframe.displayName)
                                     }
                                 }
-                        }
-                    }
-                }
-
-                // Date navigator container: timeframe label + pills + date subtitle
-                VStack(spacing: 0) {
-                    // Timeframe selector — center row stays anchored via negative padding
-                    ZStack {
-                        Picker("Timeframe", selection: $selectedTimeframe) {
-                            ForEach(Timeframe.allCases, id: \.self) { timeframe in
-                                Text(LocalizedStringKey(timeframe.displayName))
-                                    .tag(timeframe)
                             }
-                        }
-                        .pickerStyle(.wheel)
-                        .frame(height: 120)
-                        .allowsHitTesting(showTimeframePicker)
-                        .opacity(showTimeframePicker ? 1 : 0)
-                        .padding(.horizontal)
-                        .onChange(of: selectedTimeframe) {
-                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) {
-                                showTimeframePicker = false
-                            }
-                        }
-
-                        if !showTimeframePicker {
-                            Button {
-                                withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) {
-                                    showTimeframePicker = true
-                                }
-                            } label: {
+                        } label: {
+                            HStack(spacing: 4) {
                                 Text(LocalizedStringKey(selectedTimeframe.displayName))
-                                    .font(.system(size: 23.5, weight: .regular))
-                                    .foregroundStyle(.primary)
+                                    .font(.sf(.subheadline, weight: .medium))
+                                Image(systemName: "chevron.down")
+                                    .font(.sf(.caption2, weight: .semibold))
+                            }
+                            .foregroundColor(.secondary)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                        }
+                        .padding(.top, 10)
+
+                        // Date display with prev/next chevrons
+                        HStack(spacing: 0) {
+                            Button {
+                                navigatePrev()
+                            } label: {
+                                Image(systemName: "chevron.left")
+                                    .font(.sf(.body, weight: .medium))
+                                    .foregroundColor(.secondary)
+                                    .frame(width: 44, height: 44)
+                                    .contentShape(Rectangle())
                             }
                             .buttonStyle(.plain)
-                            .transition(.opacity)
-                        }
-                    }
-                    .frame(height: showTimeframePicker ? 120 : 34, alignment: .center)
-                    .clipped()
-                    .padding(.top, showTimeframePicker ? -33 : 10)
 
-                    // Pill row
-                    timeframePillRow
-                        .frame(height: 64)
-                        .mask(
-                            HStack(spacing: 0) {
-                                LinearGradient(colors: [.clear, .black], startPoint: .leading, endPoint: .trailing)
-                                    .frame(width: 24)
-                                Color.black
-                                LinearGradient(colors: [.black, .clear], startPoint: .leading, endPoint: .trailing)
-                                    .frame(width: 24)
-                            }
-                        )
-                        .padding(.horizontal)
-                        .padding(.top, 8)
-                        .padding(.bottom, 8)
-                }
-                .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 20))
-                .padding(.horizontal)
-                .animation(.spring(response: 0.3, dampingFraction: 0.85), value: showTimeframePicker)
-                .onChange(of: selectedDate) {
-                    if showTimeframePicker {
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) {
-                            showTimeframePicker = false
-                        }
-                    }
-                }
+                            Spacer()
 
-                // Date label container
-                HStack {
-                    Spacer()
-                    Button(action: onCalendarTap) {
-                        Text(subtitleText)
-                            .font(.montserratHeader(.subheadline, weight: .medium))
-                            .foregroundColor(.primary)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 8)
-                    }
-                    .buttonStyle(.plain)
-                }
-                .padding(.horizontal, 16)
-                .padding(.top, 8)
-                .padding(.bottom, 12)
-                .overlay {
-                    if showTimeframePicker {
-                        Color.clear
-                            .contentShape(Rectangle())
-                            .onTapGesture {
-                                withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) {
-                                    showTimeframePicker = false
+                            VStack(spacing: 4) {
+                                Text(primaryDateText)
+                                    .font(.system(size: 32, weight: .bold, design: .serif))
+                                    .foregroundColor(.primary)
+
+                                if let secondary = secondaryDateText {
+                                    Text(secondary)
+                                        .font(.montserratHeader(.subheadline, weight: .medium))
+                                        .foregroundColor(.primary)
                                 }
                             }
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) {
+                                    showPills.toggle()
+                                }
+                            }
+
+                            Spacer()
+
+                            Button {
+                                navigateNext()
+                            } label: {
+                                Image(systemName: "chevron.right")
+                                    .font(.sf(.body, weight: .medium))
+                                    .foregroundColor(.secondary)
+                                    .frame(width: 44, height: 44)
+                                    .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                        }
+                        .padding(.horizontal, 8)
+                        .padding(.top, 4)
+                        .padding(.bottom, showPills ? 4 : 12)
+                    }
+                    .background(Color.lightBackground)
+                    .zIndex(1)
+
+                    // Pill row (togglable, slides under the date display)
+                    if showPills {
+                        timeframePillRow
+                            .frame(height: 64)
+                            .mask(
+                                HStack(spacing: 0) {
+                                    LinearGradient(colors: [.clear, .black], startPoint: .leading, endPoint: .trailing)
+                                        .frame(width: 24)
+                                    Color.black
+                                    LinearGradient(colors: [.black, .clear], startPoint: .leading, endPoint: .trailing)
+                                        .frame(width: 24)
+                                }
+                            )
+                            .padding(.horizontal)
+                            .padding(.bottom, 8)
+                            .transition(.opacity.combined(with: .move(edge: .top)))
                     }
                 }
+                .padding(.horizontal)
+                .animation(.spring(response: 0.3, dampingFraction: 0.85), value: showPills)
+            }
+        }
+    }
+
+    // MARK: - Primary Date Text (large, centered)
+
+    private var primaryDateText: String {
+        let locale = LanguageManager.shared.locale
+        let formatter = DateFormatter()
+        formatter.locale = locale
+
+        switch selectedTimeframe {
+        case .daily:
+            formatter.dateFormat = "EEEE"
+            return formatter.string(from: selectedDate)
+        case .weekly:
+            let weekNum = calendar.component(.weekOfYear, from: selectedDate)
+            return "Week \(weekNum)"
+        case .monthly:
+            formatter.dateFormat = "MMMM"
+            return formatter.string(from: selectedDate)
+        case .yearly:
+            return String(calendar.component(.year, from: selectedDate))
+        }
+    }
+
+    // MARK: - Secondary Date Text (smaller, below primary)
+
+    private var secondaryDateText: String? {
+        switch selectedTimeframe {
+        case .daily:
+            return formattedDateWithOrdinalFull(selectedDate)
+        case .weekly:
+            return weekRangeText
+        case .monthly:
+            return String(calendar.component(.year, from: selectedDate))
+        case .yearly:
+            return nil
+        }
+    }
+
+    // MARK: - Navigation
+
+    private func navigatePrev() {
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        withAnimation(.easeInOut(duration: 0.2)) {
+            switch selectedTimeframe {
+            case .daily:
+                selectedDate = calendar.date(byAdding: .day, value: -1, to: selectedDate) ?? selectedDate
+            case .weekly:
+                selectedDate = calendar.date(byAdding: .weekOfYear, value: -1, to: selectedDate) ?? selectedDate
+            case .monthly:
+                selectedDate = calendar.date(byAdding: .month, value: -1, to: selectedDate) ?? selectedDate
+            case .yearly:
+                selectedDate = calendar.date(byAdding: .year, value: -1, to: selectedDate) ?? selectedDate
+            }
+        }
+    }
+
+    private func navigateNext() {
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        withAnimation(.easeInOut(duration: 0.2)) {
+            switch selectedTimeframe {
+            case .daily:
+                selectedDate = calendar.date(byAdding: .day, value: 1, to: selectedDate) ?? selectedDate
+            case .weekly:
+                selectedDate = calendar.date(byAdding: .weekOfYear, value: 1, to: selectedDate) ?? selectedDate
+            case .monthly:
+                selectedDate = calendar.date(byAdding: .month, value: 1, to: selectedDate) ?? selectedDate
+            case .yearly:
+                selectedDate = calendar.date(byAdding: .year, value: 1, to: selectedDate) ?? selectedDate
             }
         }
     }
@@ -495,34 +560,6 @@ struct DateNavigator: View {
         }
     }
 
-    // MARK: - Subtitle Text
-
-    private var subtitleText: String {
-        let locale = LanguageManager.shared.locale
-        switch selectedTimeframe {
-        case .daily:
-            let formatter = DateFormatter()
-            formatter.locale = locale
-            formatter.dateFormat = "EEE MMM d, yyyy"
-            return formatter.string(from: selectedDate)
-
-        case .weekly:
-            return weekRangeText
-
-        case .monthly:
-            let formatter = DateFormatter()
-            formatter.locale = locale
-            formatter.dateFormat = "MMMM, yyyy"
-            return formatter.string(from: selectedDate)
-
-        case .yearly:
-            let formatter = DateFormatter()
-            formatter.locale = locale
-            formatter.dateFormat = "yyyy"
-            return formatter.string(from: selectedDate)
-        }
-    }
-
     // MARK: - Compact Subtitle (Schedule mode — always daily)
 
     private var compactSubtitleText: String {
@@ -553,6 +590,23 @@ struct DateNavigator: View {
         return "\(startFormatter.string(from: weekStart)) - \(endFormatter.string(from: weekEnd))"
     }
 
+    /// Full month format for date display: "February 20th, 2026"
+    private func formattedDateWithOrdinalFull(_ date: Date) -> String {
+        let day = calendar.component(.day, from: date)
+        let ordinal = ordinalSuffix(for: day)
+
+        let formatter = DateFormatter()
+        formatter.locale = LanguageManager.shared.locale
+        formatter.dateFormat = "MMMM"
+        let month = formatter.string(from: date)
+
+        formatter.dateFormat = "yyyy"
+        let year = formatter.string(from: date)
+
+        return "\(month) \(day)\(ordinal), \(year)"
+    }
+
+    /// Short month format for compact subtitle: "Feb 20th, 2026"
     private func formattedDateWithOrdinal(_ date: Date) -> String {
         let day = calendar.component(.day, from: date)
         let ordinal = ordinalSuffix(for: day)

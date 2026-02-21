@@ -28,12 +28,10 @@ struct FocusTabView: View {
     @EnvironmentObject var authService: AuthService
     @EnvironmentObject var viewModel: FocusTabViewModel
     @EnvironmentObject var languageManager: LanguageManager
-    @State private var showCalendarPicker = false
     @State private var viewMode: FocusViewMode = .focus
 
     @State private var showScheduleDrawer = false
     @State private var showSettings = false
-    @State private var showTimeframePicker = false
 
     // Compact add-task bar state
     @State private var addTaskTitle = ""
@@ -56,9 +54,7 @@ struct FocusTabView: View {
                     selectedTimeframe: $viewModel.selectedTimeframe,
                     viewMode: $viewMode,
                     compact: viewMode == .schedule,
-                    onCalendarTap: { showCalendarPicker = true },
-                    onProfileTap: { showSettings = true },
-                    showTimeframePicker: $showTimeframePicker
+                    onProfileTap: { showSettings = true }
                 )
                 .opacity(viewModel.showAddTaskSheet ? 0 : 1)
                 .allowsHitTesting(!viewModel.showAddTaskSheet)
@@ -85,17 +81,6 @@ struct FocusTabView: View {
                         focusList
                         .opacity(viewModel.showAddTaskSheet ? 0 : 1)
                         .allowsHitTesting(!viewModel.showAddTaskSheet)
-                        .overlay {
-                            if showTimeframePicker {
-                                Color.clear
-                                    .contentShape(Rectangle())
-                                    .onTapGesture {
-                                        withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) {
-                                            showTimeframePicker = false
-                                        }
-                                    }
-                            }
-                        }
                     }
                 } else {
                     // MARK: - Schedule Mode Content
@@ -251,13 +236,6 @@ struct FocusTabView: View {
                     RescheduleSheet(commitment: commitment, focusViewModel: viewModel)
                         .drawerStyle()
                 }
-            }
-            .sheet(isPresented: $showCalendarPicker) {
-                SingleSelectCalendarPicker(
-                    selectedDate: $viewModel.selectedDate,
-                    timeframe: viewModel.selectedTimeframe
-                )
-                .drawerStyle()
             }
             .onChange(of: viewModel.showAddTaskSheet) { _, isShowing in
                 if isShowing {

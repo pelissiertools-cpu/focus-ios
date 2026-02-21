@@ -930,7 +930,11 @@
         }
       }
     },
+    "Create a new project" : {
+
+    },
     "Create a new project." : {
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {

@@ -50,6 +50,7 @@ struct LogTabView: View {
     @State private var addListTimeframe: Timeframe = .daily
     @State private var addListSection: Section = .focus
     @State private var addListDates: Set<Date> = []
+    @State private var addListDatesSnapshot: Set<Date> = []
     @FocusState private var focusedListItemId: UUID?
 
     // Compact add-project bar state
@@ -60,6 +61,7 @@ struct LogTabView: View {
     @State private var addProjectTimeframe: Timeframe = .daily
     @State private var addProjectSection: Section = .focus
     @State private var addProjectDates: Set<Date> = []
+    @State private var addProjectDatesSnapshot: Set<Date> = []
     @FocusState private var focusedProjectTaskId: UUID?
 
     // Unified title focus (single @FocusState = atomic transfer = no keyboard flicker)
@@ -150,9 +152,6 @@ struct LogTabView: View {
                 // Unified add bar: auto-focus on open
                 .onChange(of: showingAddBar) { _, isShowing in
                     if isShowing {
-                        if addBarMode == .project && addProjectDraftTasks.isEmpty {
-                            addProjectDraftTasks = [DraftTask()]
-                        }
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                             switch addBarMode {
                             case .task: addBarTitleFocus = .task
@@ -169,10 +168,6 @@ struct LogTabView: View {
                     focusedSubtaskId = nil
                     focusedListItemId = nil
                     focusedProjectTaskId = nil
-                    // Seed project draft tasks if needed
-                    if newMode == .project && addProjectDraftTasks.isEmpty {
-                        addProjectDraftTasks = [DraftTask()]
-                    }
                     // Atomic focus transfer — single @FocusState, no keyboard flicker
                     switch newMode {
                     case .task: addBarTitleFocus = .task
@@ -810,10 +805,52 @@ struct LogTabView: View {
                     )
                 }
                 .padding(.horizontal, 14)
-                .padding(.vertical, 10)
+                .padding(.top, 6)
+                .padding(.bottom, 14)
+
+                // Commit mode action row
+                HStack {
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            addListDates.removeAll()
+                            addListCommitExpanded = false
+                        }
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.sf(.body, weight: .semibold))
+                            .foregroundColor(.primary)
+                            .frame(width: 36, height: 36)
+                            .background(Color(.systemGray4), in: Circle())
+                    }
+                    .buttonStyle(.plain)
+
+                    Spacer()
+
+                    let hasDateChanges = addListDates != addListDatesSnapshot
+                    Button {
+                        let generator = UIImpactFeedbackGenerator(style: .medium)
+                        generator.impactOccurred()
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            addListCommitExpanded = false
+                        }
+                    } label: {
+                        Image(systemName: "checkmark")
+                            .font(.sf(.body, weight: .semibold))
+                            .foregroundColor(hasDateChanges ? .white : .secondary)
+                            .frame(width: 36, height: 36)
+                            .background(
+                                hasDateChanges ? Color.appRed : Color(.systemGray4),
+                                in: Circle()
+                            )
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.horizontal, 14)
+                .padding(.bottom, 4)
             }
 
             // Bottom row: [Item] ... [Category pill] [Commit pill] [Checkmark]
+            if !addListCommitExpanded {
             HStack(spacing: 8) {
                 Button {
                     addNewListItem()
@@ -870,6 +907,7 @@ struct LogTabView: View {
 
                 // Commit toggle pill
                 Button {
+                    addListDatesSnapshot = addListDates
                     withAnimation(.easeInOut(duration: 0.2)) {
                         addListCommitExpanded.toggle()
                     }
@@ -904,7 +942,10 @@ struct LogTabView: View {
                 .disabled(isAddListTitleEmpty)
             }
             .padding(.horizontal, 14)
-            .padding(.bottom, 20)
+            .padding(.bottom, 4)
+            }
+
+            Spacer().frame(height: 20)
         }
         .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 20))
         .padding(.horizontal)
@@ -915,7 +956,7 @@ struct LogTabView: View {
     private var logAddProjectBar: some View {
         VStack(spacing: 0) {
             // Project title row
-            TextField("Create a new project.", text: $addProjectTitle)
+            TextField("Create a new project", text: $addProjectTitle)
                 .font(.sf(.title3))
                 .textFieldStyle(.plain)
                 .focused($addBarTitleFocus, equals: .project)
@@ -924,8 +965,8 @@ struct LogTabView: View {
                     saveLogProject()
                 }
                 .padding(.horizontal, 14)
-                .padding(.top, 14)
-                .padding(.bottom, 8)
+                .padding(.top, 20)
+                .padding(.bottom, 10)
 
             // Tasks + subtasks area (always visible — seeded with one empty task)
             if !addProjectDraftTasks.isEmpty {
@@ -947,26 +988,65 @@ struct LogTabView: View {
                 Divider()
                     .padding(.horizontal, 14)
 
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 12) {
-                        Picker("Section", selection: $addProjectSection) {
-                            Text("Focus").tag(Section.focus)
-                            Text("Extra").tag(Section.extra)
-                        }
-                        .pickerStyle(.segmented)
-
-                        UnifiedCalendarPicker(
-                            selectedDates: $addProjectDates,
-                            selectedTimeframe: $addProjectTimeframe
-                        )
+                VStack(alignment: .leading, spacing: 12) {
+                    Picker("Section", selection: $addProjectSection) {
+                        Text("Focus").tag(Section.focus)
+                        Text("Extra").tag(Section.extra)
                     }
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 10)
+                    .pickerStyle(.segmented)
+
+                    UnifiedCalendarPicker(
+                        selectedDates: $addProjectDates,
+                        selectedTimeframe: $addProjectTimeframe
+                    )
                 }
-                .frame(maxHeight: 200)
+                .padding(.horizontal, 14)
+                .padding(.top, 6)
+                .padding(.bottom, 14)
+
+                // Commit mode action row
+                HStack {
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            addProjectDates.removeAll()
+                            addProjectCommitExpanded = false
+                        }
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.sf(.body, weight: .semibold))
+                            .foregroundColor(.primary)
+                            .frame(width: 36, height: 36)
+                            .background(Color(.systemGray4), in: Circle())
+                    }
+                    .buttonStyle(.plain)
+
+                    Spacer()
+
+                    let hasDateChanges = addProjectDates != addProjectDatesSnapshot
+                    Button {
+                        let generator = UIImpactFeedbackGenerator(style: .medium)
+                        generator.impactOccurred()
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            addProjectCommitExpanded = false
+                        }
+                    } label: {
+                        Image(systemName: "checkmark")
+                            .font(.sf(.body, weight: .semibold))
+                            .foregroundColor(hasDateChanges ? .white : .secondary)
+                            .frame(width: 36, height: 36)
+                            .background(
+                                hasDateChanges ? Color.appRed : Color(.systemGray4),
+                                in: Circle()
+                            )
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.horizontal, 14)
+                .padding(.bottom, 4)
             }
 
             // Bottom row: [Task] ... [Category pill] [Commit pill] [Checkmark]
+            if !addProjectCommitExpanded {
             HStack(spacing: 8) {
                 Button {
                     addNewProjectTask()
@@ -1023,6 +1103,7 @@ struct LogTabView: View {
 
                 // Commit toggle pill
                 Button {
+                    addProjectDatesSnapshot = addProjectDates
                     withAnimation(.easeInOut(duration: 0.2)) {
                         addProjectCommitExpanded.toggle()
                     }
@@ -1057,7 +1138,10 @@ struct LogTabView: View {
                 .disabled(isAddProjectTitleEmpty)
             }
             .padding(.horizontal, 14)
-            .padding(.bottom, 14)
+            .padding(.bottom, 4)
+            }
+
+            Spacer().frame(height: 20)
         }
         .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 20))
         .padding(.horizontal)

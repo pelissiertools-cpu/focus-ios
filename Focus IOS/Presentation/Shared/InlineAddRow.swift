@@ -64,6 +64,9 @@ struct InlineAddRow: View {
                 title = ""
             }
         }
+        .onDisappear {
+            isAnyAddFieldActive?.wrappedValue = false
+        }
     }
 
     private func submit() {

@@ -1147,7 +1147,7 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
     }
 
     /// Create task + commitment + subtasks atomically, updating view state once at the end
-    func createTaskWithSubtasks(title: String, section: Section, subtaskTitles: [String]) async {
+    func createTaskWithSubtasks(title: String, section: Section, subtaskTitles: [String], priority: Priority = .low, categoryId: UUID? = nil) async {
         guard let userId = authService.currentUser?.id else {
             errorMessage = "No authenticated user"
             return
@@ -1167,7 +1167,9 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
                 title: title,
                 type: .task,
                 isCompleted: false,
-                isInLog: true
+                isInLog: true,
+                priority: priority,
+                categoryId: categoryId
             )
             let createdTask = try await taskRepository.createTask(newTask)
 

@@ -38,6 +38,9 @@ struct FocusTabView: View {
     // Compact add-task bar state
     @State private var addTaskTitle = ""
     @State private var addTaskSubtasks: [DraftSubtaskEntry] = []
+    @State private var addTaskPriority: Priority = .low
+    @State private var addTaskCategoryId: UUID? = nil
+    @State private var addTaskCategories: [Category] = []
     @FocusState private var isAddTaskFieldFocused: Bool
     @FocusState private var focusedSubtaskId: UUID?
     @State private var isGeneratingBreakdown = false
@@ -522,7 +525,7 @@ struct FocusTabView: View {
                 onAddNew: { addNewSubtask() }
             )
 
-            // Add sub-task button row
+            // Sub-task row: [+ Sub-task] ... [AI Breakdown]
             HStack(spacing: 8) {
                 Button {
                     addNewSubtask()
@@ -541,18 +544,118 @@ struct FocusTabView: View {
                 .buttonStyle(.plain)
 
                 Spacer()
+
+                // AI Breakdown (compact, matching Log view style)
+                Button {
+                    generateBreakdown()
+                } label: {
+                    HStack(spacing: 6) {
+                        if isGeneratingBreakdown {
+                            ProgressView()
+                                .tint(.primary)
+                        } else {
+                            Image(systemName: hasGeneratedBreakdown ? "arrow.clockwise" : "sparkles")
+                                .font(.sf(.subheadline, weight: .semibold))
+                        }
+                        Text(LocalizedStringKey(hasGeneratedBreakdown ? "Regenerate" : "Suggest Breakdown"))
+                            .font(.sf(.caption, weight: .medium))
+                    }
+                    .foregroundColor(.primary)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
+                    .background {
+                        if !addTaskTitle.trimmingCharacters(in: .whitespaces).isEmpty {
+                            Capsule()
+                                .stroke(
+                                    AngularGradient(
+                                        colors: [
+                                            Color.commitGradientDark,
+                                            Color.commitGradientLight,
+                                            Color.commitGradientDark,
+                                        ],
+                                        center: .center
+                                    ),
+                                    lineWidth: 2.5
+                                )
+                                .blur(radius: 6)
+                        }
+                    }
+                    .overlay {
+                        Capsule()
+                            .stroke(.white.opacity(0.5), lineWidth: 1.5)
+                    }
+                    .glassEffect(.regular.interactive(), in: .capsule)
+                }
+                .buttonStyle(.plain)
+                .disabled(addTaskTitle.trimmingCharacters(in: .whitespaces).isEmpty || isGeneratingBreakdown)
             }
             .padding(.horizontal, 14)
-            .padding(.bottom, 10)
+            .padding(.bottom, 4)
 
-            // AI Breakdown + Submit row
-            HStack(spacing: 10) {
-                AIBreakdownButton(
-                    isEnabled: !addTaskTitle.trimmingCharacters(in: .whitespaces).isEmpty,
-                    isGenerating: isGeneratingBreakdown,
-                    hasGenerated: hasGeneratedBreakdown,
-                    action: { generateBreakdown() }
-                )
+            // Bottom row: [Priority] [Category] ... [Checkmark]
+            HStack(spacing: 8) {
+                // Priority pill
+                Menu {
+                    ForEach(Priority.allCases, id: \.self) { priority in
+                        Button {
+                            addTaskPriority = priority
+                        } label: {
+                            if addTaskPriority == priority {
+                                Label(priority.displayName, systemImage: "checkmark")
+                            } else {
+                                Text(priority.displayName)
+                            }
+                        }
+                    }
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "flag.fill")
+                            .font(.sf(.caption))
+                        Text(addTaskPriority.displayName)
+                            .font(.sf(.caption))
+                    }
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(addTaskPriority != .low ? addTaskPriority.dotColor : Color.black, in: Capsule())
+                }
+
+                // Category pill
+                Menu {
+                    Button {
+                        addTaskCategoryId = nil
+                    } label: {
+                        if addTaskCategoryId == nil {
+                            Label("None", systemImage: "checkmark")
+                        } else {
+                            Text("None")
+                        }
+                    }
+                    ForEach(addTaskCategories) { category in
+                        Button {
+                            addTaskCategoryId = category.id
+                        } label: {
+                            if addTaskCategoryId == category.id {
+                                Label(category.name, systemImage: "checkmark")
+                            } else {
+                                Text(category.name)
+                            }
+                        }
+                    }
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "folder")
+                            .font(.sf(.caption))
+                        Text(LocalizedStringKey(addTaskCategoryPillLabel))
+                            .font(.sf(.caption))
+                    }
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(addTaskCategoryId != nil ? Color.appRed : Color.black, in: Capsule())
+                }
+
+                Spacer()
 
                 // Submit button
                 Button {
@@ -577,6 +680,7 @@ struct FocusTabView: View {
         }
         .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 20))
         .padding(.horizontal)
+        .onAppear { fetchCategories() }
     }
 
     private func saveCompactTask() {
@@ -587,6 +691,8 @@ struct FocusTabView: View {
             .map { $0.title.trimmingCharacters(in: .whitespaces) }
             .filter { !$0.isEmpty }
         let section = viewModel.addTaskSection
+        let priority = addTaskPriority
+        let categoryId = addTaskCategoryId
 
         // Haptic feedback
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
@@ -598,10 +704,12 @@ struct FocusTabView: View {
         // Clear fields immediately for rapid entry
         addTaskTitle = ""
         addTaskSubtasks = []
+        addTaskPriority = .low
+        addTaskCategoryId = nil
         hasGeneratedBreakdown = false
 
         _Concurrency.Task { @MainActor in
-            await viewModel.createTaskWithSubtasks(title: title, section: section, subtaskTitles: subtasksToCreate)
+            await viewModel.createTaskWithSubtasks(title: title, section: section, subtaskTitles: subtasksToCreate, priority: priority, categoryId: categoryId)
         }
     }
 
@@ -651,9 +759,32 @@ struct FocusTabView: View {
         }
     }
 
+    private var addTaskCategoryPillLabel: String {
+        if let categoryId = addTaskCategoryId,
+           let category = addTaskCategories.first(where: { $0.id == categoryId }) {
+            return category.name
+        }
+        return "Category"
+    }
+
+    private func fetchCategories() {
+        _Concurrency.Task {
+            do {
+                let categories = try await CategoryRepository().fetchCategories()
+                await MainActor.run {
+                    addTaskCategories = categories
+                }
+            } catch {
+                // Silently fail
+            }
+        }
+    }
+
     private func dismissAddTask() {
         addTaskTitle = ""
         addTaskSubtasks = []
+        addTaskPriority = .low
+        addTaskCategoryId = nil
         hasGeneratedBreakdown = false
         viewModel.showAddTaskSheet = false
         isAddTaskFieldFocused = false

@@ -383,29 +383,31 @@ struct FocusTabView: View {
                 case .emptyState(let section):
                     Group {
                         if section == .focus {
-                            VStack(alignment: .leading, spacing: 4) {
+                            VStack(spacing: 4) {
                                 Text("Nothing to focus on")
                                     .font(.sf(.headline))
                                     .bold()
                                 if !viewModel.showAddTaskSheet {
                                     Text("Tap + to add tasks")
                                         .font(.sf(.subheadline))
-                                        .foregroundColor(.secondary)
                                 }
                             }
+                            .foregroundColor(.secondary)
+                            .frame(maxWidth: .infinity)
                         } else {
-                            VStack(alignment: .leading) {
+                            VStack {
                                 Spacer(minLength: 0)
-                                VStack(alignment: .leading, spacing: 4) {
+                                VStack(spacing: 4) {
                                     Text("Nothing to do")
                                         .font(.sf(.headline))
                                         .bold()
                                     if !viewModel.showAddTaskSheet {
                                         Text("Tap + to add tasks")
                                             .font(.sf(.subheadline))
-                                            .foregroundColor(.secondary)
                                     }
                                 }
+                                .foregroundColor(.secondary)
+                                .frame(maxWidth: .infinity)
                                 Spacer(minLength: 0)
                             }
                         }
@@ -874,21 +876,21 @@ struct SectionView: View {
             // Committed Tasks (hidden when collapsed)
             if !viewModel.isSectionCollapsed(section) {
                 if sectionCommitments.isEmpty && completedCommitments.isEmpty {
-                    // Empty state left-aligned in the focus zone
+                    // Empty state centered in the focus zone
                     VStack {
                         Spacer(minLength: 0)
                         Group {
                             if section == .focus {
-                                VStack(alignment: .leading, spacing: 4) {
+                                VStack(spacing: 4) {
                                     Text("Nothing to focus on")
                                         .font(.sf(.headline))
                                         .bold()
                                     if !viewModel.showAddTaskSheet {
                                         Text("Tap + to start")
                                             .font(.sf(.subheadline))
-                                            .foregroundColor(.secondary)
                                     }
                                 }
+                                .foregroundColor(.secondary)
                             } else {
                                 Text("No task yet. Tap + to add one.")
                                     .foregroundColor(.secondary)
@@ -897,7 +899,7 @@ struct SectionView: View {
                         .padding(.horizontal, 16)
                         Spacer(minLength: 0)
                     }
-                    .frame(maxWidth: .infinity, minHeight: section == .focus ? 180 : nil, alignment: .leading)
+                    .frame(maxWidth: .infinity, minHeight: section == .focus ? 180 : nil)
                     .contentShape(Rectangle())
                     .onTapGesture {
                         viewModel.addTaskSection = section

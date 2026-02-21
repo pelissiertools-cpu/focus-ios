@@ -910,13 +910,13 @@ struct SortMenuButton<VM: LogFilterable>: View {
 
             Divider()
 
-            // Edit
+            // Multiple actions
             Button {
                 withAnimation(.easeInOut(duration: 0.2)) {
                     viewModel.enterEditMode()
                 }
             } label: {
-                Label("Edit", systemImage: "checkmark.circle")
+                Label("Multiple actions", systemImage: "checkmark.circle")
             }
         } label: {
             Color.clear

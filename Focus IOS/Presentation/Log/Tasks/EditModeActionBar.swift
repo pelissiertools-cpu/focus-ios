@@ -53,12 +53,11 @@ struct EditModeActionBar<VM: LogFilterable>: View {
 
     var body: some View {
         VStack {
-            Spacer()
             HStack {
                 Spacer()
 
                 // Floating labels + vertical icon capsule
-                HStack(alignment: .bottom, spacing: 14) {
+                HStack(alignment: .top, spacing: 14) {
                     // Floating labels column (each tappable)
                     VStack(alignment: .trailing, spacing: 0) {
                         ForEach(Array(actions.reversed().enumerated()), id: \.element.id) { _, item in
@@ -100,8 +99,9 @@ struct EditModeActionBar<VM: LogFilterable>: View {
                 }
                 .opacity(hasSelection ? 1.0 : 0.5)
                 .padding(.trailing, 20)
-                .padding(.bottom, 20)
+                .padding(.top, 62)
             }
+            Spacer()
         }
     }
 }

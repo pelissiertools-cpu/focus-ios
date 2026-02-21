@@ -451,6 +451,7 @@ struct CategorySelectorHeader<TrailingContent: View>: View {
                 .fill(Color.black)
                 .frame(height: 1)
                 .padding(.leading, 16)
+                .padding(.trailing, 4)
 
             // Expanded category choices
             if isExpanded {

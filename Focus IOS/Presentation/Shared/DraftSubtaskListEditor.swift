@@ -22,6 +22,7 @@ struct DraftSubtaskListEditor: View {
     @Binding var subtasks: [DraftSubtaskEntry]
     var focusedSubtaskId: FocusState<UUID?>.Binding
     var onAddNew: () -> Void
+    var placeholder: String = "Subtask"
 
     var body: some View {
         if !subtasks.isEmpty {
@@ -35,7 +36,7 @@ struct DraftSubtaskListEditor: View {
                             .font(.sf(.caption2))
                             .foregroundColor(.secondary.opacity(0.5))
 
-                        TextField("Subtask", text: binding(for: subtask.id), axis: .vertical)
+                        TextField(placeholder, text: binding(for: subtask.id), axis: .vertical)
                             .font(.sf(.body))
                             .textFieldStyle(.plain)
                             .focused(focusedSubtaskId, equals: subtask.id)

@@ -784,47 +784,13 @@ struct LogTabView: View {
                 .padding(.top, 20)
                 .padding(.bottom, 10)
 
-            // Items (expand when present)
-            if !addListItems.isEmpty {
-                Divider()
-                    .padding(.horizontal, 14)
-
-                VStack(spacing: 8) {
-                    ForEach(addListItems) { item in
-                        HStack(spacing: 8) {
-                            Image(systemName: "circle")
-                                .font(.sf(.caption2))
-                                .foregroundColor(.secondary.opacity(0.5))
-
-                            TextField("Item", text: listItemBinding(for: item.id), axis: .vertical)
-                                .font(.sf(.body))
-                                .textFieldStyle(.plain)
-                                .focused($focusedListItemId, equals: item.id)
-                                .lineLimit(1)
-                                .onChange(of: listItemBinding(for: item.id).wrappedValue) { _, newValue in
-                                    if newValue.contains("\n") {
-                                        if let idx = addListItems.firstIndex(where: { $0.id == item.id }) {
-                                            addListItems[idx].title = newValue.replacingOccurrences(of: "\n", with: "")
-                                        }
-                                        addNewListItem()
-                                    }
-                                }
-
-                            Button {
-                                removeListItem(id: item.id)
-                            } label: {
-                                Image(systemName: "xmark.circle.fill")
-                                    .font(.sf(.caption))
-                                    .foregroundColor(.secondary)
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
-                }
-                .padding(.horizontal, 14)
-                .padding(.top, 10)
-                .padding(.bottom, 10)
-            }
+            // Items (expand when present) — reuses DraftSubtaskListEditor for identical behavior
+            DraftSubtaskListEditor(
+                subtasks: $addListItems,
+                focusedSubtaskId: $focusedListItemId,
+                onAddNew: { addNewListItem() },
+                placeholder: "Item"
+            )
 
             // Commit expansion (calendar section)
             if addListCommitExpanded {
@@ -860,7 +826,7 @@ struct LogTabView: View {
                     }
                     .foregroundColor(.white)
                     .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
+                    .padding(.vertical, 8)
                     .background(Color.black, in: Capsule())
                 }
                 .buttonStyle(.plain)
@@ -896,10 +862,10 @@ struct LogTabView: View {
                         Text(LocalizedStringKey(listCategoryPillLabel))
                             .font(.sf(.caption))
                     }
-                    .foregroundColor(.white)
+                    .foregroundColor(.black)
                     .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .background(addListCategoryId != nil ? Color.appRed : Color.black, in: Capsule())
+                    .padding(.vertical, 8)
+                    .background(Color.white, in: Capsule())
                 }
 
                 // Commit toggle pill
@@ -914,10 +880,10 @@ struct LogTabView: View {
                         Text("Commit")
                             .font(.sf(.caption))
                     }
-                    .foregroundColor(.white)
+                    .foregroundColor(!addListDates.isEmpty ? .white : .black)
                     .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .background(!addListDates.isEmpty ? Color.appRed : Color.black, in: Capsule())
+                    .padding(.vertical, 8)
+                    .background(!addListDates.isEmpty ? Color.appRed : Color.white, in: Capsule())
                 }
                 .buttonStyle(.plain)
 
@@ -966,17 +932,14 @@ struct LogTabView: View {
                 Divider()
                     .padding(.horizontal, 14)
 
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 6) {
-                        ForEach(addProjectDraftTasks) { task in
-                            projectTaskDraftRow(task: task)
-                        }
+                VStack(alignment: .leading, spacing: 6) {
+                    ForEach(addProjectDraftTasks) { task in
+                        projectTaskDraftRow(task: task)
                     }
-                    .padding(.horizontal, 14)
-                    .padding(.top, 8)
-                    .padding(.bottom, 6)
                 }
-                .frame(maxHeight: 200)
+                .padding(.horizontal, 14)
+                .padding(.top, 8)
+                .padding(.bottom, 6)
             }
 
             // Commit expansion (calendar section)
@@ -1016,7 +979,7 @@ struct LogTabView: View {
                     }
                     .foregroundColor(.white)
                     .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
+                    .padding(.vertical, 8)
                     .background(Color.black, in: Capsule())
                 }
                 .buttonStyle(.plain)
@@ -1052,10 +1015,10 @@ struct LogTabView: View {
                         Text(LocalizedStringKey(projectCategoryPillLabel))
                             .font(.sf(.caption))
                     }
-                    .foregroundColor(.white)
+                    .foregroundColor(.black)
                     .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .background(addProjectCategoryId != nil ? Color.appRed : Color.black, in: Capsule())
+                    .padding(.vertical, 8)
+                    .background(Color.white, in: Capsule())
                 }
 
                 // Commit toggle pill
@@ -1070,10 +1033,10 @@ struct LogTabView: View {
                         Text("Commit")
                             .font(.sf(.caption))
                     }
-                    .foregroundColor(.white)
+                    .foregroundColor(!addProjectDates.isEmpty ? .white : .black)
                     .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .background(!addProjectDates.isEmpty ? Color.appRed : Color.black, in: Capsule())
+                    .padding(.vertical, 8)
+                    .background(!addProjectDates.isEmpty ? Color.appRed : Color.white, in: Capsule())
                 }
                 .buttonStyle(.plain)
 
@@ -1114,7 +1077,7 @@ struct LogTabView: View {
                 .font(.sf(.title3))
                 .textFieldStyle(.plain)
                 .focused($focusedProjectTaskId, equals: task.id)
-                .lineLimit(1)
+                .lineLimit(1...3)
                 .onChange(of: projectTaskBinding(for: task.id).wrappedValue) { _, newValue in
                     if newValue.contains("\n") {
                         if let idx = addProjectDraftTasks.firstIndex(where: { $0.id == task.id }) {
@@ -1145,7 +1108,7 @@ struct LogTabView: View {
                     .font(.sf(.body))
                     .textFieldStyle(.plain)
                     .focused($focusedProjectTaskId, equals: subtask.id)
-                    .lineLimit(1)
+                    .lineLimit(1...3)
                     .onChange(of: projectSubtaskBinding(forSubtask: subtask.id, inTask: task.id).wrappedValue) { _, newValue in
                         if newValue.contains("\n") {
                             if let tIdx = addProjectDraftTasks.firstIndex(where: { $0.id == task.id }),

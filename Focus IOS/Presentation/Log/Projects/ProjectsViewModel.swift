@@ -848,6 +848,19 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
         }
     }
 
+    func reorderCategories(fromOffsets: IndexSet, toOffset: Int) async {
+        categories.move(fromOffsets: fromOffsets, toOffset: toOffset)
+        do {
+            for (index, var cat) in categories.enumerated() {
+                cat.sortOrder = index
+                categories[index].sortOrder = index
+                try await categoryRepository.updateCategory(cat)
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
     // MARK: - Reordering
 
     func reorderProject(droppedId: UUID, targetId: UUID) {

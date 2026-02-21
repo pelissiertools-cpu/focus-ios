@@ -105,17 +105,6 @@ struct ProjectsListView: View {
                     HStack(spacing: 8) {
                         SortMenuButton(viewModel: viewModel)
 
-                        Button {
-                            viewModel.enterEditMode()
-                        } label: {
-                            Image(systemName: "ellipsis")
-                                .font(.sf(.body, weight: .semibold))
-                                .foregroundColor(.primary)
-                                .frame(width: 36, height: 36)
-                                .glassEffect(.regular.interactive(), in: .circle)
-                        }
-                        .buttonStyle(.plain)
-
                         if let onSearchTap {
                             Button(action: onSearchTap) {
                                 Image(systemName: "magnifyingglass")

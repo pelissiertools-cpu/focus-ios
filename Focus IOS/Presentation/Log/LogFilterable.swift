@@ -16,6 +16,7 @@ protocol LogFilterable: ObservableObject {
     func deleteCategories(ids: Set<UUID>) async
     func mergeCategories(ids: Set<UUID>) async
     func renameCategory(id: UUID, newName: String) async
+    func reorderCategories(fromOffsets: IndexSet, toOffset: Int) async
 
     // MARK: - Sort
     var sortOption: SortOption { get set }

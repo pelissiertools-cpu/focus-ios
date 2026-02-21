@@ -1099,6 +1099,20 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
         }
     }
 
+    func reorderCategories(fromOffsets: IndexSet, toOffset: Int) async {
+        categories.move(fromOffsets: fromOffsets, toOffset: toOffset)
+        // Persist new sort orders
+        do {
+            for (index, var cat) in categories.enumerated() {
+                cat.sortOrder = index
+                categories[index].sortOrder = index
+                try await categoryRepository.updateCategory(cat)
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
     /// Get the merge target name (first selected category by sort order)
     func mergeTargetName(for ids: Set<UUID>) -> String {
         categories

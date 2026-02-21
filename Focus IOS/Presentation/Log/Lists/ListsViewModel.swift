@@ -233,6 +233,19 @@ class ListsViewModel: ObservableObject, LogFilterable, TaskEditingViewModel {
         }
     }
 
+    func reorderCategories(fromOffsets: IndexSet, toOffset: Int) async {
+        categories.move(fromOffsets: fromOffsets, toOffset: toOffset)
+        do {
+            for (index, var cat) in categories.enumerated() {
+                cat.sortOrder = index
+                categories[index].sortOrder = index
+                try await categoryRepository.updateCategory(cat)
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
     // MARK: - Computed Properties
 
     var filteredLists: [FocusTask] {

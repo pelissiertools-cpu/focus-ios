@@ -108,17 +108,6 @@ struct TasksListView: View {
                     HStack(spacing: 8) {
                         SortMenuButton(viewModel: viewModel)
 
-                        Button {
-                            viewModel.enterEditMode()
-                        } label: {
-                            Image(systemName: "ellipsis")
-                                .font(.sf(.body, weight: .semibold))
-                                .foregroundColor(.primary)
-                                .frame(width: 36, height: 36)
-                                .glassEffect(.regular.interactive(), in: .circle)
-                        }
-                        .buttonStyle(.plain)
-
                         if let onSearchTap {
                             Button(action: onSearchTap) {
                                 Image(systemName: "magnifyingglass")
@@ -1170,68 +1159,130 @@ struct SubtaskRow: View {
     }
 }
 
-// MARK: - Sort Menu Button
+// MARK: - Unified Options Menu Button
 
 struct SortMenuButton<VM: LogFilterable>: View {
     @ObservedObject var viewModel: VM
+    @State private var showCategoryEditDrawer = false
 
     var body: some View {
         Menu {
-            // Sort options
-            ForEach(SortOption.allCases, id: \.self) { option in
+            // Sort By submenu
+            Menu {
+                ForEach(SortOption.allCases, id: \.self) { option in
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            viewModel.sortOption = option
+                        }
+                    } label: {
+                        if viewModel.sortOption == option {
+                            Label(option.displayName, systemImage: "checkmark")
+                        } else {
+                            Text(option.displayName)
+                        }
+                    }
+                }
+
+                Divider()
+
+                // Commitment filter
                 Button {
                     withAnimation(.easeInOut(duration: 0.2)) {
-                        viewModel.sortOption = option
+                        viewModel.commitmentFilter = viewModel.commitmentFilter == .committed ? nil : .committed
                     }
                 } label: {
-                    if viewModel.sortOption == option {
-                        Label(option.displayName, systemImage: "checkmark")
+                    if viewModel.commitmentFilter == .committed {
+                        Label("Committed", systemImage: "checkmark")
                     } else {
-                        Text(option.displayName)
+                        Text("Committed")
                     }
                 }
-            }
 
-            // Commitment filter
-            Button {
-                withAnimation(.easeInOut(duration: 0.2)) {
-                    viewModel.commitmentFilter = viewModel.commitmentFilter == .committed ? nil : .committed
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        viewModel.commitmentFilter = viewModel.commitmentFilter == .uncommitted ? nil : .uncommitted
+                    }
+                } label: {
+                    if viewModel.commitmentFilter == .uncommitted {
+                        Label("Not committed", systemImage: "checkmark")
+                    } else {
+                        Text("Not committed")
+                    }
+                }
+
+                Divider()
+
+                // Direction
+                ForEach(SortDirection.allCases, id: \.self) { direction in
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            viewModel.sortDirection = direction
+                        }
+                    } label: {
+                        if viewModel.sortDirection == direction {
+                            Label(direction.displayName, systemImage: "checkmark")
+                        } else {
+                            Text(direction.displayName)
+                        }
+                    }
                 }
             } label: {
-                if viewModel.commitmentFilter == .committed {
-                    Label("Committed", systemImage: "checkmark")
-                } else {
-                    Text("Committed")
-                }
+                Label("Sort By", systemImage: "arrow.up.arrow.down")
             }
 
-            Button {
-                withAnimation(.easeInOut(duration: 0.2)) {
-                    viewModel.commitmentFilter = viewModel.commitmentFilter == .uncommitted ? nil : .uncommitted
+            // Category submenu
+            Menu {
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        viewModel.selectCategory(nil)
+                    }
+                } label: {
+                    if viewModel.selectedCategoryId == nil {
+                        Label("All", systemImage: "checkmark")
+                    } else {
+                        Text("All")
+                    }
+                }
+
+                ForEach(viewModel.categories) { category in
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            viewModel.selectCategory(category.id)
+                        }
+                    } label: {
+                        if viewModel.selectedCategoryId == category.id {
+                            Label(category.name, systemImage: "checkmark")
+                        } else {
+                            Text(category.name)
+                        }
+                    }
+                }
+
+                Divider()
+
+                Button {
+                    showCategoryEditDrawer = true
+                } label: {
+                    Label("Edit", systemImage: "pencil")
                 }
             } label: {
-                if viewModel.commitmentFilter == .uncommitted {
-                    Label("Not committed", systemImage: "checkmark")
+                if let selectedId = viewModel.selectedCategoryId,
+                   let category = viewModel.categories.first(where: { $0.id == selectedId }) {
+                    Label(category.name, systemImage: "folder")
                 } else {
-                    Text("Not committed")
+                    Label("Category", systemImage: "folder")
                 }
             }
 
             Divider()
 
-            // Direction
-            ForEach(SortDirection.allCases, id: \.self) { direction in
-                Button {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        viewModel.sortDirection = direction
-                    }
-                } label: {
-                    if viewModel.sortDirection == direction {
-                        Label(direction.displayName, systemImage: "checkmark")
-                    } else {
-                        Text(direction.displayName)
-                    }
+            // Edit
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    viewModel.enterEditMode()
                 }
+            } label: {
+                Label("Edit", systemImage: "checkmark.circle")
             }
         } label: {
             Color.clear
@@ -1240,13 +1291,17 @@ struct SortMenuButton<VM: LogFilterable>: View {
         .menuIndicator(.hidden)
         .tint(.appRed)
         .background(
-            Image(systemName: "arrow.up.arrow.down")
-                .font(.sf(.subheadline, weight: .medium))
+            Image(systemName: "ellipsis")
+                .font(.sf(.body, weight: .semibold))
                 .foregroundColor(.primary)
                 .frame(width: 36, height: 36)
                 .glassEffect(.regular.interactive(), in: .circle)
                 .allowsHitTesting(false)
         )
+        .sheet(isPresented: $showCategoryEditDrawer) {
+            CategoryEditDrawer(viewModel: viewModel)
+                .drawerStyle()
+        }
     }
 }
 

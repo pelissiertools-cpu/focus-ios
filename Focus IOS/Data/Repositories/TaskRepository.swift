@@ -233,7 +233,7 @@ class TaskRepository {
     }
 
     /// Create a new project
-    func createProject(title: String, userId: UUID, categoryId: UUID? = nil) async throws -> FocusTask {
+    func createProject(title: String, userId: UUID, categoryId: UUID? = nil, priority: Priority = .low) async throws -> FocusTask {
         let existingProjects = try await fetchProjects()
         let nextSortOrder = (existingProjects.map { $0.sortOrder }.max() ?? -1) + 1
 
@@ -242,6 +242,7 @@ class TaskRepository {
             title: title,
             type: .project,
             sortOrder: nextSortOrder,
+            priority: priority,
             categoryId: categoryId
         )
 

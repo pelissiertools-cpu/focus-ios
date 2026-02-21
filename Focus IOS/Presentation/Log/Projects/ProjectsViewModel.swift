@@ -390,7 +390,7 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
     // MARK: - Project CRUD
 
     @discardableResult
-    func saveNewProject(title: String, categoryId: UUID?, draftTasks: [DraftTask]) async -> UUID? {
+    func saveNewProject(title: String, categoryId: UUID?, priority: Priority = .low, draftTasks: [DraftTask]) async -> UUID? {
         guard let userId = authService.currentUser?.id else {
             errorMessage = "No authenticated user"
             return nil
@@ -404,7 +404,8 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
             let project = try await repository.createProject(
                 title: trimmedTitle,
                 userId: userId,
-                categoryId: categoryId
+                categoryId: categoryId,
+                priority: priority
             )
 
             // 2. Create each task and its subtasks

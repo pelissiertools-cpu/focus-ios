@@ -420,7 +420,7 @@ class ListsViewModel: ObservableObject, LogFilterable, TaskEditingViewModel {
 
     // MARK: - List CRUD
 
-    func createList(title: String, categoryId: UUID? = nil) async {
+    func createList(title: String, categoryId: UUID? = nil, priority: Priority = .low) async {
         guard let userId = authService.currentUser?.id else {
             errorMessage = "No authenticated user"
             return
@@ -435,6 +435,7 @@ class ListsViewModel: ObservableObject, LogFilterable, TaskEditingViewModel {
                 type: .list,
                 isCompleted: false,
                 sortOrder: 0,
+                priority: priority,
                 categoryId: categoryId
             )
             let created = try await repository.createTask(newList)

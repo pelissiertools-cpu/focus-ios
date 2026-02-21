@@ -51,6 +51,8 @@ struct LogTabView: View {
     @State private var addListSection: Section = .focus
     @State private var addListDates: Set<Date> = []
     @State private var addListDatesSnapshot: Set<Date> = []
+    @State private var addListOptionsExpanded = false
+    @State private var addListPriority: Priority = .low
     @FocusState private var focusedListItemId: UUID?
 
     // Compact add-project bar state
@@ -62,6 +64,8 @@ struct LogTabView: View {
     @State private var addProjectSection: Section = .focus
     @State private var addProjectDates: Set<Date> = []
     @State private var addProjectDatesSnapshot: Set<Date> = []
+    @State private var addProjectOptionsExpanded = false
+    @State private var addProjectPriority: Priority = .low
     @FocusState private var focusedProjectTaskId: UUID?
 
     // Unified title focus (single @FocusState = atomic transfer = no keyboard flicker)
@@ -849,7 +853,7 @@ struct LogTabView: View {
                 .padding(.bottom, 4)
             }
 
-            // Bottom row: [Item] ... [Category pill] [Commit pill] [Checkmark]
+            // Row 1: [Item] [...] Spacer [Checkmark]
             if !addListCommitExpanded {
             HStack(spacing: 8) {
                 Button {
@@ -868,8 +872,47 @@ struct LogTabView: View {
                 }
                 .buttonStyle(.plain)
 
+                // More options pill
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        addListOptionsExpanded.toggle()
+                    }
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .font(.sf(.caption, weight: .bold))
+                        .foregroundColor(.black)
+                        .frame(minHeight: UIFont.preferredFont(forTextStyle: .caption1).lineHeight)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 8)
+                        .background(Color.white, in: Capsule())
+                }
+                .buttonStyle(.plain)
+
                 Spacer()
 
+                // Submit button (checkmark)
+                Button {
+                    saveLogList()
+                } label: {
+                    Image(systemName: "checkmark")
+                        .font(.sf(.body, weight: .semibold))
+                        .foregroundColor(isAddListTitleEmpty ? .secondary : .white)
+                        .frame(width: 36, height: 36)
+                        .background(
+                            isAddListTitleEmpty ? Color(.systemGray4) : Color.appRed,
+                            in: Circle()
+                        )
+                }
+                .buttonStyle(.plain)
+                .disabled(isAddListTitleEmpty)
+            }
+            .padding(.horizontal, 14)
+            .padding(.bottom, 4)
+            }
+
+            // Row 2: [Category] [Commit] [Priority] — toggled by ellipsis
+            if addListOptionsExpanded && !addListCommitExpanded {
+            HStack(spacing: 8) {
                 // Category pill
                 Menu {
                     Button {
@@ -925,24 +968,37 @@ struct LogTabView: View {
                 }
                 .buttonStyle(.plain)
 
-                // Submit button (checkmark)
-                Button {
-                    saveLogList()
+                // Priority pill
+                Menu {
+                    ForEach(Priority.allCases, id: \.self) { priority in
+                        Button {
+                            addListPriority = priority
+                        } label: {
+                            if addListPriority == priority {
+                                Label(priority.displayName, systemImage: "checkmark")
+                            } else {
+                                Text(priority.displayName)
+                            }
+                        }
+                    }
                 } label: {
-                    Image(systemName: "checkmark")
-                        .font(.sf(.body, weight: .semibold))
-                        .foregroundColor(isAddListTitleEmpty ? .secondary : .white)
-                        .frame(width: 36, height: 36)
-                        .background(
-                            isAddListTitleEmpty ? Color(.systemGray4) : Color.appRed,
-                            in: Circle()
-                        )
+                    HStack(spacing: 4) {
+                        Circle()
+                            .fill(addListPriority.dotColor)
+                            .frame(width: 8, height: 8)
+                        Text(addListPriority.displayName)
+                            .font(.sf(.caption))
+                    }
+                    .foregroundColor(.black)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 8)
+                    .background(Color.white, in: Capsule())
                 }
-                .buttonStyle(.plain)
-                .disabled(isAddListTitleEmpty)
+
+                Spacer()
             }
             .padding(.horizontal, 14)
-            .padding(.bottom, 4)
+            .padding(.top, 6)
             }
 
             Spacer().frame(height: 20)
@@ -1045,7 +1101,7 @@ struct LogTabView: View {
                 .padding(.bottom, 4)
             }
 
-            // Bottom row: [Task] ... [Category pill] [Commit pill] [Checkmark]
+            // Row 1: [Task] [...] Spacer [Checkmark]
             if !addProjectCommitExpanded {
             HStack(spacing: 8) {
                 Button {
@@ -1064,8 +1120,47 @@ struct LogTabView: View {
                 }
                 .buttonStyle(.plain)
 
+                // More options pill
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        addProjectOptionsExpanded.toggle()
+                    }
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .font(.sf(.caption, weight: .bold))
+                        .foregroundColor(.black)
+                        .frame(minHeight: UIFont.preferredFont(forTextStyle: .caption1).lineHeight)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 8)
+                        .background(Color.white, in: Capsule())
+                }
+                .buttonStyle(.plain)
+
                 Spacer()
 
+                // Submit button (checkmark)
+                Button {
+                    saveLogProject()
+                } label: {
+                    Image(systemName: "checkmark")
+                        .font(.sf(.body, weight: .semibold))
+                        .foregroundColor(isAddProjectTitleEmpty ? .secondary : .white)
+                        .frame(width: 36, height: 36)
+                        .background(
+                            isAddProjectTitleEmpty ? Color(.systemGray4) : Color.appRed,
+                            in: Circle()
+                        )
+                }
+                .buttonStyle(.plain)
+                .disabled(isAddProjectTitleEmpty)
+            }
+            .padding(.horizontal, 14)
+            .padding(.bottom, 4)
+            }
+
+            // Row 2: [Category] [Commit] [Priority] — toggled by ellipsis
+            if addProjectOptionsExpanded && !addProjectCommitExpanded {
+            HStack(spacing: 8) {
                 // Category pill
                 Menu {
                     Button {
@@ -1121,24 +1216,37 @@ struct LogTabView: View {
                 }
                 .buttonStyle(.plain)
 
-                // Submit button (checkmark)
-                Button {
-                    saveLogProject()
+                // Priority pill
+                Menu {
+                    ForEach(Priority.allCases, id: \.self) { priority in
+                        Button {
+                            addProjectPriority = priority
+                        } label: {
+                            if addProjectPriority == priority {
+                                Label(priority.displayName, systemImage: "checkmark")
+                            } else {
+                                Text(priority.displayName)
+                            }
+                        }
+                    }
                 } label: {
-                    Image(systemName: "checkmark")
-                        .font(.sf(.body, weight: .semibold))
-                        .foregroundColor(isAddProjectTitleEmpty ? .secondary : .white)
-                        .frame(width: 36, height: 36)
-                        .background(
-                            isAddProjectTitleEmpty ? Color(.systemGray4) : Color.appRed,
-                            in: Circle()
-                        )
+                    HStack(spacing: 4) {
+                        Circle()
+                            .fill(addProjectPriority.dotColor)
+                            .frame(width: 8, height: 8)
+                        Text(addProjectPriority.displayName)
+                            .font(.sf(.caption))
+                    }
+                    .foregroundColor(.black)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 8)
+                    .background(Color.white, in: Capsule())
                 }
-                .buttonStyle(.plain)
-                .disabled(isAddProjectTitleEmpty)
+
+                Spacer()
             }
             .padding(.horizontal, 14)
-            .padding(.bottom, 4)
+            .padding(.top, 6)
             }
 
             Spacer().frame(height: 20)
@@ -1359,6 +1467,7 @@ struct LogTabView: View {
             .map { $0.title.trimmingCharacters(in: .whitespaces) }
             .filter { !$0.isEmpty }
         let categoryId = addListCategoryId
+        let priority = addListPriority
         let commitEnabled = !addListDates.isEmpty
         let timeframe = addListTimeframe
         let section = addListSection
@@ -1375,9 +1484,11 @@ struct LogTabView: View {
         addListItems = []
         addListDates = []
         addListCommitExpanded = false
+        addListOptionsExpanded = false
+        addListPriority = .low
 
         _Concurrency.Task { @MainActor in
-            await listsVM.createList(title: title, categoryId: categoryId)
+            await listsVM.createList(title: title, categoryId: categoryId, priority: priority)
 
             // Get the newly created list (inserted at index 0)
             if let createdList = listsVM.lists.first {
@@ -1444,6 +1555,8 @@ struct LogTabView: View {
         addListItems = []
         addListCategoryId = nil
         addListCommitExpanded = false
+        addListOptionsExpanded = false
+        addListPriority = .low
         addListDates = []
         listsVM.showingAddList = false
         addBarTitleFocus = nil
@@ -1469,6 +1582,7 @@ struct LogTabView: View {
             !$0.title.trimmingCharacters(in: .whitespaces).isEmpty
         }
         let categoryId = addProjectCategoryId
+        let priority = addProjectPriority
         let commitEnabled = !addProjectDates.isEmpty
         let timeframe = addProjectTimeframe
         let section = addProjectSection
@@ -1484,11 +1598,14 @@ struct LogTabView: View {
         addProjectDraftTasks = []
         addProjectDates = []
         addProjectCommitExpanded = false
+        addProjectOptionsExpanded = false
+        addProjectPriority = .low
 
         _Concurrency.Task { @MainActor in
             guard let projectId = await projectsVM.saveNewProject(
                 title: title,
                 categoryId: categoryId,
+                priority: priority,
                 draftTasks: draftTasks
             ) else { return }
 
@@ -1580,6 +1697,8 @@ struct LogTabView: View {
         addProjectDraftTasks = []
         addProjectCategoryId = nil
         addProjectCommitExpanded = false
+        addProjectOptionsExpanded = false
+        addProjectPriority = .low
         addProjectDates = []
         projectsVM.showingAddProject = false
         addBarTitleFocus = nil

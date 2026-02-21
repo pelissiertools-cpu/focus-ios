@@ -210,21 +210,21 @@ struct ListsView: View {
                     )
                     .moveDisabled(viewModel.isEditMode)
                     .listRowInsets(EdgeInsets(top: 0, leading: 32, bottom: 0, trailing: 32))
-                    .listRowBackground(Color(.systemBackground))
+                    .listRowBackground(Color.clear)
 
                 case .item(let item, let listId):
                     ListItemRow(item: item, listId: listId, viewModel: viewModel)
                         .padding(.leading, 32)
                         .moveDisabled(item.isCompleted || viewModel.isEditMode)
                         .listRowInsets(EdgeInsets(top: 0, leading: 32, bottom: 0, trailing: 32))
-                        .listRowBackground(Color(.systemBackground))
+                        .listRowBackground(Color.clear)
 
                 case .doneSection(let listId):
                     ListDoneSection(listId: listId, viewModel: viewModel)
                         .moveDisabled(true)
                         .listRowInsets(EdgeInsets(top: 0, leading: 32, bottom: 0, trailing: 32))
                         .listRowSeparator(.hidden)
-                        .listRowBackground(Color(.systemBackground))
+                        .listRowBackground(Color.clear)
 
                 case .addItemRow(let listId):
                     InlineAddRow(
@@ -237,14 +237,23 @@ struct ListsView: View {
                     .padding(.leading, 32)
                     .moveDisabled(true)
                     .listRowInsets(EdgeInsets(top: 0, leading: 32, bottom: 0, trailing: 32))
-                    .listRowBackground(Color(.systemBackground))
+                    .listRowBackground(Color.clear)
                 }
             }
             .onMove { from, to in
                 viewModel.handleFlatMove(from: from, to: to)
             }
+
+            // Bottom spacer so content can scroll above the floating + button
+            Color.clear
+                .frame(height: 100)
+                .listRowInsets(EdgeInsets())
+                .listRowSeparator(.hidden)
+                .listRowBackground(Color.clear)
         }
         .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        .background(Color(.systemBackground))
         .scrollDismissesKeyboard(.interactively)
         .keyboardDismissOverlay(isActive: $isInlineAddFocused)
         .refreshable {

@@ -223,7 +223,7 @@ struct TasksListView: View {
                     .moveDisabled(true)
                     .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
                     .listRowSeparator(.hidden)
-                    .listRowBackground(Color(.systemBackground))
+                    .listRowBackground(Color.clear)
 
                 case .task(let task):
                     FlatTaskRow(
@@ -236,7 +236,7 @@ struct TasksListView: View {
                     .padding(.leading, task.parentTaskId != nil ? 32 : 0)
                     .moveDisabled(task.isCompleted || viewModel.isEditMode)
                     .listRowInsets(EdgeInsets(top: 0, leading: 32, bottom: 0, trailing: 32))
-                    .listRowBackground(Color(.systemBackground))
+                    .listRowBackground(Color.clear)
 
                 case .addSubtaskRow(let parentId):
                     InlineAddRow(
@@ -249,7 +249,7 @@ struct TasksListView: View {
                     .padding(.leading, 32)
                     .moveDisabled(true)
                     .listRowInsets(EdgeInsets(top: 0, leading: 32, bottom: 0, trailing: 32))
-                    .listRowBackground(Color(.systemBackground))
+                    .listRowBackground(Color.clear)
                 }
             }
             .onMove { from, to in
@@ -261,10 +261,19 @@ struct TasksListView: View {
                 LogDonePillView(completedTasks: viewModel.completedTasks, viewModel: viewModel, isInlineAddFocused: $isInlineAddFocused)
                     .listRowInsets(EdgeInsets(top: 0, leading: 32, bottom: 0, trailing: 32))
                     .listRowSeparator(.hidden)
-                    .listRowBackground(Color(.systemBackground))
+                    .listRowBackground(Color.clear)
             }
+
+            // Bottom spacer so content can scroll above the floating + button
+            Color.clear
+                .frame(height: 100)
+                .listRowInsets(EdgeInsets())
+                .listRowSeparator(.hidden)
+                .listRowBackground(Color.clear)
         }
         .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        .background(Color(.systemBackground))
         .scrollDismissesKeyboard(.interactively)
         .keyboardDismissOverlay(isActive: $isInlineAddFocused)
         .refreshable {
@@ -441,6 +450,7 @@ struct CategorySelectorHeader<TrailingContent: View>: View {
             Rectangle()
                 .fill(Color.black)
                 .frame(height: 1)
+                .padding(.leading, 16)
 
             // Expanded category choices
             if isExpanded {

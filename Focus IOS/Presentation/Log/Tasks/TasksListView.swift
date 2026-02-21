@@ -313,7 +313,7 @@ struct PrioritySectionHeader: View {
         VStack(spacing: 0) {
             Spacer(minLength: 0)
 
-            HStack(spacing: 12) {
+            HStack(spacing: 8) {
                 Circle()
                     .fill(priority.dotColor)
                     .frame(width: 8, height: 8)
@@ -334,7 +334,8 @@ struct PrioritySectionHeader: View {
                     .foregroundColor(.secondary)
                     .rotationEffect(.degrees(isCollapsed ? 0 : 90))
             }
-            .padding(.horizontal, 12)
+            .padding(.leading, 16)
+            .padding(.trailing, 12)
             .padding(.bottom, 8)
             .contentShape(Rectangle())
             .onTapGesture {
@@ -345,6 +346,8 @@ struct PrioritySectionHeader: View {
             Rectangle()
                 .fill(Color.secondary.opacity(0.7))
                 .frame(height: 1)
+                .padding(.leading, 16)
+                .padding(.trailing, 4)
         }
     }
 }

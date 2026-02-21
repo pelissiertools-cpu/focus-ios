@@ -36,6 +36,7 @@ struct LogTabView: View {
     @State private var addTaskSection: Section = .focus
     @State private var addTaskDates: Set<Date> = []
     @State private var addTaskPriority: Priority = .low
+    @State private var addTaskOptionsExpanded = false
     @State private var isGeneratingBreakdown = false
     @State private var hasGeneratedBreakdown = false
     @FocusState private var focusedSubtaskId: UUID?
@@ -561,7 +562,9 @@ struct LogTabView: View {
 
                 // More options pill
                 Button {
-                    // TODO: action
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        addTaskOptionsExpanded.toggle()
+                    }
                 } label: {
                     Image(systemName: "ellipsis")
                         .font(.sf(.caption, weight: .bold))
@@ -637,7 +640,8 @@ struct LogTabView: View {
             .padding(.horizontal, 14)
             .padding(.bottom, 4)
 
-            // Bottom row: [Category pill] [Commit pill] [Priority pill] — left-aligned
+            // Bottom row: [Category pill] [Commit pill] [Priority pill] — toggled by ellipsis
+            if addTaskOptionsExpanded {
             HStack(spacing: 8) {
                 // Category pill
                 Menu {
@@ -724,6 +728,7 @@ struct LogTabView: View {
             }
             .padding(.horizontal, 14)
             .padding(.top, 6)
+            }
 
             Spacer().frame(height: 20)
         }
@@ -1210,6 +1215,7 @@ struct LogTabView: View {
         addTaskTitle = ""
         addTaskSubtasks = []
         addTaskDates = []
+        addTaskOptionsExpanded = false
         addTaskCommitExpanded = false
         addTaskPriority = .low
         hasGeneratedBreakdown = false
@@ -1251,6 +1257,7 @@ struct LogTabView: View {
         addTaskSubtasks = []
         addTaskCategoryId = nil
         addTaskPriority = .low
+        addTaskOptionsExpanded = false
         addTaskCommitExpanded = false
         addTaskDates = []
         hasGeneratedBreakdown = false

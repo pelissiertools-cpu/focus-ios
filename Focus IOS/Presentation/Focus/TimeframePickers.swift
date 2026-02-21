@@ -161,9 +161,7 @@ struct DateNavigator: View {
                         .padding(.top, 8)
                         .padding(.bottom, 8)
                 }
-                .clipShape(RoundedRectangle(cornerRadius: 20))
-                .background(Color(.systemBackground), in: RoundedRectangle(cornerRadius: 20))
-                .shadow(color: .black.opacity(0.06), radius: 4, y: 2)
+                .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 20))
                 .padding(.horizontal)
                 .animation(.spring(response: 0.3, dampingFraction: 0.85), value: showTimeframePicker)
                 .onChange(of: selectedDate) {

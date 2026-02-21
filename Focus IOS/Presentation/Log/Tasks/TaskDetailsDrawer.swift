@@ -424,9 +424,10 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                             .font(.sf(.subheadline))
                         Text(LocalizedStringKey(selectedPriority.displayName))
                             .font(.sf(.subheadline, weight: .medium))
+                            .lineLimit(1)
                     }
                     .foregroundColor(.primary)
-                    .padding(.horizontal, 16)
+                    .padding(.horizontal, 12)
                     .padding(.vertical, 10)
                     .glassEffect(.regular.interactive(), in: .capsule)
                 }
@@ -467,9 +468,10 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                             .font(.sf(.subheadline))
                         Text(LocalizedStringKey(currentCategoryName))
                             .font(.sf(.subheadline, weight: .medium))
+                            .lineLimit(1)
                     }
                     .foregroundColor(.primary)
-                    .padding(.horizontal, 16)
+                    .padding(.horizontal, 12)
                     .padding(.vertical, 10)
                     .glassEffect(.regular.interactive(), in: .capsule)
                 }
@@ -492,9 +494,10 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                             .font(.sf(.subheadline))
                         Text("Commit")
                             .font(.sf(.subheadline, weight: .medium))
+                            .lineLimit(1)
                     }
                     .foregroundColor(commitPillIsActive ? .white : .primary)
-                    .padding(.horizontal, 16)
+                    .padding(.horizontal, 12)
                     .padding(.vertical, 10)
                     .glassEffect(
                         commitPillIsActive

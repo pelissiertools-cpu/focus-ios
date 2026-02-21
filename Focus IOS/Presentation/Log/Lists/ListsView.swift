@@ -29,7 +29,6 @@ struct ListsView: View {
     var body: some View {
         VStack(spacing: 0) {
             CategorySelectorHeader(
-                iconName: "list.bullet",
                 title: categoryTitle,
                 count: viewModel.filteredLists.count,
                 countSuffix: "list",

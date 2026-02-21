@@ -286,10 +286,10 @@ class ListsViewModel: ObservableObject, LogFilterable, TaskEditingViewModel {
                 for item in getUncompletedItems(for: list.id) {
                     result.append(.item(item, listId: list.id))
                 }
+                result.append(.addItemRow(listId: list.id))
                 if !getCompletedItems(for: list.id).isEmpty {
                     result.append(.doneSection(listId: list.id))
                 }
-                result.append(.addItemRow(listId: list.id))
             }
         }
         return result

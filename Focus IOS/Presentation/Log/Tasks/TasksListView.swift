@@ -42,7 +42,6 @@ struct TasksListView: View {
         VStack(spacing: 0) {
             // Category selector header
             CategorySelectorHeader(
-                iconName: "hammer",
                 title: categoryTitle,
                 count: viewModel.uncompletedTasks.count + viewModel.completedTasks.count,
                 isExpanded: $isCategoryExpanded,
@@ -341,8 +340,6 @@ struct PrioritySectionHeader: View {
 // MARK: - Category Selector Header
 
 struct CategorySelectorHeader<TrailingContent: View>: View {
-    let iconName: String
-    let isSystemIcon: Bool
     let title: String
     let count: Int
     let countSuffix: String
@@ -370,8 +367,6 @@ struct CategorySelectorHeader<TrailingContent: View>: View {
     @FocusState private var focusedRenameId: UUID?
 
     init(
-        iconName: String = "",
-        isSystemIcon: Bool = true,
         title: String,
         count: Int,
         countSuffix: String = "task",
@@ -385,8 +380,6 @@ struct CategorySelectorHeader<TrailingContent: View>: View {
         onRenameCategory: @escaping (UUID, String) -> Void,
         @ViewBuilder trailingContent: () -> TrailingContent
     ) {
-        self.iconName = iconName
-        self.isSystemIcon = isSystemIcon
         self.title = title
         self.count = count
         self.countSuffix = countSuffix
@@ -406,22 +399,6 @@ struct CategorySelectorHeader<TrailingContent: View>: View {
             // Header row
             HStack(spacing: 8) {
                 HStack(alignment: .center, spacing: 8) {
-                    if !iconName.isEmpty {
-                        Group {
-                            if isSystemIcon {
-                                Image(systemName: iconName)
-                                    .font(.sf(.body, weight: .medium))
-                            } else {
-                                Image(iconName)
-                                    .resizable()
-                                    .aspectRatio(contentMode: .fit)
-                                    .frame(width: 21, height: 21)
-                            }
-                        }
-                        .foregroundColor(.black)
-                        .frame(width: 20, alignment: .center)
-                    }
-
                     Text(title)
                         .font(.golosText(size: 30))
 
@@ -443,9 +420,11 @@ struct CategorySelectorHeader<TrailingContent: View>: View {
                 Spacer()
 
                 trailingContent
+                    .padding(.bottom, 6)
             }
             .padding(.vertical, 6)
-            .padding(.horizontal, 12)
+            .padding(.leading, 22)
+            .padding(.trailing, 9)
 
             Rectangle()
                 .fill(Color.black)

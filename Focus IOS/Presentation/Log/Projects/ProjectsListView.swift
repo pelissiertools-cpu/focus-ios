@@ -38,8 +38,6 @@ struct ProjectsListView: View {
     var body: some View {
         VStack(spacing: 0) {
             CategorySelectorHeader(
-                iconName: "ClipboardTextIcon",
-                isSystemIcon: false,
                 title: categoryTitle,
                 count: viewModel.filteredProjects.count,
                 countSuffix: "project",

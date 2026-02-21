@@ -395,6 +395,11 @@ class ListsViewModel: ObservableObject, LogFilterable, TaskEditingViewModel {
                 }
                 itemsMap[listId] = items
 
+                // Reset done section to collapsed when no completed items remain
+                if items.filter({ $0.isCompleted }).isEmpty {
+                    doneSectionCollapsed.removeValue(forKey: listId)
+                }
+
                 // Notify other views about item completion change
                 NotificationCenter.default.post(
                     name: .taskCompletionChanged,
@@ -526,6 +531,7 @@ class ListsViewModel: ObservableObject, LogFilterable, TaskEditingViewModel {
             }
             items.removeAll { $0.isCompleted }
             itemsMap[listId] = items
+            doneSectionCollapsed.removeValue(forKey: listId)
         } catch {
             errorMessage = error.localizedDescription
         }

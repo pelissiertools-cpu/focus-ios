@@ -181,20 +181,19 @@ struct ProjectsListView: View {
     }
 
     private var emptyState: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "folder")
-                .font(.sf(size: 60))
+        VStack(spacing: 4) {
+            Text("No projects yet")
+                .font(.sf(.headline))
+                .bold()
+            Text("Tap to create your first project")
+                .font(.sf(.subheadline))
                 .foregroundColor(.secondary)
-
-            Text("No Projects Yet")
-                .font(.sf(.title2, weight: .semibold))
-
-            Text("Tap the + button to create your first project")
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding()
+        .contentShape(Rectangle())
+        .onTapGesture {
+            viewModel.showingAddProject = true
+        }
     }
 
     private var projectList: some View {

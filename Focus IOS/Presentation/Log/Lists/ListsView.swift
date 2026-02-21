@@ -179,20 +179,19 @@ struct ListsView: View {
     }
 
     private var emptyState: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "list.bullet.rectangle")
-                .font(.sf(size: 60))
+        VStack(spacing: 4) {
+            Text("No lists yet")
+                .font(.sf(.headline))
+                .bold()
+            Text("Tap to create your first list")
+                .font(.sf(.subheadline))
                 .foregroundColor(.secondary)
-
-            Text("No Lists Yet")
-                .font(.sf(.title2, weight: .semibold))
-
-            Text("Tap the + button to create your first list")
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding()
+        .contentShape(Rectangle())
+        .onTapGesture {
+            viewModel.showingAddList = true
+        }
     }
 
     private var listContent: some View {

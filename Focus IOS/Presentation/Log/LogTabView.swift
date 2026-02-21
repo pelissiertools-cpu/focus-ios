@@ -468,7 +468,9 @@ struct LogTabView: View {
             addBarModeCircle(mode: .task, icon: "checklist")
             addBarModeCircle(mode: .list, icon: "list.bullet")
             addBarModeCircle(mode: .project, icon: "folder")
+            Spacer()
         }
+        .padding(.horizontal)
     }
 
     private func addBarModeCircle(mode: TaskType, icon: String) -> some View {
@@ -757,9 +759,9 @@ struct LogTabView: View {
                     }
                 } label: {
                     HStack(spacing: 4) {
-                        Image(systemName: "flag.fill")
-                            .font(.sf(.caption))
-                            .foregroundColor(addTaskPriority.dotColor)
+                        Circle()
+                            .fill(addTaskPriority.dotColor)
+                            .frame(width: 8, height: 8)
                         Text(addTaskPriority.displayName)
                             .font(.sf(.caption))
                     }

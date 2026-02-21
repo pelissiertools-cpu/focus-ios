@@ -131,9 +131,9 @@ struct ListDetailsDrawer: View {
                 }
             } label: {
                 HStack(spacing: 6) {
-                    Image(systemName: "flag")
-                        .font(.sf(.subheadline))
-                        .foregroundColor(selectedPriority.dotColor)
+                    Circle()
+                        .fill(selectedPriority.dotColor)
+                        .frame(width: 8, height: 8)
                     Text(LocalizedStringKey(selectedPriority.displayName))
                         .font(.sf(.subheadline, weight: .medium))
                         .lineLimit(1)

@@ -1018,6 +1018,22 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
         await deleteProjectTask(task, projectId: projectId)
     }
 
+    func updateTaskPriority(_ task: FocusTask, priority: Priority) async {
+        do {
+            var updated = task
+            updated.priority = priority
+            updated.modifiedDate = Date()
+            try await repository.updateTask(updated)
+
+            if let index = projects.firstIndex(where: { $0.id == task.id }) {
+                projects[index].priority = priority
+                projects[index].modifiedDate = Date()
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
     func moveTaskToCategory(_ task: FocusTask, categoryId: UUID?) async {
         do {
             var updated = task

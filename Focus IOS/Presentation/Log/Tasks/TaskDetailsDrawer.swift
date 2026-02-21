@@ -422,6 +422,7 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                     HStack(spacing: 6) {
                         Image(systemName: "flag")
                             .font(.sf(.subheadline))
+                            .foregroundColor(selectedPriority.dotColor)
                         Text(LocalizedStringKey(selectedPriority.displayName))
                             .font(.sf(.subheadline, weight: .medium))
                             .lineLimit(1)

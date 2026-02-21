@@ -624,6 +624,7 @@ struct LogTabView: View {
                     HStack(spacing: 4) {
                         Image(systemName: "flag.fill")
                             .font(.sf(.caption))
+                            .foregroundColor(addTaskPriority.dotColor)
                         Text(addTaskPriority.displayName)
                             .font(.sf(.caption))
                     }

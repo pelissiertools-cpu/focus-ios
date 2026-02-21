@@ -776,6 +776,22 @@ class ListsViewModel: ObservableObject, LogFilterable, TaskEditingViewModel {
         await createItem(title: title, listId: parentId)
     }
 
+    func updateTaskPriority(_ task: FocusTask, priority: Priority) async {
+        do {
+            var updated = task
+            updated.priority = priority
+            updated.modifiedDate = Date()
+            try await repository.updateTask(updated)
+
+            if let index = lists.firstIndex(where: { $0.id == task.id }) {
+                lists[index].priority = priority
+                lists[index].modifiedDate = Date()
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
     func moveTaskToCategory(_ task: FocusTask, categoryId: UUID?) async {
         do {
             var updated = task

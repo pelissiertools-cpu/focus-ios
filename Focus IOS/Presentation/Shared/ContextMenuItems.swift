@@ -48,6 +48,30 @@ enum ContextMenuItems {
         }
     }
 
+    // MARK: - Priority Submenu
+
+    @ViewBuilder
+    static func prioritySubmenu(
+        currentPriority: Priority,
+        onSelect: @escaping (Priority) -> Void
+    ) -> some View {
+        Menu {
+            ForEach(Priority.allCases, id: \.self) { priority in
+                Button {
+                    onSelect(priority)
+                } label: {
+                    if currentPriority == priority {
+                        Label(priority.displayName, systemImage: "checkmark")
+                    } else {
+                        Text(priority.displayName)
+                    }
+                }
+            }
+        } label: {
+            Label("Priority", systemImage: "flag")
+        }
+    }
+
     // MARK: - Delete
 
     @ViewBuilder

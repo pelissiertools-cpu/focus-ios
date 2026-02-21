@@ -320,6 +320,12 @@ struct ListRow: View {
                     viewModel.selectedListForDetails = list
                 }
 
+                ContextMenuItems.prioritySubmenu(
+                    currentPriority: list.priority
+                ) { priority in
+                    _Concurrency.Task { await viewModel.updateTaskPriority(list, priority: priority) }
+                }
+
                 ContextMenuItems.categorySubmenu(
                     currentCategoryId: list.categoryId,
                     categories: viewModel.categories

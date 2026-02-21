@@ -8,6 +8,10 @@
 import SwiftUI
 import Auth
 
+private enum AddBarTitleFocus: Hashable {
+    case task, list, project
+}
+
 struct LogTabView: View {
     @Binding var mainTab: Int
     @EnvironmentObject var languageManager: LanguageManager
@@ -34,7 +38,6 @@ struct LogTabView: View {
     @State private var addTaskPriority: Priority = .low
     @State private var isGeneratingBreakdown = false
     @State private var hasGeneratedBreakdown = false
-    @FocusState private var isAddTaskFieldFocused: Bool
     @FocusState private var focusedSubtaskId: UUID?
 
     // Compact add-list bar state
@@ -45,7 +48,6 @@ struct LogTabView: View {
     @State private var addListTimeframe: Timeframe = .daily
     @State private var addListSection: Section = .focus
     @State private var addListDates: Set<Date> = []
-    @FocusState private var isAddListFieldFocused: Bool
     @FocusState private var focusedListItemId: UUID?
 
     // Compact add-project bar state
@@ -56,13 +58,19 @@ struct LogTabView: View {
     @State private var addProjectTimeframe: Timeframe = .daily
     @State private var addProjectSection: Section = .focus
     @State private var addProjectDates: Set<Date> = []
-    @FocusState private var isAddProjectFieldFocused: Bool
     @FocusState private var focusedProjectTaskId: UUID?
+
+    // Unified title focus (single @FocusState = atomic transfer = no keyboard flicker)
+    @FocusState private var addBarTitleFocus: AddBarTitleFocus?
 
     // View models — owned here, passed to child views
     @StateObject private var taskListVM = TaskListViewModel(authService: AuthService())
     @StateObject private var projectsVM = ProjectsViewModel(authService: AuthService())
     @StateObject private var listsVM = ListsViewModel(authService: AuthService())
+
+    // Unified add bar state
+    @State private var showingAddBar = false
+    @State private var addBarMode: TaskType = .task
 
     // Settings navigation
     @State private var showSettings = false
@@ -93,24 +101,19 @@ struct LogTabView: View {
                     taskListVM: taskListVM,
                     listsVM: listsVM,
                     projectsVM: projectsVM,
-                    isAddTaskFieldFocused: $isAddTaskFieldFocused,
+                    addBarTitleFocus: $addBarTitleFocus,
                     addTaskCommitExpanded: $addTaskCommitExpanded,
                     focusedSubtaskId: $focusedSubtaskId,
-                    isAddListFieldFocused: $isAddListFieldFocused,
                     addListCommitExpanded: $addListCommitExpanded,
                     focusedListItemId: $focusedListItemId,
-                    isAddProjectFieldFocused: $isAddProjectFieldFocused,
                     addProjectCommitExpanded: $addProjectCommitExpanded,
                     focusedProjectTaskId: $focusedProjectTaskId,
-                    addProjectDraftTasks: $addProjectDraftTasks,
                     showCreateProjectAlert: $showCreateProjectAlert,
                     showCreateListAlert: $showCreateListAlert,
                     newProjectTitle: $newProjectTitle,
                     newListTitle: $newListTitle,
                     dismissSearch: dismissSearch,
-                    dismissAddTask: dismissAddTask,
-                    dismissAddList: dismissAddList,
-                    dismissAddProject: dismissAddProject
+                    dismissActiveAddBar: dismissActiveAddBar
                 )
                 .navigationDestination(isPresented: $showSettings) {
                     SettingsView()
@@ -138,6 +141,64 @@ struct LogTabView: View {
                 }
                 .onChange(of: projectsVM.categories.count) { _, _ in
                     syncCategories(from: 2)
+                }
+                // Unified add bar: auto-focus on open
+                .onChange(of: showingAddBar) { _, isShowing in
+                    if isShowing {
+                        if addBarMode == .project && addProjectDraftTasks.isEmpty {
+                            addProjectDraftTasks = [DraftTask()]
+                        }
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                            switch addBarMode {
+                            case .task: addBarTitleFocus = .task
+                            case .list: addBarTitleFocus = .list
+                            case .project: addBarTitleFocus = .project
+                            }
+                        }
+                    }
+                }
+                // Unified add bar: focus transfer on mode switch
+                .onChange(of: addBarMode) { _, newMode in
+                    guard showingAddBar else { return }
+                    // Clear secondary focus states
+                    focusedSubtaskId = nil
+                    focusedListItemId = nil
+                    focusedProjectTaskId = nil
+                    // Seed project draft tasks if needed
+                    if newMode == .project && addProjectDraftTasks.isEmpty {
+                        addProjectDraftTasks = [DraftTask()]
+                    }
+                    // Atomic focus transfer — single @FocusState, no keyboard flicker
+                    switch newMode {
+                    case .task: addBarTitleFocus = .task
+                    case .list: addBarTitleFocus = .list
+                    case .project: addBarTitleFocus = .project
+                    }
+                }
+                // Bridge per-VM showingAddItem flags (from empty-state taps in child views)
+                .onChange(of: taskListVM.showingAddTask) { _, show in
+                    if show && !showingAddBar {
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                            addBarMode = .task
+                            showingAddBar = true
+                        }
+                    }
+                }
+                .onChange(of: listsVM.showingAddList) { _, show in
+                    if show && !showingAddBar {
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                            addBarMode = .list
+                            showingAddBar = true
+                        }
+                    }
+                }
+                .onChange(of: projectsVM.showingAddProject) { _, show in
+                    if show && !showingAddBar {
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                            addBarMode = .project
+                            showingAddBar = true
+                        }
+                    }
                 }
         }
     }
@@ -228,26 +289,35 @@ struct LogTabView: View {
                     .zIndex(100)
             }
 
-            // Add-item scrim + bar (any tab)
-            if (taskListVM.showingAddTask && selectedTab == 0) ||
-               (listsVM.showingAddList && selectedTab == 1) ||
-               (projectsVM.showingAddProject && selectedTab == 2) {
+            // Add-item scrim + bar (unified)
+            if showingAddBar {
+                // Scrim — visual only, fades in
                 Color.black.opacity(0.15)
                     .ignoresSafeArea()
-                    .contentShape(Rectangle())
-                    .onTapGesture {
-                        withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
-                            dismissActiveAddBar()
-                        }
-                    }
-                    .allowsHitTesting(true)
+                    .allowsHitTesting(false)
+                    .transition(.opacity)
                     .zIndex(50)
 
-                VStack {
-                    Spacer()
-                    activeAddBar
-                        .padding(.vertical, 8)
+                // All tap handling in one layer
+                VStack(spacing: 0) {
+                    // Tap-to-dismiss area
+                    Color.clear
                         .contentShape(Rectangle())
+                        .onTapGesture {
+                            withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                                dismissActiveAddBar()
+                            }
+                        }
+
+                    // Floating mode selector + add bar
+                    VStack(spacing: 0) {
+                        addBarModeSelector
+                            .padding(.vertical, 12)
+
+                        activeAddBar
+                            .padding(.bottom, 8)
+                    }
+                    .contentShape(Rectangle())
                 }
                 .transition(.move(edge: .bottom).combined(with: .opacity))
                 .zIndex(100)
@@ -327,61 +397,29 @@ struct LogTabView: View {
 
     @ViewBuilder
     private var floatingBottomArea: some View {
-        switch selectedTab {
-        case 0:
-            taskTabBottomArea
-        case 1:
-            listTabBottomArea
-        case 2:
-            projectTabBottomArea
-        default:
-            EmptyView()
-        }
-    }
-
-    @ViewBuilder
-    private var taskTabBottomArea: some View {
-        if taskListVM.isEditMode {
+        if selectedTab == 0 && taskListVM.isEditMode {
             EditModeActionBar(
                 viewModel: taskListVM,
                 showCreateProjectAlert: $showCreateProjectAlert,
                 showCreateListAlert: $showCreateListAlert
             )
             .transition(.scale.combined(with: .opacity))
-        } else if !taskListVM.showingAddTask {
-            fabButton {
-                withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
-                    taskListVM.showingAddItem = true
-                }
-            }
-            .transition(.opacity)
-        }
-    }
-
-    @ViewBuilder
-    private var projectTabBottomArea: some View {
-        if projectsVM.isEditMode {
-            EditModeActionBar(viewModel: projectsVM)
-                .transition(.scale.combined(with: .opacity))
-        } else if !projectsVM.showingAddProject {
-            fabButton {
-                withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
-                    projectsVM.showingAddItem = true
-                }
-            }
-            .transition(.opacity)
-        }
-    }
-
-    @ViewBuilder
-    private var listTabBottomArea: some View {
-        if listsVM.isEditMode {
+        } else if selectedTab == 1 && listsVM.isEditMode {
             EditModeActionBar(viewModel: listsVM)
                 .transition(.scale.combined(with: .opacity))
-        } else if !listsVM.showingAddList {
+        } else if selectedTab == 2 && projectsVM.isEditMode {
+            EditModeActionBar(viewModel: projectsVM)
+                .transition(.scale.combined(with: .opacity))
+        } else if !showingAddBar {
             fabButton {
                 withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
-                    listsVM.showingAddItem = true
+                    switch selectedTab {
+                    case 0: addBarMode = .task
+                    case 1: addBarMode = .list
+                    case 2: addBarMode = .project
+                    default: addBarMode = .task
+                    }
+                    showingAddBar = true
                 }
             }
             .transition(.opacity)
@@ -390,11 +428,10 @@ struct LogTabView: View {
 
     @ViewBuilder
     private var activeAddBar: some View {
-        switch selectedTab {
-        case 0: logAddTaskBar
-        case 1: logAddListBar
-        case 2: logAddProjectBar
-        default: EmptyView()
+        switch addBarMode {
+        case .task: logAddTaskBar
+        case .list: logAddListBar
+        case .project: logAddProjectBar
         }
     }
 
@@ -419,6 +456,37 @@ struct LogTabView: View {
         }
     }
 
+    // MARK: - Add Bar Mode Selector
+
+    private var addBarModeSelector: some View {
+        HStack(spacing: 12) {
+            addBarModeCircle(mode: .task, icon: "checklist")
+            addBarModeCircle(mode: .list, icon: "list.bullet")
+            addBarModeCircle(mode: .project, icon: "folder")
+        }
+    }
+
+    private func addBarModeCircle(mode: TaskType, icon: String) -> some View {
+        let isActive = addBarMode == mode
+        return Button {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                addBarMode = mode
+            }
+        } label: {
+            Image(systemName: isActive && mode == .project ? "folder.fill" : icon)
+                .font(.sf(.body, weight: .medium))
+                .foregroundColor(isActive ? .white : .primary)
+                .frame(width: 36, height: 36)
+                .glassEffect(
+                    isActive
+                        ? .regular.tint(.appRed).interactive()
+                        : .regular.interactive(),
+                    in: .circle
+                )
+        }
+        .buttonStyle(.plain)
+    }
+
     // MARK: - Compact Add Task Bar
 
     private var logAddTaskBar: some View {
@@ -427,7 +495,7 @@ struct LogTabView: View {
             TextField("Create a new task", text: $addTaskTitle)
                 .font(.sf(.title3))
                 .textFieldStyle(.plain)
-                .focused($isAddTaskFieldFocused)
+                .focused($addBarTitleFocus, equals: .task)
                 .submitLabel(.return)
                 .onSubmit {
                     saveLogTask()
@@ -655,7 +723,7 @@ struct LogTabView: View {
             TextField("Create a new list", text: $addListTitle)
                 .font(.sf(.title3))
                 .textFieldStyle(.plain)
-                .focused($isAddListFieldFocused)
+                .focused($addBarTitleFocus, equals: .list)
                 .submitLabel(.return)
                 .onSubmit {
                     saveLogList()
@@ -835,7 +903,7 @@ struct LogTabView: View {
             TextField("Create a new project.", text: $addProjectTitle)
                 .font(.sf(.title3))
                 .textFieldStyle(.plain)
-                .focused($isAddProjectFieldFocused)
+                .focused($addBarTitleFocus, equals: .project)
                 .submitLabel(.return)
                 .onSubmit {
                     saveLogProject()
@@ -1119,7 +1187,7 @@ struct LogTabView: View {
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
 
         // Transfer focus to title before removing subtask fields
-        isAddTaskFieldFocused = true
+        addBarTitleFocus = .task
         focusedSubtaskId = nil
 
         // Clear fields for rapid entry (keep category setting)
@@ -1152,7 +1220,7 @@ struct LogTabView: View {
     }
 
     private func addNewSubtask() {
-        isAddTaskFieldFocused = true
+        addBarTitleFocus = .task
         let newEntry = DraftSubtaskEntry()
         withAnimation(.easeInOut(duration: 0.15)) {
             addTaskSubtasks.append(newEntry)
@@ -1171,7 +1239,7 @@ struct LogTabView: View {
         addTaskDates = []
         hasGeneratedBreakdown = false
         taskListVM.showingAddTask = false
-        isAddTaskFieldFocused = false
+        addBarTitleFocus = nil
         focusedSubtaskId = nil
     }
 
@@ -1201,7 +1269,7 @@ struct LogTabView: View {
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
 
         // Transfer focus to title for rapid entry
-        isAddListFieldFocused = true
+        addBarTitleFocus = .list
         focusedListItemId = nil
 
         // Clear fields (keep category)
@@ -1256,7 +1324,7 @@ struct LogTabView: View {
     }
 
     private func addNewListItem() {
-        isAddListFieldFocused = true
+        addBarTitleFocus = .list
         let newEntry = DraftSubtaskEntry()
         withAnimation(.easeInOut(duration: 0.15)) {
             addListItems.append(newEntry)
@@ -1267,7 +1335,7 @@ struct LogTabView: View {
     }
 
     private func removeListItem(id: UUID) {
-        isAddListFieldFocused = true
+        addBarTitleFocus = .list
         withAnimation(.easeInOut(duration: 0.15)) {
             addListItems.removeAll { $0.id == id }
         }
@@ -1280,7 +1348,7 @@ struct LogTabView: View {
         addListCommitExpanded = false
         addListDates = []
         listsVM.showingAddList = false
-        isAddListFieldFocused = false
+        addBarTitleFocus = nil
         focusedListItemId = nil
     }
 
@@ -1310,7 +1378,7 @@ struct LogTabView: View {
 
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
 
-        isAddProjectFieldFocused = true
+        addBarTitleFocus = .project
         focusedProjectTaskId = nil
 
         // Clear fields (keep category)
@@ -1416,19 +1484,19 @@ struct LogTabView: View {
         addProjectCommitExpanded = false
         addProjectDates = []
         projectsVM.showingAddProject = false
-        isAddProjectFieldFocused = false
+        addBarTitleFocus = nil
         focusedProjectTaskId = nil
     }
 
     // MARK: - Shared Dismiss
 
     private func dismissActiveAddBar() {
-        switch selectedTab {
-        case 0: dismissAddTask()
-        case 1: dismissAddList()
-        case 2: dismissAddProject()
-        default: break
-        }
+        guard showingAddBar else { return }
+        // Dismiss all modes to clear any partial input across modes
+        dismissAddTask()
+        dismissAddList()
+        dismissAddProject()
+        showingAddBar = false
     }
 
     // MARK: - Category Sync
@@ -1460,9 +1528,7 @@ private struct LogTabChangeModifier: ViewModifier {
     @ObservedObject var listsVM: ListsViewModel
     @ObservedObject var projectsVM: ProjectsViewModel
     var dismissSearch: () -> Void
-    var dismissAddTask: () -> Void
-    var dismissAddList: () -> Void
-    var dismissAddProject: () -> Void
+    var dismissActiveAddBar: () -> Void
 
     func body(content: Content) -> some View {
         content
@@ -1471,37 +1537,26 @@ private struct LogTabChangeModifier: ViewModifier {
                 taskListVM.exitEditMode()
                 projectsVM.exitEditMode()
                 listsVM.exitEditMode()
-                if taskListVM.showingAddTask { dismissAddTask() }
-                if listsVM.showingAddList { dismissAddList() }
-                if projectsVM.showingAddProject { dismissAddProject() }
+                dismissActiveAddBar()
             }
     }
 }
 
 private struct LogTaskBarHandlersModifier: ViewModifier {
-    let selectedTab: Int
-    @ObservedObject var taskListVM: TaskListViewModel
-    var isAddTaskFieldFocused: FocusState<Bool>.Binding
+    var addBarTitleFocus: FocusState<AddBarTitleFocus?>.Binding
     @Binding var addTaskCommitExpanded: Bool
     var focusedSubtaskId: FocusState<UUID?>.Binding
 
     func body(content: Content) -> some View {
         content
-            .onChange(of: taskListVM.showingAddTask) { _, isShowing in
-                if isShowing && selectedTab == 0 {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                        isAddTaskFieldFocused.wrappedValue = true
-                    }
-                }
-            }
             .onChange(of: addTaskCommitExpanded) { _, isExpanded in
                 if isExpanded {
-                    isAddTaskFieldFocused.wrappedValue = false
+                    addBarTitleFocus.wrappedValue = nil
                     focusedSubtaskId.wrappedValue = nil
                 }
             }
-            .onChange(of: isAddTaskFieldFocused.wrappedValue) { _, isFocused in
-                if isFocused && addTaskCommitExpanded {
+            .onChange(of: addBarTitleFocus.wrappedValue) { _, focus in
+                if focus == .task && addTaskCommitExpanded {
                     withAnimation(.easeInOut(duration: 0.2)) {
                         addTaskCommitExpanded = false
                     }
@@ -1518,29 +1573,20 @@ private struct LogTaskBarHandlersModifier: ViewModifier {
 }
 
 private struct LogListBarHandlersModifier: ViewModifier {
-    let selectedTab: Int
-    @ObservedObject var listsVM: ListsViewModel
-    var isAddListFieldFocused: FocusState<Bool>.Binding
+    var addBarTitleFocus: FocusState<AddBarTitleFocus?>.Binding
     @Binding var addListCommitExpanded: Bool
     var focusedListItemId: FocusState<UUID?>.Binding
 
     func body(content: Content) -> some View {
         content
-            .onChange(of: listsVM.showingAddList) { _, isShowing in
-                if isShowing && selectedTab == 1 {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                        isAddListFieldFocused.wrappedValue = true
-                    }
-                }
-            }
             .onChange(of: addListCommitExpanded) { _, isExpanded in
                 if isExpanded {
-                    isAddListFieldFocused.wrappedValue = false
+                    addBarTitleFocus.wrappedValue = nil
                     focusedListItemId.wrappedValue = nil
                 }
             }
-            .onChange(of: isAddListFieldFocused.wrappedValue) { _, isFocused in
-                if isFocused && addListCommitExpanded {
+            .onChange(of: addBarTitleFocus.wrappedValue) { _, focus in
+                if focus == .list && addListCommitExpanded {
                     withAnimation(.easeInOut(duration: 0.2)) {
                         addListCommitExpanded = false
                     }
@@ -1557,34 +1603,20 @@ private struct LogListBarHandlersModifier: ViewModifier {
 }
 
 private struct LogProjectBarHandlersModifier: ViewModifier {
-    let selectedTab: Int
-    @ObservedObject var projectsVM: ProjectsViewModel
-    var isAddProjectFieldFocused: FocusState<Bool>.Binding
+    var addBarTitleFocus: FocusState<AddBarTitleFocus?>.Binding
     @Binding var addProjectCommitExpanded: Bool
     var focusedProjectTaskId: FocusState<UUID?>.Binding
-    @Binding var addProjectDraftTasks: [DraftTask]
 
     func body(content: Content) -> some View {
         content
-            .onChange(of: projectsVM.showingAddProject) { _, isShowing in
-                if isShowing && selectedTab == 2 {
-                    // Seed one empty task so the field is always visible
-                    if addProjectDraftTasks.isEmpty {
-                        addProjectDraftTasks = [DraftTask()]
-                    }
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                        isAddProjectFieldFocused.wrappedValue = true
-                    }
-                }
-            }
             .onChange(of: addProjectCommitExpanded) { _, isExpanded in
                 if isExpanded {
-                    isAddProjectFieldFocused.wrappedValue = false
+                    addBarTitleFocus.wrappedValue = nil
                     focusedProjectTaskId.wrappedValue = nil
                 }
             }
-            .onChange(of: isAddProjectFieldFocused.wrappedValue) { _, isFocused in
-                if isFocused && addProjectCommitExpanded {
+            .onChange(of: addBarTitleFocus.wrappedValue) { _, focus in
+                if focus == .project && addProjectCommitExpanded {
                     withAnimation(.easeInOut(duration: 0.2)) {
                         addProjectCommitExpanded = false
                     }
@@ -1644,24 +1676,19 @@ private extension View {
         taskListVM: TaskListViewModel,
         listsVM: ListsViewModel,
         projectsVM: ProjectsViewModel,
-        isAddTaskFieldFocused: FocusState<Bool>.Binding,
+        addBarTitleFocus: FocusState<AddBarTitleFocus?>.Binding,
         addTaskCommitExpanded: Binding<Bool>,
         focusedSubtaskId: FocusState<UUID?>.Binding,
-        isAddListFieldFocused: FocusState<Bool>.Binding,
         addListCommitExpanded: Binding<Bool>,
         focusedListItemId: FocusState<UUID?>.Binding,
-        isAddProjectFieldFocused: FocusState<Bool>.Binding,
         addProjectCommitExpanded: Binding<Bool>,
         focusedProjectTaskId: FocusState<UUID?>.Binding,
-        addProjectDraftTasks: Binding<[DraftTask]>,
         showCreateProjectAlert: Binding<Bool>,
         showCreateListAlert: Binding<Bool>,
         newProjectTitle: Binding<String>,
         newListTitle: Binding<String>,
         dismissSearch: @escaping () -> Void,
-        dismissAddTask: @escaping () -> Void,
-        dismissAddList: @escaping () -> Void,
-        dismissAddProject: @escaping () -> Void
+        dismissActiveAddBar: @escaping () -> Void
     ) -> some View {
         self
             .modifier(LogTabChangeModifier(
@@ -1670,31 +1697,22 @@ private extension View {
                 listsVM: listsVM,
                 projectsVM: projectsVM,
                 dismissSearch: dismissSearch,
-                dismissAddTask: dismissAddTask,
-                dismissAddList: dismissAddList,
-                dismissAddProject: dismissAddProject
+                dismissActiveAddBar: dismissActiveAddBar
             ))
             .modifier(LogTaskBarHandlersModifier(
-                selectedTab: selectedTab.wrappedValue,
-                taskListVM: taskListVM,
-                isAddTaskFieldFocused: isAddTaskFieldFocused,
+                addBarTitleFocus: addBarTitleFocus,
                 addTaskCommitExpanded: addTaskCommitExpanded,
                 focusedSubtaskId: focusedSubtaskId
             ))
             .modifier(LogListBarHandlersModifier(
-                selectedTab: selectedTab.wrappedValue,
-                listsVM: listsVM,
-                isAddListFieldFocused: isAddListFieldFocused,
+                addBarTitleFocus: addBarTitleFocus,
                 addListCommitExpanded: addListCommitExpanded,
                 focusedListItemId: focusedListItemId
             ))
             .modifier(LogProjectBarHandlersModifier(
-                selectedTab: selectedTab.wrappedValue,
-                projectsVM: projectsVM,
-                isAddProjectFieldFocused: isAddProjectFieldFocused,
+                addBarTitleFocus: addBarTitleFocus,
                 addProjectCommitExpanded: addProjectCommitExpanded,
-                focusedProjectTaskId: focusedProjectTaskId,
-                addProjectDraftTasks: addProjectDraftTasks
+                focusedProjectTaskId: focusedProjectTaskId
             ))
             .modifier(LogTabAlertsModifier(
                 taskListVM: taskListVM,

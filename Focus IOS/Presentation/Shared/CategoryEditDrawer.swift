@@ -85,8 +85,8 @@ struct CategoryEditDrawer<VM: LogFilterable>: View {
                         .listRowBackground(Color.clear)
                         .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
                         .listRowSeparator(.hidden)
-                        .listSectionSeparator(.hidden)
                 }
+                .listSectionSeparator(.hidden)
             }
             .listStyle(.insetGrouped)
             .environment(\.editMode, .constant(.active))

@@ -24,7 +24,7 @@ struct TasksListView: View {
     let searchText: String
     var onSearchTap: (() -> Void)? = nil
     @State private var isInlineAddFocused = false
-    @State private var isCategoryExpanded = false
+    @State private var showCategoryEditDrawer = false
 
     init(viewModel: TaskListViewModel, searchText: String = "", onSearchTap: (() -> Void)? = nil) {
         self.viewModel = viewModel
@@ -46,35 +46,12 @@ struct TasksListView: View {
             CategorySelectorHeader(
                 title: categoryTitle,
                 count: viewModel.uncompletedTasks.count + viewModel.completedTasks.count,
-                isExpanded: $isCategoryExpanded,
                 categories: viewModel.categories,
                 selectedCategoryId: viewModel.selectedCategoryId,
                 onSelectCategory: { categoryId in
                     viewModel.selectedCategoryId = categoryId
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        isCategoryExpanded = false
-                    }
                 },
-                onCreateCategory: { name in
-                    _Concurrency.Task {
-                        await viewModel.createCategory(name: name)
-                    }
-                },
-                onDeleteCategories: { ids in
-                    _Concurrency.Task {
-                        await viewModel.deleteCategories(ids: ids)
-                    }
-                },
-                onMergeCategories: { ids in
-                    _Concurrency.Task {
-                        await viewModel.mergeCategories(ids: ids)
-                    }
-                },
-                onRenameCategory: { id, name in
-                    _Concurrency.Task {
-                        await viewModel.renameCategory(id: id, newName: name)
-                    }
-                }
+                onEdit: { showCategoryEditDrawer = true }
             ) {
                 if viewModel.isEditMode {
                     HStack(spacing: 8) {
@@ -138,6 +115,10 @@ struct TasksListView: View {
         }
         .sheet(item: $viewModel.selectedTaskForDetails) { task in
             TaskDetailsDrawer(task: task, viewModel: viewModel, categories: viewModel.categories)
+                .drawerStyle()
+        }
+        .sheet(isPresented: $showCategoryEditDrawer) {
+            CategoryEditDrawer(viewModel: viewModel)
                 .drawerStyle()
         }
         .alert("Error", isPresented: .constant(viewModel.errorMessage != nil)) {
@@ -360,54 +341,29 @@ struct CategorySelectorHeader<TrailingContent: View>: View {
     let title: String
     let count: Int
     let countSuffix: String
-    @Binding var isExpanded: Bool
     let categories: [Category]
     let selectedCategoryId: UUID?
     let onSelectCategory: (UUID?) -> Void
-    let onCreateCategory: (String) -> Void
-    let onDeleteCategories: (Set<UUID>) -> Void
-    let onMergeCategories: (Set<UUID>) -> Void
-    let onRenameCategory: (UUID, String) -> Void
+    let onEdit: (() -> Void)?
     let trailingContent: TrailingContent
-
-    @State private var newCategoryName = ""
-    @State private var isAddingCategory = false
-    @FocusState private var isTextFieldFocused: Bool
-
-    // Category edit mode
-    @State private var isCategoryEditMode = false
-    @State private var selectedCategoryIds: Set<UUID> = []
-    @State private var editingCategoryId: UUID? = nil
-    @State private var editingCategoryName: String = ""
-    @State private var showDeleteConfirmation = false
-    @State private var showMergeConfirmation = false
-    @FocusState private var focusedRenameId: UUID?
 
     init(
         title: String,
         count: Int,
         countSuffix: String = "task",
-        isExpanded: Binding<Bool>,
         categories: [Category],
         selectedCategoryId: UUID?,
         onSelectCategory: @escaping (UUID?) -> Void,
-        onCreateCategory: @escaping (String) -> Void,
-        onDeleteCategories: @escaping (Set<UUID>) -> Void,
-        onMergeCategories: @escaping (Set<UUID>) -> Void,
-        onRenameCategory: @escaping (UUID, String) -> Void,
+        onEdit: (() -> Void)? = nil,
         @ViewBuilder trailingContent: () -> TrailingContent
     ) {
         self.title = title
         self.count = count
         self.countSuffix = countSuffix
-        self._isExpanded = isExpanded
         self.categories = categories
         self.selectedCategoryId = selectedCategoryId
         self.onSelectCategory = onSelectCategory
-        self.onCreateCategory = onCreateCategory
-        self.onDeleteCategories = onDeleteCategories
-        self.onMergeCategories = onMergeCategories
-        self.onRenameCategory = onRenameCategory
+        self.onEdit = onEdit
         self.trailingContent = trailingContent()
     }
 
@@ -415,22 +371,63 @@ struct CategorySelectorHeader<TrailingContent: View>: View {
         VStack(spacing: 0) {
             // Header row
             HStack(spacing: 8) {
-                HStack(alignment: .center, spacing: 8) {
-                    Text(title)
-                        .font(.golosText(size: 30))
+                // Category menu on title tap
+                Menu {
+                    // Header
+                    Label("Category", systemImage: "folder")
 
-                    Text("\(count) \(countSuffix)\(count == 1 ? "" : "s")")
-                        .font(.sf(size: 12))
-                        .foregroundColor(.secondary)
-                }
-                .contentShape(Rectangle())
-                .onTapGesture {
-                    if !isCategoryEditMode {
+                    Divider()
+
+                    // All categories
+                    Button {
                         withAnimation(.easeInOut(duration: 0.2)) {
-                            isExpanded.toggle()
+                            onSelectCategory(nil)
+                        }
+                    } label: {
+                        if selectedCategoryId == nil {
+                            Label("All categories", systemImage: "checkmark")
+                        } else {
+                            Text("All categories")
                         }
                     }
+
+                    ForEach(categories) { category in
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                onSelectCategory(category.id)
+                            }
+                        } label: {
+                            if selectedCategoryId == category.id {
+                                Label(category.name, systemImage: "checkmark")
+                            } else {
+                                Text(category.name)
+                            }
+                        }
+                    }
+
+                    if onEdit != nil {
+                        Divider()
+
+                        Button {
+                            onEdit?()
+                        } label: {
+                            Label("Edit", systemImage: "pencil")
+                        }
+                    }
+                } label: {
+                    HStack(alignment: .center, spacing: 8) {
+                        Text(title)
+                            .font(.golosText(size: 30))
+                            .foregroundColor(.primary)
+
+                        Text("\(count) \(countSuffix)\(count == 1 ? "" : "s")")
+                            .font(.sf(size: 12))
+                            .foregroundColor(.secondary)
+                    }
+                    .contentShape(Rectangle())
                 }
+                .menuIndicator(.hidden)
+                .tint(.appRed)
 
                 Spacer()
 
@@ -446,326 +443,8 @@ struct CategorySelectorHeader<TrailingContent: View>: View {
                 .frame(height: 1)
                 .padding(.leading, 16)
                 .padding(.trailing, 4)
-
-            // Expanded category choices
-            if isExpanded {
-                if isCategoryEditMode {
-                    // Edit mode header
-                    HStack {
-                        Spacer()
-                        Button {
-                            commitRenameIfNeeded()
-                            withAnimation(.easeInOut(duration: 0.2)) {
-                                isCategoryEditMode = false
-                                selectedCategoryIds = []
-                                editingCategoryId = nil
-                            }
-                        } label: {
-                            Text("Done")
-                                .font(.sf(.subheadline, weight: .medium))
-                                .foregroundColor(.appRed)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                    .padding(.horizontal, 12)
-                    .padding(.top, 10)
-                    .padding(.bottom, 4)
-                } else {
-                    // Normal mode: "All" option + Edit button row
-                    HStack {
-                        // "All" option
-                        Button {
-                            onSelectCategory(nil)
-                        } label: {
-                            HStack {
-                                Text("All")
-                                    .font(.sf(.body, weight: .medium))
-                                    .foregroundColor(.primary)
-                                if selectedCategoryId == nil {
-                                    Image(systemName: "checkmark")
-                                        .font(.sf(.body))
-                                        .foregroundColor(.appRed)
-                                }
-                            }
-                        }
-                        .buttonStyle(.plain)
-
-                        Spacer()
-
-                        if !categories.isEmpty {
-                            Button {
-                                withAnimation(.easeInOut(duration: 0.2)) {
-                                    isCategoryEditMode = true
-                                    selectedCategoryIds = []
-                                    isAddingCategory = false
-                                }
-                            } label: {
-                                Text("Edit")
-                                    .font(.sf(.subheadline, weight: .medium))
-                                    .foregroundColor(.appRed)
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 10)
-                }
-
-                // Category list
-                ForEach(categories) { category in
-                    if isCategoryEditMode {
-                        editableCategoryRow(category: category)
-                    } else {
-                        categoryRow(name: category.name, isSelected: selectedCategoryId == category.id) {
-                            onSelectCategory(category.id)
-                        }
-                    }
-                }
-
-                if isCategoryEditMode {
-                    // Action bar (bottom right)
-                    HStack {
-                        Spacer()
-
-                        Button {
-                            showDeleteConfirmation = true
-                        } label: {
-                            Image(systemName: "trash")
-                                .font(.sf(.body))
-                                .foregroundColor(selectedCategoryIds.isEmpty ? .gray : .appRed)
-                                .frame(width: 40, height: 40)
-                        }
-                        .buttonStyle(.plain)
-                        .disabled(selectedCategoryIds.isEmpty)
-
-                        Button {
-                            showMergeConfirmation = true
-                        } label: {
-                            Image(systemName: "arrow.triangle.merge")
-                                .font(.sf(.body))
-                                .foregroundColor(selectedCategoryIds.count < 2 ? .gray : .green)
-                                .frame(width: 40, height: 40)
-                        }
-                        .buttonStyle(.plain)
-                        .disabled(selectedCategoryIds.count < 2)
-                    }
-                    .padding(.horizontal, 12)
-                    .padding(.bottom, 6)
-                } else {
-                    // Add new category
-                    if isAddingCategory {
-                        HStack(spacing: 8) {
-                            TextField("Category name", text: $newCategoryName)
-                                .font(.sf(.body))
-                                .focused($isTextFieldFocused)
-                                .onSubmit { submitNewCategory() }
-                            Button {
-                                submitNewCategory()
-                            } label: {
-                                Image(systemName: "checkmark.circle.fill")
-                                    .font(.sf(.body))
-                                    .foregroundColor(
-                                        newCategoryName.trimmingCharacters(in: .whitespaces).isEmpty
-                                        ? .gray : .appRed
-                                    )
-                            }
-                            .buttonStyle(.plain)
-                            .disabled(newCategoryName.trimmingCharacters(in: .whitespaces).isEmpty)
-                        }
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 10)
-                    } else {
-                        Button {
-                            isAddingCategory = true
-                            isTextFieldFocused = true
-                        } label: {
-                            HStack(spacing: 6) {
-                                Image(systemName: "plus")
-                                    .font(.sf(.subheadline))
-                                Text("New Category")
-                                    .font(.sf(.subheadline))
-                            }
-                            .foregroundColor(.appRed)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 10)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-
-                Rectangle()
-                    .fill(Color.secondary.opacity(0.7))
-                    .frame(height: 1)
-            }
         }
         .padding(.horizontal, 16)
-        .alert(deleteConfirmationTitle, isPresented: $showDeleteConfirmation) {
-            Button("Cancel", role: .cancel) { }
-            Button("Delete", role: .destructive) {
-                let ids = selectedCategoryIds
-                onDeleteCategories(ids)
-                selectedCategoryIds = []
-                isCategoryEditMode = false
-            }
-        } message: {
-            Text(deleteConfirmationMessage)
-        }
-        .alert(mergeConfirmationTitle, isPresented: $showMergeConfirmation) {
-            Button("Cancel", role: .cancel) { }
-            Button("Merge", role: .destructive) {
-                let ids = selectedCategoryIds
-                onMergeCategories(ids)
-                selectedCategoryIds = []
-                isCategoryEditMode = false
-            }
-        } message: {
-            Text(mergeConfirmationMessage)
-        }
-    }
-
-    // MARK: - Edit Mode Row
-
-    @ViewBuilder
-    private func editableCategoryRow(category: Category) -> some View {
-        HStack(spacing: 10) {
-            // Selection circle
-            Image(systemName: selectedCategoryIds.contains(category.id) ? "checkmark.circle.fill" : "circle")
-                .font(.sf(.title3))
-                .foregroundColor(selectedCategoryIds.contains(category.id) ? .appRed : .gray)
-                .onTapGesture {
-                    if selectedCategoryIds.contains(category.id) {
-                        selectedCategoryIds.remove(category.id)
-                    } else {
-                        selectedCategoryIds.insert(category.id)
-                    }
-                }
-
-            // Editable name
-            if editingCategoryId == category.id {
-                TextField("Category name", text: $editingCategoryName)
-                    .font(.sf(.body))
-                    .focused($focusedRenameId, equals: category.id)
-                    .onSubmit {
-                        commitRename(for: category.id)
-                    }
-            } else {
-                Text(category.name)
-                    .font(.sf(.body, weight: .medium))
-                    .foregroundColor(.primary)
-                    .onTapGesture {
-                        commitRenameIfNeeded()
-                        editingCategoryId = category.id
-                        editingCategoryName = category.name
-                        focusedRenameId = category.id
-                    }
-            }
-
-            Spacer()
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-        .contentShape(Rectangle())
-    }
-
-    // MARK: - Normal Row
-
-    @ViewBuilder
-    private func categoryRow(name: String, isSelected: Bool, action: @escaping () -> Void) -> some View {
-        Button {
-            action()
-        } label: {
-            HStack {
-                Text(name)
-                    .font(.sf(.body, weight: .medium))
-                    .foregroundColor(.primary)
-                if isSelected {
-                    Image(systemName: "checkmark")
-                        .font(.sf(.body))
-                        .foregroundColor(.appRed)
-                }
-                Spacer()
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 10)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-    }
-
-    // MARK: - Helpers
-
-    private func submitNewCategory() {
-        let name = newCategoryName.trimmingCharacters(in: .whitespaces)
-        guard !name.isEmpty else { return }
-        onCreateCategory(name)
-        newCategoryName = ""
-        isAddingCategory = false
-    }
-
-    private func commitRename(for categoryId: UUID) {
-        let trimmed = editingCategoryName.trimmingCharacters(in: .whitespaces)
-        if !trimmed.isEmpty {
-            onRenameCategory(categoryId, trimmed)
-        }
-        editingCategoryId = nil
-        editingCategoryName = ""
-    }
-
-    private func commitRenameIfNeeded() {
-        if let id = editingCategoryId {
-            commitRename(for: id)
-        }
-    }
-
-    // MARK: - Confirmation Text
-
-    private var selectedCategoryNames: [String] {
-        categories
-            .filter { selectedCategoryIds.contains($0.id) }
-            .sorted { $0.sortOrder < $1.sortOrder }
-            .map { $0.name }
-    }
-
-    private func formatNameList(_ names: [String]) -> String {
-        let quoted = names.map { "\"\($0)\"" }
-        switch quoted.count {
-        case 0: return ""
-        case 1: return quoted[0]
-        case 2: return "\(quoted[0]) and \(quoted[1])"
-        default:
-            let last = quoted.last ?? ""
-            let rest = quoted.dropLast().joined(separator: ", ")
-            return "\(rest), and \(last)"
-        }
-    }
-
-    private var deleteConfirmationTitle: String {
-        let names = selectedCategoryNames
-        if names.count == 1, let name = names.first {
-            return "Delete \"\(name)\"?"
-        }
-        return "Delete \(names.count) categories?"
-    }
-
-    private var deleteConfirmationMessage: String {
-        let names = selectedCategoryNames
-        guard !names.isEmpty else { return "" }
-        return "Tasks in \(formatNameList(names)) will become uncategorized."
-    }
-
-    private var mergeConfirmationTitle: String {
-        let names = selectedCategoryNames
-        guard let targetName = names.first else { return "Merge?" }
-        return "Merge into \"\(targetName)\"?"
-    }
-
-    private var mergeConfirmationMessage: String {
-        let names = selectedCategoryNames
-        guard let targetName = names.first else { return "" }
-        let sourceNames = Array(names.dropFirst())
-        guard !sourceNames.isEmpty else { return "" }
-        return "All tasks from \(formatNameList(sourceNames)) will be moved to \"\(targetName)\"."
     }
 }
 
@@ -1163,7 +842,6 @@ struct SubtaskRow: View {
 
 struct SortMenuButton<VM: LogFilterable>: View {
     @ObservedObject var viewModel: VM
-    @State private var showCategoryEditDrawer = false
 
     var body: some View {
         Menu {
@@ -1230,50 +908,6 @@ struct SortMenuButton<VM: LogFilterable>: View {
                 Label("Sort By", systemImage: "arrow.up.arrow.down")
             }
 
-            // Category submenu
-            Menu {
-                Button {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        viewModel.selectCategory(nil)
-                    }
-                } label: {
-                    if viewModel.selectedCategoryId == nil {
-                        Label("All", systemImage: "checkmark")
-                    } else {
-                        Text("All")
-                    }
-                }
-
-                ForEach(viewModel.categories) { category in
-                    Button {
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            viewModel.selectCategory(category.id)
-                        }
-                    } label: {
-                        if viewModel.selectedCategoryId == category.id {
-                            Label(category.name, systemImage: "checkmark")
-                        } else {
-                            Text(category.name)
-                        }
-                    }
-                }
-
-                Divider()
-
-                Button {
-                    showCategoryEditDrawer = true
-                } label: {
-                    Label("Edit", systemImage: "pencil")
-                }
-            } label: {
-                if let selectedId = viewModel.selectedCategoryId,
-                   let category = viewModel.categories.first(where: { $0.id == selectedId }) {
-                    Label(category.name, systemImage: "folder")
-                } else {
-                    Label("Category", systemImage: "folder")
-                }
-            }
-
             Divider()
 
             // Edit
@@ -1298,10 +932,6 @@ struct SortMenuButton<VM: LogFilterable>: View {
                 .glassEffect(.regular.interactive(), in: .circle)
                 .allowsHitTesting(false)
         )
-        .sheet(isPresented: $showCategoryEditDrawer) {
-            CategoryEditDrawer(viewModel: viewModel)
-                .drawerStyle()
-        }
     }
 }
 

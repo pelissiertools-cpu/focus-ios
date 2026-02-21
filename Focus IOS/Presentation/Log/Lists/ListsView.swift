@@ -12,7 +12,7 @@ struct ListsView: View {
     let searchText: String
     var onSearchTap: (() -> Void)? = nil
     @State private var isInlineAddFocused = false
-    @State private var isCategoryExpanded = false
+    @State private var showCategoryEditDrawer = false
 
     init(viewModel: ListsViewModel, searchText: String = "", onSearchTap: (() -> Void)? = nil) {
         self.viewModel = viewModel
@@ -34,35 +34,12 @@ struct ListsView: View {
                 title: categoryTitle,
                 count: viewModel.filteredLists.count,
                 countSuffix: "list",
-                isExpanded: $isCategoryExpanded,
                 categories: viewModel.categories,
                 selectedCategoryId: viewModel.selectedCategoryId,
                 onSelectCategory: { categoryId in
                     viewModel.selectedCategoryId = categoryId
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        isCategoryExpanded = false
-                    }
                 },
-                onCreateCategory: { name in
-                    _Concurrency.Task {
-                        await viewModel.createCategory(name: name)
-                    }
-                },
-                onDeleteCategories: { ids in
-                    _Concurrency.Task {
-                        await viewModel.deleteCategories(ids: ids)
-                    }
-                },
-                onMergeCategories: { ids in
-                    _Concurrency.Task {
-                        await viewModel.mergeCategories(ids: ids)
-                    }
-                },
-                onRenameCategory: { id, name in
-                    _Concurrency.Task {
-                        await viewModel.renameCategory(id: id, newName: name)
-                    }
-                }
+                onEdit: { showCategoryEditDrawer = true }
             ) {
                 if viewModel.isEditMode {
                     HStack(spacing: 8) {
@@ -133,6 +110,10 @@ struct ListsView: View {
         }
         .sheet(item: $viewModel.selectedListForDetails) { list in
             ListDetailsDrawer(list: list, viewModel: viewModel)
+                .drawerStyle()
+        }
+        .sheet(isPresented: $showCategoryEditDrawer) {
+            CategoryEditDrawer(viewModel: viewModel)
                 .drawerStyle()
         }
         .sheet(item: $viewModel.selectedItemForDetails) { item in

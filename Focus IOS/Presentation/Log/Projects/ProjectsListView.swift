@@ -21,7 +21,7 @@ struct ProjectsListView: View {
     @State private var lastReorderTime: Date = .distantPast
     @State private var rowFrames: [UUID: CGRect] = [:]
     @State private var showClearCompletedConfirmation = false
-    @State private var isCategoryExpanded = false
+    @State private var showCategoryEditDrawer = false
 
     init(viewModel: ProjectsViewModel, searchText: String = "", onSearchTap: (() -> Void)? = nil) {
         self.viewModel = viewModel
@@ -43,35 +43,12 @@ struct ProjectsListView: View {
                 title: categoryTitle,
                 count: viewModel.filteredProjects.count,
                 countSuffix: "project",
-                isExpanded: $isCategoryExpanded,
                 categories: viewModel.categories,
                 selectedCategoryId: viewModel.selectedCategoryId,
                 onSelectCategory: { categoryId in
                     viewModel.selectedCategoryId = categoryId
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        isCategoryExpanded = false
-                    }
                 },
-                onCreateCategory: { name in
-                    _Concurrency.Task {
-                        await viewModel.createCategory(name: name)
-                    }
-                },
-                onDeleteCategories: { ids in
-                    _Concurrency.Task {
-                        await viewModel.deleteCategories(ids: ids)
-                    }
-                },
-                onMergeCategories: { ids in
-                    _Concurrency.Task {
-                        await viewModel.mergeCategories(ids: ids)
-                    }
-                },
-                onRenameCategory: { id, name in
-                    _Concurrency.Task {
-                        await viewModel.renameCategory(id: id, newName: name)
-                    }
-                }
+                onEdit: { showCategoryEditDrawer = true }
             ) {
                 if viewModel.isEditMode {
                     HStack(spacing: 8) {
@@ -135,6 +112,10 @@ struct ProjectsListView: View {
         }
         .sheet(item: $viewModel.selectedProjectForDetails) { project in
             ProjectDetailsDrawer(project: project, viewModel: viewModel)
+                .drawerStyle()
+        }
+        .sheet(isPresented: $showCategoryEditDrawer) {
+            CategoryEditDrawer(viewModel: viewModel)
                 .drawerStyle()
         }
         .sheet(item: $viewModel.selectedTaskForDetails) { task in

@@ -13,7 +13,7 @@ struct UnifiedCalendarPicker: View {
     @Binding var selectedTimeframe: Timeframe
 
     var body: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 8) {
             // Timeframe Toggle
             Picker("Timeframe", selection: $selectedTimeframe) {
                 Text("Day").tag(Timeframe.daily)
@@ -23,17 +23,20 @@ struct UnifiedCalendarPicker: View {
             }
             .pickerStyle(.segmented)
 
-            // Adaptive Calendar View
-            switch selectedTimeframe {
-            case .daily:
-                DailyCalendarView(selectedDates: $selectedDates)
-            case .weekly:
-                WeeklyCalendarView(selectedDates: $selectedDates)
-            case .monthly:
-                MonthlyCalendarView(selectedDates: $selectedDates)
-            case .yearly:
-                YearlyCalendarView(selectedDates: $selectedDates)
+            // Adaptive Calendar View — consistent height across all timeframes
+            Group {
+                switch selectedTimeframe {
+                case .daily:
+                    DailyCalendarView(selectedDates: $selectedDates)
+                case .weekly:
+                    WeeklyCalendarView(selectedDates: $selectedDates)
+                case .monthly:
+                    MonthlyCalendarView(selectedDates: $selectedDates)
+                case .yearly:
+                    YearlyCalendarView(selectedDates: $selectedDates)
+                }
             }
+            .frame(minHeight: 280, alignment: .top)
         }
     }
 }
@@ -155,6 +158,11 @@ struct DailyCalendarView: View {
             if let date = calendar.date(byAdding: .day, value: day - 1, to: monthStart) {
                 days.append(date)
             }
+        }
+
+        // Pad to 42 cells (6 rows × 7 columns) so grid height is always consistent
+        while days.count < 42 {
+            days.append(nil)
         }
 
         return days
@@ -300,22 +308,20 @@ struct WeeklyCalendarView: View {
             .padding(.vertical, 8)
 
             Divider()
-                .padding(.bottom, 13)
+                .padding(.bottom, 8)
 
-            // Week pills for the month
-            ScrollView {
-                VStack(spacing: 8) {
-                    ForEach(weeksInDisplayMonth, id: \.self) { weekStart in
-                        WeekPillView(
-                            weekStart: weekStart,
-                            selectedDates: $selectedDates,
-                            excludedDates: excludedDates,
-                            calendar: calendar
-                        )
-                    }
+            // Week pills in 2-column grid
+            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
+                ForEach(weeksInDisplayMonth, id: \.self) { weekStart in
+                    WeekPillView(
+                        weekStart: weekStart,
+                        selectedDates: $selectedDates,
+                        excludedDates: excludedDates,
+                        calendar: calendar
+                    )
                 }
-                .padding(.horizontal)
             }
+            .padding(.horizontal)
         }
         .sheet(isPresented: $showingMonthPicker) {
             MonthYearPickerSheet(selectedDate: $displayMonth)
@@ -431,28 +437,6 @@ struct WeekPillView: View {
         calendar.component(.weekOfYear, from: weekStart)
     }
 
-    private var dateRangeText: String {
-        guard let weekEnd = calendar.date(byAdding: .day, value: 6, to: weekStart) else {
-            return ""
-        }
-
-        let formatter = DateFormatter()
-        formatter.dateFormat = "MMM d"
-
-        return "\(formatter.string(from: weekStart)) - \(formatter.string(from: weekEnd))"
-    }
-
-    private var badgeColor: Color {
-        if isExcluded {
-            return .green.opacity(0.6)
-        } else if isSelected {
-            return Color.appRed
-        } else if isCurrentWeek {
-            return Color.gray.opacity(0.3)
-        } else {
-            return .white
-        }
-    }
 
     var body: some View {
         Button {
@@ -460,47 +444,57 @@ struct WeekPillView: View {
                 toggleSelection()
             }
         } label: {
-            HStack(spacing: 12) {
-                // Week badge
-                ZStack {
-                    Text("W\(weekNumber)")
-                        .font(.sf(.body, weight: .medium))
-                        .foregroundColor(isSelected ? .white : (isExcluded ? .secondary : .black))
-                        .frame(width: 44, height: 44)
-                        .background(badgeColor)
-                        .clipShape(Circle())
+            VStack(spacing: 4) {
+                Text("Week \(weekNumber)")
+                    .font(.sf(.body, weight: .medium))
+                    .foregroundColor(isSelected ? .white : (isExcluded ? .secondary : .primary))
 
-                    if isExcluded {
-                        Image(systemName: "checkmark")
-                            .font(.sf(.caption2))
-                            .foregroundColor(.white)
-                            .offset(x: 14, y: 14)
-                    }
-                }
-
-                // Date range
-                Text(dateRangeText)
-                    .font(.sf(.body))
-                    .foregroundColor(isExcluded ? .secondary : .primary)
-
-                Spacer()
-
-                if isExcluded {
-                    Text("Already added")
-                        .font(.sf(.caption))
-                        .foregroundColor(.secondary)
-                }
+                Text(shortDateRange)
+                    .font(.sf(.caption2))
+                    .foregroundColor(isSelected ? .white.opacity(0.8) : .secondary)
             }
-            .padding()
-            .background(Color(.secondarySystemBackground))
+            .frame(maxWidth: .infinity)
+            .frame(height: 56)
+            .background(backgroundColor)
             .cornerRadius(12)
             .overlay(
                 RoundedRectangle(cornerRadius: 12)
                     .stroke(isSelected ? Color.appRed : Color.clear, lineWidth: 2)
             )
+            .overlay(alignment: .topTrailing) {
+                if isExcluded {
+                    Image(systemName: "checkmark")
+                        .font(.sf(.caption2))
+                        .foregroundColor(.green)
+                        .padding(6)
+                }
+            }
         }
         .buttonStyle(.plain)
         .disabled(isExcluded)
+    }
+
+    private var shortDateRange: String {
+        guard let weekEnd = calendar.date(byAdding: .day, value: 6, to: weekStart) else {
+            return ""
+        }
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMM d"
+        let startStr = formatter.string(from: weekStart)
+        let endDay = calendar.component(.day, from: weekEnd)
+        return "\(startStr)-\(endDay)"
+    }
+
+    private var backgroundColor: Color {
+        if isExcluded {
+            return .green.opacity(0.3)
+        } else if isSelected {
+            return Color.appRed
+        } else if isCurrentWeek {
+            return Color.gray.opacity(0.3)
+        } else {
+            return Color(.secondarySystemBackground)
+        }
     }
 
     private func toggleSelection() {
@@ -593,21 +587,19 @@ struct MonthlyCalendarView: View {
                 .padding(.bottom, 8)
 
             // Month grid (4x3)
-            ScrollView {
-                LazyVGrid(columns: columns, spacing: 16) {
-                    ForEach(0..<12, id: \.self) { monthIndex in
-                        MonthButton(
-                            monthIndex: monthIndex,
-                            monthName: monthNames[monthIndex],
-                            displayYear: effectiveYear,
-                            selectedDates: $selectedDates,
-                            excludedDates: excludedDates,
-                            calendar: calendar
-                        )
-                    }
+            LazyVGrid(columns: columns, spacing: 16) {
+                ForEach(0..<12, id: \.self) { monthIndex in
+                    MonthButton(
+                        monthIndex: monthIndex,
+                        monthName: monthNames[monthIndex],
+                        displayYear: effectiveYear,
+                        selectedDates: $selectedDates,
+                        excludedDates: excludedDates,
+                        calendar: calendar
+                    )
                 }
-                .padding(.horizontal)
             }
+            .padding(.horizontal)
         }
         .sheet(isPresented: $showingYearPicker) {
             YearPickerSheet(selectedDate: $displayYear)
@@ -767,19 +759,16 @@ struct YearlyCalendarView: View {
     }
 
     var body: some View {
-        ScrollView {
-            LazyVGrid(columns: columns, spacing: 16) {
-                ForEach(years, id: \.self) { year in
-                    YearButton(
-                        year: year,
-                        selectedDates: $selectedDates,
-                        calendar: calendar
-                    )
-                }
+        LazyVGrid(columns: columns, spacing: 16) {
+            ForEach(years, id: \.self) { year in
+                YearButton(
+                    year: year,
+                    selectedDates: $selectedDates,
+                    calendar: calendar
+                )
             }
-            .padding()
         }
-        .frame(maxHeight: 400)
+        .padding()
     }
 }
 

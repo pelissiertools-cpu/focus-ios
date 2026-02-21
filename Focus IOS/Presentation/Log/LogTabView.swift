@@ -520,28 +520,65 @@ struct LogTabView: View {
                 Divider()
                     .padding(.horizontal, 14)
 
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 12) {
-                        // Section picker
-                        Picker("Section", selection: $addTaskSection) {
-                            Text("Focus").tag(Section.focus)
-                            Text("Extra").tag(Section.extra)
-                        }
-                        .pickerStyle(.segmented)
-
-                        // Calendar picker
-                        UnifiedCalendarPicker(
-                            selectedDates: $addTaskDates,
-                            selectedTimeframe: $addTaskTimeframe
-                        )
+                VStack(alignment: .leading, spacing: 12) {
+                    // Section picker
+                    Picker("Section", selection: $addTaskSection) {
+                        Text("Focus").tag(Section.focus)
+                        Text("Extra").tag(Section.extra)
                     }
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 10)
+                    .pickerStyle(.segmented)
+
+                    // Calendar picker
+                    UnifiedCalendarPicker(
+                        selectedDates: $addTaskDates,
+                        selectedTimeframe: $addTaskTimeframe
+                    )
                 }
-                .frame(maxHeight: 350)
+                .padding(.horizontal, 14)
+                .padding(.top, 6)
+                .padding(.bottom, 14)
+
+                // Commit mode action row
+                HStack {
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            addTaskDates.removeAll()
+                            addTaskCommitExpanded = false
+                        }
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.sf(.body, weight: .semibold))
+                            .foregroundColor(.primary)
+                            .frame(width: 36, height: 36)
+                            .background(Color(.systemGray4), in: Circle())
+                    }
+                    .buttonStyle(.plain)
+
+                    Spacer()
+
+                    // Submit button — highlighted when dates are selected
+                    Button {
+                        let generator = UIImpactFeedbackGenerator(style: .medium)
+                        generator.impactOccurred()
+                        saveLogTask()
+                    } label: {
+                        Image(systemName: "checkmark")
+                            .font(.sf(.body, weight: .semibold))
+                            .foregroundColor(!addTaskDates.isEmpty ? .white : .secondary)
+                            .frame(width: 36, height: 36)
+                            .background(
+                                !addTaskDates.isEmpty ? Color.appRed : Color(.systemGray4),
+                                in: Circle()
+                            )
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.horizontal, 14)
+                .padding(.bottom, 4)
             }
 
             // Sub-task row: [Sub-task] ... [AI Breakdown (compact)]
+            if !addTaskCommitExpanded {
             HStack(spacing: 8) {
                 // Add sub-task button
                 Button {
@@ -639,9 +676,10 @@ struct LogTabView: View {
             }
             .padding(.horizontal, 14)
             .padding(.bottom, 4)
+            }
 
             // Bottom row: [Category pill] [Commit pill] [Priority pill] — toggled by ellipsis
-            if addTaskOptionsExpanded {
+            if addTaskOptionsExpanded && !addTaskCommitExpanded {
             HStack(spacing: 8) {
                 // Category pill
                 Menu {
@@ -800,23 +838,20 @@ struct LogTabView: View {
                 Divider()
                     .padding(.horizontal, 14)
 
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 12) {
-                        Picker("Section", selection: $addListSection) {
-                            Text("Focus").tag(Section.focus)
-                            Text("Extra").tag(Section.extra)
-                        }
-                        .pickerStyle(.segmented)
-
-                        UnifiedCalendarPicker(
-                            selectedDates: $addListDates,
-                            selectedTimeframe: $addListTimeframe
-                        )
+                VStack(alignment: .leading, spacing: 12) {
+                    Picker("Section", selection: $addListSection) {
+                        Text("Focus").tag(Section.focus)
+                        Text("Extra").tag(Section.extra)
                     }
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 10)
+                    .pickerStyle(.segmented)
+
+                    UnifiedCalendarPicker(
+                        selectedDates: $addListDates,
+                        selectedTimeframe: $addListTimeframe
+                    )
                 }
-                .frame(maxHeight: 350)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
             }
 
             // Bottom row: [Item] ... [Category pill] [Commit pill] [Checkmark]

@@ -558,9 +558,9 @@ struct FlatTaskRow: View {
         HStack(spacing: 12) {
             // Edit mode: selection circle (uncompleted parent tasks only)
             if isEditMode && !task.isCompleted && isParent {
-                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle.dashed")
                     .font(.sf(.title3))
-                    .foregroundColor(isSelected ? .appRed : .gray)
+                    .foregroundColor(isSelected ? .appRed : .secondary)
             }
 
             // Task content
@@ -701,9 +701,9 @@ struct ExpandableTaskRow: View {
         HStack(spacing: 12) {
             // Edit mode: selection circle (uncompleted tasks only)
             if isEditMode && !task.isCompleted {
-                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle.dashed")
                     .font(.sf(.title3))
-                    .foregroundColor(isSelected ? .appRed : .gray)
+                    .foregroundColor(isSelected ? .appRed : .secondary)
             }
 
             // Task content

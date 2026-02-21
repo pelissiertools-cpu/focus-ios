@@ -64,9 +64,9 @@ struct ProjectCard: View {
         HStack(spacing: 12) {
             // Edit mode: selection circle
             if viewModel.isEditMode && !project.isCompleted {
-                Image(systemName: viewModel.selectedProjectIds.contains(project.id) ? "checkmark.circle.fill" : "circle")
+                Image(systemName: viewModel.selectedProjectIds.contains(project.id) ? "checkmark.circle.fill" : "circle.dashed")
                     .font(.sf(.title3))
-                    .foregroundColor(viewModel.selectedProjectIds.contains(project.id) ? .appRed : .gray)
+                    .foregroundColor(viewModel.selectedProjectIds.contains(project.id) ? .appRed : .secondary)
             }
 
             // Project icon

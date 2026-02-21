@@ -268,9 +268,9 @@ struct ListRow: View {
         HStack(spacing: 12) {
             // Edit mode: selection circle
             if isEditMode {
-                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle.dashed")
                     .font(.sf(.title3))
-                    .foregroundColor(isSelected ? .appRed : .gray)
+                    .foregroundColor(isSelected ? .appRed : .secondary)
             }
 
             // Title + item count

@@ -371,63 +371,69 @@ struct CategorySelectorHeader<TrailingContent: View>: View {
         VStack(spacing: 0) {
             // Header row
             HStack(spacing: 8) {
-                // Category menu on title tap
-                Menu {
-                    // Header
-                    Label("Category", systemImage: "folder")
+                // Title displayed independently (not inside Menu label to avoid clip animation)
+                HStack(alignment: .center, spacing: 8) {
+                    Text(title)
+                        .font(.golosText(size: 30))
+                        .foregroundColor(.primary)
 
-                    Divider()
-
-                    // All categories
-                    Button {
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            onSelectCategory(nil)
-                        }
-                    } label: {
-                        if selectedCategoryId == nil {
-                            Label("All", systemImage: "checkmark")
-                        } else {
-                            Text("All")
-                        }
-                    }
-
-                    ForEach(categories) { category in
-                        Button {
-                            withAnimation(.easeInOut(duration: 0.2)) {
-                                onSelectCategory(category.id)
-                            }
-                        } label: {
-                            if selectedCategoryId == category.id {
-                                Label(category.name, systemImage: "checkmark")
-                            } else {
-                                Text(category.name)
-                            }
-                        }
-                    }
-
-                    if onEdit != nil {
-                        Divider()
-
-                        Button {
-                            onEdit?()
-                        } label: {
-                            Label("Edit", systemImage: "pencil")
-                        }
-                    }
-                } label: {
-                    HStack(alignment: .center, spacing: 8) {
-                        Text(title)
-                            .font(.golosText(size: 30))
+                    Text("\(count) \(countSuffix)\(count == 1 ? "" : "s")")
+                        .font(.sf(size: 12))
+                        .foregroundColor(.secondary)
+                }
+                .overlay {
+                    // Invisible Menu tap target overlaid on top of the title
+                    Menu {
+                        // Header
+                        Label("Category", systemImage: "folder")
                             .foregroundColor(.primary)
 
-                        Text("\(count) \(countSuffix)\(count == 1 ? "" : "s")")
-                            .font(.sf(size: 12))
-                            .foregroundColor(.secondary)
+                        Divider()
+
+                        // All categories
+                        Button {
+                            onSelectCategory(nil)
+                        } label: {
+                            if selectedCategoryId == nil {
+                                Label("All", systemImage: "checkmark")
+                                    .foregroundColor(.appRed)
+                            } else {
+                                Text("All")
+                                    .foregroundColor(.primary)
+                            }
+                        }
+
+                        ForEach(categories) { category in
+                            Button {
+                                onSelectCategory(category.id)
+                            } label: {
+                                if selectedCategoryId == category.id {
+                                    Label(category.name, systemImage: "checkmark")
+                                        .foregroundColor(.appRed)
+                                } else {
+                                    Text(category.name)
+                                        .foregroundColor(.primary)
+                                }
+                            }
+                        }
+
+                        if onEdit != nil {
+                            Divider()
+
+                            Button {
+                                onEdit?()
+                            } label: {
+                                Label("Edit", systemImage: "pencil")
+                                    .foregroundColor(.appRed)
+                            }
+                        }
+                    } label: {
+                        Color.clear
+                            .contentShape(Rectangle())
                     }
-                    .contentShape(Rectangle())
+                    .menuIndicator(.hidden)
+                    .tint(.appRed)
                 }
-                .menuIndicator(.hidden)
-                .tint(.appRed)
 
                 Spacer()
 

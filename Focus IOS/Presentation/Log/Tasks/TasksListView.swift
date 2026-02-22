@@ -385,9 +385,9 @@ struct CategorySelectorHeader<TrailingContent: View>: View {
                         }
                     } label: {
                         if selectedCategoryId == nil {
-                            Label("All categories", systemImage: "checkmark")
+                            Label("All", systemImage: "checkmark")
                         } else {
-                            Text("All categories")
+                            Text("All")
                         }
                     }
 

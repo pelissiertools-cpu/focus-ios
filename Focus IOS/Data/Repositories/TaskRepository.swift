@@ -40,6 +40,19 @@ class TaskRepository {
         }
     }
 
+    /// Helper struct for assigning a task to a project/list
+    private struct ProjectAssignmentUpdate: Encodable {
+        let projectId: UUID
+        let sortOrder: Int
+        let modifiedDate: Date
+
+        enum CodingKeys: String, CodingKey {
+            case projectId = "project_id"
+            case sortOrder = "sort_order"
+            case modifiedDate = "modified_date"
+        }
+    }
+
     /// Fetch all tasks for the current user
     func fetchTasks() async throws -> [FocusTask] {
         let tasks: [FocusTask] = try await supabase
@@ -187,6 +200,20 @@ class TaskRepository {
             .from("tasks")
             .update(update)
             .eq("parent_task_id", value: parentId.uuidString)
+            .execute()
+    }
+
+    /// Assign a task to a project/list (sets project_id only, not parent_task_id)
+    func assignToProject(taskId: UUID, projectId: UUID, sortOrder: Int) async throws {
+        let update = ProjectAssignmentUpdate(
+            projectId: projectId,
+            sortOrder: sortOrder,
+            modifiedDate: Date()
+        )
+        try await supabase
+            .from("tasks")
+            .update(update)
+            .eq("id", value: taskId.uuidString)
             .execute()
     }
 

@@ -10,6 +10,7 @@ import Foundation
 /// Notification for syncing task completion state between views
 extension Notification.Name {
     static let taskCompletionChanged = Notification.Name("taskCompletionChanged")
+    static let projectListChanged = Notification.Name("projectListChanged")
 }
 
 /// Keys for task sync notification userInfo

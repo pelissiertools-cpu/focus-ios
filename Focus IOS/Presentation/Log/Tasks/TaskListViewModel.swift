@@ -1241,18 +1241,18 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
             let createdProject = try await repository.createTask(projectTask)
 
             for (index, taskId) in selectedTaskIds.enumerated() {
-                if let taskIndex = tasks.firstIndex(where: { $0.id == taskId }) {
-                    var task = tasks[taskIndex]
-                    task.parentTaskId = createdProject.id
-                    task.projectId = createdProject.id
-                    task.sortOrder = index
-                    task.modifiedDate = Date()
-                    try await repository.updateTask(task)
+                try await repository.assignToProject(taskId: taskId, projectId: createdProject.id, sortOrder: index)
+            }
+
+            // Update local state: set projectId on tasks so UI can reflect membership
+            for taskId in selectedTaskIds {
+                if let idx = tasks.firstIndex(where: { $0.id == taskId }) {
+                    tasks[idx].projectId = createdProject.id
                 }
             }
 
-            tasks.removeAll { selectedTaskIds.contains($0.id) }
             exitEditMode()
+            NotificationCenter.default.post(name: .projectListChanged, object: nil)
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -1278,18 +1278,17 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
             let createdList = try await repository.createTask(listTask)
 
             for (index, taskId) in selectedTaskIds.enumerated() {
-                if let taskIndex = tasks.firstIndex(where: { $0.id == taskId }) {
-                    var task = tasks[taskIndex]
-                    task.parentTaskId = createdList.id
-                    task.projectId = createdList.id
-                    task.sortOrder = index
-                    task.modifiedDate = Date()
-                    try await repository.updateTask(task)
+                try await repository.assignToProject(taskId: taskId, projectId: createdList.id, sortOrder: index)
+            }
+
+            for taskId in selectedTaskIds {
+                if let idx = tasks.firstIndex(where: { $0.id == taskId }) {
+                    tasks[idx].projectId = createdList.id
                 }
             }
 
-            tasks.removeAll { selectedTaskIds.contains($0.id) }
             exitEditMode()
+            NotificationCenter.default.post(name: .projectListChanged, object: nil)
         } catch {
             errorMessage = error.localizedDescription
         }

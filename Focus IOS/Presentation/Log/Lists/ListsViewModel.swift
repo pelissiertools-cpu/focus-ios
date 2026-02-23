@@ -101,6 +101,16 @@ class ListsViewModel: ObservableObject, LogFilterable, TaskEditingViewModel {
                 self?.handleTaskCompletionNotification(notification)
             }
             .store(in: &cancellables)
+
+        NotificationCenter.default.publisher(for: .projectListChanged)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                guard let self else { return }
+                _Concurrency.Task { @MainActor in
+                    await self.fetchLists()
+                }
+            }
+            .store(in: &cancellables)
     }
 
     private func handleTaskCompletionNotification(_ notification: Notification) {

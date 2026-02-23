@@ -292,6 +292,7 @@
       }
     },
     "All done!" : {
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -324,6 +325,9 @@
           }
         }
       }
+    },
+    "All tasks are completed" : {
+
     },
     "Already added" : {
       "extractionState" : "stale",

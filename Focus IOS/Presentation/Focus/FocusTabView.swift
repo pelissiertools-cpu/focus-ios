@@ -460,14 +460,16 @@ struct FocusTabView: View {
                     .listRowSeparator(.hidden)
 
                 case .allDoneState:
-                    VStack(spacing: 8) {
-                        Image(systemName: "checkmark.circle")
-                            .font(.sf(size: 34))
+                    HStack(spacing: 8) {
+                        Text("All tasks are completed")
+                            .font(.sf(.title3, weight: .regular))
+                            .foregroundColor(.secondary)
+                        Image("CheckCircle")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 34, height: 34)
                             .foregroundColor(Color.completedPurple)
                             .scaleEffect(viewModel.allDoneCheckPulse ? 1.35 : 1.0)
-                        Text("All done!")
-                            .font(.sf(.title3, weight: .medium))
-                            .foregroundColor(.primary)
                     }
                     .frame(maxWidth: .infinity, minHeight: 120)
                     .contentShape(Rectangle())
@@ -1600,14 +1602,16 @@ struct SectionView: View {
 
                             if uncompletedCommitments.isEmpty && !completedCommitments.isEmpty && section == .focus {
                                 // All-done state
-                                VStack(spacing: 8) {
-                                    Image(systemName: "checkmark.circle")
-                                        .font(.sf(size: 34))
+                                HStack(spacing: 8) {
+                                    Text("All tasks are completed")
+                                        .font(.sf(.title3, weight: .regular))
+                                        .foregroundColor(.secondary)
+                                    Image("CheckCircle")
+                                        .resizable()
+                                        .scaledToFit()
+                                        .frame(width: 34, height: 34)
                                         .foregroundColor(Color.completedPurple)
                                         .scaleEffect(viewModel.allDoneCheckPulse ? 1.35 : 1.0)
-                                    Text("All done!")
-                                        .font(.sf(.title3, weight: .medium))
-                                        .foregroundColor(.primary)
                                 }
                                 .contentShape(Rectangle())
                                 .onTapGesture {

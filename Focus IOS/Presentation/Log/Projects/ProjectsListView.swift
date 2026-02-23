@@ -294,7 +294,7 @@ struct ProjectsListView: View {
                         .foregroundColor(.white)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 4)
-                        .background(Color.appRed, in: Capsule())
+                        .background(Color.darkGray, in: Capsule())
                 }
                 .buttonStyle(.plain)
             }

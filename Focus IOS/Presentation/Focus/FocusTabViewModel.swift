@@ -1242,6 +1242,152 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
         }
     }
 
+    /// Create a list + items and immediately commit to the current timeframe/date/section
+    func createListWithCommitment(title: String, section: Section, itemTitles: [String], priority: Priority = .low, categoryId: UUID? = nil) async {
+        guard let userId = authService.currentUser?.id else {
+            errorMessage = "No authenticated user"
+            return
+        }
+        guard !title.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+
+        if section == .focus && !canAddTask(to: .focus) {
+            errorMessage = "Focus section is full"
+            return
+        }
+
+        do {
+            // 1. Create the list
+            let newList = FocusTask(
+                userId: userId,
+                title: title,
+                type: .list,
+                isCompleted: false,
+                isInLog: true,
+                priority: priority,
+                categoryId: categoryId
+            )
+            let createdList = try await taskRepository.createTask(newList)
+
+            // 2. Create items as subtasks
+            var createdItems: [FocusTask] = []
+            for itemTitle in itemTitles where !itemTitle.isEmpty {
+                let item = try await taskRepository.createSubtask(
+                    title: itemTitle,
+                    parentTaskId: createdList.id,
+                    userId: userId
+                )
+                createdItems.append(item)
+            }
+
+            // 3. Create commitment
+            let maxSort = commitments
+                .filter { $0.section == section &&
+                    isSameTimeframe($0.commitmentDate, timeframe: selectedTimeframe, selectedDate: selectedDate) }
+                .map { $0.sortOrder }
+                .max() ?? -1
+            let commitment = Commitment(
+                userId: userId,
+                taskId: createdList.id,
+                timeframe: selectedTimeframe,
+                section: section,
+                commitmentDate: selectedDate,
+                sortOrder: maxSort + 1
+            )
+            let createdCommitment = try await commitmentRepository.createCommitment(commitment)
+
+            // 4. Batch view update
+            withAnimation(.easeInOut(duration: 0.3)) {
+                tasksMap[createdList.id] = createdList
+                commitments.append(createdCommitment)
+                if !createdItems.isEmpty {
+                    subtasksMap[createdList.id] = createdItems
+                    for item in createdItems {
+                        tasksMap[item.id] = item
+                    }
+                }
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    /// Create a project + tasks + subtasks and immediately commit to the current timeframe/date/section
+    func createProjectWithCommitment(title: String, section: Section, draftTasks: [DraftTask], priority: Priority = .low, categoryId: UUID? = nil) async {
+        guard let userId = authService.currentUser?.id else {
+            errorMessage = "No authenticated user"
+            return
+        }
+        guard !title.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+
+        if section == .focus && !canAddTask(to: .focus) {
+            errorMessage = "Focus section is full"
+            return
+        }
+
+        do {
+            // 1. Create the project
+            let newProject = FocusTask(
+                userId: userId,
+                title: title,
+                type: .project,
+                isCompleted: false,
+                isInLog: true,
+                priority: priority,
+                categoryId: categoryId
+            )
+            let createdProject = try await taskRepository.createTask(newProject)
+
+            // 2. Create tasks under the project
+            for (index, draft) in draftTasks.enumerated() {
+                let taskTitle = draft.title.trimmingCharacters(in: .whitespaces)
+                guard !taskTitle.isEmpty else { continue }
+
+                let projectTask = try await taskRepository.createProjectTask(
+                    title: taskTitle,
+                    projectId: createdProject.id,
+                    userId: userId,
+                    sortOrder: index
+                )
+
+                // Create subtasks for each task
+                for subtaskDraft in draft.subtasks {
+                    let subtaskTitle = subtaskDraft.title.trimmingCharacters(in: .whitespaces)
+                    guard !subtaskTitle.isEmpty else { continue }
+                    _ = try await taskRepository.createSubtask(
+                        title: subtaskTitle,
+                        parentTaskId: projectTask.id,
+                        userId: userId,
+                        projectId: createdProject.id
+                    )
+                }
+            }
+
+            // 3. Create commitment
+            let maxSort = commitments
+                .filter { $0.section == section &&
+                    isSameTimeframe($0.commitmentDate, timeframe: selectedTimeframe, selectedDate: selectedDate) }
+                .map { $0.sortOrder }
+                .max() ?? -1
+            let commitment = Commitment(
+                userId: userId,
+                taskId: createdProject.id,
+                timeframe: selectedTimeframe,
+                section: section,
+                commitmentDate: selectedDate,
+                sortOrder: maxSort + 1
+            )
+            let createdCommitment = try await commitmentRepository.createCommitment(commitment)
+
+            // 4. Batch view update
+            withAnimation(.easeInOut(duration: 0.3)) {
+                tasksMap[createdProject.id] = createdProject
+                commitments.append(createdCommitment)
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
     /// Toggle task completion with cascade to subtasks
     func toggleTaskCompletion(_ task: FocusTask) async {
         do {

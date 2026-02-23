@@ -240,6 +240,7 @@
       }
     },
     "Add new task" : {
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {

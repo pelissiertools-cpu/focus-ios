@@ -23,6 +23,10 @@ struct DrawerTopPreference: PreferenceKey {
     }
 }
 
+private enum FocusAddBarFocus: Hashable {
+    case task, list, project
+}
+
 struct FocusTabView: View {
     @Binding var selectedTab: Int
     @EnvironmentObject var authService: AuthService
@@ -33,16 +37,38 @@ struct FocusTabView: View {
     @State private var showScheduleDrawer = false
     @State private var showSettings = false
 
+    // Unified add bar mode
+    @State private var addBarMode: TaskType = .task
+
+    // Unified title focus (single @FocusState = atomic transfer = no keyboard flicker)
+    @FocusState private var addBarTitleFocus: FocusAddBarFocus?
+
     // Compact add-task bar state
     @State private var addTaskTitle = ""
     @State private var addTaskSubtasks: [DraftSubtaskEntry] = []
     @State private var addTaskPriority: Priority = .low
     @State private var addTaskCategoryId: UUID? = nil
     @State private var addTaskCategories: [Category] = []
-    @FocusState private var isAddTaskFieldFocused: Bool
+    @State private var addTaskOptionsExpanded = false
     @FocusState private var focusedSubtaskId: UUID?
     @State private var isGeneratingBreakdown = false
     @State private var hasGeneratedBreakdown = false
+
+    // Compact add-list bar state
+    @State private var addListTitle = ""
+    @State private var addListItems: [DraftSubtaskEntry] = []
+    @State private var addListPriority: Priority = .low
+    @State private var addListCategoryId: UUID? = nil
+    @State private var addListOptionsExpanded = false
+    @FocusState private var focusedListItemId: UUID?
+
+    // Compact add-project bar state
+    @State private var addProjectTitle = ""
+    @State private var addProjectDraftTasks: [DraftTask] = []
+    @State private var addProjectPriority: Priority = .low
+    @State private var addProjectCategoryId: UUID? = nil
+    @State private var addProjectOptionsExpanded = false
+    @FocusState private var focusedProjectTaskId: UUID?
 
     var body: some View {
         NavigationStack {
@@ -240,11 +266,28 @@ struct FocusTabView: View {
                     if viewModel.addTaskSection == .extra && viewModel.isSectionCollapsed(.extra) {
                         viewModel.isExtraSectionCollapsed = false
                     }
-                    isAddTaskFieldFocused = true
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        switch addBarMode {
+                        case .task: addBarTitleFocus = .task
+                        case .list: addBarTitleFocus = .list
+                        case .project: addBarTitleFocus = .project
+                        }
+                    }
+                }
+            }
+            .onChange(of: addBarMode) { _, newMode in
+                guard viewModel.showAddTaskSheet else { return }
+                focusedSubtaskId = nil
+                focusedListItemId = nil
+                focusedProjectTaskId = nil
+                switch newMode {
+                case .task: addBarTitleFocus = .task
+                case .list: addBarTitleFocus = .list
+                case .project: addBarTitleFocus = .project
                 }
             }
 
-                // Tap-to-dismiss overlay when add task bar is active
+                // Add-item scrim + bar (unified)
                 if viewModel.showAddTaskSheet {
                     // Scrim — visual only, no tap handling
                     Color.black.opacity(0.15)
@@ -253,25 +296,30 @@ struct FocusTabView: View {
                         .transition(.opacity)
                         .zIndex(50)
 
-                    // Tap-to-dismiss + bar
+                    // All tap handling in one layer
                     VStack(spacing: 0) {
+                        // Tap-to-dismiss area
                         Color.clear
                             .contentShape(Rectangle())
                             .onTapGesture {
-                                // Dismiss keyboard via UIKit so it fires outside
-                                // the SwiftUI animation context (no layout shift)
                                 UIApplication.shared.sendAction(
                                     #selector(UIResponder.resignFirstResponder),
                                     to: nil, from: nil, for: nil
                                 )
                                 withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
-                                    dismissAddTask()
+                                    dismissActiveAddBar()
                                 }
                             }
 
-                        addTaskBarOverlay
-                            .padding(.vertical, 8)
-                            .contentShape(Rectangle())
+                        // Floating mode selector + add bar
+                        VStack(spacing: 0) {
+                            focusAddBarModeSelector
+                                .padding(.vertical, 12)
+
+                            focusActiveAddBar
+                                .padding(.bottom, 8)
+                        }
+                        .contentShape(Rectangle())
                     }
                     .transition(.move(edge: .bottom).combined(with: .opacity))
                     .zIndex(100)
@@ -469,15 +517,71 @@ struct FocusTabView: View {
         }
     }
 
+    // MARK: - Add Bar Mode Selector
+
+    private var focusAddBarModeSelector: some View {
+        HStack(spacing: 12) {
+            focusAddBarModeCircle(mode: .task, icon: "checklist")
+            focusAddBarModeCircle(mode: .list, icon: "list.bullet")
+            focusAddBarModeCircle(mode: .project, icon: "folder")
+            Spacer()
+        }
+        .padding(.horizontal)
+    }
+
+    private func focusAddBarModeCircle(mode: TaskType, icon: String) -> some View {
+        let isActive = addBarMode == mode
+        return Button {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                addBarMode = mode
+            }
+        } label: {
+            Image(systemName: isActive && mode == .project ? "folder.fill" : icon)
+                .font(.sf(.body, weight: .medium))
+                .foregroundColor(isActive ? .white : .primary)
+                .frame(width: 36, height: 36)
+                .glassEffect(
+                    isActive
+                        ? .regular.tint(.black).interactive()
+                        : .regular.interactive(),
+                    in: .circle
+                )
+        }
+        .buttonStyle(.plain)
+    }
+
+    @ViewBuilder
+    private var focusActiveAddBar: some View {
+        switch addBarMode {
+        case .task: focusAddTaskBar
+        case .list: focusAddListBar
+        case .project: focusAddProjectBar
+        }
+    }
+
+    // MARK: - Pre-computed title emptiness
+
+    private var isAddTaskTitleEmpty: Bool {
+        addTaskTitle.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+
+    private var isAddListTitleEmpty: Bool {
+        addListTitle.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+
+    private var isAddProjectTitleEmpty: Bool {
+        addProjectTitle.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+
     // MARK: - Compact Add Task Bar
 
-    private var addTaskBarOverlay: some View {
+    private var focusAddTaskBar: some View {
         VStack(spacing: 0) {
             // Task title row
-            TextField("Add new task", text: $addTaskTitle)
+            TextField("Create a new task", text: $addTaskTitle)
                 .font(.sf(.title3))
                 .textFieldStyle(.plain)
-                .focused($isAddTaskFieldFocused)
+                .focused($addBarTitleFocus, equals: .task)
                 .submitLabel(.return)
                 .onSubmit {
                     saveCompactTask()
@@ -493,8 +597,9 @@ struct FocusTabView: View {
                 onAddNew: { addNewSubtask() }
             )
 
-            // Sub-task row: [+ Sub-task] ... [AI Breakdown]
+            // Sub-task row: [+ Sub-task] [...] Spacer [AI Breakdown] [Checkmark]
             HStack(spacing: 8) {
+                // Add sub-task button
                 Button {
                     addNewSubtask()
                 } label: {
@@ -506,14 +611,30 @@ struct FocusTabView: View {
                     }
                     .foregroundColor(.white)
                     .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .glassEffect(.regular.tint(.black).interactive(), in: .capsule)
+                    .padding(.vertical, 8)
+                    .background(Color.black, in: Capsule())
+                }
+                .buttonStyle(.plain)
+
+                // More options pill
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        addTaskOptionsExpanded.toggle()
+                    }
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .font(.sf(.caption, weight: .bold))
+                        .foregroundColor(.black)
+                        .frame(minHeight: UIFont.preferredFont(forTextStyle: .caption1).lineHeight)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 8)
+                        .background(Color.white, in: Capsule())
                 }
                 .buttonStyle(.plain)
 
                 Spacer()
 
-                // AI Breakdown (compact, matching Log view style)
+                // AI Breakdown
                 Button {
                     generateBreakdown()
                 } label: {
@@ -524,133 +645,533 @@ struct FocusTabView: View {
                         } else {
                             Image(systemName: hasGeneratedBreakdown ? "arrow.clockwise" : "sparkles")
                                 .font(.sf(.subheadline, weight: .semibold))
+                                .foregroundColor(!isAddTaskTitleEmpty ? .blue : .primary)
                         }
                         Text(LocalizedStringKey(hasGeneratedBreakdown ? "Regenerate" : "Suggest Breakdown"))
                             .font(.sf(.caption, weight: .medium))
+                            .foregroundColor(.primary)
                     }
-                    .foregroundColor(.primary)
                     .padding(.horizontal, 14)
                     .padding(.vertical, 8)
-                    .background {
-                        if !addTaskTitle.trimmingCharacters(in: .whitespaces).isEmpty {
-                            Capsule()
-                                .stroke(
-                                    AngularGradient(
-                                        colors: [
-                                            Color.commitGradientDark,
-                                            Color.commitGradientLight,
-                                            Color.commitGradientDark,
-                                        ],
-                                        center: .center
-                                    ),
-                                    lineWidth: 2.5
-                                )
-                                .blur(radius: 6)
-                        }
-                    }
-                    .overlay {
-                        Capsule()
-                            .stroke(.white.opacity(0.5), lineWidth: 1.5)
-                    }
-                    .glassEffect(.regular.interactive(), in: .capsule)
+                    .background(
+                        !isAddTaskTitleEmpty ? Color.white : Color.clear,
+                        in: Capsule()
+                    )
                 }
                 .buttonStyle(.plain)
-                .disabled(addTaskTitle.trimmingCharacters(in: .whitespaces).isEmpty || isGeneratingBreakdown)
-            }
-            .padding(.horizontal, 14)
-            .padding(.bottom, 4)
+                .disabled(isAddTaskTitleEmpty || isGeneratingBreakdown)
 
-            // Bottom row: [Priority] [Category] ... [Checkmark]
-            HStack(spacing: 8) {
-                // Priority pill
-                Menu {
-                    ForEach(Priority.allCases, id: \.self) { priority in
-                        Button {
-                            addTaskPriority = priority
-                        } label: {
-                            if addTaskPriority == priority {
-                                Label(priority.displayName, systemImage: "checkmark")
-                            } else {
-                                Text(priority.displayName)
-                            }
-                        }
-                    }
-                } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: "flag.fill")
-                            .font(.sf(.caption))
-                            .foregroundColor(addTaskPriority.dotColor)
-                        Text(addTaskPriority.displayName)
-                            .font(.sf(.caption))
-                    }
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .background(addTaskPriority != .low ? addTaskPriority.dotColor : Color.black, in: Capsule())
-                }
-
-                // Category pill
-                Menu {
-                    Button {
-                        addTaskCategoryId = nil
-                    } label: {
-                        if addTaskCategoryId == nil {
-                            Label("None", systemImage: "checkmark")
-                        } else {
-                            Text("None")
-                        }
-                    }
-                    ForEach(addTaskCategories) { category in
-                        Button {
-                            addTaskCategoryId = category.id
-                        } label: {
-                            if addTaskCategoryId == category.id {
-                                Label(category.name, systemImage: "checkmark")
-                            } else {
-                                Text(category.name)
-                            }
-                        }
-                    }
-                } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: "folder")
-                            .font(.sf(.caption))
-                        Text(LocalizedStringKey(addTaskCategoryPillLabel))
-                            .font(.sf(.caption))
-                    }
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .background(addTaskCategoryId != nil ? Color.appRed : Color.black, in: Capsule())
-                }
-
-                Spacer()
-
-                // Submit button
+                // Submit button (checkmark)
                 Button {
                     saveCompactTask()
                 } label: {
                     Image(systemName: "checkmark")
                         .font(.sf(.body, weight: .semibold))
-                        .foregroundColor(addTaskTitle.trimmingCharacters(in: .whitespaces).isEmpty ? .secondary : .white)
+                        .foregroundColor(isAddTaskTitleEmpty ? .secondary : .white)
                         .frame(width: 36, height: 36)
                         .background(
-                            addTaskTitle.trimmingCharacters(in: .whitespaces).isEmpty
-                                ? Color(.systemGray4)
-                                : Color.appRed,
+                            isAddTaskTitleEmpty ? Color(.systemGray4) : Color.appRed,
                             in: Circle()
                         )
                 }
                 .buttonStyle(.plain)
-                .disabled(addTaskTitle.trimmingCharacters(in: .whitespaces).isEmpty)
+                .disabled(isAddTaskTitleEmpty)
             }
             .padding(.horizontal, 14)
-            .padding(.bottom, 20)
+            .padding(.bottom, 4)
+
+            // Bottom row: [Category] [Priority] — toggled by ellipsis
+            if addTaskOptionsExpanded {
+                HStack(spacing: 8) {
+                    // Category pill
+                    Menu {
+                        Button {
+                            addTaskCategoryId = nil
+                        } label: {
+                            if addTaskCategoryId == nil {
+                                Label("None", systemImage: "checkmark")
+                            } else {
+                                Text("None")
+                            }
+                        }
+                        ForEach(addTaskCategories) { category in
+                            Button {
+                                addTaskCategoryId = category.id
+                            } label: {
+                                if addTaskCategoryId == category.id {
+                                    Label(category.name, systemImage: "checkmark")
+                                } else {
+                                    Text(category.name)
+                                }
+                            }
+                        }
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "folder")
+                                .font(.sf(.caption))
+                            Text(LocalizedStringKey(addTaskCategoryPillLabel))
+                                .font(.sf(.caption))
+                        }
+                        .foregroundColor(.black)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 8)
+                        .background(Color.white, in: Capsule())
+                    }
+
+                    // Priority pill
+                    Menu {
+                        ForEach(Priority.allCases, id: \.self) { priority in
+                            Button {
+                                addTaskPriority = priority
+                            } label: {
+                                if addTaskPriority == priority {
+                                    Label(priority.displayName, systemImage: "checkmark")
+                                } else {
+                                    Text(priority.displayName)
+                                }
+                            }
+                        }
+                    } label: {
+                        HStack(spacing: 4) {
+                            Circle()
+                                .fill(addTaskPriority.dotColor)
+                                .frame(width: 8, height: 8)
+                            Text(addTaskPriority.displayName)
+                                .font(.sf(.caption))
+                        }
+                        .foregroundColor(.black)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 8)
+                        .background(Color.white, in: Capsule())
+                    }
+
+                    Spacer()
+                }
+                .padding(.horizontal, 14)
+                .padding(.top, 6)
+            }
+
+            Spacer().frame(height: 20)
         }
         .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 20))
         .padding(.horizontal)
         .onAppear { fetchCategories() }
     }
+
+    // MARK: - Compact Add List Bar
+
+    private var focusAddListBar: some View {
+        VStack(spacing: 0) {
+            // List title row
+            TextField("Create a new list", text: $addListTitle)
+                .font(.sf(.title3))
+                .textFieldStyle(.plain)
+                .focused($addBarTitleFocus, equals: .list)
+                .submitLabel(.return)
+                .onSubmit {
+                    saveFocusList()
+                }
+                .padding(.horizontal, 14)
+                .padding(.top, 20)
+                .padding(.bottom, 10)
+
+            // Items (expand when present)
+            DraftSubtaskListEditor(
+                subtasks: $addListItems,
+                focusedSubtaskId: $focusedListItemId,
+                onAddNew: { addNewListItem() },
+                placeholder: "Item"
+            )
+
+            // Row 1: [Item] [...] Spacer [Checkmark]
+            HStack(spacing: 8) {
+                Button {
+                    addNewListItem()
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "plus")
+                            .font(.sf(.caption))
+                        Text("Item")
+                            .font(.sf(.caption))
+                    }
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 8)
+                    .background(Color.black, in: Capsule())
+                }
+                .buttonStyle(.plain)
+
+                // More options pill
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        addListOptionsExpanded.toggle()
+                    }
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .font(.sf(.caption, weight: .bold))
+                        .foregroundColor(.black)
+                        .frame(minHeight: UIFont.preferredFont(forTextStyle: .caption1).lineHeight)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 8)
+                        .background(Color.white, in: Capsule())
+                }
+                .buttonStyle(.plain)
+
+                Spacer()
+
+                // Submit button (checkmark)
+                Button {
+                    saveFocusList()
+                } label: {
+                    Image(systemName: "checkmark")
+                        .font(.sf(.body, weight: .semibold))
+                        .foregroundColor(isAddListTitleEmpty ? .secondary : .white)
+                        .frame(width: 36, height: 36)
+                        .background(
+                            isAddListTitleEmpty ? Color(.systemGray4) : Color.appRed,
+                            in: Circle()
+                        )
+                }
+                .buttonStyle(.plain)
+                .disabled(isAddListTitleEmpty)
+            }
+            .padding(.horizontal, 14)
+            .padding(.bottom, 4)
+
+            // Row 2: [Category] [Priority] — toggled by ellipsis
+            if addListOptionsExpanded {
+                HStack(spacing: 8) {
+                    // Category pill
+                    Menu {
+                        Button {
+                            addListCategoryId = nil
+                        } label: {
+                            if addListCategoryId == nil {
+                                Label("None", systemImage: "checkmark")
+                            } else {
+                                Text("None")
+                            }
+                        }
+                        ForEach(addTaskCategories) { category in
+                            Button {
+                                addListCategoryId = category.id
+                            } label: {
+                                if addListCategoryId == category.id {
+                                    Label(category.name, systemImage: "checkmark")
+                                } else {
+                                    Text(category.name)
+                                }
+                            }
+                        }
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "folder")
+                                .font(.sf(.caption))
+                            Text(LocalizedStringKey(addListCategoryPillLabel))
+                                .font(.sf(.caption))
+                        }
+                        .foregroundColor(.black)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 8)
+                        .background(Color.white, in: Capsule())
+                    }
+
+                    // Priority pill
+                    Menu {
+                        ForEach(Priority.allCases, id: \.self) { priority in
+                            Button {
+                                addListPriority = priority
+                            } label: {
+                                if addListPriority == priority {
+                                    Label(priority.displayName, systemImage: "checkmark")
+                                } else {
+                                    Text(priority.displayName)
+                                }
+                            }
+                        }
+                    } label: {
+                        HStack(spacing: 4) {
+                            Circle()
+                                .fill(addListPriority.dotColor)
+                                .frame(width: 8, height: 8)
+                            Text(addListPriority.displayName)
+                                .font(.sf(.caption))
+                        }
+                        .foregroundColor(.black)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 8)
+                        .background(Color.white, in: Capsule())
+                    }
+
+                    Spacer()
+                }
+                .padding(.horizontal, 14)
+                .padding(.top, 6)
+            }
+
+            Spacer().frame(height: 20)
+        }
+        .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 20))
+        .padding(.horizontal)
+        .onAppear { fetchCategories() }
+    }
+
+    // MARK: - Compact Add Project Bar
+
+    private var focusAddProjectBar: some View {
+        VStack(spacing: 0) {
+            // Project title row
+            TextField("Create a new project", text: $addProjectTitle)
+                .font(.sf(.title3))
+                .textFieldStyle(.plain)
+                .focused($addBarTitleFocus, equals: .project)
+                .submitLabel(.return)
+                .onSubmit {
+                    saveFocusProject()
+                }
+                .padding(.horizontal, 14)
+                .padding(.top, 20)
+                .padding(.bottom, 10)
+
+            // Tasks + subtasks area
+            if !addProjectDraftTasks.isEmpty {
+                Divider()
+                    .padding(.horizontal, 14)
+
+                VStack(alignment: .leading, spacing: 6) {
+                    ForEach(addProjectDraftTasks) { task in
+                        focusProjectTaskDraftRow(task: task)
+                    }
+                }
+                .padding(.horizontal, 14)
+                .padding(.top, 8)
+                .padding(.bottom, 6)
+            }
+
+            // Row 1: [Task] [...] Spacer [Checkmark]
+            HStack(spacing: 8) {
+                Button {
+                    addNewProjectTask()
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "plus")
+                            .font(.sf(.caption))
+                        Text("Task")
+                            .font(.sf(.caption))
+                    }
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 8)
+                    .background(Color.black, in: Capsule())
+                }
+                .buttonStyle(.plain)
+
+                // More options pill
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        addProjectOptionsExpanded.toggle()
+                    }
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .font(.sf(.caption, weight: .bold))
+                        .foregroundColor(.black)
+                        .frame(minHeight: UIFont.preferredFont(forTextStyle: .caption1).lineHeight)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 8)
+                        .background(Color.white, in: Capsule())
+                }
+                .buttonStyle(.plain)
+
+                Spacer()
+
+                // Submit button (checkmark)
+                Button {
+                    saveFocusProject()
+                } label: {
+                    Image(systemName: "checkmark")
+                        .font(.sf(.body, weight: .semibold))
+                        .foregroundColor(isAddProjectTitleEmpty ? .secondary : .white)
+                        .frame(width: 36, height: 36)
+                        .background(
+                            isAddProjectTitleEmpty ? Color(.systemGray4) : Color.appRed,
+                            in: Circle()
+                        )
+                }
+                .buttonStyle(.plain)
+                .disabled(isAddProjectTitleEmpty)
+            }
+            .padding(.horizontal, 14)
+            .padding(.bottom, 4)
+
+            // Row 2: [Category] [Priority] — toggled by ellipsis
+            if addProjectOptionsExpanded {
+                HStack(spacing: 8) {
+                    // Category pill
+                    Menu {
+                        Button {
+                            addProjectCategoryId = nil
+                        } label: {
+                            if addProjectCategoryId == nil {
+                                Label("None", systemImage: "checkmark")
+                            } else {
+                                Text("None")
+                            }
+                        }
+                        ForEach(addTaskCategories) { category in
+                            Button {
+                                addProjectCategoryId = category.id
+                            } label: {
+                                if addProjectCategoryId == category.id {
+                                    Label(category.name, systemImage: "checkmark")
+                                } else {
+                                    Text(category.name)
+                                }
+                            }
+                        }
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "folder")
+                                .font(.sf(.caption))
+                            Text(LocalizedStringKey(addProjectCategoryPillLabel))
+                                .font(.sf(.caption))
+                        }
+                        .foregroundColor(.black)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 8)
+                        .background(Color.white, in: Capsule())
+                    }
+
+                    // Priority pill
+                    Menu {
+                        ForEach(Priority.allCases, id: \.self) { priority in
+                            Button {
+                                addProjectPriority = priority
+                            } label: {
+                                if addProjectPriority == priority {
+                                    Label(priority.displayName, systemImage: "checkmark")
+                                } else {
+                                    Text(priority.displayName)
+                                }
+                            }
+                        }
+                    } label: {
+                        HStack(spacing: 4) {
+                            Circle()
+                                .fill(addProjectPriority.dotColor)
+                                .frame(width: 8, height: 8)
+                            Text(addProjectPriority.displayName)
+                                .font(.sf(.caption))
+                        }
+                        .foregroundColor(.black)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 8)
+                        .background(Color.white, in: Capsule())
+                    }
+
+                    Spacer()
+                }
+                .padding(.horizontal, 14)
+                .padding(.top, 6)
+            }
+
+            Spacer().frame(height: 20)
+        }
+        .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 20))
+        .padding(.horizontal)
+        .onAppear { fetchCategories() }
+    }
+
+    // MARK: - Project Task Draft Row
+
+    @ViewBuilder
+    private func focusProjectTaskDraftRow(task: DraftTask) -> some View {
+        // Task row
+        HStack(spacing: 8) {
+            Image(systemName: "circle")
+                .font(.sf(.caption2))
+                .foregroundColor(.secondary.opacity(0.5))
+
+            TextField("Task", text: focusProjectTaskBinding(for: task.id), axis: .vertical)
+                .font(.sf(.title3))
+                .textFieldStyle(.plain)
+                .focused($focusedProjectTaskId, equals: task.id)
+                .lineLimit(1...3)
+                .onChange(of: focusProjectTaskBinding(for: task.id).wrappedValue) { _, newValue in
+                    if newValue.contains("\n") {
+                        if let idx = addProjectDraftTasks.firstIndex(where: { $0.id == task.id }) {
+                            addProjectDraftTasks[idx].title = newValue.replacingOccurrences(of: "\n", with: "")
+                        }
+                        addNewProjectSubtask(toTask: task.id)
+                    }
+                }
+
+            Button {
+                removeProjectTask(id: task.id)
+            } label: {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.sf(.caption))
+                    .foregroundColor(.secondary)
+            }
+            .buttonStyle(.plain)
+        }
+
+        // Subtask rows
+        ForEach(task.subtasks) { subtask in
+            HStack(spacing: 8) {
+                Image(systemName: "circle")
+                    .font(.sf(.caption2))
+                    .foregroundColor(.secondary.opacity(0.5))
+
+                TextField("Sub-task", text: focusProjectSubtaskBinding(forSubtask: subtask.id, inTask: task.id), axis: .vertical)
+                    .font(.sf(.body))
+                    .textFieldStyle(.plain)
+                    .focused($focusedProjectTaskId, equals: subtask.id)
+                    .lineLimit(1...3)
+                    .onChange(of: focusProjectSubtaskBinding(forSubtask: subtask.id, inTask: task.id).wrappedValue) { _, newValue in
+                        if newValue.contains("\n") {
+                            if let tIdx = addProjectDraftTasks.firstIndex(where: { $0.id == task.id }),
+                               let sIdx = addProjectDraftTasks[tIdx].subtasks.firstIndex(where: { $0.id == subtask.id }) {
+                                addProjectDraftTasks[tIdx].subtasks[sIdx].title = newValue.replacingOccurrences(of: "\n", with: "")
+                            }
+                            addNewProjectSubtask(toTask: task.id)
+                        }
+                    }
+
+                Button {
+                    removeProjectSubtask(id: subtask.id, fromTask: task.id)
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.sf(.caption))
+                        .foregroundColor(.secondary)
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.leading, 28)
+            .padding(.trailing, 8)
+            .padding(.vertical, 6)
+        }
+        .padding(.top, 12)
+
+        // "+ Sub-task" button
+        Button {
+            addNewProjectSubtask(toTask: task.id)
+        } label: {
+            HStack(spacing: 4) {
+                Image(systemName: "plus")
+                    .font(.sf(.subheadline))
+                Text("Sub-task")
+                    .font(.sf(.subheadline))
+            }
+            .foregroundColor(.secondary)
+            .padding(.vertical, 4)
+        }
+        .buttonStyle(.plain)
+        .padding(.leading, 28)
+        .padding(.top, 8)
+        .padding(.bottom, 6)
+    }
+
+    // MARK: - Task Helpers
 
     private func saveCompactTask() {
         let title = addTaskTitle.trimmingCharacters(in: .whitespaces)
@@ -663,11 +1184,10 @@ struct FocusTabView: View {
         let priority = addTaskPriority
         let categoryId = addTaskCategoryId
 
-        // Haptic feedback
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
 
         // Transfer focus to title BEFORE removing subtask fields to prevent keyboard bounce
-        isAddTaskFieldFocused = true
+        addBarTitleFocus = .task
         focusedSubtaskId = nil
 
         // Clear fields immediately for rapid entry
@@ -675,6 +1195,7 @@ struct FocusTabView: View {
         addTaskSubtasks = []
         addTaskPriority = .low
         addTaskCategoryId = nil
+        addTaskOptionsExpanded = false
         hasGeneratedBreakdown = false
 
         _Concurrency.Task { @MainActor in
@@ -683,9 +1204,7 @@ struct FocusTabView: View {
     }
 
     private func addNewSubtask() {
-        // Hold focus on title to prevent keyboard drop during transition
-        isAddTaskFieldFocused = true
-
+        addBarTitleFocus = .task
         let newEntry = DraftSubtaskEntry()
         withAnimation(.easeInOut(duration: 0.15)) {
             addTaskSubtasks.append(newEntry)
@@ -699,7 +1218,6 @@ struct FocusTabView: View {
         let title = addTaskTitle.trimmingCharacters(in: .whitespaces)
         guard !title.isEmpty else { return }
 
-        // Capture all existing subtask titles so AI avoids duplicating them
         let existingTitles = addTaskSubtasks
             .map { $0.title.trimmingCharacters(in: .whitespaces) }
             .filter { !$0.isEmpty }
@@ -714,7 +1232,6 @@ struct FocusTabView: View {
                     existingSubtasks: existingTitles.isEmpty ? nil : existingTitles
                 )
                 withAnimation(.easeInOut(duration: 0.2)) {
-                    // Keep manually-added subtasks, replace AI-generated ones
                     let manualSubtasks = addTaskSubtasks.filter { !$0.isAISuggested }
                     addTaskSubtasks = manualSubtasks + suggestions.map {
                         DraftSubtaskEntry(title: $0, isAISuggested: true)
@@ -722,7 +1239,7 @@ struct FocusTabView: View {
                 }
                 hasGeneratedBreakdown = true
             } catch {
-                // Silently fail — user can tap again or add subtasks manually
+                // Silently fail
             }
             isGeneratingBreakdown = false
         }
@@ -754,7 +1271,185 @@ struct FocusTabView: View {
         addTaskSubtasks = []
         addTaskPriority = .low
         addTaskCategoryId = nil
+        addTaskOptionsExpanded = false
         hasGeneratedBreakdown = false
+        addBarTitleFocus = nil
+        focusedSubtaskId = nil
+    }
+
+    // MARK: - List Helpers
+
+    private var addListCategoryPillLabel: String {
+        if let categoryId = addListCategoryId,
+           let category = addTaskCategories.first(where: { $0.id == categoryId }) {
+            return category.name
+        }
+        return "Category"
+    }
+
+    private func saveFocusList() {
+        let title = addListTitle.trimmingCharacters(in: .whitespaces)
+        guard !title.isEmpty else { return }
+
+        let itemTitles = addListItems
+            .map { $0.title.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+        let section = viewModel.addTaskSection
+        let priority = addListPriority
+        let categoryId = addListCategoryId
+
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+
+        addBarTitleFocus = .list
+        focusedListItemId = nil
+
+        addListTitle = ""
+        addListItems = []
+        addListPriority = .low
+        addListCategoryId = nil
+        addListOptionsExpanded = false
+
+        _Concurrency.Task { @MainActor in
+            await viewModel.createListWithCommitment(title: title, section: section, itemTitles: itemTitles, priority: priority, categoryId: categoryId)
+        }
+    }
+
+    private func addNewListItem() {
+        addBarTitleFocus = .list
+        let newEntry = DraftSubtaskEntry()
+        withAnimation(.easeInOut(duration: 0.15)) {
+            addListItems.append(newEntry)
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            focusedListItemId = newEntry.id
+        }
+    }
+
+    private func dismissAddList() {
+        addListTitle = ""
+        addListItems = []
+        addListPriority = .low
+        addListCategoryId = nil
+        addListOptionsExpanded = false
+        addBarTitleFocus = nil
+        focusedListItemId = nil
+    }
+
+    // MARK: - Project Helpers
+
+    private var addProjectCategoryPillLabel: String {
+        if let categoryId = addProjectCategoryId,
+           let category = addTaskCategories.first(where: { $0.id == categoryId }) {
+            return category.name
+        }
+        return "Category"
+    }
+
+    private func saveFocusProject() {
+        let title = addProjectTitle.trimmingCharacters(in: .whitespaces)
+        guard !title.isEmpty else { return }
+
+        let draftTasks = addProjectDraftTasks.filter {
+            !$0.title.trimmingCharacters(in: .whitespaces).isEmpty
+        }
+        let section = viewModel.addTaskSection
+        let priority = addProjectPriority
+        let categoryId = addProjectCategoryId
+
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+
+        addBarTitleFocus = .project
+        focusedProjectTaskId = nil
+
+        addProjectTitle = ""
+        addProjectDraftTasks = []
+        addProjectPriority = .low
+        addProjectCategoryId = nil
+        addProjectOptionsExpanded = false
+
+        _Concurrency.Task { @MainActor in
+            await viewModel.createProjectWithCommitment(title: title, section: section, draftTasks: draftTasks, priority: priority, categoryId: categoryId)
+        }
+    }
+
+    private func focusProjectTaskBinding(for taskId: UUID) -> Binding<String> {
+        Binding(
+            get: { addProjectDraftTasks.first(where: { $0.id == taskId })?.title ?? "" },
+            set: { newValue in
+                if let idx = addProjectDraftTasks.firstIndex(where: { $0.id == taskId }) {
+                    addProjectDraftTasks[idx].title = newValue
+                }
+            }
+        )
+    }
+
+    private func focusProjectSubtaskBinding(forSubtask subtaskId: UUID, inTask taskId: UUID) -> Binding<String> {
+        Binding(
+            get: {
+                guard let tIdx = addProjectDraftTasks.firstIndex(where: { $0.id == taskId }),
+                      let s = addProjectDraftTasks[tIdx].subtasks.first(where: { $0.id == subtaskId })
+                else { return "" }
+                return s.title
+            },
+            set: { newValue in
+                if let tIdx = addProjectDraftTasks.firstIndex(where: { $0.id == taskId }),
+                   let sIdx = addProjectDraftTasks[tIdx].subtasks.firstIndex(where: { $0.id == subtaskId }) {
+                    addProjectDraftTasks[tIdx].subtasks[sIdx].title = newValue
+                }
+            }
+        )
+    }
+
+    private func addNewProjectTask() {
+        let newTask = DraftTask()
+        withAnimation(.easeInOut(duration: 0.15)) {
+            addProjectDraftTasks.append(newTask)
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            focusedProjectTaskId = newTask.id
+        }
+    }
+
+    private func addNewProjectSubtask(toTask taskId: UUID) {
+        guard let tIdx = addProjectDraftTasks.firstIndex(where: { $0.id == taskId }) else { return }
+        let newSubtask = DraftSubtask(title: "")
+        withAnimation(.easeInOut(duration: 0.15)) {
+            addProjectDraftTasks[tIdx].subtasks.append(newSubtask)
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            focusedProjectTaskId = newSubtask.id
+        }
+    }
+
+    private func removeProjectTask(id: UUID) {
+        withAnimation(.easeInOut(duration: 0.15)) {
+            addProjectDraftTasks.removeAll { $0.id == id }
+        }
+    }
+
+    private func removeProjectSubtask(id: UUID, fromTask taskId: UUID) {
+        guard let tIdx = addProjectDraftTasks.firstIndex(where: { $0.id == taskId }) else { return }
+        withAnimation(.easeInOut(duration: 0.15)) {
+            addProjectDraftTasks[tIdx].subtasks.removeAll { $0.id == id }
+        }
+    }
+
+    private func dismissAddProject() {
+        addProjectTitle = ""
+        addProjectDraftTasks = []
+        addProjectPriority = .low
+        addProjectCategoryId = nil
+        addProjectOptionsExpanded = false
+        addBarTitleFocus = nil
+        focusedProjectTaskId = nil
+    }
+
+    // MARK: - Shared Dismiss
+
+    private func dismissActiveAddBar() {
+        dismissAddTask()
+        dismissAddList()
+        dismissAddProject()
         viewModel.showAddTaskSheet = false
     }
 }

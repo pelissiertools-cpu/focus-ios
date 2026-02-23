@@ -29,6 +29,7 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
     @State private var showNewSubtaskField = false
     @State private var selectedCategoryId: UUID?
     @State private var selectedPriority: Priority
+    @State private var noteText: String
     @State private var showingDeleteConfirmation = false
     @State private var isGeneratingBreakdown = false
     @State private var hasGeneratedBreakdown = false
@@ -59,6 +60,7 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
         self.commitment = commitment
         self.categories = categories
         _taskTitle = State(initialValue: task.title)
+        _noteText = State(initialValue: task.description ?? "")
         _selectedCategoryId = State(initialValue: task.categoryId)
         _selectedPriority = State(initialValue: task.priority)
     }
@@ -72,8 +74,12 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
         return originalCommitDates != currentDates
     }
 
+    private var hasNoteChanges: Bool {
+        noteText != (task.description ?? "")
+    }
+
     private var hasChanges: Bool {
-        taskTitle != task.title || selectedCategoryId != task.categoryId || selectedPriority != task.priority || !pendingDeletions.isEmpty || !newSubtaskTitle.trimmingCharacters(in: .whitespaces).isEmpty || !draftSuggestions.isEmpty || hasCommitChanges
+        taskTitle != task.title || selectedCategoryId != task.categoryId || selectedPriority != task.priority || !pendingDeletions.isEmpty || !newSubtaskTitle.trimmingCharacters(in: .whitespaces).isEmpty || !draftSuggestions.isEmpty || hasCommitChanges || hasNoteChanges
     }
 
     var body: some View {
@@ -82,6 +88,7 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
             leadingButton: .close { dismiss() },
             trailingButton: .check(action: {
                 saveTitle()
+                saveNote()
                 saveCategory()
                 savePriority()
                 addSubtask()
@@ -115,6 +122,9 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                         if contextualActionsVisible {
                             contextualActionsCard
                         }
+
+                        // ─── NOTE ───
+                        noteCard
                     }
                     .padding(.bottom, 20)
                 }
@@ -609,6 +619,41 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
         .padding(.horizontal, 16)
     }
 
+    // MARK: - Note Card
+
+    @ViewBuilder
+    private var noteCard: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text("Note")
+                .font(.sf(.subheadline, weight: .medium))
+                .foregroundColor(.primary)
+                .padding(.horizontal, 14)
+                .padding(.top, 12)
+                .padding(.bottom, 6)
+
+            ZStack(alignment: .topLeading) {
+                if noteText.isEmpty {
+                    Text("Add a note...")
+                        .font(.sf(.body))
+                        .foregroundColor(.secondary.opacity(0.5))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 8)
+                }
+                TextEditor(text: $noteText)
+                    .font(.sf(.body))
+                    .frame(minHeight: 60)
+                    .scrollContentBackground(.hidden)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+            }
+            .padding(.horizontal, 8)
+            .padding(.bottom, 10)
+        }
+        .background(Color(.secondarySystemGroupedBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .padding(.horizontal, 16)
+    }
+
     // MARK: - Inline Commit Card
 
     @ViewBuilder
@@ -746,6 +791,14 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
         guard taskTitle != task.title else { return }
         _Concurrency.Task {
             await viewModel.updateTask(task, newTitle: taskTitle)
+        }
+    }
+
+    private func saveNote() {
+        guard hasNoteChanges else { return }
+        let note = noteText.trimmingCharacters(in: .whitespacesAndNewlines)
+        _Concurrency.Task {
+            await viewModel.updateTaskNote(task, newNote: note.isEmpty ? nil : note)
         }
     }
 

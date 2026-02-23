@@ -367,6 +367,7 @@ struct ListItemRow: View {
     let item: FocusTask
     let listId: UUID
     @ObservedObject var viewModel: ListsViewModel
+    @State private var showDeleteConfirmation = false
 
     var body: some View {
         HStack(spacing: 12) {
@@ -394,6 +395,29 @@ struct ListItemRow: View {
         .contentShape(Rectangle())
         .onTapGesture {
             viewModel.selectedItemForDetails = item
+        }
+        .contextMenu {
+            if !item.isCompleted {
+                ContextMenuItems.editButton {
+                    viewModel.selectedItemForDetails = item
+                }
+
+                Divider()
+
+                ContextMenuItems.deleteButton {
+                    showDeleteConfirmation = true
+                }
+            }
+        }
+        .alert("Delete item?", isPresented: $showDeleteConfirmation) {
+            Button("Cancel", role: .cancel) { }
+            Button("Delete", role: .destructive) {
+                _Concurrency.Task {
+                    await viewModel.deleteItem(item, listId: listId)
+                }
+            }
+        } message: {
+            Text("This will permanently delete this item.")
         }
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
             Button(role: .destructive) {

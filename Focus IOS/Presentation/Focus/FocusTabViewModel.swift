@@ -360,6 +360,32 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
         }
     }
 
+    /// Update a task's note (description)
+    func updateTaskNote(_ task: FocusTask, newNote: String?) async {
+        do {
+            var updatedTask = task
+            updatedTask.description = newNote
+            updatedTask.modifiedDate = Date()
+
+            try await taskRepository.updateTask(updatedTask)
+
+            if tasksMap[task.id] != nil {
+                tasksMap[task.id]?.description = newNote
+                tasksMap[task.id]?.modifiedDate = Date()
+            }
+
+            if let parentId = task.parentTaskId,
+               var subtasks = subtasksMap[parentId],
+               let index = subtasks.firstIndex(where: { $0.id == task.id }) {
+                subtasks[index].description = newNote
+                subtasks[index].modifiedDate = Date()
+                subtasksMap[parentId] = subtasks
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
     /// Delete a task - only hard-deletes if task originated in Focus (not Log)
     func deleteTask(_ task: FocusTask) async {
         // For Log-origin tasks, use removeCommitment() instead

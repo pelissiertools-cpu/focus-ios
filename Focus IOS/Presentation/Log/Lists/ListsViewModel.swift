@@ -786,6 +786,30 @@ class ListsViewModel: ObservableObject, LogFilterable, TaskEditingViewModel {
         }
     }
 
+    func updateTaskNote(_ task: FocusTask, newNote: String?) async {
+        do {
+            var updatedTask = task
+            updatedTask.description = newNote
+            updatedTask.modifiedDate = Date()
+            try await repository.updateTask(updatedTask)
+
+            if let index = lists.firstIndex(where: { $0.id == task.id }) {
+                lists[index].description = newNote
+                lists[index].modifiedDate = Date()
+            }
+
+            if let parentId = task.parentTaskId,
+               var items = itemsMap[parentId],
+               let index = items.firstIndex(where: { $0.id == task.id }) {
+                items[index].description = newNote
+                items[index].modifiedDate = Date()
+                itemsMap[parentId] = items
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
     func deleteTask(_ task: FocusTask) async {
         if task.type == .list {
             await deleteList(task)

@@ -666,6 +666,32 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
         }
     }
 
+    /// Update task note (description)
+    func updateTaskNote(_ task: FocusTask, newNote: String?) async {
+        do {
+            var updatedTask = task
+            updatedTask.description = newNote
+            updatedTask.modifiedDate = Date()
+
+            try await repository.updateTask(updatedTask)
+
+            if let index = tasks.firstIndex(where: { $0.id == task.id }) {
+                tasks[index].description = newNote
+                tasks[index].modifiedDate = Date()
+            }
+
+            if let parentId = task.parentTaskId,
+               var subtasks = subtasksMap[parentId],
+               let index = subtasks.firstIndex(where: { $0.id == task.id }) {
+                subtasks[index].description = newNote
+                subtasks[index].modifiedDate = Date()
+                subtasksMap[parentId] = subtasks
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
     /// Update task title
     func updateTask(_ task: FocusTask, newTitle: String) async {
         guard !newTitle.trimmingCharacters(in: .whitespaces).isEmpty else {

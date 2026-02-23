@@ -13,6 +13,7 @@ struct ListDetailsDrawer: View {
     @State private var selectedPriority: Priority
     @State private var showingNewCategoryAlert = false
     @State private var newCategoryName = ""
+    @State private var noteText: String
     @State private var showingCommitmentSheet = false
     @State private var showingDeleteConfirmation = false
     @EnvironmentObject var focusViewModel: FocusTabViewModel
@@ -23,12 +24,17 @@ struct ListDetailsDrawer: View {
         self.list = list
         self.viewModel = viewModel
         _listTitle = State(initialValue: list.title)
+        _noteText = State(initialValue: list.description ?? "")
         _selectedCategoryId = State(initialValue: list.categoryId)
         _selectedPriority = State(initialValue: list.priority)
     }
 
+    private var hasNoteChanges: Bool {
+        noteText != (list.description ?? "")
+    }
+
     private var hasChanges: Bool {
-        listTitle != list.title || selectedCategoryId != list.categoryId || selectedPriority != list.priority
+        listTitle != list.title || selectedCategoryId != list.categoryId || selectedPriority != list.priority || hasNoteChanges
     }
 
     private var currentCategoryName: String {
@@ -45,6 +51,7 @@ struct ListDetailsDrawer: View {
             leadingButton: .close { dismiss() },
             trailingButton: .check(action: {
                 saveTitle()
+                saveNote()
                 saveCategory()
                 savePriority()
                 dismiss()
@@ -57,6 +64,9 @@ struct ListDetailsDrawer: View {
 
                     // ─── PILL ACTIONS ───
                     actionPillsRow
+
+                    // ─── NOTE ───
+                    noteCard
                 }
                 .padding(.bottom, 20)
             }
@@ -221,6 +231,41 @@ struct ListDetailsDrawer: View {
         .padding(.horizontal, 16)
     }
 
+    // MARK: - Note Card
+
+    @ViewBuilder
+    private var noteCard: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text("Note")
+                .font(.sf(.subheadline, weight: .medium))
+                .foregroundColor(.primary)
+                .padding(.horizontal, 14)
+                .padding(.top, 12)
+                .padding(.bottom, 6)
+
+            ZStack(alignment: .topLeading) {
+                if noteText.isEmpty {
+                    Text("Add a note...")
+                        .font(.sf(.body))
+                        .foregroundColor(.secondary.opacity(0.5))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 8)
+                }
+                TextEditor(text: $noteText)
+                    .font(.sf(.body))
+                    .frame(minHeight: 60)
+                    .scrollContentBackground(.hidden)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+            }
+            .padding(.horizontal, 8)
+            .padding(.bottom, 10)
+        }
+        .background(Color(.secondarySystemGroupedBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .padding(.horizontal, 16)
+    }
+
     // MARK: - Actions
 
     private func saveTitle() {
@@ -228,6 +273,14 @@ struct ListDetailsDrawer: View {
         guard !trimmed.isEmpty, trimmed != list.title else { return }
         _Concurrency.Task {
             await viewModel.updateTask(list, newTitle: trimmed)
+        }
+    }
+
+    private func saveNote() {
+        guard hasNoteChanges else { return }
+        let note = noteText.trimmingCharacters(in: .whitespacesAndNewlines)
+        _Concurrency.Task {
+            await viewModel.updateTaskNote(list, newNote: note.isEmpty ? nil : note)
         }
     }
 

@@ -22,6 +22,7 @@ struct ProjectsListView: View {
     @State private var rowFrames: [UUID: CGRect] = [:]
     @State private var showClearCompletedConfirmation = false
     @State private var showCategoryEditDrawer = false
+    @State private var initialLoadComplete = false
 
     init(viewModel: ProjectsViewModel, searchText: String = "", onSearchTap: (() -> Void)? = nil) {
         self.viewModel = viewModel
@@ -98,11 +99,24 @@ struct ProjectsListView: View {
             .padding(.top, 8)
 
             ZStack {
-                if viewModel.isLoading {
+                if viewModel.isLoading && !initialLoadComplete {
                     ProgressView("Loading projects...")
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else if viewModel.projects.isEmpty {
-                    emptyState
+                    GeometryReader { geometry in
+                        ScrollView {
+                            emptyState
+                                .frame(width: geometry.size.width, height: geometry.size.height)
+                        }
+                        .refreshable {
+                            await withCheckedContinuation { continuation in
+                                _Concurrency.Task { @MainActor in
+                                    await viewModel.fetchProjects()
+                                    continuation.resume()
+                                }
+                            }
+                        }
+                    }
                 } else {
                     projectList
                 }
@@ -157,6 +171,7 @@ struct ProjectsListView: View {
             if viewModel.projects.isEmpty && !viewModel.isLoading {
                 await viewModel.fetchProjects()
             }
+            initialLoadComplete = true
         }
         .onAppear {
             viewModel.searchText = searchText

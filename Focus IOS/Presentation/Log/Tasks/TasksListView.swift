@@ -25,6 +25,7 @@ struct TasksListView: View {
     var onSearchTap: (() -> Void)? = nil
     @State private var isInlineAddFocused = false
     @State private var showCategoryEditDrawer = false
+    @State private var initialLoadComplete = false
 
     init(viewModel: TaskListViewModel, searchText: String = "", onSearchTap: (() -> Void)? = nil) {
         self.viewModel = viewModel
@@ -101,11 +102,26 @@ struct TasksListView: View {
             .padding(.top, 8)
 
             ZStack {
-                if viewModel.isLoading {
+                if viewModel.isLoading && !initialLoadComplete {
                     ProgressView("Loading tasks...")
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else if viewModel.tasks.isEmpty {
-                    emptyState
+                    GeometryReader { geometry in
+                        ScrollView {
+                            emptyState
+                                .frame(width: geometry.size.width, height: geometry.size.height)
+                        }
+                        .refreshable {
+                            await withCheckedContinuation { continuation in
+                                _Concurrency.Task { @MainActor in
+                                    await viewModel.fetchTasks()
+                                    await viewModel.fetchCategories()
+                                    await viewModel.fetchCommittedTaskIds()
+                                    continuation.resume()
+                                }
+                            }
+                        }
+                    }
                 } else {
                     taskList
                 }
@@ -156,6 +172,7 @@ struct TasksListView: View {
                 await viewModel.fetchCategories()
                 await viewModel.fetchCommittedTaskIds()
             }
+            initialLoadComplete = true
         }
         .onAppear {
             viewModel.searchText = searchText
@@ -170,20 +187,15 @@ struct TasksListView: View {
     }
 
     private var emptyState: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "checklist")
-                .font(.sf(size: 60))
+        VStack(spacing: 4) {
+            Text("No tasks yet")
+                .font(.sf(.headline))
+                .bold()
+            Text("Tap + to create your first task")
+                .font(.sf(.subheadline))
                 .foregroundColor(.secondary)
-
-            Text("No Tasks Yet")
-                .font(.sf(.title2, weight: .semibold))
-
-            Text("Tap the + button to add your first task")
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding()
     }
 
     private var taskList: some View {

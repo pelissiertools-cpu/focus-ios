@@ -13,6 +13,7 @@ struct ListsView: View {
     var onSearchTap: (() -> Void)? = nil
     @State private var isInlineAddFocused = false
     @State private var showCategoryEditDrawer = false
+    @State private var initialLoadComplete = false
 
     init(viewModel: ListsViewModel, searchText: String = "", onSearchTap: (() -> Void)? = nil) {
         self.viewModel = viewModel
@@ -89,11 +90,24 @@ struct ListsView: View {
             .padding(.top, 8)
 
             ZStack {
-                if viewModel.isLoading {
+                if viewModel.isLoading && !initialLoadComplete {
                     ProgressView("Loading lists...")
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else if viewModel.lists.isEmpty {
-                    emptyState
+                    GeometryReader { geometry in
+                        ScrollView {
+                            emptyState
+                                .frame(width: geometry.size.width, height: geometry.size.height)
+                        }
+                        .refreshable {
+                            await withCheckedContinuation { continuation in
+                                _Concurrency.Task { @MainActor in
+                                    await viewModel.fetchLists()
+                                    continuation.resume()
+                                }
+                            }
+                        }
+                    }
                 } else if viewModel.filteredLists.isEmpty {
                     VStack(spacing: 12) {
                         Text("No matching lists")
@@ -152,6 +166,7 @@ struct ListsView: View {
             if viewModel.lists.isEmpty && !viewModel.isLoading {
                 await viewModel.fetchLists()
             }
+            initialLoadComplete = true
         }
         .onAppear {
             viewModel.searchText = searchText

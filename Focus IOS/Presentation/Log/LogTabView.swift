@@ -1869,6 +1869,7 @@ private struct LogProjectBarHandlersModifier: ViewModifier {
 
 private struct LogTabAlertsModifier: ViewModifier {
     @ObservedObject var taskListVM: TaskListViewModel
+    @Binding var selectedTab: Int
     @Binding var showCreateProjectAlert: Bool
     @Binding var showCreateListAlert: Bool
     @Binding var newProjectTitle: String
@@ -1884,6 +1885,9 @@ private struct LogTabAlertsModifier: ViewModifier {
                     newProjectTitle = ""
                     _Concurrency.Task { @MainActor in
                         await taskListVM.createProjectFromSelected(title: title)
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                            selectedTab = 2
+                        }
                     }
                 }
             } message: {
@@ -1897,6 +1901,9 @@ private struct LogTabAlertsModifier: ViewModifier {
                     newListTitle = ""
                     _Concurrency.Task { @MainActor in
                         await taskListVM.createListFromSelected(title: title)
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                            selectedTab = 1
+                        }
                     }
                 }
             } message: {
@@ -1953,6 +1960,7 @@ private extension View {
             ))
             .modifier(LogTabAlertsModifier(
                 taskListVM: taskListVM,
+                selectedTab: selectedTab,
                 showCreateProjectAlert: showCreateProjectAlert,
                 showCreateListAlert: showCreateListAlert,
                 newProjectTitle: newProjectTitle,

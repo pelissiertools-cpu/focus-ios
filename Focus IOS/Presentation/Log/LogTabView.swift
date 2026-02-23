@@ -730,7 +730,7 @@ struct LogTabView: View {
                     HStack(spacing: 4) {
                         Image(systemName: "arrow.right.circle")
                             .font(.sf(.caption))
-                        Text("Commit")
+                        Text("Schedule")
                             .font(.sf(.caption))
                     }
                     .foregroundColor(!addTaskDates.isEmpty ? .white : .black)
@@ -971,7 +971,7 @@ struct LogTabView: View {
                     HStack(spacing: 4) {
                         Image(systemName: "arrow.right.circle")
                             .font(.sf(.caption))
-                        Text("Commit")
+                        Text("Schedule")
                             .font(.sf(.caption))
                     }
                     .foregroundColor(!addListDates.isEmpty ? .white : .black)
@@ -1219,7 +1219,7 @@ struct LogTabView: View {
                     HStack(spacing: 4) {
                         Image(systemName: "arrow.right.circle")
                             .font(.sf(.caption))
-                        Text("Commit")
+                        Text("Schedule")
                             .font(.sf(.caption))
                     }
                     .foregroundColor(!addProjectDates.isEmpty ? .white : .black)

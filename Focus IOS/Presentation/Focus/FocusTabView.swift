@@ -1967,7 +1967,7 @@ struct CommitmentRow: View {
                             await viewModel.removeCommitment(commitment)
                         }
                     } label: {
-                        Label(commitment.timeframe.removeLabel, systemImage: "minus.circle")
+                        Label(commitment.timeframe.unscheduleLabel, systemImage: "minus.circle")
                     }
 
                     if !task.isCompleted {
@@ -2042,7 +2042,7 @@ struct CommitmentRow: View {
                         await viewModel.removeCommitment(commitment)
                     }
                 } label: {
-                    Label("Remove", systemImage: "minus.circle")
+                    Label("Unschedule", systemImage: "minus.circle")
                 }
             }
         }

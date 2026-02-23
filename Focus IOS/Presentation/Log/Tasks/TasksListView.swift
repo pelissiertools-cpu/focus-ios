@@ -881,32 +881,24 @@ struct SortMenuButton<VM: LogFilterable>: View {
                     }
                 }
 
-                Divider()
-
                 // Commitment filter
-                Button {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        viewModel.commitmentFilter = viewModel.commitmentFilter == .committed ? nil : .committed
+                Toggle("Scheduled", isOn: Binding(
+                    get: { viewModel.commitmentFilter == .committed },
+                    set: { newValue in
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            viewModel.commitmentFilter = newValue ? .committed : nil
+                        }
                     }
-                } label: {
-                    if viewModel.commitmentFilter == .committed {
-                        Label("Committed", systemImage: "checkmark")
-                    } else {
-                        Text("Committed")
-                    }
-                }
+                ))
 
-                Button {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        viewModel.commitmentFilter = viewModel.commitmentFilter == .uncommitted ? nil : .uncommitted
+                Toggle("Unscheduled", isOn: Binding(
+                    get: { viewModel.commitmentFilter == .uncommitted },
+                    set: { newValue in
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            viewModel.commitmentFilter = newValue ? .uncommitted : nil
+                        }
                     }
-                } label: {
-                    if viewModel.commitmentFilter == .uncommitted {
-                        Label("Not committed", systemImage: "checkmark")
-                    } else {
-                        Text("Not committed")
-                    }
-                }
+                ))
 
                 Divider()
 

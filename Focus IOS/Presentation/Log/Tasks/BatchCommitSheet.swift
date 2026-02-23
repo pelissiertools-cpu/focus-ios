@@ -21,7 +21,7 @@ struct BatchCommitSheet<VM: LogFilterable>: View {
 
     var body: some View {
         DrawerContainer(
-            title: "Commit Items",
+            title: "Schedule Items",
             leadingButton: .cancel { dismiss() },
             trailingButton: .save(
                 action: { _Concurrency.Task { await saveCommitments() } },

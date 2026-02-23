@@ -33,13 +33,13 @@ enum Timeframe: String, Codable, CaseIterable {
         }
     }
 
-    /// Label for "Remove from" context menu action
-    var removeLabel: String {
+    /// Label for "Unschedule from" context menu action
+    var unscheduleLabel: String {
         switch self {
-        case .daily: return "Remove from today"
-        case .weekly: return "Remove from this week"
-        case .monthly: return "Remove from this month"
-        case .yearly: return "Remove from this year"
+        case .daily: return "Unschedule from today"
+        case .weekly: return "Unschedule from this week"
+        case .monthly: return "Unschedule from this month"
+        case .yearly: return "Unschedule from this year"
         }
     }
 

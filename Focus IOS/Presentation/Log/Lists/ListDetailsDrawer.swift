@@ -203,7 +203,7 @@ struct ListDetailsDrawer: View {
                 HStack(spacing: 6) {
                     Image(systemName: "arrow.right.circle")
                         .font(.sf(.subheadline))
-                    Text("Commit")
+                    Text("Schedule")
                         .font(.sf(.subheadline, weight: .medium))
                         .lineLimit(1)
                 }

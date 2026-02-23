@@ -36,7 +36,7 @@ struct CommitmentSelectionSheet: View {
 
     var body: some View {
         DrawerContainer(
-            title: task.type == .list ? "Commit List" : "Commit Task",
+            title: task.type == .list ? "Schedule List" : "Schedule Task",
             leadingButton: .cancel { dismiss() },
             trailingButton: .save(
                 action: { _Concurrency.Task { await saveChanges() } },

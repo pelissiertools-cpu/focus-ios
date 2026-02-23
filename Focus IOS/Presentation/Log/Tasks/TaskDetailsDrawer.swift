@@ -503,7 +503,7 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                     HStack(spacing: 6) {
                         Image(systemName: "arrow.right.circle")
                             .font(.sf(.subheadline))
-                        Text("Commit")
+                        Text("Schedule")
                             .font(.sf(.subheadline, weight: .medium))
                             .lineLimit(1)
                     }
@@ -546,11 +546,11 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
     @ViewBuilder
     private var contextualActionsCard: some View {
         VStack(spacing: 0) {
-            // Remove from Focus (when committed)
+            // Unschedule from Focus (when scheduled)
             if let commitment = commitment {
                 DrawerActionRow(
                     icon: "minus.circle",
-                    text: commitment.timeframe.removeLabel
+                    text: commitment.timeframe.unscheduleLabel
                 ) {
                     _Concurrency.Task {
                         await focusViewModel.removeCommitment(commitment)
@@ -559,18 +559,18 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                 }
             }
 
-            // Commit to lower timeframe (non-daily commitments)
+            // Schedule to lower timeframe (non-daily commitments)
             if let commitment = commitment,
                commitment.canBreakdown,
                let childTimeframe = commitment.childTimeframe {
-                DrawerActionRow(icon: "arrow.down.forward.circle", text: "Commit to \(childTimeframe.displayName)") {
+                DrawerActionRow(icon: "arrow.down.forward.circle", text: "Schedule to \(childTimeframe.displayName)") {
                     focusViewModel.selectedCommitmentForCommit = commitment
                     focusViewModel.showCommitSheet = true
                     dismiss()
                 }
             }
 
-            // Commit Subtask to lower timeframe
+            // Schedule Subtask to lower timeframe
             if isSubtask && commitment == nil {
                 if let parentId = task.parentTaskId,
                    let parentCommitment = focusViewModel.commitments.first(where: {
@@ -578,7 +578,7 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                        focusViewModel.isSameTimeframe($0.commitmentDate, timeframe: focusViewModel.selectedTimeframe, selectedDate: focusViewModel.selectedDate)
                    }),
                    parentCommitment.timeframe != .daily {
-                    DrawerActionRow(icon: "arrow.down.forward.circle", text: "Commit to \(parentCommitment.childTimeframe?.displayName ?? "...")") {
+                    DrawerActionRow(icon: "arrow.down.forward.circle", text: "Schedule to \(parentCommitment.childTimeframe?.displayName ?? "...")") {
                         focusViewModel.selectedSubtaskForCommit = task
                         focusViewModel.selectedParentCommitmentForSubtaskCommit = parentCommitment
                         focusViewModel.showSubtaskCommitSheet = true

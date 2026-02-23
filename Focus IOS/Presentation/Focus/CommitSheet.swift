@@ -39,7 +39,7 @@ struct CommitSheet: View {
 
     var body: some View {
         DrawerContainer(
-            title: "Commit",
+            title: "Schedule",
             leadingButton: .cancel { dismiss() },
             trailingButton: .add(
                 action: { _Concurrency.Task { await addSelectedCommitments() } },
@@ -55,7 +55,7 @@ struct CommitSheet: View {
                     HStack {
                         Image(systemName: "arrow.down.forward.circle")
                             .foregroundColor(.appRed)
-                        Text("Commit to lower timeframe")
+                        Text("Schedule to lower timeframe")
                             .font(.sf(.subheadline))
                             .foregroundColor(.secondary)
                     }
@@ -70,7 +70,7 @@ struct CommitSheet: View {
                     HStack {
                         Image(systemName: "checkmark.circle.fill")
                             .foregroundColor(.green)
-                        Text("\(existingChildrenForTimeframe.count) already committed to \(selectedTargetTimeframe.displayName.lowercased())")
+                        Text("\(existingChildrenForTimeframe.count) already scheduled to \(selectedTargetTimeframe.displayName.lowercased())")
                             .font(.sf(.caption))
                             .foregroundColor(.secondary)
                     }
@@ -196,7 +196,7 @@ struct SubtaskCommitSheet: View {
 
     var body: some View {
         DrawerContainer(
-            title: "Commit Subtask",
+            title: "Schedule Subtask",
             leadingButton: .cancel { dismiss() },
             trailingButton: .add(
                 action: { _Concurrency.Task { await addSelectedCommitments() } },
@@ -212,7 +212,7 @@ struct SubtaskCommitSheet: View {
                     HStack {
                         Image(systemName: "arrow.down.forward.circle")
                             .foregroundColor(.appRed)
-                        Text("Commit subtask to lower timeframe")
+                        Text("Schedule subtask to lower timeframe")
                             .font(.sf(.subheadline))
                             .foregroundColor(.secondary)
                     }

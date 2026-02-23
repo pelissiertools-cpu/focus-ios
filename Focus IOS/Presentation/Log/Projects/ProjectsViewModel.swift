@@ -457,8 +457,24 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
         }
     }
 
+    /// Delete project and all its tasks
     func deleteProject(_ project: FocusTask) async {
         do {
+            try await commitmentRepository.deleteCommitments(forTask: project.id)
+            try await repository.deleteTask(id: project.id)
+            projects.removeAll { $0.id == project.id }
+            projectTasksMap.removeValue(forKey: project.id)
+            expandedProjects.remove(project.id)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    /// Delete project but keep its tasks (unlink them first)
+    func deleteProjectKeepTasks(_ project: FocusTask) async {
+        do {
+            try await repository.unlinkProjectTasks(projectId: project.id)
+            try await commitmentRepository.deleteCommitments(forTask: project.id)
             try await repository.deleteTask(id: project.id)
             projects.removeAll { $0.id == project.id }
             projectTasksMap.removeValue(forKey: project.id)
@@ -741,6 +757,27 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
 
         do {
             for projectId in idsToDelete {
+                try await commitmentRepository.deleteCommitments(forTask: projectId)
+                try await repository.deleteTask(id: projectId)
+            }
+
+            projects.removeAll { idsToDelete.contains($0.id) }
+            for projectId in idsToDelete {
+                projectTasksMap.removeValue(forKey: projectId)
+                expandedProjects.remove(projectId)
+            }
+            exitEditMode()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func batchDeleteProjectsKeepTasks() async {
+        let idsToDelete = selectedProjectIds
+
+        do {
+            for projectId in idsToDelete {
+                try await repository.unlinkProjectTasks(projectId: projectId)
                 try await commitmentRepository.deleteCommitments(forTask: projectId)
                 try await repository.deleteTask(id: projectId)
             }

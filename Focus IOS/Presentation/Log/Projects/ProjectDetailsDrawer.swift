@@ -67,15 +67,21 @@ struct ProjectDetailsDrawer: View {
                 Text("Enter a name for the new category.")
             }
             .alert("Delete project?", isPresented: $showingDeleteConfirmation) {
-                Button("Cancel", role: .cancel) { }
-                Button("Delete", role: .destructive) {
+                Button("Delete project only") {
+                    _Concurrency.Task {
+                        await viewModel.deleteProjectKeepTasks(project)
+                        dismiss()
+                    }
+                }
+                Button("Delete project and tasks", role: .destructive) {
                     _Concurrency.Task {
                         await viewModel.deleteProject(project)
                         dismiss()
                     }
                 }
+                Button("Cancel", role: .cancel) { }
             } message: {
-                Text("This will permanently delete this project and all its tasks.")
+                Text("What would you like to do with the tasks inside this project?")
             }
         }
     }

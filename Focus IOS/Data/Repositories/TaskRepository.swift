@@ -203,6 +203,31 @@ class TaskRepository {
             .execute()
     }
 
+    /// Unlink all tasks from a project (sets project_id to null)
+    func unlinkProjectTasks(projectId: UUID) async throws {
+        struct ProjectNullUpdate: Encodable {
+            let modifiedDate: Date
+
+            enum CodingKeys: String, CodingKey {
+                case projectId = "project_id"
+                case modifiedDate = "modified_date"
+            }
+
+            func encode(to encoder: Encoder) throws {
+                var container = encoder.container(keyedBy: CodingKeys.self)
+                try container.encodeNil(forKey: .projectId)
+                try container.encode(modifiedDate, forKey: .modifiedDate)
+            }
+        }
+
+        let update = ProjectNullUpdate(modifiedDate: Date())
+        try await supabase
+            .from("tasks")
+            .update(update)
+            .eq("project_id", value: projectId.uuidString)
+            .execute()
+    }
+
     /// Assign a task to a project/list (sets project_id only, not parent_task_id)
     func assignToProject(taskId: UUID, projectId: UUID, sortOrder: Int) async throws {
         let update = ProjectAssignmentUpdate(

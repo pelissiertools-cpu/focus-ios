@@ -133,12 +133,15 @@ struct ProjectsListView: View {
         }
         // Batch delete confirmation
         .alert("Delete \(viewModel.selectedCount) project\(viewModel.selectedCount == 1 ? "" : "s")?", isPresented: $viewModel.showBatchDeleteConfirmation) {
-            Button("Cancel", role: .cancel) { }
-            Button("Delete", role: .destructive) {
+            Button("Delete projects only") {
+                _Concurrency.Task { await viewModel.batchDeleteProjectsKeepTasks() }
+            }
+            Button("Delete projects and tasks", role: .destructive) {
                 _Concurrency.Task { await viewModel.batchDeleteProjects() }
             }
+            Button("Cancel", role: .cancel) { }
         } message: {
-            Text("This will permanently delete the selected projects and their commitments.")
+            Text("What would you like to do with the tasks inside?")
         }
         // Batch move category sheet
         .sheet(isPresented: $viewModel.showBatchMovePicker) {

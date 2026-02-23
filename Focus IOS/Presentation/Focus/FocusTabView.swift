@@ -243,34 +243,35 @@ struct FocusTabView: View {
                     isAddTaskFieldFocused = true
                 }
             }
-            .animation(nil, value: viewModel.showAddTaskSheet)
 
                 // Tap-to-dismiss overlay when add task bar is active
                 if viewModel.showAddTaskSheet {
+                    // Scrim — visual only, no tap handling
                     Color.black.opacity(0.15)
                         .ignoresSafeArea()
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
-                                dismissAddTask()
-                            }
-                        }
-                        .allowsHitTesting(true)
-                        .transition(.opacity)
+                        .allowsHitTesting(false)
+                        .transition(.opacity.animation(.easeOut(duration: 0.25)))
                         .zIndex(50)
 
-                    VStack {
-                        Spacer()
+                    // Tap-to-dismiss + bar
+                    VStack(spacing: 0) {
+                        Color.clear
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                isAddTaskFieldFocused = false
+                                focusedSubtaskId = nil
+                                dismissAddTask()
+                            }
+
                         addTaskBarOverlay
                             .padding(.vertical, 8)
                             .contentShape(Rectangle())
                     }
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .transition(.move(edge: .bottom).combined(with: .opacity).animation(.spring(response: 0.35, dampingFraction: 0.85)))
                     .zIndex(100)
                 }
             } // ZStack
             .background(Color.lightBackground.ignoresSafeArea())
-            .animation(.spring(response: 0.35, dampingFraction: 0.85), value: viewModel.showAddTaskSheet)
         }
     }
 
@@ -310,8 +311,8 @@ struct FocusTabView: View {
                         .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
                         .listRowSeparator(nextIsSection ? .hidden : .visible)
                         .listRowSeparatorTint(Color.secondary.opacity(0.2))
-                        .alignmentGuide(.listRowSeparatorLeading) { d in d[.leading] }
-                        .alignmentGuide(.listRowSeparatorTrailing) { d in d[.trailing] }
+                        .alignmentGuide(.listRowSeparatorLeading) { d in d[.leading] + 4 }
+                        .alignmentGuide(.listRowSeparatorTrailing) { d in d[.trailing] - 4 }
                     }
 
                 case .subtask(let subtask, let parentCommitment):
@@ -323,8 +324,8 @@ struct FocusTabView: View {
                         .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
                         .listRowSeparator(nextIsSection ? .hidden : .visible)
                         .listRowSeparatorTint(Color.secondary.opacity(0.2))
-                        .alignmentGuide(.listRowSeparatorLeading) { d in d[.leading] }
-                        .alignmentGuide(.listRowSeparatorTrailing) { d in d[.trailing] }
+                        .alignmentGuide(.listRowSeparatorLeading) { d in d[.leading] + 4 }
+                        .alignmentGuide(.listRowSeparatorTrailing) { d in d[.trailing] - 4 }
 
                 case .addSubtaskRow(let parentId, _):
                     InlineAddRow(
@@ -355,8 +356,8 @@ struct FocusTabView: View {
                         .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
                         .listRowSeparator(nextIsSection ? .hidden : .visible)
                         .listRowSeparatorTint(Color.secondary.opacity(0.2))
-                        .alignmentGuide(.listRowSeparatorLeading) { d in d[.leading] }
-                        .alignmentGuide(.listRowSeparatorTrailing) { d in d[.trailing] }
+                        .alignmentGuide(.listRowSeparatorLeading) { d in d[.leading] + 4 }
+                        .alignmentGuide(.listRowSeparatorTrailing) { d in d[.trailing] - 4 }
                     }
 
                 case .emptyState(let section):
@@ -396,7 +397,9 @@ struct FocusTabView: View {
                     .contentShape(Rectangle())
                     .onTapGesture {
                         viewModel.addTaskSection = section
-                        viewModel.showAddTaskSheet = true
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                            viewModel.showAddTaskSheet = true
+                        }
                     }
                     .listRowBackground(Color.clear)
                     .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
@@ -747,8 +750,6 @@ struct FocusTabView: View {
         addTaskCategoryId = nil
         hasGeneratedBreakdown = false
         viewModel.showAddTaskSheet = false
-        isAddTaskFieldFocused = false
-        focusedSubtaskId = nil
     }
 }
 
@@ -812,7 +813,9 @@ struct SectionView: View {
                         }
                     } else {
                         viewModel.addTaskSection = section
-                        viewModel.showAddTaskSheet = true
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                            viewModel.showAddTaskSheet = true
+                        }
                     }
                 } label: {
                     Image(systemName: "plus")
@@ -882,7 +885,9 @@ struct SectionView: View {
                     .contentShape(Rectangle())
                     .onTapGesture {
                         viewModel.addTaskSection = section
-                        viewModel.showAddTaskSheet = true
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                            viewModel.showAddTaskSheet = true
+                        }
                     }
                 } else {
                     VStack(spacing: 0) {
@@ -1127,7 +1132,9 @@ struct FocusSectionHeaderRow: View {
                     }
                 } else {
                     viewModel.addTaskSection = section
-                    viewModel.showAddTaskSheet = true
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                        viewModel.showAddTaskSheet = true
+                    }
                 }
             } label: {
                 Image(systemName: "plus")
@@ -1170,6 +1177,7 @@ struct FocusSectionHeaderRow: View {
             Rectangle()
                 .fill(Color.secondary.opacity(0.7))
                 .frame(height: 1)
+                .padding(.horizontal, 4)
         }
     }
 }

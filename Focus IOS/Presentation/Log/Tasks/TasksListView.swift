@@ -219,6 +219,8 @@ struct TasksListView: View {
                     .moveDisabled(task.isCompleted || viewModel.isEditMode)
                     .listRowInsets(EdgeInsets(top: 0, leading: 32, bottom: 0, trailing: 32))
                     .listRowBackground(Color.clear)
+                    .alignmentGuide(.listRowSeparatorLeading) { d in d[.leading] - 12 }
+                    .alignmentGuide(.listRowSeparatorTrailing) { d in d[.trailing] + 12 }
 
                 case .addSubtaskRow(let parentId):
                     InlineAddRow(
@@ -447,7 +449,7 @@ struct CategorySelectorHeader<TrailingContent: View>: View {
             Rectangle()
                 .fill(Color.black)
                 .frame(height: 1)
-                .padding(.leading, 16)
+                .padding(.leading, 4)
                 .padding(.trailing, 4)
         }
         .padding(.horizontal, 16)

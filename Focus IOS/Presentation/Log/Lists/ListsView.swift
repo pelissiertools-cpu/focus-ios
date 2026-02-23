@@ -192,6 +192,8 @@ struct ListsView: View {
                     .moveDisabled(viewModel.isEditMode)
                     .listRowInsets(EdgeInsets(top: 0, leading: 32, bottom: 0, trailing: 32))
                     .listRowBackground(Color.clear)
+                    .alignmentGuide(.listRowSeparatorLeading) { d in d[.leading] - 12 }
+                    .alignmentGuide(.listRowSeparatorTrailing) { d in d[.trailing] + 12 }
 
                 case .item(let item, let listId):
                     ListItemRow(item: item, listId: listId, viewModel: viewModel)
@@ -199,6 +201,8 @@ struct ListsView: View {
                         .moveDisabled(item.isCompleted || viewModel.isEditMode)
                         .listRowInsets(EdgeInsets(top: 0, leading: 32, bottom: 0, trailing: 32))
                         .listRowBackground(Color.clear)
+                        .alignmentGuide(.listRowSeparatorLeading) { d in d[.leading] - 12 }
+                        .alignmentGuide(.listRowSeparatorTrailing) { d in d[.trailing] + 12 }
 
                 case .doneSection(let listId):
                     ListDoneSection(listId: listId, viewModel: viewModel)

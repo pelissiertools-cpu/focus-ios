@@ -57,9 +57,10 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
     @Published var categories: [Category] = []
     @Published var selectedCategoryId: UUID? = nil
 
-    // Commitment filter
+    // Commitment filter & due dates
     @Published var commitmentFilter: CommitmentFilter? = nil
     @Published var committedTaskIds: Set<UUID> = []
+    @Published var taskDueDates: [UUID: Date] = [:]
 
     // Sort (persisted via UserDefaults)
     @Published var sortOption: SortOption {
@@ -69,6 +70,8 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
                 // Collapse all priority sections by default when switching to priority sort
                 collapsedPriorities = Set(Priority.allCases)
             }
+            // Apply the default direction for the newly selected sort option
+            sortDirection = sortOption.defaultDirection
         }
     }
     @Published var sortDirection: SortDirection {
@@ -236,9 +239,19 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
                 return a.sortOrder < b.sortOrder
             }
         case .dueDate:
-            // No due date field yet — fall back to creation date
-            return tasks.sorted {
-                ascending ? $0.createdDate < $1.createdDate : $0.createdDate > $1.createdDate
+            return tasks.sorted { a, b in
+                let dateA = taskDueDates[a.id]
+                let dateB = taskDueDates[b.id]
+                switch (dateA, dateB) {
+                case (.some(let da), .some(let db)):
+                    return ascending ? da < db : da > db
+                case (.some, .none):
+                    return true // committed tasks before uncommitted
+                case (.none, .some):
+                    return false
+                case (.none, .none):
+                    return a.createdDate < b.createdDate
+                }
             }
         case .creationDate:
             return tasks.sorted {

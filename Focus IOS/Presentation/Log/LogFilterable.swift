@@ -22,9 +22,10 @@ protocol LogFilterable: ObservableObject {
     var sortOption: SortOption { get set }
     var sortDirection: SortDirection { get set }
 
-    // MARK: - Commitment filter
+    // MARK: - Commitment filter & due dates
     var commitmentFilter: CommitmentFilter? { get set }
     var committedTaskIds: Set<UUID> { get set }
+    var taskDueDates: [UUID: Date] { get set }
     var commitmentRepository: CommitmentRepository { get }
     func toggleCommitmentFilter(_ filter: CommitmentFilter)
     func fetchCommittedTaskIds() async
@@ -66,9 +67,26 @@ extension LogFilterable {
 
     func fetchCommittedTaskIds() async {
         do {
-            committedTaskIds = try await commitmentRepository.fetchCommittedTaskIds()
+            let summaries = try await commitmentRepository.fetchCommitmentSummaries()
+            committedTaskIds = Set(summaries.map { $0.taskId })
+
+            // For each task, pick the smallest timeframe commitment → end of that period = due date
+            var bestByTask: [UUID: (urgency: Int, endDate: Date)] = [:]
+            for s in summaries {
+                let endDate = CommitmentRepository.dateRange(for: s.timeframe, date: s.commitmentDate).end
+                let urgency = s.timeframe.urgencyIndex
+                if let existing = bestByTask[s.taskId] {
+                    // Smaller timeframe wins; among same timeframe, earlier end date wins
+                    if urgency < existing.urgency || (urgency == existing.urgency && endDate < existing.endDate) {
+                        bestByTask[s.taskId] = (urgency, endDate)
+                    }
+                } else {
+                    bestByTask[s.taskId] = (urgency, endDate)
+                }
+            }
+            taskDueDates = bestByTask.mapValues { $0.endDate }
         } catch {
-            // Error already handled by caller
+            // Silently handled — sorting falls back to creation date
         }
     }
 }

@@ -168,23 +168,28 @@ class CommitmentRepository {
             .execute()
     }
 
-    // MARK: - Committed Task IDs
+    // MARK: - Committed Task IDs & Due Dates
 
-    private struct TaskIdRow: Decodable {
+    struct CommitmentSummary: Decodable {
         let taskId: UUID
+        let timeframe: Timeframe
+        let commitmentDate: Date
+
         enum CodingKeys: String, CodingKey {
             case taskId = "task_id"
+            case timeframe
+            case commitmentDate = "commitment_date"
         }
     }
 
-    /// Fetch the set of task IDs that have at least one commitment (RLS scoped to current user)
-    func fetchCommittedTaskIds() async throws -> Set<UUID> {
-        let rows: [TaskIdRow] = try await supabase
+    /// Fetch lightweight summaries of all commitments (task_id, timeframe, commitment_date)
+    func fetchCommitmentSummaries() async throws -> [CommitmentSummary] {
+        let rows: [CommitmentSummary] = try await supabase
             .from("commitments")
-            .select("task_id")
+            .select("task_id, timeframe, commitment_date")
             .execute()
             .value
-        return Set(rows.map { $0.taskId })
+        return rows
     }
 
     // MARK: - Trickle-Down (Child Commitment) Methods

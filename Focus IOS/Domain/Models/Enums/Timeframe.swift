@@ -53,6 +53,16 @@ enum Timeframe: String, Codable, CaseIterable {
         }
     }
 
+    /// Urgency index: lower = more urgent (daily=0, weekly=1, monthly=2, yearly=3)
+    var urgencyIndex: Int {
+        switch self {
+        case .daily: return 0
+        case .weekly: return 1
+        case .monthly: return 2
+        case .yearly: return 3
+        }
+    }
+
     /// All timeframes this can break down to (not just the immediate child)
     var availableBreakdownTimeframes: [Timeframe] {
         switch self {

@@ -52,9 +52,10 @@ class ListsViewModel: ObservableObject, LogFilterable, TaskEditingViewModel {
     @Published var categories: [Category] = []
     @Published var selectedCategoryId: UUID? = nil
 
-    // Commitment filter
+    // Commitment filter & due dates
     @Published var commitmentFilter: CommitmentFilter? = nil
     @Published var committedTaskIds: Set<UUID> = []
+    @Published var taskDueDates: [UUID: Date] = [:]
 
     // Edit mode
     @Published var isEditMode: Bool = false
@@ -290,8 +291,19 @@ class ListsViewModel: ObservableObject, LogFilterable, TaskEditingViewModel {
                 return a.sortOrder < b.sortOrder
             }
         case .dueDate:
-            return items.sorted {
-                ascending ? $0.createdDate < $1.createdDate : $0.createdDate > $1.createdDate
+            return items.sorted { a, b in
+                let dateA = taskDueDates[a.id]
+                let dateB = taskDueDates[b.id]
+                switch (dateA, dateB) {
+                case (.some(let da), .some(let db)):
+                    return ascending ? da < db : da > db
+                case (.some, .none):
+                    return true
+                case (.none, .some):
+                    return false
+                case (.none, .none):
+                    return a.createdDate < b.createdDate
+                }
             }
         case .creationDate:
             return items.sorted {

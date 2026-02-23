@@ -911,16 +911,16 @@ struct SortMenuButton<VM: LogFilterable>: View {
                 Divider()
 
                 // Direction
-                ForEach(SortDirection.allCases, id: \.self) { direction in
+                ForEach(viewModel.sortOption.directionOrder, id: \.self) { direction in
                     Button {
                         withAnimation(.easeInOut(duration: 0.2)) {
                             viewModel.sortDirection = direction
                         }
                     } label: {
                         if viewModel.sortDirection == direction {
-                            Label(direction.displayName, systemImage: "checkmark")
+                            Label(direction.displayName(for: viewModel.sortOption), systemImage: "checkmark")
                         } else {
-                            Text(direction.displayName)
+                            Text(direction.displayName(for: viewModel.sortOption))
                         }
                     }
                 }

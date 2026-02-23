@@ -17,16 +17,37 @@ enum SortOption: String, CaseIterable {
         case .priority: return "Priority"
         }
     }
+
+    /// Default direction when switching to this sort option
+    var defaultDirection: SortDirection {
+        switch self {
+        case .dueDate: return .lowestFirst      // earliest first
+        case .creationDate: return .highestFirst // newest first
+        case .priority: return .highestFirst     // highest first
+        }
+    }
+
+    /// Direction options in preferred display order for this sort option
+    var directionOrder: [SortDirection] {
+        switch self {
+        case .dueDate: return [.lowestFirst, .highestFirst]
+        default: return [.highestFirst, .lowestFirst]
+        }
+    }
 }
 
 enum SortDirection: String, CaseIterable {
     case highestFirst
     case lowestFirst
 
-    var displayName: String {
-        switch self {
-        case .highestFirst: return "Highest first"
-        case .lowestFirst: return "Lowest first"
+    func displayName(for option: SortOption) -> String {
+        switch option {
+        case .priority:
+            return self == .highestFirst ? "Highest first" : "Lowest first"
+        case .dueDate:
+            return self == .highestFirst ? "Latest first" : "Earliest first"
+        case .creationDate:
+            return self == .highestFirst ? "Newest first" : "Oldest first"
         }
     }
 }

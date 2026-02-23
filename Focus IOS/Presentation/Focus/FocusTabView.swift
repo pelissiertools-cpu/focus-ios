@@ -56,8 +56,6 @@ struct FocusTabView: View {
                     compact: viewMode == .schedule,
                     onProfileTap: { showSettings = true }
                 )
-                .opacity(viewModel.showAddTaskSheet ? 0 : 1)
-                .allowsHitTesting(!viewModel.showAddTaskSheet)
                 Color.clear.frame(height: 0)
                 .onChange(of: viewModel.selectedDate) {
                     _Concurrency.Task { @MainActor in
@@ -79,7 +77,6 @@ struct FocusTabView: View {
                             .frame(maxHeight: .infinity)
                     } else {
                         focusList
-                        .opacity(viewModel.showAddTaskSheet ? 0 : 1)
                         .allowsHitTesting(!viewModel.showAddTaskSheet)
                     }
                 } else {
@@ -246,6 +243,7 @@ struct FocusTabView: View {
                     isAddTaskFieldFocused = true
                 }
             }
+            .animation(nil, value: viewModel.showAddTaskSheet)
 
                 // Tap-to-dismiss overlay when add task bar is active
                 if viewModel.showAddTaskSheet {
@@ -258,27 +256,8 @@ struct FocusTabView: View {
                             }
                         }
                         .allowsHitTesting(true)
+                        .transition(.opacity)
                         .zIndex(50)
-
-                    // Centered target section floating above the scrim
-                    GeometryReader { geo in
-                        let availableHeight = geo.size.height - 140
-                        let sectionHeight = availableHeight * 0.5
-                        VStack {
-                            Spacer()
-                            SectionView(
-                                title: viewModel.addTaskSection == .focus ? "Focus" : "Extra",
-                                section: viewModel.addTaskSection,
-                                viewModel: viewModel
-                            )
-                            .padding(.horizontal)
-                            .frame(minHeight: sectionHeight, alignment: .top)
-                            Spacer()
-                        }
-                        .frame(height: availableHeight)
-                    }
-                    .allowsHitTesting(false)
-                    .zIndex(75)
 
                     VStack {
                         Spacer()

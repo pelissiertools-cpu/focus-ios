@@ -250,7 +250,7 @@ struct FocusTabView: View {
                     Color.black.opacity(0.15)
                         .ignoresSafeArea()
                         .allowsHitTesting(false)
-                        .transition(.opacity.animation(.easeOut(duration: 0.25)))
+                        .transition(.opacity)
                         .zIndex(50)
 
                     // Tap-to-dismiss + bar
@@ -258,16 +258,22 @@ struct FocusTabView: View {
                         Color.clear
                             .contentShape(Rectangle())
                             .onTapGesture {
-                                isAddTaskFieldFocused = false
-                                focusedSubtaskId = nil
-                                dismissAddTask()
+                                // Dismiss keyboard via UIKit so it fires outside
+                                // the SwiftUI animation context (no layout shift)
+                                UIApplication.shared.sendAction(
+                                    #selector(UIResponder.resignFirstResponder),
+                                    to: nil, from: nil, for: nil
+                                )
+                                withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                                    dismissAddTask()
+                                }
                             }
 
                         addTaskBarOverlay
                             .padding(.vertical, 8)
                             .contentShape(Rectangle())
                     }
-                    .transition(.move(edge: .bottom).combined(with: .opacity).animation(.spring(response: 0.35, dampingFraction: 0.85)))
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
                     .zIndex(100)
                 }
             } // ZStack

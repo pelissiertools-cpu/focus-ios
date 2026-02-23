@@ -1244,6 +1244,7 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
                 if let taskIndex = tasks.firstIndex(where: { $0.id == taskId }) {
                     var task = tasks[taskIndex]
                     task.parentTaskId = createdProject.id
+                    task.projectId = createdProject.id
                     task.sortOrder = index
                     task.modifiedDate = Date()
                     try await repository.updateTask(task)
@@ -1280,6 +1281,7 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
                 if let taskIndex = tasks.firstIndex(where: { $0.id == taskId }) {
                     var task = tasks[taskIndex]
                     task.parentTaskId = createdList.id
+                    task.projectId = createdList.id
                     task.sortOrder = index
                     task.modifiedDate = Date()
                     try await repository.updateTask(task)

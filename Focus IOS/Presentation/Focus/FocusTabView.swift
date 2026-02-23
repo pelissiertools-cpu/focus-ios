@@ -1080,10 +1080,14 @@ struct FocusSectionHeaderRow: View {
 
                 // Count display
                 if let maxTasks = section.maxTasks(for: viewModel.selectedTimeframe) {
-                    HStack(spacing: 4) {
+                    HStack(spacing: 6) {
                         Text("\(sectionCommitments.count)/\(maxTasks)")
                             .font(.sf(size: 10))
                             .foregroundColor(.secondary)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .clipShape(Capsule())
+                            .glassEffect(.regular.interactive(), in: .capsule)
                         if section == .extra {
                             Image(systemName: "chevron.right")
                                 .font(.sf(size: 8, weight: .semibold))
@@ -1091,16 +1095,16 @@ struct FocusSectionHeaderRow: View {
                                 .rotationEffect(.degrees(viewModel.isSectionCollapsed(.extra) ? 0 : 90))
                         }
                     }
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .clipShape(Capsule())
-                    .glassEffect(.regular.interactive(), in: .capsule)
                     .alignmentGuide(.lastTextBaseline) { d in d[.bottom] - 1 }
-                } else if !sectionCommitments.isEmpty {
-                    HStack(spacing: 4) {
+                } else {
+                    HStack(spacing: 6) {
                         Text("\(sectionCommitments.count)")
                             .font(.sf(size: 10))
                             .foregroundColor(.secondary)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .clipShape(Capsule())
+                            .glassEffect(.regular.interactive(), in: .capsule)
                         if section == .extra {
                             Image(systemName: "chevron.right")
                                 .font(.sf(size: 8, weight: .semibold))
@@ -1108,21 +1112,7 @@ struct FocusSectionHeaderRow: View {
                                 .rotationEffect(.degrees(viewModel.isSectionCollapsed(.extra) ? 0 : 90))
                         }
                     }
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .clipShape(Capsule())
-                    .glassEffect(.regular.interactive(), in: .capsule)
                     .alignmentGuide(.lastTextBaseline) { d in d[.bottom] - 1 }
-                } else if section == .extra {
-                    Image(systemName: "chevron.right")
-                        .font(.sf(size: 8, weight: .semibold))
-                        .foregroundColor(.secondary)
-                        .rotationEffect(.degrees(viewModel.isSectionCollapsed(.extra) ? 0 : 90))
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .clipShape(Capsule())
-                        .glassEffect(.regular.interactive(), in: .capsule)
-                        .alignmentGuide(.lastTextBaseline) { d in d[.bottom] - 1 }
                 }
             }
 

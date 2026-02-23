@@ -78,6 +78,7 @@ struct LogTabView: View {
 
     // Unified add bar state
     @State private var showingAddBar = false
+    @State private var tabChangeFromAddBar = false
     @State private var addBarMode: TaskType = .task
 
     // Settings navigation
@@ -109,6 +110,7 @@ struct LogTabView: View {
             logContentStack
                 .logTabHandlers(
                     selectedTab: $selectedTab,
+                    tabChangeFromAddBar: $tabChangeFromAddBar,
                     taskListVM: taskListVM,
                     listsVM: listsVM,
                     projectsVM: projectsVM,
@@ -477,6 +479,17 @@ struct LogTabView: View {
         return Button {
             withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
                 addBarMode = mode
+                // Sync background tab to match
+                let tabIndex: Int
+                switch mode {
+                case .task: tabIndex = 0
+                case .list: tabIndex = 1
+                case .project: tabIndex = 2
+                }
+                if selectedTab != tabIndex {
+                    tabChangeFromAddBar = true
+                    selectedTab = tabIndex
+                }
             }
         } label: {
             Image(systemName: isActive && mode == .project ? "folder.fill" : icon)
@@ -1741,6 +1754,7 @@ struct LogTabView: View {
 
 private struct LogTabChangeModifier: ViewModifier {
     @Binding var selectedTab: Int
+    @Binding var tabChangeFromAddBar: Bool
     @ObservedObject var taskListVM: TaskListViewModel
     @ObservedObject var listsVM: ListsViewModel
     @ObservedObject var projectsVM: ProjectsViewModel
@@ -1750,6 +1764,10 @@ private struct LogTabChangeModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
             .onChange(of: selectedTab) { _, _ in
+                if tabChangeFromAddBar {
+                    tabChangeFromAddBar = false
+                    return
+                }
                 dismissSearch()
                 taskListVM.exitEditMode()
                 projectsVM.exitEditMode()
@@ -1890,6 +1908,7 @@ private struct LogTabAlertsModifier: ViewModifier {
 private extension View {
     func logTabHandlers(
         selectedTab: Binding<Int>,
+        tabChangeFromAddBar: Binding<Bool>,
         taskListVM: TaskListViewModel,
         listsVM: ListsViewModel,
         projectsVM: ProjectsViewModel,
@@ -1910,6 +1929,7 @@ private extension View {
         self
             .modifier(LogTabChangeModifier(
                 selectedTab: selectedTab,
+                tabChangeFromAddBar: tabChangeFromAddBar,
                 taskListVM: taskListVM,
                 listsVM: listsVM,
                 projectsVM: projectsVM,

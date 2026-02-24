@@ -752,7 +752,10 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
             isSameTimeframe(commitment.commitmentDate, timeframe: selectedTimeframe, selectedDate: selectedDate) &&
             (tasksMap[commitment.taskId]?.isCompleted ?? false) == completed
         }
-        return completed ? filtered : filtered.sorted { $0.sortOrder < $1.sortOrder }
+        return completed ? filtered : filtered.sorted { a, b in
+            if a.isChildCommitment != b.isChildCommitment { return !a.isChildCommitment }
+            return a.sortOrder < b.sortOrder
+        }
     }
 
     func uncompletedCommitmentsForSection(_ section: Section) -> [Commitment] {

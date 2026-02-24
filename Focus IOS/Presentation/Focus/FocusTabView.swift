@@ -1844,29 +1844,19 @@ struct FocusSectionHeaderRow: View {
                             .padding(.vertical, 4)
                             .clipShape(Capsule())
                             .glassEffect(.regular.interactive(), in: .capsule)
-                        if section == .todo {
-                            Image(systemName: "chevron.right")
-                                .font(.sf(size: 8, weight: .semibold))
-                                .foregroundColor(.secondary)
-                                .rotationEffect(.degrees(viewModel.isSectionCollapsed(.todo) ? 0 : 90))
-                        }
                     }
                     .alignmentGuide(.lastTextBaseline) { d in d[.bottom] - 1 }
                 } else {
                     HStack(spacing: 6) {
-                        Text("\(sectionCommitments.count)")
-                            .font(.sf(size: 10))
-                            .foregroundColor(.secondary)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .clipShape(Capsule())
-                            .glassEffect(.regular.interactive(), in: .capsule)
                         if section == .todo {
                             Image(systemName: "chevron.right")
                                 .font(.sf(size: 8, weight: .semibold))
                                 .foregroundColor(.secondary)
                                 .rotationEffect(.degrees(viewModel.isSectionCollapsed(.todo) ? 0 : 90))
                         }
+                        Text("\(sectionCommitments.count)")
+                            .font(.sf(size: 10))
+                            .foregroundColor(.secondary)
                     }
                     .alignmentGuide(.lastTextBaseline) { d in d[.bottom] - 1 }
                 }
@@ -1942,14 +1932,17 @@ struct RollupSectionHeaderRow: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: 12) {
-                Text("Roll Up")
-                    .font(.golosText(size: 22))
+                HStack(spacing: 8) {
+                    Text("Roll Up")
+                        .font(.golosText(size: 22))
+                        .foregroundColor(.secondary)
+                    Image(systemName: "chevron.right")
+                        .font(.sf(size: 8, weight: .semibold))
+                        .foregroundColor(.secondary)
+                        .rotationEffect(.degrees(viewModel.isRollupSectionCollapsed ? 0 : 90))
+                        .animation(.easeInOut(duration: 0.2), value: viewModel.isRollupSectionCollapsed)
+                }
                 Spacer()
-                Image(systemName: "chevron.right")
-                    .font(.sf(size: 8, weight: .semibold))
-                    .foregroundColor(.secondary)
-                    .rotationEffect(.degrees(viewModel.isRollupSectionCollapsed ? 0 : 90))
-                    .animation(.easeInOut(duration: 0.2), value: viewModel.isRollupSectionCollapsed)
             }
             .contentShape(Rectangle())
             .onTapGesture {

@@ -1997,9 +1997,8 @@ struct CommitmentRow: View {
     }
 
     /// Can break down if: not daily AND breakdown is allowed in this context (hidden on rollup rows)
-    private var canBreakdown: Bool {
-        allowBreakdown && commitment.canBreakdown
-    }
+    /// Temporarily disabled — feature kept but not accessible from UI
+    private var canBreakdown: Bool { false }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -2155,9 +2154,8 @@ struct FocusSubtaskRow: View {
     }
 
     /// Can break down if parent's timeframe is not daily and subtask doesn't have own commitment yet
-    private var canBreakdown: Bool {
-        parentCommitment.timeframe != .daily && !hasOwnCommitment
-    }
+    /// Temporarily disabled — feature kept but not accessible from UI
+    private var canBreakdown: Bool { false }
 
     var body: some View {
         HStack(spacing: 12) {

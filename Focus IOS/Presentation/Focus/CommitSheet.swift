@@ -17,6 +17,9 @@ struct CommitSheet: View {
     @State private var selectedTargetTimeframe: Timeframe
     @State private var selectedDates: Set<Date> = []
     @State private var isSaving = false
+    @State private var draftSuggestions: [DraftSubtaskEntry] = []
+    @State private var isGeneratingBreakdown = false
+    @State private var hasGeneratedBreakdown = false
 
     /// Available timeframes for breakdown (all lower than current)
     private var availableTimeframes: [Timeframe] {
@@ -39,31 +42,76 @@ struct CommitSheet: View {
 
     var body: some View {
         DrawerContainer(
-            title: "Schedule",
+            title: "Schedule Breakdown",
             leadingButton: .cancel { dismiss() },
             trailingButton: .add(
                 action: { _Concurrency.Task { await addSelectedCommitments() } },
-                disabled: selectedDates.isEmpty || isSaving
+                disabled: (selectedDates.isEmpty && draftSuggestions.isEmpty) || isSaving
             )
         ) {
             VStack(spacing: 0) {
                 // Header info
-                VStack(alignment: .leading, spacing: 8) {
+                HStack {
                     Text(task.title)
                         .font(.sf(.headline))
-
-                    HStack {
-                        Image(systemName: "arrow.down.forward.circle")
-                            .foregroundColor(.appRed)
-                        Text("Schedule to lower timeframe")
-                            .font(.sf(.subheadline))
-                            .foregroundColor(.secondary)
+                    Spacer()
+                    Button {
+                        generateBreakdown()
+                    } label: {
+                        HStack(spacing: 6) {
+                            if isGeneratingBreakdown {
+                                ProgressView()
+                                    .tint(.primary)
+                            } else {
+                                Image(systemName: hasGeneratedBreakdown ? "arrow.clockwise" : "sparkles")
+                                    .font(.sf(.subheadline, weight: .semibold))
+                            }
+                            Text(LocalizedStringKey(hasGeneratedBreakdown ? "Regenerate" : "Suggest Breakdown"))
+                                .font(.sf(.caption, weight: .medium))
+                        }
+                        .foregroundColor(.primary)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
+                        .glassEffect(.regular.interactive(), in: .capsule)
                     }
+                    .buttonStyle(.plain)
+                    .disabled(isGeneratingBreakdown)
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
                 .padding()
 
                 Divider()
+
+                // Draft AI suggestions (not yet saved)
+                if !draftSuggestions.isEmpty {
+                    VStack(spacing: 14) {
+                        ForEach(draftSuggestions) { draft in
+                            HStack(spacing: 8) {
+                                Image(systemName: "sparkles")
+                                    .font(.sf(.caption2))
+                                    .foregroundColor(.purple.opacity(0.6))
+
+                                TextField("Subtask", text: draftBinding(for: draft.id))
+                                    .font(.sf(.body))
+                                    .textFieldStyle(.plain)
+
+                                Button {
+                                    withAnimation(.easeInOut(duration: 0.15)) {
+                                        draftSuggestions.removeAll { $0.id == draft.id }
+                                    }
+                                } label: {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .font(.sf(.caption))
+                                        .foregroundColor(.secondary)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                    }
+                    .padding(.horizontal)
+                    .padding(.vertical, 12)
+
+                    Divider()
+                }
 
                 // Existing breakdown summary
                 if !existingChildrenForTimeframe.isEmpty {
@@ -104,8 +152,49 @@ struct CommitSheet: View {
             await viewModel.commitToTimeframe(commitment, toDate: date, targetTimeframe: selectedTargetTimeframe)
         }
 
+        let draftsToSave = draftSuggestions.map { $0.title.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+        for title in draftsToSave {
+            await viewModel.createSubtask(title: title, parentId: task.id)
+        }
+
         isSaving = false
         dismiss()
+    }
+
+    private func generateBreakdown() {
+        isGeneratingBreakdown = true
+        let existingTitles = draftSuggestions.map { $0.title }
+
+        _Concurrency.Task { @MainActor in
+            do {
+                let suggestions = try await AIService().generateSubtasks(
+                    title: task.title,
+                    description: task.description,
+                    existingSubtasks: existingTitles.isEmpty ? nil : existingTitles
+                )
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    let manualDrafts = draftSuggestions.filter { !$0.isAISuggested }
+                    draftSuggestions = manualDrafts + suggestions.map {
+                        DraftSubtaskEntry(title: $0, isAISuggested: true)
+                    }
+                }
+                hasGeneratedBreakdown = true
+            } catch {
+                // Silently fail — user can retry or add manually
+            }
+            isGeneratingBreakdown = false
+        }
+    }
+
+    private func draftBinding(for id: UUID) -> Binding<String> {
+        Binding(
+            get: { draftSuggestions.first(where: { $0.id == id })?.title ?? "" },
+            set: { newValue in
+                if let index = draftSuggestions.firstIndex(where: { $0.id == id }) {
+                    draftSuggestions[index].title = newValue
+                }
+            }
+        )
     }
 }
 

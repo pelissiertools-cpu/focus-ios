@@ -796,7 +796,13 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
         }
 
         return groups.keys.sorted().map { date in
-            let items = groups[date]!.sorted { $0.sortOrder < $1.sortOrder }
+            let items = groups[date]!.sorted { a, b in
+                // Group child commitments (arrow indicator) together after standalone ones
+                if a.isChildCommitment != b.isChildCommitment {
+                    return !a.isChildCommitment
+                }
+                return a.sortOrder < b.sortOrder
+            }
             return (date: date, label: rollupGroupLabel(date: date, childTimeframe: childTimeframe), items: items)
         }
     }

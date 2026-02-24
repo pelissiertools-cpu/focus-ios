@@ -3262,7 +3262,6 @@
       }
     },
     "Tasks" : {
-      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {

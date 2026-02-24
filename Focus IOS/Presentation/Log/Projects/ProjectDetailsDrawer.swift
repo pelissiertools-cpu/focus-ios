@@ -15,7 +15,15 @@ struct ProjectDetailsDrawer: View {
     @State private var newCategoryName = ""
     @State private var noteText: String
     @State private var showingDeleteConfirmation = false
+    @State private var newTaskTitle: String = ""
+    @State private var showNewTaskField = false
+    @State private var isGeneratingBreakdown = false
+    @State private var hasGeneratedBreakdown = false
+    @State private var draftSuggestions: [DraftSubtaskEntry] = []
+    @State private var pendingDeletions: Set<UUID> = []
     @FocusState private var isTitleFocused: Bool
+    @FocusState private var isNewTaskFocused: Bool
+    @FocusState private var focusedTaskId: UUID?
     @Environment(\.dismiss) private var dismiss
 
     init(project: FocusTask, viewModel: ProjectsViewModel) {
@@ -27,12 +35,17 @@ struct ProjectDetailsDrawer: View {
         _selectedPriority = State(initialValue: project.priority)
     }
 
+    private var projectTasks: [FocusTask] {
+        (viewModel.projectTasksMap[project.id] ?? [])
+            .filter { !pendingDeletions.contains($0.id) }
+    }
+
     private var hasNoteChanges: Bool {
         noteText != (project.description ?? "")
     }
 
     private var hasChanges: Bool {
-        projectTitle != project.title || selectedCategoryId != project.categoryId || selectedPriority != project.priority || hasNoteChanges
+        projectTitle != project.title || selectedCategoryId != project.categoryId || selectedPriority != project.priority || !pendingDeletions.isEmpty || !newTaskTitle.trimmingCharacters(in: .whitespaces).isEmpty || !draftSuggestions.isEmpty || hasNoteChanges
     }
 
     private var currentCategoryName: String {
@@ -52,6 +65,9 @@ struct ProjectDetailsDrawer: View {
                 saveNote()
                 saveCategory()
                 savePriority()
+                addTask()
+                commitDraftSuggestions()
+                commitPendingDeletions()
                 dismiss()
             }, highlighted: hasChanges)
         ) {
@@ -59,6 +75,9 @@ struct ProjectDetailsDrawer: View {
                 VStack(spacing: 12) {
                     // ─── TITLE ───
                     titleCard
+
+                    // ─── TASKS ───
+                    tasksCard
 
                     // ─── PILL ACTIONS ───
                     actionPillsRow
@@ -116,6 +135,159 @@ struct ProjectDetailsDrawer: View {
         .onAppear {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                 isTitleFocused = true
+            }
+        }
+    }
+
+    // MARK: - Tasks Card
+
+    @ViewBuilder
+    private var tasksCard: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // Header: "Tasks" label + "Suggest Breakdown" button
+            HStack {
+                Text("Tasks")
+                    .font(.sf(.subheadline, weight: .medium))
+                    .foregroundColor(.primary)
+                Spacer()
+                if !project.isCompleted {
+                    Button {
+                        generateBreakdown()
+                    } label: {
+                        HStack(spacing: 6) {
+                            if isGeneratingBreakdown {
+                                ProgressView()
+                                    .tint(.primary)
+                            } else {
+                                Image(systemName: hasGeneratedBreakdown ? "arrow.clockwise" : "sparkles")
+                                    .font(.sf(.subheadline, weight: .semibold))
+                            }
+                            Text(LocalizedStringKey(hasGeneratedBreakdown ? "Regenerate" : "Suggest Breakdown"))
+                                .font(.sf(.caption, weight: .medium))
+                        }
+                        .foregroundColor(.primary)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
+                        .glassEffect(.regular.interactive(), in: .capsule)
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(isGeneratingBreakdown)
+                }
+            }
+            .padding(.horizontal, 14)
+            .padding(.top, 12)
+            .padding(.bottom, 10)
+
+            VStack(spacing: 14) {
+                ForEach(projectTasks) { task in
+                    compactTaskRow(task)
+                }
+
+                // Draft AI suggestions (not yet saved)
+                ForEach(draftSuggestions) { draft in
+                    HStack(spacing: 8) {
+                        Image(systemName: "sparkles")
+                            .font(.sf(.caption2))
+                            .foregroundColor(.purple.opacity(0.6))
+
+                        TextField("Task", text: draftBinding(for: draft.id))
+                            .font(.sf(.body))
+                            .textFieldStyle(.plain)
+
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.15)) {
+                                draftSuggestions.removeAll { $0.id == draft.id }
+                            }
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.sf(.caption))
+                                .foregroundColor(.secondary)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+
+                // New task entry (shown when focused)
+                if showNewTaskField || !newTaskTitle.isEmpty {
+                    HStack(spacing: 8) {
+                        Image(systemName: "circle")
+                            .font(.sf(.caption2))
+                            .foregroundColor(.secondary.opacity(0.5))
+
+                        TextField("Task", text: $newTaskTitle)
+                            .font(.sf(.body))
+                            .textFieldStyle(.plain)
+                            .focused($isNewTaskFocused)
+                            .onAppear { isNewTaskFocused = true }
+                            .onSubmit { addTask() }
+
+                        Button {
+                            newTaskTitle = ""
+                            showNewTaskField = false
+                            isNewTaskFocused = false
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.sf(.caption))
+                                .foregroundColor(.secondary)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+
+                // "+ Task" pill button
+                if !project.isCompleted {
+                    HStack {
+                        Button {
+                            if !newTaskTitle.trimmingCharacters(in: .whitespaces).isEmpty {
+                                addTask()
+                            }
+                            showNewTaskField = true
+                            isNewTaskFocused = true
+                        } label: {
+                            HStack(spacing: 4) {
+                                Image(systemName: "plus")
+                                    .font(.sf(.caption))
+                                Text("Task")
+                                    .font(.sf(.caption))
+                            }
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .glassEffect(.regular.tint(.black).interactive(), in: .capsule)
+                        }
+                        .buttonStyle(.plain)
+                        Spacer()
+                    }
+                }
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+        }
+        .background(Color(.secondarySystemGroupedBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .padding(.horizontal, 16)
+    }
+
+    // MARK: - Compact Task Row
+
+    @ViewBuilder
+    private func compactTaskRow(_ task: FocusTask) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
+                .font(.sf(.caption2))
+                .foregroundColor(task.isCompleted ? Color.completedPurple.opacity(0.6) : .secondary.opacity(0.5))
+
+            ProjectTaskTextField(task: task, viewModel: viewModel, focusedId: $focusedTaskId)
+
+            if !task.isCompleted {
+                Button {
+                    pendingDeletions.insert(task.id)
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.sf(.caption))
+                        .foregroundColor(.secondary)
+                }
+                .buttonStyle(.plain)
             }
         }
     }
@@ -279,12 +451,117 @@ struct ProjectDetailsDrawer: View {
         }
     }
 
+    private func addTask() {
+        guard !newTaskTitle.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+        let title = newTaskTitle
+        newTaskTitle = ""
+        isNewTaskFocused = true
+        _Concurrency.Task {
+            await viewModel.createProjectTask(title: title, projectId: project.id)
+        }
+    }
+
+    private func generateBreakdown() {
+        isGeneratingBreakdown = true
+        let existingTitles = projectTasks.map { $0.title } + draftSuggestions.map { $0.title }
+
+        _Concurrency.Task { @MainActor in
+            do {
+                let suggestions = try await AIService().generateSubtasks(
+                    title: project.title,
+                    description: project.description,
+                    existingSubtasks: existingTitles.isEmpty ? nil : existingTitles
+                )
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    let manualDrafts = draftSuggestions.filter { !$0.isAISuggested }
+                    draftSuggestions = manualDrafts + suggestions.map {
+                        DraftSubtaskEntry(title: $0, isAISuggested: true)
+                    }
+                }
+                hasGeneratedBreakdown = true
+            } catch {
+                // Silently fail — user can retry or add manually
+            }
+            isGeneratingBreakdown = false
+        }
+    }
+
+    private func commitDraftSuggestions() {
+        for draft in draftSuggestions {
+            let title = draft.title.trimmingCharacters(in: .whitespaces)
+            guard !title.isEmpty else { continue }
+            _Concurrency.Task {
+                await viewModel.createProjectTask(title: title, projectId: project.id)
+            }
+        }
+    }
+
+    private func commitPendingDeletions() {
+        let allTasks = viewModel.projectTasksMap[project.id] ?? []
+        for taskId in pendingDeletions {
+            if let task = allTasks.first(where: { $0.id == taskId }) {
+                _Concurrency.Task {
+                    await viewModel.deleteProjectTask(task, projectId: project.id)
+                }
+            }
+        }
+    }
+
+    private func draftBinding(for id: UUID) -> Binding<String> {
+        Binding(
+            get: { draftSuggestions.first(where: { $0.id == id })?.title ?? "" },
+            set: { newValue in
+                if let idx = draftSuggestions.firstIndex(where: { $0.id == id }) {
+                    draftSuggestions[idx].title = newValue
+                }
+            }
+        )
+    }
+
     private func createAndMoveToCategory() {
         let name = newCategoryName
         newCategoryName = ""
         _Concurrency.Task {
             await viewModel.createCategoryAndMove(name: name, task: project)
             dismiss()
+        }
+    }
+}
+
+// MARK: - Project Task TextField
+
+private struct ProjectTaskTextField: View {
+    let task: FocusTask
+    @ObservedObject var viewModel: ProjectsViewModel
+    var focusedId: FocusState<UUID?>.Binding
+    @State private var editingTitle: String
+
+    init(task: FocusTask, viewModel: ProjectsViewModel, focusedId: FocusState<UUID?>.Binding) {
+        self.task = task
+        self.viewModel = viewModel
+        self.focusedId = focusedId
+        _editingTitle = State(initialValue: task.title)
+    }
+
+    var body: some View {
+        TextField("Task", text: $editingTitle)
+            .font(.sf(.body))
+            .textFieldStyle(.plain)
+            .strikethrough(task.isCompleted)
+            .foregroundColor(task.isCompleted ? .secondary : .primary)
+            .focused(focusedId, equals: task.id)
+            .onSubmit { saveTitle() }
+            .onChange(of: focusedId.wrappedValue) { _, newValue in
+                if newValue != task.id {
+                    saveTitle()
+                }
+            }
+    }
+
+    private func saveTitle() {
+        guard editingTitle != task.title else { return }
+        _Concurrency.Task {
+            await viewModel.updateTask(task, newTitle: editingTitle)
         }
     }
 }

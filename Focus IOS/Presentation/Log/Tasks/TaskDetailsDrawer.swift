@@ -256,25 +256,6 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                         .foregroundColor(.primary)
                         .padding(.horizontal, 14)
                         .padding(.vertical, 8)
-                        .background {
-                            Capsule()
-                                .stroke(
-                                    AngularGradient(
-                                        colors: [
-                                            Color.commitGradientDark,
-                                            Color.commitGradientLight,
-                                            Color.commitGradientDark,
-                                        ],
-                                        center: .center
-                                    ),
-                                    lineWidth: 2.5
-                                )
-                                .blur(radius: 6)
-                        }
-                        .overlay {
-                            Capsule()
-                                .stroke(.white.opacity(0.5), lineWidth: 1.5)
-                        }
                         .glassEffect(.regular.interactive(), in: .capsule)
                     }
                     .buttonStyle(.plain)

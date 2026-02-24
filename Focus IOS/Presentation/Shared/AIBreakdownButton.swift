@@ -29,27 +29,6 @@ struct AIBreakdownButton: View {
             .foregroundColor(.primary)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 12)
-            .background {
-                if isEnabled {
-                    Capsule()
-                        .stroke(
-                            AngularGradient(
-                                colors: [
-                                    Color.commitGradientDark,
-                                    Color.commitGradientLight,
-                                    Color.commitGradientDark,
-                                ],
-                                center: .center
-                            ),
-                            lineWidth: 2.5
-                        )
-                        .blur(radius: 6)
-                }
-            }
-            .overlay {
-                Capsule()
-                    .stroke(.white.opacity(0.5), lineWidth: 1.5)
-            }
             .glassEffect(.regular.interactive(), in: .capsule)
         }
         .buttonStyle(.plain)

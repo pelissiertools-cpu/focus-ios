@@ -32,6 +32,7 @@ enum FocusFlatDisplayItem: Identifiable {
     case allDoneState
     case donePill
     case focusSpacer(CGFloat)
+    case rollupSectionHeader
     case rollupDayHeader(Date, String)   // date = group anchor, String = display label
     case rollupCommitment(Commitment)
 
@@ -55,6 +56,8 @@ enum FocusFlatDisplayItem: Identifiable {
             return "done-pill"
         case .focusSpacer:
             return "focus-spacer"
+        case .rollupSectionHeader:
+            return "rollup-section-header"
         case .rollupDayHeader(let date, _):
             return "rollup-header-\(Int(date.timeIntervalSince1970))"
         case .rollupCommitment(let c):
@@ -93,6 +96,8 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
 
     // Section collapse and add task state
     @Published var isExtraSectionCollapsed: Bool = true
+    @Published var isRollupSectionCollapsed: Bool = true
+    @Published var expandedRollupGroups: Set<Date> = []  // All groups collapsed by default
     @Published var isDoneSubsectionCollapsed: Bool = true  // Closed by default
     @Published var isFocusDoneExpanded: Bool = false  // Focus "All Done" completed list hidden by default
     @Published var isFocusDoneCollapsing: Bool = false  // True during staggered collapse animation
@@ -908,10 +913,17 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
         }
 
         // -- Rollup section (child timeframe items within current period) --
-        for group in rollupCommitmentsGrouped {
-            result.append(.rollupDayHeader(group.date, group.label))
-            for c in group.items {
-                result.append(.rollupCommitment(c))
+        if !rollupCommitmentsGrouped.isEmpty {
+            result.append(.rollupSectionHeader)
+            if !isRollupSectionCollapsed {
+                for group in rollupCommitmentsGrouped {
+                    result.append(.rollupDayHeader(group.date, group.label))
+                    if expandedRollupGroups.contains(group.date) {
+                        for c in group.items {
+                            result.append(.rollupCommitment(c))
+                        }
+                    }
+                }
             }
         }
 
@@ -1192,6 +1204,24 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
     /// Check if section is collapsed
     func isSectionCollapsed(_ section: Section) -> Bool {
         section == .extra ? isExtraSectionCollapsed : false
+    }
+
+    /// Toggle rollup section collapsed state
+    func toggleRollupSection() {
+        isRollupSectionCollapsed.toggle()
+    }
+
+    /// Toggle rollup group expanded/collapsed state
+    func toggleRollupGroup(_ date: Date) {
+        if expandedRollupGroups.contains(date) {
+            expandedRollupGroups.remove(date)
+        } else {
+            expandedRollupGroups.insert(date)
+        }
+    }
+
+    func isRollupGroupExpanded(_ date: Date) -> Bool {
+        expandedRollupGroups.contains(date)
     }
 
     /// Toggle Done subsection collapsed state

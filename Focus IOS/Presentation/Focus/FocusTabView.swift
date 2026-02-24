@@ -341,6 +341,7 @@ struct FocusTabView: View {
                     let nextIdx = index + 1
                     if nextIdx >= flat.count { return true }
                     if case .sectionHeader = flat[nextIdx] { return true }
+                    if case .rollupSectionHeader = flat[nextIdx] { return true }
                     if case .rollupDayHeader = flat[nextIdx] { return true }
                     return false
                 }()
@@ -502,15 +503,37 @@ struct FocusTabView: View {
                         .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
                         .listRowSeparator(.hidden)
 
-                case .rollupDayHeader(_, let label):
-                    Text(label.uppercased())
-                        .font(.sf(.caption, weight: .semibold))
-                        .foregroundColor(.secondary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                case .rollupSectionHeader:
+                    RollupSectionHeaderRow(viewModel: viewModel)
                         .listRowBackground(Color.clear)
-                        .listRowInsets(EdgeInsets(top: 20, leading: 16, bottom: 4, trailing: 16))
+                        .listRowInsets(EdgeInsets(top: 20, leading: 16, bottom: 0, trailing: 16))
                         .listRowSeparator(.hidden)
                         .moveDisabled(true)
+
+                case .rollupDayHeader(let date, let label):
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            viewModel.toggleRollupGroup(date)
+                        }
+                    } label: {
+                        HStack(spacing: 6) {
+                            Text(label.uppercased())
+                                .font(.sf(.caption, weight: .semibold))
+                                .foregroundColor(.secondary)
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.sf(size: 9, weight: .semibold))
+                                .foregroundColor(.secondary)
+                                .rotationEffect(.degrees(viewModel.isRollupGroupExpanded(date) ? 90 : 0))
+                                .animation(.easeInOut(duration: 0.2), value: viewModel.isRollupGroupExpanded(date))
+                        }
+                        .padding(.horizontal, 12)
+                    }
+                    .buttonStyle(.plain)
+                    .listRowBackground(Color.clear)
+                    .listRowInsets(EdgeInsets(top: 16, leading: 16, bottom: 4, trailing: 16))
+                    .listRowSeparator(.hidden)
+                    .moveDisabled(true)
 
                 case .rollupCommitment(let commitment):
                     if let task = viewModel.tasksMap[commitment.taskId] {
@@ -541,6 +564,8 @@ struct FocusTabView: View {
         .listRowSpacing(0)
         .scrollContentBackground(.hidden)
         .animation(.easeInOut(duration: 0.25), value: viewModel.isFocusDoneExpanded)
+        .animation(.easeInOut(duration: 0.2), value: viewModel.expandedRollupGroups)
+        .animation(.easeInOut(duration: 0.2), value: viewModel.isRollupSectionCollapsed)
         .refreshable {
             await withCheckedContinuation { continuation in
                 _Concurrency.Task { @MainActor in
@@ -1900,6 +1925,40 @@ struct FocusSectionHeaderRow: View {
         }
         .padding(.vertical, 6)
         .padding(.horizontal, 12)
+
+            Rectangle()
+                .fill(Color.secondary.opacity(0.7))
+                .frame(height: 1)
+                .padding(.horizontal, 4)
+        }
+    }
+}
+
+// MARK: - Rollup Section Header Row
+
+struct RollupSectionHeaderRow: View {
+    @ObservedObject var viewModel: FocusTabViewModel
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 12) {
+                Text("Roll Up")
+                    .font(.golosText(size: 22))
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.sf(size: 8, weight: .semibold))
+                    .foregroundColor(.secondary)
+                    .rotationEffect(.degrees(viewModel.isRollupSectionCollapsed ? 0 : 90))
+                    .animation(.easeInOut(duration: 0.2), value: viewModel.isRollupSectionCollapsed)
+            }
+            .contentShape(Rectangle())
+            .onTapGesture {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    viewModel.toggleRollupSection()
+                }
+            }
+            .padding(.vertical, 6)
+            .padding(.horizontal, 12)
 
             Rectangle()
                 .fill(Color.secondary.opacity(0.7))

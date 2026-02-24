@@ -9,6 +9,7 @@ import SwiftUI
 
 struct ProjectsListView: View {
     @ObservedObject var viewModel: ProjectsViewModel
+    @EnvironmentObject var focusViewModel: FocusTabViewModel
 
     let searchText: String
     var onSearchTap: (() -> Void)? = nil
@@ -134,6 +135,10 @@ struct ProjectsListView: View {
         }
         .sheet(item: $viewModel.selectedTaskForDetails) { task in
             TaskDetailsDrawer(task: task, viewModel: viewModel, categories: viewModel.categories)
+                .drawerStyle()
+        }
+        .sheet(item: $viewModel.selectedTaskForSchedule) { task in
+            CommitmentSelectionSheet(task: task, focusViewModel: focusViewModel)
                 .drawerStyle()
         }
         .alert("Error", isPresented: .constant(viewModel.errorMessage != nil)) {

@@ -47,6 +47,7 @@ class ListsViewModel: ObservableObject, LogFilterable, TaskEditingViewModel {
     // Detail drawers
     @Published var selectedListForDetails: FocusTask?
     @Published var selectedItemForDetails: FocusTask?
+    @Published var selectedItemForSchedule: FocusTask?
 
     // Category filter
     @Published var categories: [Category] = []

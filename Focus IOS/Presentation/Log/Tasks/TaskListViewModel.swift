@@ -35,6 +35,7 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
     @Published var errorMessage: String?
     @Published var showingAddTask = false
     @Published var selectedTaskForDetails: FocusTask?
+    @Published var selectedTaskForSchedule: FocusTask?
 
     // Subtask state management
     @Published var subtasksMap: [UUID: [FocusTask]] = [:]

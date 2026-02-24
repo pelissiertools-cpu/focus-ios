@@ -33,6 +33,7 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
     @Published var showingAddProject = false
     @Published var selectedProjectForDetails: FocusTask?
     @Published var selectedTaskForDetails: FocusTask?
+    @Published var selectedTaskForSchedule: FocusTask?
 
     // Project tasks state management
     @Published var projectTasksMap: [UUID: [FocusTask]] = [:]

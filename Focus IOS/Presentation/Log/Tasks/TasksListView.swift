@@ -20,6 +20,7 @@ struct RowFramePreference: PreferenceKey {
 
 struct TasksListView: View {
     @ObservedObject var viewModel: TaskListViewModel
+    @EnvironmentObject var focusViewModel: FocusTabViewModel
 
     let searchText: String
     var onSearchTap: (() -> Void)? = nil
@@ -131,6 +132,10 @@ struct TasksListView: View {
         }
         .sheet(item: $viewModel.selectedTaskForDetails) { task in
             TaskDetailsDrawer(task: task, viewModel: viewModel, categories: viewModel.categories)
+                .drawerStyle()
+        }
+        .sheet(item: $viewModel.selectedTaskForSchedule) { task in
+            CommitmentSelectionSheet(task: task, focusViewModel: focusViewModel)
                 .drawerStyle()
         }
         .sheet(isPresented: $showCategoryEditDrawer) {
@@ -642,6 +647,10 @@ struct FlatTaskRow: View {
                     viewModel.selectedTaskForDetails = task
                 }
 
+                ContextMenuItems.scheduleButton {
+                    viewModel.selectedTaskForSchedule = task
+                }
+
                 if isParent {
                     // Priority submenu
                     Menu {
@@ -772,6 +781,10 @@ struct ExpandableTaskRow: View {
             if !isEditMode && !task.isCompleted {
                 ContextMenuItems.editButton {
                     viewModel.selectedTaskForDetails = task
+                }
+
+                ContextMenuItems.scheduleButton {
+                    viewModel.selectedTaskForSchedule = task
                 }
 
                 if task.parentTaskId == nil {

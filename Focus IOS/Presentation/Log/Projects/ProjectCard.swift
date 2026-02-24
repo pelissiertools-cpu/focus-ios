@@ -306,6 +306,10 @@ struct ProjectTaskRow: View {
                     viewModel.selectedTaskForDetails = task
                 }
 
+                ContextMenuItems.scheduleButton {
+                    viewModel.selectedTaskForSchedule = task
+                }
+
                 Divider()
 
                 ContextMenuItems.deleteButton {
@@ -363,6 +367,10 @@ struct ProjectSubtaskRow: View {
             if !subtask.isCompleted {
                 ContextMenuItems.editButton {
                     viewModel.selectedTaskForDetails = subtask
+                }
+
+                ContextMenuItems.scheduleButton {
+                    viewModel.selectedTaskForSchedule = subtask
                 }
 
                 Divider()

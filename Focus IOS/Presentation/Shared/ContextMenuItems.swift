@@ -72,6 +72,17 @@ enum ContextMenuItems {
         }
     }
 
+    // MARK: - Schedule
+
+    @ViewBuilder
+    static func scheduleButton(action: @escaping () -> Void) -> some View {
+        Button {
+            action()
+        } label: {
+            Label("Schedule", systemImage: "calendar")
+        }
+    }
+
     // MARK: - Delete
 
     @ViewBuilder

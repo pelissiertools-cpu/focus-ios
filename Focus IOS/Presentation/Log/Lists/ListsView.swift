@@ -9,6 +9,7 @@ import SwiftUI
 
 struct ListsView: View {
     @ObservedObject var viewModel: ListsViewModel
+    @EnvironmentObject var focusViewModel: FocusTabViewModel
     let searchText: String
     var onSearchTap: (() -> Void)? = nil
     @State private var isInlineAddFocused = false
@@ -124,6 +125,10 @@ struct ListsView: View {
         }
         .sheet(item: $viewModel.selectedListForDetails) { list in
             ListDetailsDrawer(list: list, viewModel: viewModel)
+                .drawerStyle()
+        }
+        .sheet(item: $viewModel.selectedItemForSchedule) { item in
+            CommitmentSelectionSheet(task: item, focusViewModel: focusViewModel)
                 .drawerStyle()
         }
         .sheet(isPresented: $showCategoryEditDrawer) {
@@ -321,6 +326,10 @@ struct ListRow: View {
                     viewModel.selectedListForDetails = list
                 }
 
+                ContextMenuItems.scheduleButton {
+                    viewModel.selectedItemForSchedule = list
+                }
+
                 ContextMenuItems.prioritySubmenu(
                     currentPriority: list.priority
                 ) { priority in
@@ -400,6 +409,10 @@ struct ListItemRow: View {
             if !item.isCompleted {
                 ContextMenuItems.editButton {
                     viewModel.selectedItemForDetails = item
+                }
+
+                ContextMenuItems.scheduleButton {
+                    viewModel.selectedItemForSchedule = item
                 }
 
                 Divider()

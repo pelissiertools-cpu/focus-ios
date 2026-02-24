@@ -115,7 +115,7 @@ class TimelineViewModel: ObservableObject {
                 userId: userId,
                 taskId: taskId,
                 timeframe: .daily,
-                section: .extra,
+                section: .todo,
                 commitmentDate: parent.selectedDate,
                 sortOrder: 0,
                 scheduledTime: time,

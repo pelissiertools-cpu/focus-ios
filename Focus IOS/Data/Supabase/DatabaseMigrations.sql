@@ -115,7 +115,7 @@ CREATE TABLE IF NOT EXISTS commitments (
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   task_id UUID REFERENCES tasks(id) ON DELETE CASCADE NOT NULL,
   timeframe TEXT NOT NULL CHECK (timeframe IN ('daily', 'weekly', 'monthly', 'yearly')),
-  section TEXT NOT NULL CHECK (section IN ('focus', 'extra')),
+  section TEXT NOT NULL CHECK (section IN ('target', 'todo')),
   commitment_date TIMESTAMPTZ NOT NULL,
   sort_order INTEGER DEFAULT 0,
   created_date TIMESTAMPTZ DEFAULT NOW()
@@ -225,3 +225,17 @@ END$$;
 
 -- Check parent_commitment_id column exists
 -- SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'commitments' AND column_name = 'parent_commitment_id';
+
+-- ==============================================
+-- SECTION VALUE RENAME
+-- Rename section values from 'focus'/'extra' to 'target'/'todo'
+-- Run AFTER deploying the updated app code
+-- ==============================================
+
+-- Update check constraint to allow new values (drop old, add new)
+ALTER TABLE commitments DROP CONSTRAINT IF EXISTS commitments_section_check;
+ALTER TABLE commitments ADD CONSTRAINT commitments_section_check CHECK (section IN ('target', 'todo'));
+
+-- Migrate existing data
+UPDATE commitments SET section = 'target' WHERE section = 'focus';
+UPDATE commitments SET section = 'todo'   WHERE section = 'extra';

@@ -264,9 +264,9 @@ struct FocusTabView: View {
             }
             .onChange(of: viewModel.showAddTaskSheet) { _, isShowing in
                 if isShowing {
-                    // Auto-expand Extra section if collapsed
-                    if viewModel.addTaskSection == .extra && viewModel.isSectionCollapsed(.extra) {
-                        viewModel.isExtraSectionCollapsed = false
+                    // Auto-expand To-Do section if collapsed
+                    if viewModel.addTaskSection == .todo && viewModel.isSectionCollapsed(.todo) {
+                        viewModel.isTodoSectionCollapsed = false
                     }
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                         switch addBarMode {
@@ -347,22 +347,22 @@ struct FocusTabView: View {
                 }()
                 switch item {
                 case .sectionHeader(let section):
-                    let isExtraHeader = section == .extra && index > 0
+                    let isTodoHeader = section == .todo && index > 0
                     FocusSectionHeaderRow(section: section, viewModel: viewModel)
                         .listRowBackground(Color.clear)
-                        .listRowInsets(EdgeInsets(top: isExtraHeader ? 20 : 8, leading: 16, bottom: 0, trailing: 16))
+                        .listRowInsets(EdgeInsets(top: isTodoHeader ? 20 : 8, leading: 16, bottom: 0, trailing: 16))
                         .listRowSeparator(.hidden)
 
                 case .commitment(let commitment):
                     if let task = viewModel.tasksMap[commitment.taskId] {
-                        let config = viewModel.focusConfig(for: commitment.section)
+                        let config = viewModel.sectionConfig(for: commitment.section)
                         CommitmentRow(
                             commitment: commitment,
                             task: task,
                             section: commitment.section,
                             viewModel: viewModel,
-                            fontOverride: commitment.section == .focus ? config.taskFont : nil,
-                            verticalPaddingOverride: commitment.section == .focus ? config.verticalPadding : nil
+                            fontOverride: commitment.section == .target ? config.taskFont : nil,
+                            verticalPaddingOverride: commitment.section == .target ? config.verticalPadding : nil
                         )
                         .moveDisabled(false)
                         .listRowBackground(Color.clear)
@@ -400,7 +400,7 @@ struct FocusTabView: View {
 
                 case .completedCommitment(let commitment):
                     if let task = viewModel.tasksMap[commitment.taskId] {
-                        let config = viewModel.focusConfig(for: commitment.section)
+                        let config = viewModel.sectionConfig(for: commitment.section)
                         CommitmentRow(
                             commitment: commitment,
                             task: task,
@@ -420,7 +420,7 @@ struct FocusTabView: View {
 
                 case .emptyState(let section):
                     Group {
-                        if section == .focus {
+                        if section == .target {
                             VStack(spacing: 4) {
                                 Text("Nothing to focus on")
                                     .font(.sf(.headline))
@@ -451,7 +451,7 @@ struct FocusTabView: View {
                         }
                     }
                     .padding(.horizontal, 16)
-                    .frame(maxWidth: .infinity, minHeight: section == .focus ? 192 : 240, alignment: .leading)
+                    .frame(maxWidth: .infinity, minHeight: section == .target ? 192 : 240, alignment: .leading)
                     .contentShape(Rectangle())
                     .onTapGesture {
                         viewModel.addTaskSection = section
@@ -479,7 +479,7 @@ struct FocusTabView: View {
                     .contentShape(Rectangle())
                     .onTapGesture {
                         withAnimation(.easeInOut(duration: 0.25)) {
-                            viewModel.isFocusDoneExpanded.toggle()
+                            viewModel.isTargetDoneExpanded.toggle()
                         }
                     }
                     .listRowBackground(Color.clear)
@@ -488,8 +488,8 @@ struct FocusTabView: View {
 
                 case .donePill:
                     DonePillView(
-                        completedCommitments: viewModel.completedCommitmentsForSection(.extra),
-                        section: .extra,
+                        completedCommitments: viewModel.completedCommitmentsForSection(.todo),
+                        section: .todo,
                         viewModel: viewModel
                     )
                     .listRowBackground(Color.clear)
@@ -563,7 +563,7 @@ struct FocusTabView: View {
         .listStyle(.plain)
         .listRowSpacing(0)
         .scrollContentBackground(.hidden)
-        .animation(.easeInOut(duration: 0.25), value: viewModel.isFocusDoneExpanded)
+        .animation(.easeInOut(duration: 0.25), value: viewModel.isTargetDoneExpanded)
         .animation(.easeInOut(duration: 0.2), value: viewModel.expandedRollupGroups)
         .animation(.easeInOut(duration: 0.2), value: viewModel.isRollupSectionCollapsed)
         .refreshable {
@@ -1540,8 +1540,8 @@ struct SectionView: View {
         viewModel.completedCommitmentsForSection(section)
     }
 
-    private var focusConfig: FocusSectionConfig {
-        viewModel.focusConfig(for: section)
+    private var sectionConfig: FocusSectionConfig {
+        viewModel.sectionConfig(for: section)
     }
 
     var body: some View {
@@ -1549,7 +1549,7 @@ struct SectionView: View {
             // Section Header
             HStack(alignment: .lastTextBaseline, spacing: 12) {
                 Text(title)
-                    .font(.golosText(size: section == .focus ? 30 : 22))
+                    .font(.golosText(size: section == .target ? 30 : 22))
 
                 // Count display
                 if let maxTasks = section.maxTasks(for: viewModel.selectedTimeframe) {
@@ -1566,7 +1566,7 @@ struct SectionView: View {
 
                 // Add button (far right) - hidden when adding task
                 Button {
-                    if section == .focus && !viewModel.canAddTask(to: .focus) {
+                    if section == .target && !viewModel.canAddTask(to: .target) {
                         showCapacityPopover = true
                         DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
                             showCapacityPopover = false
@@ -1586,10 +1586,10 @@ struct SectionView: View {
                 }
                 .buttonStyle(.plain)
                 .popover(isPresented: $showCapacityPopover) {
-                    let current = viewModel.taskCount(for: .focus)
-                    let max = Section.focus.maxTasks(for: viewModel.selectedTimeframe) ?? 0
+                    let current = viewModel.taskCount(for: .target)
+                    let max = Section.target.maxTasks(for: viewModel.selectedTimeframe) ?? 0
                     VStack(spacing: 4) {
-                        Text("Focus section")
+                        Text("Targets")
                             .font(.sf(.caption))
                             .foregroundStyle(.secondary)
                         Text("Section full")
@@ -1606,7 +1606,7 @@ struct SectionView: View {
             }
             .contentShape(Rectangle())
             .onTapGesture {
-                if section == .extra {
+                if section == .todo {
                     withAnimation(.easeInOut(duration: 0.2)) {
                         viewModel.toggleSectionCollapsed(section)
                     }
@@ -1622,7 +1622,7 @@ struct SectionView: View {
                     VStack {
                         Spacer(minLength: 0)
                         Group {
-                            if section == .focus {
+                            if section == .target {
                                 VStack(spacing: 4) {
                                     Text("Nothing to focus on")
                                         .font(.sf(.headline))
@@ -1641,7 +1641,7 @@ struct SectionView: View {
                         .padding(.horizontal, 16)
                         Spacer(minLength: 0)
                     }
-                    .frame(maxWidth: .infinity, minHeight: section == .focus ? 180 : nil)
+                    .frame(maxWidth: .infinity, minHeight: section == .target ? 180 : nil)
                     .contentShape(Rectangle())
                     .onTapGesture {
                         viewModel.addTaskSection = section
@@ -1653,11 +1653,11 @@ struct SectionView: View {
                     VStack(spacing: 0) {
                         // Centering zone for uncompleted tasks
                         VStack(spacing: 0) {
-                            if section == .focus && focusConfig.containerMinHeight > 0 {
+                            if section == .target && sectionConfig.containerMinHeight > 0 {
                                 Spacer(minLength: 0)
                             }
 
-                            if uncompletedCommitments.isEmpty && !completedCommitments.isEmpty && section == .focus {
+                            if uncompletedCommitments.isEmpty && !completedCommitments.isEmpty && section == .target {
                                 // All-done state
                                 HStack(spacing: 8) {
                                     Text("All tasks are completed")
@@ -1673,7 +1673,7 @@ struct SectionView: View {
                                 .contentShape(Rectangle())
                                 .onTapGesture {
                                     withAnimation(.easeInOut(duration: 0.25)) {
-                                        viewModel.isFocusDoneExpanded.toggle()
+                                        viewModel.isTargetDoneExpanded.toggle()
                                     }
                                 }
                             } else {
@@ -1689,22 +1689,22 @@ struct SectionView: View {
                                                 task: task,
                                                 section: section,
                                                 viewModel: viewModel,
-                                                fontOverride: section == .focus ? focusConfig.taskFont : nil,
-                                                verticalPaddingOverride: section == .focus ? focusConfig.verticalPadding : nil
+                                                fontOverride: section == .target ? sectionConfig.taskFont : nil,
+                                                verticalPaddingOverride: section == .target ? sectionConfig.verticalPadding : nil
                                             )
                                         }
                                     }
                                 }
                             }
 
-                            if section == .focus && focusConfig.containerMinHeight > 0 {
+                            if section == .target && sectionConfig.containerMinHeight > 0 {
                                 Spacer(minLength: 0)
                             }
                         }
-                        .frame(minHeight: focusConfig.containerMinHeight > 0 ? focusConfig.containerMinHeight : nil)
+                        .frame(minHeight: sectionConfig.containerMinHeight > 0 ? sectionConfig.containerMinHeight : nil)
 
                         // Completed commitments — below the centering zone for Focus, Done pill for Extra
-                        if section == .focus && !completedCommitments.isEmpty && (viewModel.isFocusDoneExpanded || !uncompletedCommitments.isEmpty) {
+                        if section == .target && !completedCommitments.isEmpty && (viewModel.isTargetDoneExpanded || !uncompletedCommitments.isEmpty) {
                             ForEach(Array(completedCommitments.enumerated()), id: \.element.id) { index, commitment in
                                 if let task = viewModel.tasksMap[commitment.taskId] {
                                     Divider()
@@ -1713,15 +1713,15 @@ struct SectionView: View {
                                         task: task,
                                         section: section,
                                         viewModel: viewModel,
-                                        fontOverride: focusConfig.completedTaskFont,
-                                        verticalPaddingOverride: focusConfig.completedVerticalPadding
+                                        fontOverride: sectionConfig.completedTaskFont,
+                                        verticalPaddingOverride: sectionConfig.completedVerticalPadding
                                     )
-                                    .opacity(focusConfig.completedOpacity)
+                                    .opacity(sectionConfig.completedOpacity)
                                 }
                             }
                         }
 
-                        if section == .extra && !completedCommitments.isEmpty {
+                        if section == .todo && !completedCommitments.isEmpty {
                             if !uncompletedCommitments.isEmpty {
                                 Divider()
                                     .padding(.top, 8)
@@ -1787,7 +1787,7 @@ struct DonePillView: View {
 
             // Expanded completed tasks
             if isExpanded {
-                let config = viewModel.focusConfig(for: section)
+                let config = viewModel.sectionConfig(for: section)
                 VStack(spacing: 0) {
                     ForEach(Array(completedCommitments.enumerated()), id: \.element.id) { index, commitment in
                         if let task = viewModel.tasksMap[commitment.taskId] {
@@ -1832,7 +1832,7 @@ struct FocusSectionHeaderRow: View {
         HStack(spacing: 12) {
             HStack(alignment: .lastTextBaseline, spacing: 8) {
                 Text(section.displayName)
-                    .font(.golosText(size: section == .focus ? 30 : 22))
+                    .font(.golosText(size: section == .target ? 30 : 22))
 
                 // Count display
                 if let maxTasks = section.maxTasks(for: viewModel.selectedTimeframe) {
@@ -1844,11 +1844,11 @@ struct FocusSectionHeaderRow: View {
                             .padding(.vertical, 4)
                             .clipShape(Capsule())
                             .glassEffect(.regular.interactive(), in: .capsule)
-                        if section == .extra {
+                        if section == .todo {
                             Image(systemName: "chevron.right")
                                 .font(.sf(size: 8, weight: .semibold))
                                 .foregroundColor(.secondary)
-                                .rotationEffect(.degrees(viewModel.isSectionCollapsed(.extra) ? 0 : 90))
+                                .rotationEffect(.degrees(viewModel.isSectionCollapsed(.todo) ? 0 : 90))
                         }
                     }
                     .alignmentGuide(.lastTextBaseline) { d in d[.bottom] - 1 }
@@ -1861,11 +1861,11 @@ struct FocusSectionHeaderRow: View {
                             .padding(.vertical, 4)
                             .clipShape(Capsule())
                             .glassEffect(.regular.interactive(), in: .capsule)
-                        if section == .extra {
+                        if section == .todo {
                             Image(systemName: "chevron.right")
                                 .font(.sf(size: 8, weight: .semibold))
                                 .foregroundColor(.secondary)
-                                .rotationEffect(.degrees(viewModel.isSectionCollapsed(.extra) ? 0 : 90))
+                                .rotationEffect(.degrees(viewModel.isSectionCollapsed(.todo) ? 0 : 90))
                         }
                     }
                     .alignmentGuide(.lastTextBaseline) { d in d[.bottom] - 1 }
@@ -1877,7 +1877,7 @@ struct FocusSectionHeaderRow: View {
             // Add button - hidden when adding task
             Button {
                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                if section == .focus && !viewModel.canAddTask(to: .focus) {
+                if section == .target && !viewModel.canAddTask(to: .target) {
                     showCapacityPopover = true
                     DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
                         showCapacityPopover = false
@@ -1897,10 +1897,10 @@ struct FocusSectionHeaderRow: View {
             }
             .buttonStyle(.plain)
             .popover(isPresented: $showCapacityPopover) {
-                let current = viewModel.taskCount(for: .focus)
-                let max = Section.focus.maxTasks(for: viewModel.selectedTimeframe) ?? 0
+                let current = viewModel.taskCount(for: .target)
+                let max = Section.target.maxTasks(for: viewModel.selectedTimeframe) ?? 0
                 VStack(spacing: 4) {
-                    Text("Focus section")
+                    Text("Targets")
                         .font(.sf(.caption))
                         .foregroundStyle(.secondary)
                     Text("Section full")
@@ -1917,7 +1917,7 @@ struct FocusSectionHeaderRow: View {
         }
         .contentShape(Rectangle())
         .onTapGesture {
-            if section == .extra {
+            if section == .todo {
                 withAnimation(.easeInOut(duration: 0.2)) {
                     viewModel.toggleSectionCollapsed(section)
                 }
@@ -2040,7 +2040,7 @@ struct CommitmentRow: View {
                             .foregroundColor(.appRed)
                     }
                 }
-                .frame(maxWidth: .infinity, minHeight: section == .focus ? 38 : (section == .extra ? 36 : nil), alignment: .leading)
+                .frame(maxWidth: .infinity, minHeight: section == .target ? 38 : (section == .todo ? 36 : nil), alignment: .leading)
                 .contentShape(Rectangle())
                 .onTapGesture {
                     withAnimation(.easeInOut(duration: 0.2)) {
@@ -2122,7 +2122,7 @@ struct CommitmentRow: View {
                 }
                 .buttonStyle(.plain)
             }
-            .padding(.vertical, verticalPaddingOverride ?? (section == .focus ? 14 : 8))
+            .padding(.vertical, verticalPaddingOverride ?? (section == .target ? 14 : 8))
             .padding(.horizontal, 16)
 
             // Subtasks are now rendered as flat list items (see focusList)

@@ -95,7 +95,7 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
     @Published var showSubtaskCommitSheet = false
 
     // Section collapse and add task state
-    @Published var isTodoSectionCollapsed: Bool = true
+    @Published var isTodoSectionCollapsed: Bool = false
     @Published var isRollupSectionCollapsed: Bool = true
     @Published var expandedRollupGroups: Set<Date> = []  // All groups collapsed by default
     @Published var isDoneSubsectionCollapsed: Bool = true  // Closed by default
@@ -930,6 +930,14 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
                     if expandedRollupGroups.contains(group.date) {
                         for c in group.items {
                             result.append(.rollupCommitment(c))
+                            if expandedTasks.contains(c.taskId) {
+                                for subtask in getUncompletedSubtasks(for: c.taskId) {
+                                    result.append(.subtask(subtask, parentCommitment: c))
+                                }
+                                for subtask in getCompletedSubtasks(for: c.taskId) {
+                                    result.append(.subtask(subtask, parentCommitment: c))
+                                }
+                            }
                         }
                     }
                 }

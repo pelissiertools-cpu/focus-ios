@@ -138,6 +138,16 @@ class TaskRepository {
             .execute()
     }
 
+    /// Delete multiple tasks in a single query
+    func deleteTasks(ids: Set<UUID>) async throws {
+        guard !ids.isEmpty else { return }
+        try await supabase
+            .from("tasks")
+            .delete()
+            .in("id", values: ids.map { $0.uuidString })
+            .execute()
+    }
+
     /// Complete a task
     func completeTask(id: UUID) async throws {
         let update = TaskUpdate(

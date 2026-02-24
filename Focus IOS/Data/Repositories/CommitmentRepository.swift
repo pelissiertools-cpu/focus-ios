@@ -158,6 +158,16 @@ class CommitmentRepository {
             .execute()
     }
 
+    /// Delete all commitments for multiple tasks in a single query
+    func deleteCommitments(forTasks taskIds: Set<UUID>) async throws {
+        guard !taskIds.isEmpty else { return }
+        try await supabase
+            .from("commitments")
+            .delete()
+            .in("task_id", values: taskIds.map { $0.uuidString })
+            .execute()
+    }
+
     // MARK: - Committed Task IDs
 
     private struct TaskIdRow: Decodable {

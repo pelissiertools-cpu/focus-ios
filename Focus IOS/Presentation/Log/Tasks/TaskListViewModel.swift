@@ -1214,10 +1214,9 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
         let idsToDelete = selectedTaskIds
 
         do {
-            for taskId in idsToDelete {
-                try await commitmentRepository.deleteCommitments(forTask: taskId)
-                try await repository.deleteTask(id: taskId)
-            }
+            async let deleteCommitments: Void = commitmentRepository.deleteCommitments(forTasks: idsToDelete)
+            async let deleteTasks: Void = repository.deleteTasks(ids: idsToDelete)
+            _ = try await (deleteCommitments, deleteTasks)
 
             tasks.removeAll { idsToDelete.contains($0.id) }
             for taskId in idsToDelete {

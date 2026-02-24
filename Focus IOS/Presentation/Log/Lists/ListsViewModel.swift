@@ -701,15 +701,22 @@ class ListsViewModel: ObservableObject, LogFilterable, TaskEditingViewModel {
         let idsToDelete = selectedListIds
 
         do {
+            // Collect all item IDs across selected lists
+            var allItemIds = Set<UUID>()
             for listId in idsToDelete {
                 let items = itemsMap[listId] ?? []
                 for item in items {
-                    try await commitmentRepository.deleteCommitments(forTask: item.id)
-                    try await repository.deleteTask(id: item.id)
+                    allItemIds.insert(item.id)
                 }
-                try await commitmentRepository.deleteCommitments(forTask: listId)
-                try await repository.deleteTask(id: listId)
             }
+
+            // All task IDs to delete (items + lists themselves)
+            let allTaskIds = allItemIds.union(idsToDelete)
+
+            // Delete all commitments and tasks concurrently
+            async let deleteCommitments: Void = commitmentRepository.deleteCommitments(forTasks: allTaskIds)
+            async let deleteTasks: Void = repository.deleteTasks(ids: allTaskIds)
+            _ = try await (deleteCommitments, deleteTasks)
 
             lists.removeAll { idsToDelete.contains($0.id) }
             for listId in idsToDelete {

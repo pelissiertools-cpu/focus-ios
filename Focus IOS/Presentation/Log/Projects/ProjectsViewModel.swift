@@ -756,10 +756,9 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
         let idsToDelete = selectedProjectIds
 
         do {
-            for projectId in idsToDelete {
-                try await commitmentRepository.deleteCommitments(forTask: projectId)
-                try await repository.deleteTask(id: projectId)
-            }
+            async let deleteCommitments: Void = commitmentRepository.deleteCommitments(forTasks: idsToDelete)
+            async let deleteProjects: Void = repository.deleteTasks(ids: idsToDelete)
+            _ = try await (deleteCommitments, deleteProjects)
 
             projects.removeAll { idsToDelete.contains($0.id) }
             for projectId in idsToDelete {
@@ -776,11 +775,14 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
         let idsToDelete = selectedProjectIds
 
         do {
+            // Unlink tasks first (must complete before deleting projects)
             for projectId in idsToDelete {
                 try await repository.unlinkProjectTasks(projectId: projectId)
-                try await commitmentRepository.deleteCommitments(forTask: projectId)
-                try await repository.deleteTask(id: projectId)
             }
+            // Then delete commitments and projects concurrently
+            async let deleteCommitments: Void = commitmentRepository.deleteCommitments(forTasks: idsToDelete)
+            async let deleteProjects: Void = repository.deleteTasks(ids: idsToDelete)
+            _ = try await (deleteCommitments, deleteProjects)
 
             projects.removeAll { idsToDelete.contains($0.id) }
             for projectId in idsToDelete {

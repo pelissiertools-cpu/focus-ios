@@ -518,6 +518,7 @@ struct FocusTabView: View {
                             commitment: commitment,
                             task: task,
                             section: commitment.section,
+                            allowBreakdown: false,
                             viewModel: viewModel
                         )
                         .opacity(0.8)
@@ -1914,6 +1915,7 @@ struct CommitmentRow: View {
     let commitment: Commitment
     let task: FocusTask
     let section: Section
+    var allowBreakdown: Bool = true
     @ObservedObject var viewModel: FocusTabViewModel
     var fontOverride: Font? = nil
     var verticalPaddingOverride: CGFloat? = nil
@@ -1935,9 +1937,9 @@ struct CommitmentRow: View {
         viewModel.childCount(for: commitment.id)
     }
 
-    /// Can break down if: not daily (child commitments can also break down)
+    /// Can break down if: not daily AND breakdown is allowed in this context (hidden on rollup rows)
     private var canBreakdown: Bool {
-        commitment.canBreakdown
+        allowBreakdown && commitment.canBreakdown
     }
 
     var body: some View {

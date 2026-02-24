@@ -744,7 +744,6 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
     private func commitmentsForSection(_ section: Section, completed: Bool) -> [Commitment] {
         let filtered = commitments.filter { commitment in
             commitment.section == section &&
-            commitment.parentCommitmentId == nil &&
             isSameTimeframe(commitment.commitmentDate, timeframe: selectedTimeframe, selectedDate: selectedDate) &&
             (tasksMap[commitment.taskId]?.isCompleted ?? false) == completed
         }

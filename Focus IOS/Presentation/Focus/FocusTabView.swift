@@ -1935,7 +1935,6 @@ struct RollupSectionHeaderRow: View {
                 HStack(spacing: 8) {
                     Text("Roll Up")
                         .font(.golosText(size: 22))
-                        .foregroundColor(.secondary)
                     Image(systemName: "chevron.right")
                         .font(.sf(size: 8, weight: .semibold))
                         .foregroundColor(.secondary)

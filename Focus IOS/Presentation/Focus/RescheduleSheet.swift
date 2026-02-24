@@ -38,45 +38,88 @@ struct RescheduleSheet: View {
                 disabled: !hasChanges || isSaving
             )
         ) {
-            Form {
-                SwiftUI.Section("Current Schedule") {
-                    HStack {
-                        Text("Timeframe")
-                        Spacer()
-                        Text(commitment.timeframe.displayName)
+            ScrollView {
+                VStack(spacing: 12) {
+                    // Current schedule card
+                    VStack(alignment: .leading, spacing: 0) {
+                        Text("Current Schedule")
+                            .font(.sf(.footnote, weight: .medium))
                             .foregroundColor(.secondary)
+                            .padding(.horizontal, 14)
+                            .padding(.top, 12)
+                            .padding(.bottom, 8)
+
+                        Divider()
+
+                        HStack {
+                            Text("Timeframe")
+                            Spacer()
+                            Text(commitment.timeframe.displayName)
+                                .foregroundColor(.secondary)
+                        }
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 12)
+
+                        Divider()
+
+                        HStack {
+                            Text("Date")
+                            Spacer()
+                            Text(formatDate(commitment.commitmentDate, for: commitment.timeframe))
+                                .foregroundColor(.secondary)
+                        }
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 12)
                     }
-                    HStack {
-                        Text("Date")
-                        Spacer()
-                        Text(formatDate(commitment.commitmentDate, for: commitment.timeframe))
+                    .background(Color(.secondarySystemGroupedBackground))
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+
+                    // New schedule card
+                    VStack(alignment: .leading, spacing: 0) {
+                        Text("New Schedule")
+                            .font(.sf(.footnote, weight: .medium))
                             .foregroundColor(.secondary)
+                            .padding(.horizontal, 14)
+                            .padding(.top, 12)
+                            .padding(.bottom, 8)
+
+                        Divider()
+
+                        Picker("Timeframe", selection: $selectedTimeframe) {
+                            Text("Day").tag(Timeframe.daily)
+                            Text("Week").tag(Timeframe.weekly)
+                            Text("Month").tag(Timeframe.monthly)
+                            Text("Year").tag(Timeframe.yearly)
+                        }
+                        .pickerStyle(.segmented)
+                        .padding(.horizontal, 14)
+                        .padding(.top, 8)
+                        .padding(.bottom, 8)
+
+                        Divider()
+
+                        RescheduleDatePicker(
+                            selectedDate: $selectedDate,
+                            timeframe: selectedTimeframe
+                        )
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
                     }
-                }
+                    .background(Color(.secondarySystemGroupedBackground))
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
 
-                SwiftUI.Section("New Schedule") {
-                    Picker("Timeframe", selection: $selectedTimeframe) {
-                        Text("Day").tag(Timeframe.daily)
-                        Text("Week").tag(Timeframe.weekly)
-                        Text("Month").tag(Timeframe.monthly)
-                        Text("Year").tag(Timeframe.yearly)
-                    }
-                    .pickerStyle(.segmented)
-                }
-
-                SwiftUI.Section("Select Date") {
-                    RescheduleDatePicker(
-                        selectedDate: $selectedDate,
-                        timeframe: selectedTimeframe
-                    )
-                }
-
-                if let error = errorMessage {
-                    SwiftUI.Section {
+                    if let error = errorMessage {
                         Label(error, systemImage: "exclamationmark.triangle")
                             .foregroundColor(.red)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 12)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(Color(.secondarySystemGroupedBackground))
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
                     }
                 }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
             }
         }
     }

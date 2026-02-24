@@ -43,33 +43,50 @@ struct CommitmentSelectionSheet: View {
                 disabled: !hasChanges || isSaving
             )
         ) {
-            Form {
-                SwiftUI.Section(task.type == .list ? "List" : "Task") {
-                    Text(task.title)
-                        .font(.sf(.headline))
-
-                    if isParentTask {
-                        let itemLabel = task.type == .list ? "item" : "subtask"
-                        Text("Includes \(subtaskCount) \(itemLabel)\(subtaskCount == 1 ? "" : "s")")
-                            .font(.sf(.caption))
-                            .foregroundColor(.secondary)
+            ScrollView {
+                VStack(spacing: 12) {
+                    // Task title card
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(task.title)
+                            .font(.sf(.headline))
+                        if isParentTask {
+                            let itemLabel = task.type == .list ? "item" : "subtask"
+                            Text("Includes \(subtaskCount) \(itemLabel)\(subtaskCount == 1 ? "" : "s")")
+                                .font(.sf(.caption))
+                                .foregroundColor(.secondary)
+                        }
                     }
-                }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 12)
+                    .background(Color(.secondarySystemGroupedBackground))
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
 
-                SwiftUI.Section("Section") {
-                    Picker("Section", selection: $selectedSection) {
-                        Text("Targets").tag(Section.target)
-                        Text("To-Do").tag(Section.todo)
+                    // Section picker + calendar card
+                    VStack(spacing: 0) {
+                        Picker("Section", selection: $selectedSection) {
+                            Text("Targets").tag(Section.target)
+                            Text("To-Do").tag(Section.todo)
+                        }
+                        .pickerStyle(.segmented)
+                        .padding(.horizontal, 14)
+                        .padding(.top, 12)
+                        .padding(.bottom, 8)
+
+                        Divider()
+
+                        UnifiedCalendarPicker(
+                            selectedDates: $selectedDates,
+                            selectedTimeframe: $selectedTimeframe
+                        )
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
                     }
-                    .pickerStyle(.segmented)
+                    .background(Color(.secondarySystemGroupedBackground))
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
                 }
-
-                SwiftUI.Section("Select Dates") {
-                    UnifiedCalendarPicker(
-                        selectedDates: $selectedDates,
-                        selectedTimeframe: $selectedTimeframe
-                    )
-                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
             }
             .alert("Error", isPresented: $showError) {
                 Button("OK") {}

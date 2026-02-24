@@ -32,6 +32,8 @@ enum FocusFlatDisplayItem: Identifiable {
     case allDoneState
     case donePill
     case focusSpacer(CGFloat)
+    case rollupDayHeader(Date, String)   // date = group anchor, String = display label
+    case rollupCommitment(Commitment)
 
     var id: String {
         switch self {
@@ -53,6 +55,10 @@ enum FocusFlatDisplayItem: Identifiable {
             return "done-pill"
         case .focusSpacer:
             return "focus-spacer"
+        case .rollupDayHeader(let date, _):
+            return "rollup-header-\(Int(date.timeIntervalSince1970))"
+        case .rollupCommitment(let c):
+            return "rollup-\(c.id.uuidString)"
         }
     }
 }
@@ -60,6 +66,7 @@ enum FocusFlatDisplayItem: Identifiable {
 @MainActor
 class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
     @Published var commitments: [Commitment] = []
+    @Published var rollupCommitments: [Commitment] = []
     @Published var tasksMap: [UUID: FocusTask] = [:]  // taskId -> task
     @Published var subtasksMap: [UUID: [FocusTask]] = [:]  // parentTaskId -> subtasks
     @Published var expandedTasks: Set<UUID> = []  // Track expanded tasks
@@ -255,7 +262,17 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
 
             self.commitments = focusCommitments + extraCommitments
 
-            // Fetch associated tasks
+            // Fetch rollup (child timeframe items within current period)
+            if selectedTimeframe != .daily {
+                rollupCommitments = try await commitmentRepository.fetchRollupCommitments(
+                    parentTimeframe: selectedTimeframe,
+                    date: selectedDate
+                )
+            } else {
+                rollupCommitments = []
+            }
+
+            // Fetch associated tasks (commitments + rollup batched in one call)
             await fetchTasksForCommitments()
 
             // Fetch child commitments for trickle-down display
@@ -274,7 +291,7 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
 
     /// Fetch task details for all commitments
     private func fetchTasksForCommitments() async {
-        let taskIds = Array(Set(commitments.map { $0.taskId }))
+        let taskIds = Array(Set((commitments + rollupCommitments).map { $0.taskId }))
         guard !taskIds.isEmpty else { return }
 
         do {
@@ -742,6 +759,65 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
         commitmentsForSection(section, completed: true)
     }
 
+    // MARK: - Rollup Grouping
+
+    /// Groups rollup commitments by their child-timeframe date bucket, sorted chronologically.
+    /// Weekly parent → daily groups labelled "Monday, Feb 23"
+    /// Monthly parent → weekly groups labelled "Week of Feb 16"
+    /// Yearly parent → monthly groups labelled "February"
+    var rollupCommitmentsGrouped: [(date: Date, label: String, items: [Commitment])] {
+        guard !rollupCommitments.isEmpty,
+              let childTimeframe = selectedTimeframe.childTimeframe else { return [] }
+
+        var calendar = Calendar.current
+        calendar.firstWeekday = 1
+
+        // Group commitments by their date bucket
+        var groups: [Date: [Commitment]] = [:]
+        for commitment in rollupCommitments {
+            let bucketDate: Date
+            switch childTimeframe {
+            case .daily:
+                bucketDate = calendar.startOfDay(for: commitment.commitmentDate)
+            case .weekly:
+                let comps = calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: commitment.commitmentDate)
+                bucketDate = calendar.date(from: comps) ?? calendar.startOfDay(for: commitment.commitmentDate)
+            case .monthly:
+                let comps = calendar.dateComponents([.year, .month], from: commitment.commitmentDate)
+                bucketDate = calendar.date(from: comps) ?? calendar.startOfDay(for: commitment.commitmentDate)
+            case .yearly:
+                bucketDate = calendar.startOfDay(for: commitment.commitmentDate)
+            }
+            groups[bucketDate, default: []].append(commitment)
+        }
+
+        return groups.keys.sorted().map { date in
+            let items = groups[date]!.sorted { $0.sortOrder < $1.sortOrder }
+            return (date: date, label: rollupGroupLabel(date: date, childTimeframe: childTimeframe), items: items)
+        }
+    }
+
+    private func rollupGroupLabel(date: Date, childTimeframe: Timeframe) -> String {
+        switch childTimeframe {
+        case .daily:
+            let f = DateFormatter()
+            f.dateFormat = "EEEE, MMM d"
+            return f.string(from: date)
+        case .weekly:
+            let f = DateFormatter()
+            f.dateFormat = "MMM d"
+            return "Week of \(f.string(from: date))"
+        case .monthly:
+            let f = DateFormatter()
+            f.dateFormat = "MMMM"
+            return f.string(from: date)
+        case .yearly:
+            let f = DateFormatter()
+            f.dateFormat = "yyyy"
+            return f.string(from: date)
+        }
+    }
+
     // MARK: - Flat Display Items
 
     var flattenedDisplayItems: [FocusFlatDisplayItem] {
@@ -830,6 +906,14 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
                 result.append(.donePill)
             }
 
+        }
+
+        // -- Rollup section (child timeframe items within current period) --
+        for group in rollupCommitmentsGrouped {
+            result.append(.rollupDayHeader(group.date, group.label))
+            for c in group.items {
+                result.append(.rollupCommitment(c))
+            }
         }
 
         return result

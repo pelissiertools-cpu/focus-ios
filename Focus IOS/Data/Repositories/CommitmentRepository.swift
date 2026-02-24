@@ -106,6 +106,35 @@ class CommitmentRepository {
         }
     }
 
+    /// Fetch all descendant-timeframe commitments within a parent timeframe's date range (rollup view).
+    /// e.g. weekly parent → daily items for that week
+    ///      monthly parent → weekly + daily items for that month (grouped by week in the ViewModel)
+    ///      yearly parent  → monthly + weekly + daily items for that year
+    func fetchRollupCommitments(parentTimeframe: Timeframe, date: Date) async throws -> [Commitment] {
+        let descendantTimeframes = parentTimeframe.availableBreakdownTimeframes
+        guard !descendantTimeframes.isEmpty else { return [] }
+
+        let (startDate, endDate) = Self.dateRange(for: parentTimeframe, date: date)
+
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        let startStr = formatter.string(from: startDate)
+        let endStr = formatter.string(from: endDate)
+
+        let commitments: [Commitment] = try await supabase
+            .from("commitments")
+            .select()
+            .in("timeframe", values: descendantTimeframes.map { $0.rawValue })
+            .gte("commitment_date", value: startStr)
+            .lt("commitment_date", value: endStr)
+            .order("commitment_date", ascending: true)
+            .order("sort_order", ascending: true)
+            .execute()
+            .value
+
+        return commitments
+    }
+
     /// Fetch all commitments for a specific task
     func fetchCommitments(forTask taskId: UUID) async throws -> [Commitment] {
         let commitments: [Commitment] = try await supabase

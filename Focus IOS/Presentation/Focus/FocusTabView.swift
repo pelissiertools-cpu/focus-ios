@@ -84,11 +84,13 @@ struct FocusTabView: View {
                 )
                 Color.clear.frame(height: 0)
                 .onChange(of: viewModel.selectedDate) {
+                    viewModel.rollupCommitments = []
                     _Concurrency.Task { @MainActor in
                         await viewModel.fetchCommitments()
                     }
                 }
                 .onChange(of: viewModel.selectedTimeframe) {
+                    viewModel.rollupCommitments = []
                     _Concurrency.Task { @MainActor in
                         await viewModel.fetchCommitments()
                     }
@@ -339,6 +341,7 @@ struct FocusTabView: View {
                     let nextIdx = index + 1
                     if nextIdx >= flat.count { return true }
                     if case .sectionHeader = flat[nextIdx] { return true }
+                    if case .rollupDayHeader = flat[nextIdx] { return true }
                     return false
                 }()
                 switch item {
@@ -498,6 +501,34 @@ struct FocusTabView: View {
                         .listRowBackground(Color.clear)
                         .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
                         .listRowSeparator(.hidden)
+
+                case .rollupDayHeader(_, let label):
+                    Text(label.uppercased())
+                        .font(.sf(.caption, weight: .semibold))
+                        .foregroundColor(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .listRowBackground(Color.clear)
+                        .listRowInsets(EdgeInsets(top: 20, leading: 16, bottom: 4, trailing: 16))
+                        .listRowSeparator(.hidden)
+                        .moveDisabled(true)
+
+                case .rollupCommitment(let commitment):
+                    if let task = viewModel.tasksMap[commitment.taskId] {
+                        CommitmentRow(
+                            commitment: commitment,
+                            task: task,
+                            section: commitment.section,
+                            viewModel: viewModel
+                        )
+                        .opacity(0.8)
+                        .moveDisabled(true)
+                        .listRowBackground(Color.clear)
+                        .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+                        .listRowSeparator(nextIsSection ? .hidden : .visible)
+                        .listRowSeparatorTint(Color.secondary.opacity(0.2))
+                        .alignmentGuide(.listRowSeparatorLeading) { d in d[.leading] + 4 }
+                        .alignmentGuide(.listRowSeparatorTrailing) { d in d[.trailing] - 4 }
+                    }
 
                 }
             }

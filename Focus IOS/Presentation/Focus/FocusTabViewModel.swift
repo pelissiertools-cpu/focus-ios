@@ -95,6 +95,7 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
     @Published var showSubtaskCommitSheet = false
 
     // Section collapse and add task state
+    @Published var isTargetSectionCollapsed: Bool = false
     @Published var isTodoSectionCollapsed: Bool = false
     @Published var isRollupSectionCollapsed: Bool = true
     @Published var expandedRollupGroups: Set<Date> = []  // All groups collapsed by default
@@ -844,52 +845,54 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
         // -- Targets section --
         result.append(.sectionHeader(.target))
 
-        if targetUncompleted.isEmpty && targetCompleted.isEmpty {
-            result.append(.emptyState(.target))
-        } else if targetUncompleted.isEmpty && !targetCompleted.isEmpty && !isTargetDoneCollapsing {
-            result.append(.allDoneState)
-        }
+        if !isTargetSectionCollapsed {
+            if targetUncompleted.isEmpty && targetCompleted.isEmpty {
+                result.append(.emptyState(.target))
+            } else if targetUncompleted.isEmpty && !targetCompleted.isEmpty && !isTargetDoneCollapsing {
+                result.append(.allDoneState)
+            }
 
-        for c in targetUncompleted {
-            result.append(.commitment(c))
-            if expandedTasks.contains(c.taskId) {
-                for subtask in getUncompletedSubtasks(for: c.taskId) {
-                    result.append(.subtask(subtask, parentCommitment: c))
+            for c in targetUncompleted {
+                result.append(.commitment(c))
+                if expandedTasks.contains(c.taskId) {
+                    for subtask in getUncompletedSubtasks(for: c.taskId) {
+                        result.append(.subtask(subtask, parentCommitment: c))
+                    }
+                    for subtask in getCompletedSubtasks(for: c.taskId) {
+                        result.append(.subtask(subtask, parentCommitment: c))
+                    }
+                    result.append(.addSubtaskRow(parentId: c.taskId, parentCommitment: c))
                 }
-                for subtask in getCompletedSubtasks(for: c.taskId) {
-                    result.append(.subtask(subtask, parentCommitment: c))
+            }
+
+            if isTargetDoneExpanded || !targetUncompleted.isEmpty || isTargetDoneCollapsing {
+                for c in targetCompleted where !targetDoneHiddenIds.contains(c.id) {
+                    result.append(.completedCommitment(c))
                 }
-                result.append(.addSubtaskRow(parentId: c.taskId, parentCommitment: c))
             }
-        }
 
-        if isTargetDoneExpanded || !targetUncompleted.isEmpty || isTargetDoneCollapsing {
-            for c in targetCompleted where !targetDoneHiddenIds.contains(c.id) {
-                result.append(.completedCommitment(c))
-            }
-        }
-
-        // During collapse, use a FIXED spacer matching the post-collapse layout.
-        // This prevents discrete jumps — To-Do section glides smoothly as items disappear.
-        if isTargetDoneCollapsing {
-            let targetRowCount = targetCompleted.count
-            if targetRowCount > 0 && targetRowCount < 4 {
-                let spacerHeight = CGFloat(4 - targetRowCount) * 48
-                result.append(.focusSpacer(spacerHeight))
-            }
-        } else {
-            // When all tasks are completed, no spacer — To-Do sits right below
-            // with the same natural margin whether 1 or 5 items are done.
-            let allCompleted = targetUncompleted.isEmpty && !targetCompleted.isEmpty
-            if !allCompleted {
-                // Ensure targets section has minimum height of ~4 rows, plus a
-                // minimum drop-zone gap so cross-section drag always has room.
-                let targetRowCount = targetUncompleted.count + targetCompleted.count
+            // During collapse, use a FIXED spacer matching the post-collapse layout.
+            // This prevents discrete jumps — To-Do section glides smoothly as items disappear.
+            if isTargetDoneCollapsing {
+                let targetRowCount = targetCompleted.count
                 if targetRowCount > 0 && targetRowCount < 4 {
                     let spacerHeight = CGFloat(4 - targetRowCount) * 48
                     result.append(.focusSpacer(spacerHeight))
-                } else if targetRowCount >= 4 && canAddTask(to: .target) {
-                    result.append(.focusSpacer(48))
+                }
+            } else {
+                // When all tasks are completed, no spacer — To-Do sits right below
+                // with the same natural margin whether 1 or 5 items are done.
+                let allCompleted = targetUncompleted.isEmpty && !targetCompleted.isEmpty
+                if !allCompleted {
+                    // Ensure targets section has minimum height of ~4 rows, plus a
+                    // minimum drop-zone gap so cross-section drag always has room.
+                    let targetRowCount = targetUncompleted.count + targetCompleted.count
+                    if targetRowCount > 0 && targetRowCount < 4 {
+                        let spacerHeight = CGFloat(4 - targetRowCount) * 48
+                        result.append(.focusSpacer(spacerHeight))
+                    } else if targetRowCount >= 4 && canAddTask(to: .target) {
+                        result.append(.focusSpacer(48))
+                    }
                 }
             }
         }
@@ -1211,16 +1214,32 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
         expandedTasks.contains(taskId)
     }
 
-    /// Toggle section collapsed state (To-Do section only)
+    /// Toggle section collapsed state
     func toggleSectionCollapsed(_ section: Section) {
-        if section == .todo {
-            isTodoSectionCollapsed.toggle()
+        switch section {
+        case .target: isTargetSectionCollapsed.toggle()
+        case .todo: isTodoSectionCollapsed.toggle()
+        default: break
         }
     }
 
     /// Check if section is collapsed
     func isSectionCollapsed(_ section: Section) -> Bool {
-        section == .todo ? isTodoSectionCollapsed : false
+        switch section {
+        case .target: return isTargetSectionCollapsed
+        case .todo: return isTodoSectionCollapsed
+        default: return false
+        }
+    }
+
+    /// Title for the rollup/overview section based on the selected timeframe
+    var overviewSectionTitle: String {
+        switch selectedTimeframe {
+        case .weekly: return "Week Overview"
+        case .monthly: return "Month Overview"
+        case .yearly: return "Year Overview"
+        default: return "Overview"
+        }
     }
 
     /// Toggle rollup section collapsed state

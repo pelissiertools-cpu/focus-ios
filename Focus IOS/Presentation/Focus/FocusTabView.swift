@@ -564,6 +564,7 @@ struct FocusTabView: View {
         .listRowSpacing(0)
         .scrollContentBackground(.hidden)
         .animation(.easeInOut(duration: 0.25), value: viewModel.isTargetDoneExpanded)
+        .animation(.easeInOut(duration: 0.2), value: viewModel.isTargetSectionCollapsed)
         .animation(.easeInOut(duration: 0.2), value: viewModel.expandedRollupGroups)
         .animation(.easeInOut(duration: 0.2), value: viewModel.isRollupSectionCollapsed)
         .refreshable {
@@ -1830,39 +1831,39 @@ struct FocusSectionHeaderRow: View {
     var body: some View {
         VStack(spacing: 0) {
         HStack(spacing: 12) {
+            // Title + chevron
             HStack(alignment: .lastTextBaseline, spacing: 8) {
                 Text(section.displayName)
                     .font(.golosText(size: section == .target ? 30 : 22))
 
-                // Count display
-                if let maxTasks = section.maxTasks(for: viewModel.selectedTimeframe) {
-                    HStack(spacing: 6) {
-                        Text("\(sectionCommitments.count)/\(maxTasks)")
-                            .font(.sf(size: 10))
-                            .foregroundColor(.secondary)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .clipShape(Capsule())
-                            .glassEffect(.regular.interactive(), in: .capsule)
-                    }
-                    .alignmentGuide(.lastTextBaseline) { d in d[.bottom] - 1 }
-                } else {
-                    HStack(spacing: 6) {
-                        if section == .todo {
-                            Image(systemName: "chevron.right")
-                                .font(.sf(size: 8, weight: .semibold))
-                                .foregroundColor(.secondary)
-                                .rotationEffect(.degrees(viewModel.isSectionCollapsed(.todo) ? 0 : 90))
-                        }
+                HStack(spacing: 6) {
+                    Image(systemName: "chevron.right")
+                        .font(.sf(size: 8, weight: .semibold))
+                        .foregroundColor(.secondary)
+                        .rotationEffect(.degrees(viewModel.isSectionCollapsed(section) ? 0 : 90))
+                        .animation(.easeInOut(duration: 0.2), value: viewModel.isSectionCollapsed(section))
+
+                    if section != .target {
                         Text("\(sectionCommitments.count)")
                             .font(.sf(size: 10))
                             .foregroundColor(.secondary)
                     }
-                    .alignmentGuide(.lastTextBaseline) { d in d[.bottom] - 1 }
                 }
+                .alignmentGuide(.lastTextBaseline) { d in d[.bottom] - 1 }
             }
 
             Spacer()
+
+            // Fraction pill (target only, right side)
+            if section == .target, let maxTasks = section.maxTasks(for: viewModel.selectedTimeframe) {
+                Text("\(sectionCommitments.count)/\(maxTasks)")
+                    .font(.sf(size: 10))
+                    .foregroundColor(.secondary)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .clipShape(Capsule())
+                    .glassEffect(.regular.interactive(), in: .capsule)
+            }
 
             // Add button - hidden when adding task
             Button {
@@ -1907,10 +1908,8 @@ struct FocusSectionHeaderRow: View {
         }
         .contentShape(Rectangle())
         .onTapGesture {
-            if section == .todo {
-                withAnimation(.easeInOut(duration: 0.2)) {
-                    viewModel.toggleSectionCollapsed(section)
-                }
+            withAnimation(.easeInOut(duration: 0.2)) {
+                viewModel.toggleSectionCollapsed(section)
             }
         }
         .padding(.vertical, 6)
@@ -1933,7 +1932,7 @@ struct RollupSectionHeaderRow: View {
         VStack(spacing: 0) {
             HStack(spacing: 12) {
                 HStack(spacing: 8) {
-                    Text("Roll Up")
+                    Text(viewModel.overviewSectionTitle)
                         .font(.golosText(size: 22))
                     Image(systemName: "chevron.right")
                         .font(.sf(size: 8, weight: .semibold))

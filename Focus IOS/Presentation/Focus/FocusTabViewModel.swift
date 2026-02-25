@@ -1473,10 +1473,10 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
     /// Title for the rollup/overview section based on the selected timeframe
     var overviewSectionTitle: String {
         switch selectedTimeframe {
-        case .weekly: return "Week Assignments"
-        case .monthly: return "Month Assignments"
-        case .yearly: return "Year Assignments"
-        default: return "Assignments"
+        case .weekly: return "Assigned Tasks"
+        case .monthly: return "Assigned Tasks"
+        case .yearly: return "Assigned Tasks"
+        default: return "Assigned Tasks"
         }
     }
 

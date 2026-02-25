@@ -356,13 +356,18 @@ struct FocusTabView: View {
                 case .commitment(let commitment):
                     if let task = viewModel.tasksMap[commitment.taskId] {
                         let config = viewModel.sectionConfig(for: commitment.section)
+                        let targetNum: Int? = commitment.section == .target ? flat[0..<index].filter {
+                            if case .commitment(let c) = $0, c.section == .target { return true }
+                            return false
+                        }.count + 1 : nil
                         CommitmentRow(
                             commitment: commitment,
                             task: task,
                             section: commitment.section,
                             viewModel: viewModel,
                             fontOverride: commitment.section == .target ? config.taskFont : nil,
-                            verticalPaddingOverride: commitment.section == .target ? config.verticalPadding : nil
+                            verticalPaddingOverride: commitment.section == .target ? config.verticalPadding : nil,
+                            targetNumber: targetNum
                         )
                         .moveDisabled(false)
                         .listRowBackground(Color.clear)
@@ -1691,7 +1696,8 @@ struct SectionView: View {
                                                 section: section,
                                                 viewModel: viewModel,
                                                 fontOverride: section == .target ? sectionConfig.taskFont : nil,
-                                                verticalPaddingOverride: section == .target ? sectionConfig.verticalPadding : nil
+                                                verticalPaddingOverride: section == .target ? sectionConfig.verticalPadding : nil,
+                                                targetNumber: section == .target ? index + 1 : nil
                                             )
                                         }
                                     }
@@ -1969,6 +1975,7 @@ struct CommitmentRow: View {
     @ObservedObject var viewModel: FocusTabViewModel
     var fontOverride: Font? = nil
     var verticalPaddingOverride: CGFloat? = nil
+    var targetNumber: Int? = nil
     @State private var showDeleteConfirmation = false
 
     private var subtasks: [FocusTask] {
@@ -2000,6 +2007,14 @@ struct CommitmentRow: View {
                     Image(systemName: "arrow.turn.down.right")
                         .font(.sf(.caption))
                         .foregroundColor(.secondary)
+                }
+
+                // Target number
+                if let number = targetNumber {
+                    Text("\(number)")
+                        .font(fontOverride ?? .sf(.title3, weight: .regular))
+                        .foregroundColor(.secondary)
+                        .monospacedDigit()
                 }
 
                 VStack(alignment: .leading, spacing: 4) {

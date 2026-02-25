@@ -17,7 +17,7 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
     @State private var taskTitle: String
     @State private var commitExpanded = false
     @State private var commitTimeframe: Timeframe = .daily
-    @State private var commitSection: Section = .target
+    @State private var commitSection: Section = .focus
     @State private var commitDates: Set<Date> = []
     @State private var originalCommitDates: Set<Date> = []
     @State private var originalCommitments: [Commitment] = []
@@ -640,9 +640,9 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
     @ViewBuilder
     private var inlineCommitCard: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Section picker (Targets/To-Do)
+            // Section picker (Focus/To-Do)
             Picker("Section", selection: $commitSection) {
-                Text("Targets").tag(Section.target)
+                Text("Focus").tag(Section.focus)
                 Text("To-Do").tag(Section.todo)
             }
             .pickerStyle(.segmented)
@@ -726,7 +726,7 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
             do {
                 let commitmentRepository = CommitmentRepository()
                 let allCommitments = try await commitmentRepository.fetchCommitments(forTask: task.id)
-                let otherSection: Section = capturedSection == .target ? .todo : .target
+                let otherSection: Section = capturedSection == .focus ? .todo : .focus
 
                 let datesToAdd = currentDates.subtracting(originalCommitDates)
                 let datesToRemove = originalCommitDates.subtracting(currentDates)

@@ -13,7 +13,7 @@ struct BatchCommitSheet<VM: LogFilterable>: View {
     @Environment(\.dismiss) var dismiss
 
     @State private var selectedTimeframe: Timeframe = .daily
-    @State private var selectedSection: Section = .target
+    @State private var selectedSection: Section = .focus
     @State private var selectedDates: Set<Date> = []
     @State private var isSaving = false
     @State private var showError = false
@@ -36,7 +36,7 @@ struct BatchCommitSheet<VM: LogFilterable>: View {
 
                 SwiftUI.Section("Section") {
                     Picker("Section", selection: $selectedSection) {
-                        Text("Targets").tag(Section.target)
+                        Text("Focus").tag(Section.focus)
                         Text("To-Do").tag(Section.todo)
                     }
                     .pickerStyle(.segmented)

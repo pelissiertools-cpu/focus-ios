@@ -13,7 +13,7 @@ struct CommitmentSelectionSheet: View {
     @Environment(\.dismiss) var dismiss
 
     @State private var selectedTimeframe: Timeframe = .daily
-    @State private var selectedSection: Section = .target
+    @State private var selectedSection: Section = .focus
     @State private var showError = false
     @State private var errorMessage = ""
     @State private var subtaskCount = 0
@@ -65,7 +65,7 @@ struct CommitmentSelectionSheet: View {
                     // Section picker + calendar card
                     VStack(spacing: 0) {
                         Picker("Section", selection: $selectedSection) {
-                            Text("Targets").tag(Section.target)
+                            Text("Focus").tag(Section.focus)
                             Text("To-Do").tag(Section.todo)
                         }
                         .pickerStyle(.segmented)
@@ -118,7 +118,7 @@ struct CommitmentSelectionSheet: View {
 
             // Fetch ALL commitments for this task (both sections) to check for conflicts
             let allCommitments = try await commitmentRepository.fetchCommitments(forTask: task.id)
-            let otherSection: Section = selectedSection == .target ? .todo : .target
+            let otherSection: Section = selectedSection == .focus ? .todo : .focus
 
             let originalDates = Set(originalCommitments.map { normalizeDate($0.commitmentDate) })
             let currentDates = Set(selectedDates.map { normalizeDate($0) })

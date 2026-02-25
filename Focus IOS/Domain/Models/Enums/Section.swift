@@ -7,23 +7,23 @@
 
 import Foundation
 
-/// Represents the section where a task is committed (Targets or To-Do)
+/// Represents the section where a task is committed (Focus or To-Do)
 enum Section: String, Codable, CaseIterable {
-    case target = "target"
+    case focus = "target"
     case todo = "todo"
 
     var displayName: String {
         switch self {
-        case .target: return "Targets"
+        case .focus: return "Focus"
         case .todo: return "To-Do"
         }
     }
 
     /// Maximum number of tasks allowed in this section
-    /// Targets has limits, To-Do is unlimited
+    /// Focus has limits, To-Do is unlimited
     func maxTasks(for timeframe: Timeframe) -> Int? {
         switch self {
-        case .target:
+        case .focus:
             switch timeframe {
             case .daily: return 3
             case .yearly: return 10

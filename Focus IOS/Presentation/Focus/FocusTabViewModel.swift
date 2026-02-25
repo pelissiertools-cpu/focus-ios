@@ -28,7 +28,7 @@ enum FocusFlatDisplayItem: Identifiable {
     case completedCommitment(Commitment)   // completed — not movable
     case subtask(FocusTask, parentCommitment: Commitment)
     case addSubtaskRow(parentId: UUID, parentCommitment: Commitment)
-    case addTargetRow
+    case addFocusRow
     case emptyState(Section)
     case allDoneState
     case donePill
@@ -51,8 +51,8 @@ enum FocusFlatDisplayItem: Identifiable {
             return "subtask-\(task.id.uuidString)"
         case .addSubtaskRow(let parentId, _):
             return "add-subtask-\(parentId.uuidString)"
-        case .addTargetRow:
-            return "add-target"
+        case .addFocusRow:
+            return "add-focus"
         case .emptyState(let section):
             return "empty-\(section.rawValue)"
         case .allDoneState:
@@ -108,14 +108,14 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
     @Published var showDayAssignmentSheet = false
 
     // Section collapse and add task state
-    @Published var isTargetSectionCollapsed: Bool = false
+    @Published var isFocusSectionCollapsed: Bool = false
     @Published var isTodoSectionCollapsed: Bool = false
     @Published var isRollupSectionCollapsed: Bool = true
     @Published var expandedRollupGroups: Set<Date> = []  // All groups collapsed by default
     @Published var isDoneSubsectionCollapsed: Bool = true  // Closed by default
-    @Published var isTargetDoneExpanded: Bool = false  // Targets "All Done" completed list hidden by default
-    @Published var isTargetDoneCollapsing: Bool = false  // True during staggered collapse animation
-    @Published var targetDoneHiddenIds: Set<UUID> = []  // IDs being animated out during collapse
+    @Published var isFocusDoneExpanded: Bool = false  // Focus "All Done" completed list hidden by default
+    @Published var isFocusDoneCollapsing: Bool = false  // True during staggered collapse animation
+    @Published var focusDoneHiddenIds: Set<UUID> = []  // IDs being animated out during collapse
     @Published var allDoneCheckPulse: Bool = false  // Checkmark scale pulse after collapse
     @Published var showAddTaskSheet: Bool = false
     @Published var addTaskSection: Section = .todo
@@ -272,11 +272,11 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
         errorMessage = nil
 
         do {
-            // Fetch both targets and to-do sections
-            let targetCommitments = try await commitmentRepository.fetchCommitments(
+            // Fetch both focus and to-do sections
+            let focusCommitments = try await commitmentRepository.fetchCommitments(
                 timeframe: selectedTimeframe,
                 date: selectedDate,
-                section: .target
+                section: .focus
             )
             let todoCommitments = try await commitmentRepository.fetchCommitments(
                 timeframe: selectedTimeframe,
@@ -284,7 +284,7 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
                 section: .todo
             )
 
-            self.commitments = targetCommitments + todoCommitments
+            self.commitments = focusCommitments + todoCommitments
 
             // Fetch rollup (child timeframe items within current period)
             if selectedTimeframe != .daily {
@@ -668,11 +668,11 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
     /// Only the parent's commitment moves - subtask commitments stay at their original dates
     /// Returns true if successful, false if section limit exceeded
     func rescheduleCommitment(_ commitment: Commitment, to newDate: Date, newTimeframe: Timeframe) async -> Bool {
-        // Check section limits for Targets section at destination
-        if commitment.section == .target {
-            let canAdd = canAddToTargetsSection(timeframe: newTimeframe, date: newDate, excludingCommitmentId: commitment.id)
+        // Check section limits for Focus section at destination
+        if commitment.section == .focus {
+            let canAdd = canAddToFocusSection(timeframe: newTimeframe, date: newDate, excludingCommitmentId: commitment.id)
             if !canAdd {
-                errorMessage = "Targets section is full at destination (\(Section.target.maxTasks(for: newTimeframe)!) max)"
+                errorMessage = "Focus section is full at destination (\(Section.focus.maxTasks(for: newTimeframe)!) max)"
                 return false
             }
         }
@@ -694,18 +694,18 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
         }
     }
 
-    /// Check if Targets section has room at a specific date/timeframe
+    /// Check if Focus section has room at a specific date/timeframe
     /// Excludes a commitment ID to allow rescheduling within same section
-    private func canAddToTargetsSection(timeframe: Timeframe, date: Date, excludingCommitmentId: UUID) -> Bool {
-        // Count existing Targets commitments at destination (excluding the one being moved)
+    private func canAddToFocusSection(timeframe: Timeframe, date: Date, excludingCommitmentId: UUID) -> Bool {
+        // Count existing Focus commitments at destination (excluding the one being moved)
         let existingCount = commitments.filter {
-            $0.section == .target &&
+            $0.section == .focus &&
             $0.timeframe == timeframe &&
             isSameTimeframe($0.commitmentDate, timeframe: timeframe, selectedDate: date) &&
             $0.id != excludingCommitmentId
         }.count
 
-        let maxAllowed = Section.target.maxTasks(for: timeframe) ?? Int.max
+        let maxAllowed = Section.focus.maxTasks(for: timeframe) ?? Int.max
         return existingCount < maxAllowed
     }
 
@@ -730,16 +730,16 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
         return await rescheduleCommitment(commitment, to: nextDate, newTimeframe: commitment.timeframe)
     }
 
-    /// Move a commitment to a different section (Targets <-> To-Do)
+    /// Move a commitment to a different section (Focus <-> To-Do)
     /// Returns true if successful, false if section limit exceeded
     func moveCommitmentToSection(_ commitment: Commitment, to targetSection: Section) async -> Bool {
         // Skip if already in target section
         guard commitment.section != targetSection else { return true }
 
-        // Check section limits for Targets
-        if targetSection == .target {
-            guard canAddTask(to: .target, timeframe: commitment.timeframe, date: commitment.commitmentDate) else {
-                errorMessage = "Targets section is full (\(Section.target.maxTasks(for: commitment.timeframe)!) max)"
+        // Check section limits for Focus
+        if targetSection == .focus {
+            guard canAddTask(to: .focus, timeframe: commitment.timeframe, date: commitment.commitmentDate) else {
+                errorMessage = "Focus section is full (\(Section.focus.maxTasks(for: commitment.timeframe)!) max)"
                 return false
             }
         }
@@ -871,27 +871,27 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
     var flattenedDisplayItems: [FocusFlatDisplayItem] {
         var result: [FocusFlatDisplayItem] = []
 
-        let targetUncompleted = uncompletedCommitmentsForSection(.target)
-        let targetCompleted = completedCommitmentsForSection(.target)
+        let focusUncompleted = uncompletedCommitmentsForSection(.focus)
+        let focusCompleted = completedCommitmentsForSection(.focus)
         let todoUncompleted = uncompletedCommitmentsForSection(.todo)
         let todoCompleted = completedCommitmentsForSection(.todo)
 
-        // -- Targets section --
-        result.append(.sectionHeader(.target))
+        // -- Focus section --
+        result.append(.sectionHeader(.focus))
 
-        if !isTargetSectionCollapsed {
-            if targetUncompleted.isEmpty && targetCompleted.isEmpty {
+        if !isFocusSectionCollapsed {
+            if focusUncompleted.isEmpty && focusCompleted.isEmpty {
                 // Empty state: show inline add row instead of static text
-                if canAddTask(to: .target) {
-                    result.append(.addTargetRow)
+                if canAddTask(to: .focus) {
+                    result.append(.addFocusRow)
                 } else {
-                    result.append(.emptyState(.target))
+                    result.append(.emptyState(.focus))
                 }
-            } else if targetUncompleted.isEmpty && !targetCompleted.isEmpty && !isTargetDoneCollapsing {
+            } else if focusUncompleted.isEmpty && !focusCompleted.isEmpty && !isFocusDoneCollapsing {
                 result.append(.allDoneState)
             }
 
-            for c in targetUncompleted {
+            for c in focusUncompleted {
                 result.append(.commitment(c))
                 if expandedTasks.contains(c.taskId) {
                     for subtask in getUncompletedSubtasks(for: c.taskId) {
@@ -904,37 +904,37 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
                 }
             }
 
-            // Inline add row after existing targets (when there's room)
-            if !targetUncompleted.isEmpty && canAddTask(to: .target) {
-                result.append(.addTargetRow)
+            // Inline add row after existing focus items (when there's room)
+            if !focusUncompleted.isEmpty && canAddTask(to: .focus) {
+                result.append(.addFocusRow)
             }
 
-            if isTargetDoneExpanded || !targetUncompleted.isEmpty || isTargetDoneCollapsing {
-                for c in targetCompleted where !targetDoneHiddenIds.contains(c.id) {
+            if isFocusDoneExpanded || !focusUncompleted.isEmpty || isFocusDoneCollapsing {
+                for c in focusCompleted where !focusDoneHiddenIds.contains(c.id) {
                     result.append(.completedCommitment(c))
                 }
             }
 
             // During collapse, use a FIXED spacer matching the post-collapse layout.
             // This prevents discrete jumps — To-Do section glides smoothly as items disappear.
-            if isTargetDoneCollapsing {
-                let targetRowCount = targetCompleted.count
-                if targetRowCount > 0 && targetRowCount < 4 {
-                    let spacerHeight = CGFloat(4 - targetRowCount) * 48
+            if isFocusDoneCollapsing {
+                let focusRowCount = focusCompleted.count
+                if focusRowCount > 0 && focusRowCount < 4 {
+                    let spacerHeight = CGFloat(4 - focusRowCount) * 48
                     result.append(.focusSpacer(spacerHeight))
                 }
             } else {
                 // When all tasks are completed, no spacer — To-Do sits right below
                 // with the same natural margin whether 1 or 5 items are done.
-                let allCompleted = targetUncompleted.isEmpty && !targetCompleted.isEmpty
+                let allCompleted = focusUncompleted.isEmpty && !focusCompleted.isEmpty
                 if !allCompleted {
-                    // Ensure targets section has minimum height of ~4 rows, plus a
+                    // Ensure focus section has minimum height of ~4 rows, plus a
                     // minimum drop-zone gap so cross-section drag always has room.
-                    let targetRowCount = targetUncompleted.count + targetCompleted.count
-                    if targetRowCount > 0 && targetRowCount < 4 {
-                        let spacerHeight = CGFloat(4 - targetRowCount) * 48
+                    let focusRowCount = focusUncompleted.count + focusCompleted.count
+                    if focusRowCount > 0 && focusRowCount < 4 {
+                        let spacerHeight = CGFloat(4 - focusRowCount) * 48
                         result.append(.focusSpacer(spacerHeight))
-                    } else if targetRowCount >= 4 && canAddTask(to: .target) {
+                    } else if focusRowCount >= 4 && canAddTask(to: .focus) {
                         result.append(.focusSpacer(48))
                     }
                 }
@@ -1029,7 +1029,7 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
     // MARK: - Section Config
 
     func sectionConfig(for section: Section) -> FocusSectionConfig {
-        guard section == .target else {
+        guard section == .focus else {
             return FocusSectionConfig(
                 taskFont: .sf(.body),
                 verticalPadding: 8,
@@ -1070,7 +1070,7 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
         let sourceSection = movedCommitment.section
 
         // Determine destination section by scanning backward for nearest section header
-        var destSection: Section = .target
+        var destSection: Section = .focus
         for i in stride(from: min(destination, flat.count - 1), through: 0, by: -1) {
             if case .sectionHeader(let section) = flat[i] {
                 destSection = section
@@ -1120,8 +1120,8 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
 
         } else {
             // -- Cross-section move --
-            if destSection == .target {
-                guard canAddTask(to: .target, timeframe: movedCommitment.timeframe, date: movedCommitment.commitmentDate) else { return }
+            if destSection == .focus {
+                guard canAddTask(to: .focus, timeframe: movedCommitment.timeframe, date: movedCommitment.commitmentDate) else { return }
             }
 
             // Find insertion index among destination section's uncompleted commitments
@@ -1325,9 +1325,9 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
     func moveCommitmentToSectionAtIndex(_ commitment: Commitment, to targetSection: Section, atIndex: Int) {
         guard commitment.section != targetSection else { return }
 
-        // Validate Targets section capacity
-        if targetSection == .target {
-            guard canAddTask(to: .target, timeframe: commitment.timeframe, date: commitment.commitmentDate) else { return }
+        // Validate Focus section capacity
+        if targetSection == .focus {
+            guard canAddTask(to: .focus, timeframe: commitment.timeframe, date: commitment.commitmentDate) else { return }
         }
 
         // Get source and target section lists
@@ -1412,7 +1412,7 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
     /// Toggle section collapsed state
     func toggleSectionCollapsed(_ section: Section) {
         switch section {
-        case .target: isTargetSectionCollapsed.toggle()
+        case .focus: isFocusSectionCollapsed.toggle()
         case .todo: isTodoSectionCollapsed.toggle()
         default: break
         }
@@ -1421,7 +1421,7 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
     /// Check if section is collapsed
     func isSectionCollapsed(_ section: Section) -> Bool {
         switch section {
-        case .target: return isTargetSectionCollapsed
+        case .focus: return isFocusSectionCollapsed
         case .todo: return isTodoSectionCollapsed
         default: return false
         }
@@ -1515,9 +1515,9 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
             return nil
         }
 
-        // Check section limits for Targets
-        if section == .target && !canAddTask(to: .target) {
-            errorMessage = "Targets section is full"
+        // Check section limits for Focus
+        if section == .focus && !canAddTask(to: .focus) {
+            errorMessage = "Focus section is full"
             return nil
         }
 
@@ -1569,8 +1569,8 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
 
         guard !title.trimmingCharacters(in: .whitespaces).isEmpty else { return }
 
-        if section == .target && !canAddTask(to: .target) {
-            errorMessage = "Targets section is full"
+        if section == .focus && !canAddTask(to: .focus) {
+            errorMessage = "Focus section is full"
             return
         }
 
@@ -1638,8 +1638,8 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
         }
         guard !title.trimmingCharacters(in: .whitespaces).isEmpty else { return }
 
-        if section == .target && !canAddTask(to: .target) {
-            errorMessage = "Targets section is full"
+        if section == .focus && !canAddTask(to: .focus) {
+            errorMessage = "Focus section is full"
             return
         }
 
@@ -1707,8 +1707,8 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
         }
         guard !title.trimmingCharacters(in: .whitespaces).isEmpty else { return }
 
-        if section == .target && !canAddTask(to: .target) {
-            errorMessage = "Targets section is full"
+        if section == .focus && !canAddTask(to: .focus) {
+            errorMessage = "Focus section is full"
             return
         }
 
@@ -1831,16 +1831,16 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
                     updatedTask.completedDate = nil
                 }
 
-                // Pre-check: will this completion leave Targets with no uncompleted items?
+                // Pre-check: will this completion leave Focus with no uncompleted items?
                 // (Before updating tasksMap, this task is still "uncompleted" in the filter)
                 let willTriggerCollapse = updatedTask.isCompleted &&
-                    uncompletedCommitmentsForSection(.target).allSatisfy { $0.taskId == task.id }
+                    uncompletedCommitmentsForSection(.focus).allSatisfy { $0.taskId == task.id }
 
                 withAnimation(.easeInOut(duration: 0.3)) {
                     tasksMap[task.id] = updatedTask
                     // Set collapse flag in SAME animation to prevent intermediate allDoneState flash
                     if willTriggerCollapse {
-                        isTargetDoneCollapsing = true
+                        isFocusDoneCollapsing = true
                     }
                 }
                 // Notify other views
@@ -1851,9 +1851,9 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
                     subtasksChanged: didRestoreSubtasks
                 )
 
-                // Auto-collapse Targets completed list when last task is checked
+                // Auto-collapse Focus completed list when last task is checked
                 if willTriggerCollapse {
-                    triggerTargetDoneCollapse()
+                    triggerFocusDoneCollapse()
                 }
             }
         } catch {
@@ -1862,21 +1862,21 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
     }
 
     /// Staggered collapse animation: items slide up one by one, then checkmark pulses
-    func triggerTargetDoneCollapse() {
-        let completed = completedCommitmentsForSection(.target)
+    func triggerFocusDoneCollapse() {
+        let completed = completedCommitmentsForSection(.focus)
         guard !completed.isEmpty else {
-            isTargetDoneExpanded = false
+            isFocusDoneExpanded = false
             return
         }
 
-        // Only animate isTargetDoneCollapsing if not already set
+        // Only animate isFocusDoneCollapsing if not already set
         // (callers may set it in the same animation block as the task state change)
-        if !isTargetDoneCollapsing {
+        if !isFocusDoneCollapsing {
             withAnimation(.easeInOut(duration: 0.3)) {
-                isTargetDoneCollapsing = true
+                isFocusDoneCollapsing = true
             }
         }
-        targetDoneHiddenIds = []
+        focusDoneHiddenIds = []
 
         // Brief pause to let the completion state (strikethrough/opacity) settle visually
         let initialDelay: Double = 0.5
@@ -1886,7 +1886,7 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
         for (index, commitment) in reversed.enumerated() {
             DispatchQueue.main.asyncAfter(deadline: .now() + initialDelay + Double(index) * 0.3) {
                 withAnimation(.easeOut(duration: 0.3)) {
-                    _ = self.targetDoneHiddenIds.insert(commitment.id)
+                    _ = self.focusDoneHiddenIds.insert(commitment.id)
                 }
             }
         }
@@ -1899,9 +1899,9 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
             self.allDoneCheckPulse = true
 
             withAnimation(.easeInOut(duration: 0.3)) {
-                self.isTargetDoneCollapsing = false
-                self.isTargetDoneExpanded = false
-                self.targetDoneHiddenIds = []
+                self.isFocusDoneCollapsing = false
+                self.isFocusDoneExpanded = false
+                self.focusDoneHiddenIds = []
             }
 
             // Snap checkmark back after the pulse
@@ -1955,14 +1955,14 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
                         parentTask.isCompleted = true
                         parentTask.completedDate = Date()
 
-                        // Pre-check: will completing this parent leave Targets with no uncompleted items?
-                        let willTriggerCollapse = uncompletedCommitmentsForSection(.target)
+                        // Pre-check: will completing this parent leave Focus with no uncompleted items?
+                        let willTriggerCollapse = uncompletedCommitmentsForSection(.focus)
                             .allSatisfy { $0.taskId == parentId }
 
                         withAnimation(.easeInOut(duration: 0.3)) {
                             tasksMap[parentId] = parentTask
                             if willTriggerCollapse {
-                                isTargetDoneCollapsing = true
+                                isFocusDoneCollapsing = true
                             }
                         }
                         postTaskCompletionNotification(
@@ -1970,9 +1970,9 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
                             isCompleted: true,
                             completedDate: parentTask.completedDate
                         )
-                        // Auto-collapse Targets completed list when last task is checked
+                        // Auto-collapse Focus completed list when last task is checked
                         if willTriggerCollapse {
-                            triggerTargetDoneCollapse()
+                            triggerFocusDoneCollapse()
                         }
                     }
                 } else {

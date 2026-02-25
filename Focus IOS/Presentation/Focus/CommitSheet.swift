@@ -394,7 +394,7 @@ struct SubtaskCommitCalendarPicker: View {
             userId: UUID(),
             taskId: UUID(),
             timeframe: .yearly,
-            section: .target,
+            section: .focus,
             commitmentDate: Date()
         ),
         task: FocusTask(

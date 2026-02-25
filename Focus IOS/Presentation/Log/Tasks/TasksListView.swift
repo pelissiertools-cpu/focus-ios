@@ -329,12 +329,12 @@ struct PrioritySectionHeader: View {
                         .foregroundColor(.secondary)
                 }
 
-                Spacer()
-
                 Image(systemName: "chevron.right")
                     .font(.sf(size: 8, weight: .semibold))
                     .foregroundColor(.secondary)
                     .rotationEffect(.degrees(isCollapsed ? 0 : 90))
+
+                Spacer()
             }
             .padding(.leading, 16)
             .padding(.trailing, 12)
@@ -344,12 +344,6 @@ struct PrioritySectionHeader: View {
                 onToggle()
             }
             .frame(minHeight: 70, alignment: .bottom)
-
-            Rectangle()
-                .fill(Color.secondary.opacity(0.7))
-                .frame(height: 1)
-                .padding(.leading, 16)
-                .padding(.trailing, 4)
         }
     }
 }

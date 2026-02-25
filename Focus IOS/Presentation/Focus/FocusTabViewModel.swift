@@ -36,6 +36,8 @@ enum FocusFlatDisplayItem: Identifiable {
     case rollupSectionHeader
     case rollupDayHeader(Date, String)   // date = group anchor, String = display label
     case rollupCommitment(Commitment)
+    case todoPriorityHeader(Priority)
+    case addTodoTaskRow(Priority)
 
     var id: String {
         switch self {
@@ -65,6 +67,10 @@ enum FocusFlatDisplayItem: Identifiable {
             return "rollup-header-\(Int(date.timeIntervalSince1970))"
         case .rollupCommitment(let c):
             return "rollup-\(c.id.uuidString)"
+        case .todoPriorityHeader(let priority):
+            return "todo-priority-\(priority.rawValue)"
+        case .addTodoTaskRow(let priority):
+            return "add-todo-task-\(priority.rawValue)"
         }
     }
 }
@@ -109,6 +115,11 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
     @Published var allDoneCheckPulse: Bool = false  // Checkmark scale pulse after collapse
     @Published var showAddTaskSheet: Bool = false
     @Published var addTaskSection: Section = .todo
+
+    // To-Do priority sort state
+    @Published var todoPrioritySortEnabled: Bool = false
+    @Published var todoPrioritySortDirection: SortDirection = .highestFirst
+    @Published var collapsedTodoPriorities: Set<Priority> = []
 
     // Timeline ViewModel (owns all calendar timeline state and methods)
     @Published var timelineVM: TimelineViewModel!
@@ -756,10 +767,26 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
             isSameTimeframe(commitment.commitmentDate, timeframe: selectedTimeframe, selectedDate: selectedDate) &&
             (tasksMap[commitment.taskId]?.isCompleted ?? false) == completed
         }
-        return completed ? filtered : filtered.sorted { a, b in
+        if completed { return filtered }
+
+        var sorted = filtered.sorted { a, b in
             if a.isChildCommitment != b.isChildCommitment { return !a.isChildCommitment }
             return a.sortOrder < b.sortOrder
         }
+
+        if section == .todo && todoPrioritySortEnabled {
+            let ascending = todoPrioritySortDirection == .lowestFirst
+            sorted.sort { a, b in
+                let priorityA = tasksMap[a.taskId]?.priority.sortIndex ?? 2
+                let priorityB = tasksMap[b.taskId]?.priority.sortIndex ?? 2
+                if priorityA != priorityB {
+                    return ascending ? priorityA > priorityB : priorityA < priorityB
+                }
+                return a.sortOrder < b.sortOrder
+            }
+        }
+
+        return sorted
     }
 
     func uncompletedCommitmentsForSection(_ section: Section) -> [Commitment] {
@@ -916,18 +943,48 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
         if !isSectionCollapsed(.todo) {
             if todoUncompleted.isEmpty && todoCompleted.isEmpty {
                 result.append(.emptyState(.todo))
-            }
+            } else if todoPrioritySortEnabled {
+                // Group by priority with sub-headers
+                let priorities: [Priority] = todoPrioritySortDirection == .highestFirst
+                    ? Priority.allCases
+                    : Priority.allCases.reversed()
 
-            for c in todoUncompleted {
-                result.append(.commitment(c))
-                if expandedTasks.contains(c.taskId) {
-                    for subtask in getUncompletedSubtasks(for: c.taskId) {
-                        result.append(.subtask(subtask, parentCommitment: c))
+                for priority in priorities {
+                    let commitmentsForPriority = todoUncompleted.filter { c in
+                        (tasksMap[c.taskId]?.priority ?? .low) == priority
                     }
-                    for subtask in getCompletedSubtasks(for: c.taskId) {
-                        result.append(.subtask(subtask, parentCommitment: c))
+
+                    result.append(.todoPriorityHeader(priority))
+
+                    if !collapsedTodoPriorities.contains(priority) {
+                        for c in commitmentsForPriority {
+                            result.append(.commitment(c))
+                            if expandedTasks.contains(c.taskId) {
+                                for subtask in getUncompletedSubtasks(for: c.taskId) {
+                                    result.append(.subtask(subtask, parentCommitment: c))
+                                }
+                                for subtask in getCompletedSubtasks(for: c.taskId) {
+                                    result.append(.subtask(subtask, parentCommitment: c))
+                                }
+                                result.append(.addSubtaskRow(parentId: c.taskId, parentCommitment: c))
+                            }
+                        }
+                        result.append(.addTodoTaskRow(priority))
                     }
-                    result.append(.addSubtaskRow(parentId: c.taskId, parentCommitment: c))
+                }
+            } else {
+                // Original flat list (no priority grouping)
+                for c in todoUncompleted {
+                    result.append(.commitment(c))
+                    if expandedTasks.contains(c.taskId) {
+                        for subtask in getUncompletedSubtasks(for: c.taskId) {
+                            result.append(.subtask(subtask, parentCommitment: c))
+                        }
+                        for subtask in getCompletedSubtasks(for: c.taskId) {
+                            result.append(.subtask(subtask, parentCommitment: c))
+                        }
+                        result.append(.addSubtaskRow(parentId: c.taskId, parentCommitment: c))
+                    }
                 }
             }
 
@@ -1016,39 +1073,44 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
         }
 
         if sourceSection == destSection {
-            // -- Same-section reorder --
-            let sectionCommitments = flat.enumerated().compactMap { (i, item) -> (flatIdx: Int, commitment: Commitment)? in
-                if case .commitment(let c) = item, c.section == sourceSection {
-                    return (i, c)
+            if destSection == .todo && todoPrioritySortEnabled {
+                // -- Priority-aware reorder within to-do section --
+                handleTodoPriorityMove(movedCommitment: movedCommitment, flat: flat, destination: destination)
+            } else {
+                // -- Same-section reorder (no priority awareness) --
+                let sectionCommitments = flat.enumerated().compactMap { (i, item) -> (flatIdx: Int, commitment: Commitment)? in
+                    if case .commitment(let c) = item, c.section == sourceSection {
+                        return (i, c)
+                    }
+                    return nil
                 }
-                return nil
-            }
 
-            guard let commitmentFrom = sectionCommitments.firstIndex(where: { $0.commitment.id == movedCommitment.id }) else { return }
+                guard let commitmentFrom = sectionCommitments.firstIndex(where: { $0.commitment.id == movedCommitment.id }) else { return }
 
-            var commitmentTo = sectionCommitments.count
-            for (ci, entry) in sectionCommitments.enumerated() {
-                if destination <= entry.flatIdx {
-                    commitmentTo = ci
-                    break
+                var commitmentTo = sectionCommitments.count
+                for (ci, entry) in sectionCommitments.enumerated() {
+                    if destination <= entry.flatIdx {
+                        commitmentTo = ci
+                        break
+                    }
                 }
-            }
-            if commitmentTo > commitmentFrom { commitmentTo = min(commitmentTo, sectionCommitments.count) }
+                if commitmentTo > commitmentFrom { commitmentTo = min(commitmentTo, sectionCommitments.count) }
 
-            guard commitmentFrom != commitmentTo && commitmentFrom + 1 != commitmentTo else { return }
+                guard commitmentFrom != commitmentTo && commitmentFrom + 1 != commitmentTo else { return }
 
-            var uncompleted = uncompletedCommitmentsForSection(sourceSection)
-            uncompleted.move(fromOffsets: IndexSet(integer: commitmentFrom), toOffset: commitmentTo)
+                var uncompleted = uncompletedCommitmentsForSection(sourceSection)
+                uncompleted.move(fromOffsets: IndexSet(integer: commitmentFrom), toOffset: commitmentTo)
 
-            // Reassign sort orders
-            var updates: [(id: UUID, sortOrder: Int)] = []
-            for (index, c) in uncompleted.enumerated() {
-                if let mainIndex = commitments.firstIndex(where: { $0.id == c.id }) {
-                    commitments[mainIndex].sortOrder = index
+                // Reassign sort orders
+                var updates: [(id: UUID, sortOrder: Int)] = []
+                for (index, c) in uncompleted.enumerated() {
+                    if let mainIndex = commitments.firstIndex(where: { $0.id == c.id }) {
+                        commitments[mainIndex].sortOrder = index
+                    }
+                    updates.append((id: c.id, sortOrder: index))
                 }
-                updates.append((id: c.id, sortOrder: index))
+                _Concurrency.Task { await persistCommitmentSortOrders(updates) }
             }
-            _Concurrency.Task { await persistCommitmentSortOrders(updates) }
 
         } else {
             // -- Cross-section move --
@@ -1073,6 +1135,120 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
             }
 
             moveCommitmentToSectionAtIndex(movedCommitment, to: destSection, atIndex: insertIdx)
+        }
+    }
+
+    /// Determine which priority group contains the given destination index within the to-do section
+    private func resolveDestinationTodoPriority(flat: [FocusFlatDisplayItem], destination: Int) -> Priority {
+        let lookupIndex = max(0, min(destination - 1, flat.count - 1))
+        for i in stride(from: lookupIndex, through: 0, by: -1) {
+            if case .todoPriorityHeader(let priority) = flat[i] {
+                return priority
+            }
+        }
+        return .low
+    }
+
+    /// Handle drag-and-drop within the to-do section when priority sort is enabled
+    private func handleTodoPriorityMove(movedCommitment: Commitment, flat: [FocusFlatDisplayItem], destination: Int) {
+        let sourcePriority = tasksMap[movedCommitment.taskId]?.priority ?? .low
+        let destinationPriority = resolveDestinationTodoPriority(flat: flat, destination: destination)
+
+        if sourcePriority == destinationPriority {
+            // Same-priority reorder
+            let priorityCommitments = flat.enumerated().compactMap { (i, item) -> (flatIdx: Int, commitment: Commitment)? in
+                if case .commitment(let c) = item,
+                   c.section == .todo,
+                   (tasksMap[c.taskId]?.priority ?? .low) == sourcePriority {
+                    return (i, c)
+                }
+                return nil
+            }
+
+            guard let commitmentFrom = priorityCommitments.firstIndex(where: { $0.commitment.id == movedCommitment.id }) else { return }
+
+            var commitmentTo = priorityCommitments.count
+            for (ci, entry) in priorityCommitments.enumerated() {
+                if destination <= entry.flatIdx {
+                    commitmentTo = ci
+                    break
+                }
+            }
+            if commitmentTo > commitmentFrom { commitmentTo = min(commitmentTo, priorityCommitments.count) }
+            guard commitmentFrom != commitmentTo && commitmentFrom + 1 != commitmentTo else { return }
+
+            var samePriorityList = uncompletedTodoCommitments(for: sourcePriority)
+            guard let fromIdx = samePriorityList.firstIndex(where: { $0.id == movedCommitment.id }) else { return }
+            samePriorityList.move(fromOffsets: IndexSet(integer: fromIdx), toOffset: min(commitmentTo, samePriorityList.count))
+
+            var updates: [(id: UUID, sortOrder: Int)] = []
+            for (index, c) in samePriorityList.enumerated() {
+                if let mainIndex = commitments.firstIndex(where: { $0.id == c.id }) {
+                    commitments[mainIndex].sortOrder = index
+                }
+                updates.append((id: c.id, sortOrder: index))
+            }
+            _Concurrency.Task { await persistCommitmentSortOrders(updates) }
+
+        } else {
+            // Cross-priority move: change the task's priority
+            guard var task = tasksMap[movedCommitment.taskId] else { return }
+            let oldPriority = task.priority
+            task.priority = destinationPriority
+            task.modifiedDate = Date()
+            tasksMap[task.id] = task
+
+            // Find insertion index in destination priority
+            let destCommitments = flat.enumerated().compactMap { (i, item) -> (flatIdx: Int, commitment: Commitment)? in
+                if case .commitment(let c) = item,
+                   c.section == .todo,
+                   (tasksMap[c.taskId]?.priority ?? .low) == destinationPriority,
+                   c.id != movedCommitment.id {
+                    return (i, c)
+                }
+                return nil
+            }
+
+            var insertIdx = destCommitments.count
+            for (ci, entry) in destCommitments.enumerated() {
+                if destination <= entry.flatIdx {
+                    insertIdx = ci
+                    break
+                }
+            }
+
+            // Reassign sort orders in destination priority group
+            var destList = uncompletedTodoCommitments(for: destinationPriority)
+                .filter { $0.id != movedCommitment.id }
+            let clampedIdx = min(insertIdx, destList.count)
+            destList.insert(movedCommitment, at: clampedIdx)
+
+            var updates: [(id: UUID, sortOrder: Int)] = []
+            for (index, c) in destList.enumerated() {
+                if let mainIndex = commitments.firstIndex(where: { $0.id == c.id }) {
+                    commitments[mainIndex].sortOrder = index
+                }
+                updates.append((id: c.id, sortOrder: index))
+            }
+
+            // Reassign sort orders in source priority group
+            let sourceList = uncompletedTodoCommitments(for: oldPriority)
+            for (index, c) in sourceList.enumerated() {
+                if let mainIndex = commitments.firstIndex(where: { $0.id == c.id }) {
+                    commitments[mainIndex].sortOrder = index
+                }
+                updates.append((id: c.id, sortOrder: index))
+            }
+
+            // Persist priority change + sort orders
+            _Concurrency.Task {
+                do {
+                    try await self.taskRepository.updateTask(task)
+                } catch {
+                    self.errorMessage = "Failed to update priority: \(error.localizedDescription)"
+                }
+                await self.persistCommitmentSortOrders(updates)
+            }
         }
     }
 
@@ -1245,6 +1421,49 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
         }
     }
 
+    // MARK: - To-Do Priority Sort
+
+    func toggleTodoPrioritySort() {
+        todoPrioritySortEnabled.toggle()
+    }
+
+    func toggleTodoPriorityCollapsed(_ priority: Priority) {
+        if collapsedTodoPriorities.contains(priority) {
+            collapsedTodoPriorities.remove(priority)
+        } else {
+            collapsedTodoPriorities.insert(priority)
+        }
+    }
+
+    func isTodoPriorityCollapsed(_ priority: Priority) -> Bool {
+        collapsedTodoPriorities.contains(priority)
+    }
+
+    /// Uncompleted to-do commitments for a given priority
+    func uncompletedTodoCommitments(for priority: Priority) -> [Commitment] {
+        uncompletedCommitmentsForSection(.todo).filter { commitment in
+            (tasksMap[commitment.taskId]?.priority ?? .low) == priority
+        }
+    }
+
+    /// Update a task's priority and persist to Supabase
+    func updateTaskPriority(_ task: FocusTask, priority: Priority) async {
+        guard task.priority != priority else { return }
+
+        var updatedTask = task
+        updatedTask.priority = priority
+        updatedTask.modifiedDate = Date()
+
+        tasksMap[task.id] = updatedTask
+
+        do {
+            try await taskRepository.updateTask(updatedTask)
+        } catch {
+            errorMessage = "Failed to update priority: \(error.localizedDescription)"
+            tasksMap[task.id] = task
+        }
+    }
+
     /// Title for the rollup/overview section based on the selected timeframe
     var overviewSectionTitle: String {
         switch selectedTimeframe {
@@ -1280,7 +1499,7 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
 
     /// Create a new task and immediately commit it to the current timeframe/date/section
     @discardableResult
-    func createTaskWithCommitment(title: String, section: Section) async -> (taskId: UUID, commitment: Commitment)? {
+    func createTaskWithCommitment(title: String, section: Section, priority: Priority = .low) async -> (taskId: UUID, commitment: Commitment)? {
         guard let userId = authService.currentUser?.id else {
             errorMessage = "No authenticated user"
             return nil
@@ -1303,7 +1522,8 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
                 title: title,
                 type: .task,
                 isCompleted: false,
-                isInLog: true
+                isInLog: true,
+                priority: priority
             )
             let createdTask = try await taskRepository.createTask(newTask)
 

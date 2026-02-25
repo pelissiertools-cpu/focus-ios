@@ -343,6 +343,7 @@ struct FocusTabView: View {
                     if case .sectionHeader = flat[nextIdx] { return true }
                     if case .rollupSectionHeader = flat[nextIdx] { return true }
                     if case .rollupDayHeader = flat[nextIdx] { return true }
+                    if case .todoPriorityHeader = flat[nextIdx] { return true }
                     return false
                 }()
                 switch item {
@@ -579,6 +580,35 @@ struct FocusTabView: View {
                         .alignmentGuide(.listRowSeparatorTrailing) { d in d[.trailing] - 4 }
                     }
 
+                case .todoPriorityHeader(let priority):
+                    PrioritySectionHeader(
+                        priority: priority,
+                        count: viewModel.uncompletedTodoCommitments(for: priority).count,
+                        isCollapsed: viewModel.isTodoPriorityCollapsed(priority),
+                        onToggle: {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                viewModel.toggleTodoPriorityCollapsed(priority)
+                            }
+                        }
+                    )
+                    .moveDisabled(true)
+                    .listRowBackground(Color.clear)
+                    .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+                    .listRowSeparator(.hidden)
+
+                case .addTodoTaskRow(let priority):
+                    InlineAddRow(
+                        placeholder: "Task title",
+                        buttonLabel: "Add task",
+                        onSubmit: { title in
+                            await viewModel.createTaskWithCommitment(title: title, section: .todo, priority: priority)
+                        },
+                        verticalPadding: 8
+                    )
+                    .listRowBackground(Color.clear)
+                    .listRowInsets(EdgeInsets(top: 0, leading: 32, bottom: 0, trailing: 32))
+                    .listRowSeparator(.hidden)
+
                 }
             }
             .onMove { from, to in
@@ -592,6 +622,8 @@ struct FocusTabView: View {
         .animation(.easeInOut(duration: 0.2), value: viewModel.isTargetSectionCollapsed)
         .animation(.easeInOut(duration: 0.2), value: viewModel.expandedRollupGroups)
         .animation(.easeInOut(duration: 0.2), value: viewModel.isRollupSectionCollapsed)
+        .animation(.easeInOut(duration: 0.2), value: viewModel.todoPrioritySortEnabled)
+        .animation(.easeInOut(duration: 0.2), value: viewModel.collapsedTodoPriorities)
         .refreshable {
             await withCheckedContinuation { continuation in
                 _Concurrency.Task { @MainActor in
@@ -1575,7 +1607,7 @@ struct SectionView: View {
             // Section Header
             HStack(alignment: .lastTextBaseline, spacing: 12) {
                 Text(title)
-                    .font(.golosText(size: section == .target ? 30 : 22))
+                    .font(.golosText(size: 22))
 
                 // Count display
                 if let maxTasks = section.maxTasks(for: viewModel.selectedTimeframe) {
@@ -1860,7 +1892,7 @@ struct FocusSectionHeaderRow: View {
             // Title + chevron
             HStack(alignment: .lastTextBaseline, spacing: 8) {
                 Text(section.displayName)
-                    .font(.golosText(size: section == .target ? 30 : 22))
+                    .font(.golosText(size: 22))
 
                 HStack(spacing: 6) {
                     Image(systemName: "chevron.right")
@@ -1889,6 +1921,46 @@ struct FocusSectionHeaderRow: View {
                     .padding(.vertical, 4)
                     .clipShape(Capsule())
                     .glassEffect(.regular.interactive(), in: .capsule)
+            }
+
+            // Sort menu (todo only)
+            if section == .todo {
+                Menu {
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            viewModel.toggleTodoPrioritySort()
+                        }
+                    } label: {
+                        if viewModel.todoPrioritySortEnabled {
+                            Label("Sort by Priority", systemImage: "checkmark")
+                        } else {
+                            Text("Sort by Priority")
+                        }
+                    }
+
+                    if viewModel.todoPrioritySortEnabled {
+                        Divider()
+                        ForEach([SortDirection.highestFirst, .lowestFirst], id: \.self) { direction in
+                            Button {
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    viewModel.todoPrioritySortDirection = direction
+                                }
+                            } label: {
+                                if viewModel.todoPrioritySortDirection == direction {
+                                    Label(direction.displayName(for: .priority), systemImage: "checkmark")
+                                } else {
+                                    Text(direction.displayName(for: .priority))
+                                }
+                            }
+                        }
+                    }
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .font(.sf(.caption, weight: .semibold))
+                        .foregroundColor(.primary)
+                        .frame(width: 26, height: 26)
+                }
+                .menuIndicator(.hidden)
             }
 
             // Add button - hidden for target (uses inline add row), hidden when adding task
@@ -2055,6 +2127,16 @@ struct CommitmentRow: View {
                     ContextMenuItems.editButton {
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                             viewModel.selectedTaskForDetails = task
+                        }
+                    }
+
+                    if section == .todo, !task.isCompleted {
+                        ContextMenuItems.prioritySubmenu(
+                            currentPriority: task.priority
+                        ) { priority in
+                            _Concurrency.Task {
+                                await viewModel.updateTaskPriority(task, priority: priority)
+                            }
                         }
                     }
 

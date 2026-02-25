@@ -969,7 +969,9 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
                                 result.append(.addSubtaskRow(parentId: c.taskId, parentCommitment: c))
                             }
                         }
-                        result.append(.addTodoTaskRow(priority))
+                        if commitmentsForPriority.isEmpty {
+                            result.append(.addTodoTaskRow(priority))
+                        }
                     }
                 }
             } else {

@@ -1894,6 +1894,12 @@ struct FocusSectionHeaderRow: View {
                 Text(section.displayName)
                     .font(.golosText(size: 22))
 
+                if section == .todo && viewModel.selectedTimeframe != .daily {
+                    Text("unassigned")
+                        .font(.sf(size: 10))
+                        .foregroundColor(.secondary)
+                }
+
                 HStack(spacing: 6) {
                     Image(systemName: "chevron.right")
                         .font(.sf(size: 8, weight: .semibold))

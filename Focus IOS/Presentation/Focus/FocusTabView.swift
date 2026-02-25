@@ -2119,8 +2119,10 @@ struct CommitmentRow: View {
                 .frame(maxWidth: .infinity, minHeight: section == .target ? 38 : (section == .todo ? 36 : nil), alignment: .leading)
                 .contentShape(Rectangle())
                 .onTapGesture {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        viewModel.toggleExpanded(task.id)
+                    if section != .target {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            viewModel.toggleExpanded(task.id)
+                        }
                     }
                 }
                 .contextMenu {

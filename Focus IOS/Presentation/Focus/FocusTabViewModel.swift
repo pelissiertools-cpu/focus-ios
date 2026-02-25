@@ -103,6 +103,10 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
     @Published var selectedParentCommitmentForSubtaskCommit: Commitment?
     @Published var showSubtaskCommitSheet = false
 
+    // Day Assignment state (assign specific days to weekly/monthly/yearly commitments)
+    @Published var selectedCommitmentForDayAssignment: Commitment?
+    @Published var showDayAssignmentSheet = false
+
     // Section collapse and add task state
     @Published var isTargetSectionCollapsed: Bool = false
     @Published var isTodoSectionCollapsed: Bool = false
@@ -1469,10 +1473,10 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
     /// Title for the rollup/overview section based on the selected timeframe
     var overviewSectionTitle: String {
         switch selectedTimeframe {
-        case .weekly: return "Week Overview"
-        case .monthly: return "Month Overview"
-        case .yearly: return "Year Overview"
-        default: return "Overview"
+        case .weekly: return "Week Assignments"
+        case .monthly: return "Month Assignments"
+        case .yearly: return "Year Assignments"
+        default: return "Assignments"
         }
     }
 
@@ -2084,6 +2088,11 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+
+    /// Assign a commitment to a specific day (reschedules from weekly/monthly/yearly to daily)
+    func assignToDay(_ commitment: Commitment, date: Date) async {
+        _ = await rescheduleCommitment(commitment, to: date, newTimeframe: .daily)
     }
 
     /// Commit a subtask to a target timeframe (creates commitment for subtask that doesn't have one)

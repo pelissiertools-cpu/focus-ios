@@ -262,6 +262,12 @@ struct FocusTabView: View {
                         .drawerStyle()
                 }
             }
+            .sheet(isPresented: $viewModel.showDayAssignmentSheet) {
+                if let commitment = viewModel.selectedCommitmentForDayAssignment {
+                    DayAssignmentSheet(commitment: commitment, viewModel: viewModel)
+                        .drawerStyle()
+                }
+            }
             .onChange(of: viewModel.showAddTaskSheet) { _, isShowing in
                 if isShowing {
                     // Auto-expand To-Do section if collapsed
@@ -1891,14 +1897,8 @@ struct FocusSectionHeaderRow: View {
         HStack(spacing: 12) {
             // Title + chevron
             HStack(alignment: .lastTextBaseline, spacing: 8) {
-                Text(section.displayName)
+                Text(section == .todo && viewModel.selectedTimeframe != .daily ? "Unassigned Tasks" : section.displayName)
                     .font(.golosText(size: 22))
-
-                if section == .todo && viewModel.selectedTimeframe != .daily {
-                    Text("unassigned")
-                        .font(.sf(size: 10))
-                        .foregroundColor(.secondary)
-                }
 
                 HStack(spacing: 6) {
                     Image(systemName: "chevron.right")
@@ -2135,6 +2135,13 @@ struct CommitmentRow: View {
                     ContextMenuItems.editButton {
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                             viewModel.selectedTaskForDetails = task
+                        }
+                    }
+
+                    if commitment.timeframe != .daily, !task.isCompleted {
+                        ContextMenuItems.assignButton {
+                            viewModel.selectedCommitmentForDayAssignment = commitment
+                            viewModel.showDayAssignmentSheet = true
                         }
                     }
 

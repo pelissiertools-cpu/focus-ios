@@ -14,6 +14,17 @@ enum ContextMenuItems {
         }
     }
 
+    // MARK: - Assign
+
+    @ViewBuilder
+    static func assignButton(action: @escaping () -> Void) -> some View {
+        Button {
+            action()
+        } label: {
+            Label("Assign", systemImage: "calendar.badge.plus")
+        }
+    }
+
     // MARK: - Category Submenu
 
     @ViewBuilder

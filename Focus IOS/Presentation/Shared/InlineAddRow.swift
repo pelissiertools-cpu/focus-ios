@@ -13,6 +13,7 @@ struct InlineAddRow: View {
     let onSubmit: (String) async -> Void
     var isAnyAddFieldActive: Binding<Bool>?
 
+    var textFont: Font = .sf(.subheadline)
     var iconFont: Font = .sf(.subheadline)
     var verticalPadding: CGFloat = 12
 
@@ -25,7 +26,7 @@ struct InlineAddRow: View {
         HStack(spacing: 12) {
             if isEditing {
                 TextField(placeholder, text: $title)
-                    .font(.sf(.subheadline))
+                    .font(textFont)
                     .focused($isFocused)
                     .onSubmit {
                         submit()
@@ -43,9 +44,9 @@ struct InlineAddRow: View {
                 } label: {
                     HStack(spacing: 8) {
                         Image(systemName: "plus")
-                            .font(.sf(.subheadline))
+                            .font(textFont)
                         Text(buttonLabel)
-                            .font(.sf(.subheadline))
+                            .font(textFont)
                     }
                     .foregroundColor(.secondary)
                 }

@@ -28,6 +28,7 @@ enum FocusFlatDisplayItem: Identifiable {
     case completedCommitment(Commitment)   // completed — not movable
     case subtask(FocusTask, parentCommitment: Commitment)
     case addSubtaskRow(parentId: UUID, parentCommitment: Commitment)
+    case addTargetRow
     case emptyState(Section)
     case allDoneState
     case donePill
@@ -48,6 +49,8 @@ enum FocusFlatDisplayItem: Identifiable {
             return "subtask-\(task.id.uuidString)"
         case .addSubtaskRow(let parentId, _):
             return "add-subtask-\(parentId.uuidString)"
+        case .addTargetRow:
+            return "add-target"
         case .emptyState(let section):
             return "empty-\(section.rawValue)"
         case .allDoneState:
@@ -847,7 +850,12 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
 
         if !isTargetSectionCollapsed {
             if targetUncompleted.isEmpty && targetCompleted.isEmpty {
-                result.append(.emptyState(.target))
+                // Empty state: show inline add row instead of static text
+                if canAddTask(to: .target) {
+                    result.append(.addTargetRow)
+                } else {
+                    result.append(.emptyState(.target))
+                }
             } else if targetUncompleted.isEmpty && !targetCompleted.isEmpty && !isTargetDoneCollapsing {
                 result.append(.allDoneState)
             }
@@ -863,6 +871,11 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
                     }
                     result.append(.addSubtaskRow(parentId: c.taskId, parentCommitment: c))
                 }
+            }
+
+            // Inline add row after existing targets (when there's room)
+            if !targetUncompleted.isEmpty && canAddTask(to: .target) {
+                result.append(.addTargetRow)
             }
 
             if isTargetDoneExpanded || !targetUncompleted.isEmpty || isTargetDoneCollapsing {

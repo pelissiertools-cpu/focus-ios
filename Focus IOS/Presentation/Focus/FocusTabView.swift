@@ -403,6 +403,26 @@ struct FocusTabView: View {
                         .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
                         .listRowSeparator(.hidden)
 
+                case .addTargetRow:
+                    let targetCount = viewModel.uncompletedCommitmentsForSection(.target).count
+                    let isEmpty = targetCount == 0 && viewModel.completedCommitmentsForSection(.target).isEmpty
+                    InlineAddRow(
+                        placeholder: "Add target",
+                        buttonLabel: "Add target",
+                        onSubmit: { title in
+                            await viewModel.createTaskWithCommitment(title: title, section: .target)
+                        },
+                        textFont: .sf(.title3, weight: .regular),
+                        iconFont: .sf(.title3),
+                        verticalPadding: 14
+                    )
+                    .padding(.horizontal, 16)
+                    .frame(maxWidth: .infinity, minHeight: isEmpty ? 192 : nil)
+                    .moveDisabled(true)
+                    .listRowBackground(Color.clear)
+                    .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+                    .listRowSeparator(.hidden)
+
                 case .completedCommitment(let commitment):
                     if let task = viewModel.tasksMap[commitment.taskId] {
                         let config = viewModel.sectionConfig(for: commitment.section)
@@ -1871,46 +1891,25 @@ struct FocusSectionHeaderRow: View {
                     .glassEffect(.regular.interactive(), in: .capsule)
             }
 
-            // Add button - hidden when adding task
-            Button {
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                if section == .target && !viewModel.canAddTask(to: .target) {
-                    showCapacityPopover = true
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                        showCapacityPopover = false
-                    }
-                } else {
+            // Add button - hidden for target (uses inline add row), hidden when adding task
+            if section != .target {
+                Button {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
                     viewModel.addTaskSection = section
                     withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
                         viewModel.showAddTaskSheet = true
                     }
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.sf(.caption, weight: .semibold))
+                        .foregroundColor(.white)
+                        .frame(width: 26, height: 26)
+                        .background(Color.darkGray, in: Circle())
                 }
-            } label: {
-                Image(systemName: "plus")
-                    .font(.sf(.caption, weight: .semibold))
-                    .foregroundColor(.white)
-                    .frame(width: 26, height: 26)
-                    .background(Color.darkGray, in: Circle())
+                .buttonStyle(.plain)
+                .opacity(viewModel.showAddTaskSheet ? 0 : 1)
+                .allowsHitTesting(!viewModel.showAddTaskSheet)
             }
-            .buttonStyle(.plain)
-            .popover(isPresented: $showCapacityPopover) {
-                let current = viewModel.taskCount(for: .target)
-                let max = Section.target.maxTasks(for: viewModel.selectedTimeframe) ?? 0
-                VStack(spacing: 4) {
-                    Text("Targets")
-                        .font(.sf(.caption))
-                        .foregroundStyle(.secondary)
-                    Text("Section full")
-                        .font(.sf(.subheadline, weight: .semibold))
-                    Text("\(current)/\(max)")
-                        .font(.sf(.title3, weight: .bold))
-                        .foregroundStyle(Color.appRed)
-                }
-                .padding()
-                .presentationCompactAdaptation(.popover)
-            }
-            .opacity(viewModel.showAddTaskSheet ? 0 : 1)
-            .allowsHitTesting(!viewModel.showAddTaskSheet)
         }
         .contentShape(Rectangle())
         .onTapGesture {

@@ -8,13 +8,13 @@ import SwiftUI
 
 /// Represents task priority levels
 enum Priority: String, Codable, CaseIterable {
-    case focus = "high"
+    case high = "high"
     case medium = "medium"
     case low = "low"
 
     var displayName: String {
         switch self {
-        case .focus: return "Focus"
+        case .high: return "High"
         case .medium: return "Medium"
         case .low: return "Low"
         }
@@ -22,7 +22,7 @@ enum Priority: String, Codable, CaseIterable {
 
     var sortIndex: Int {
         switch self {
-        case .focus: return 0
+        case .high: return 0
         case .medium: return 1
         case .low: return 2
         }
@@ -30,7 +30,7 @@ enum Priority: String, Codable, CaseIterable {
 
     var dotColor: Color {
         switch self {
-        case .focus: return .appRed
+        case .high: return .appRed
         case .medium: return .priorityOrange
         case .low: return .priorityYellow
         }

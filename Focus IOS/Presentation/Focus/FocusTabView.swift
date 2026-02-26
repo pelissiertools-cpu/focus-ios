@@ -1996,9 +1996,17 @@ struct FocusSectionHeaderRow: View {
                 // Focus section: pill-style header matching priority level design
                 HStack {
                     HStack(spacing: 8) {
-                        RoundedRectangle(cornerRadius: 3, style: .continuous)
-                            .fill(Color.completedPurple)
-                            .frame(width: 10, height: 10)
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                .fill(Color.completedPurple)
+                                .frame(width: 22, height: 22)
+                            Image("PushPin")
+                                .renderingMode(.template)
+                                .resizable()
+                                .scaledToFit()
+                                .foregroundColor(.white)
+                                .frame(width: 14, height: 14)
+                        }
 
                         Text(section.displayName)
                             .font(.golosText(size: 14))
@@ -2016,14 +2024,15 @@ struct FocusSectionHeaderRow: View {
                             .animation(.easeInOut(duration: 0.2), value: viewModel.isSectionCollapsed(section))
                     }
                     .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
+                    .padding(.vertical, 12)
                     .background(
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
                             .fill(Color.white.opacity(0.6))
                     )
 
                     Spacer()
                 }
+                .frame(minHeight: 50)
                 .contentShape(Rectangle())
                 .onTapGesture {
                     withAnimation(.easeInOut(duration: 0.2)) {

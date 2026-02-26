@@ -317,9 +317,9 @@ struct PrioritySectionHeader: View {
 
             HStack {
                 HStack(spacing: 8) {
-                    RoundedRectangle(cornerRadius: 3, style: .continuous)
+                    RoundedRectangle(cornerRadius: 5, style: .continuous)
                         .fill(priority.dotColor)
-                        .frame(width: 10, height: 10)
+                        .frame(width: 15, height: 15)
 
                     Text(priority.displayName)
                         .font(.golosText(size: 14))
@@ -336,9 +336,9 @@ struct PrioritySectionHeader: View {
                         .rotationEffect(.degrees(isCollapsed ? 0 : 90))
                 }
                 .padding(.horizontal, 12)
-                .padding(.vertical, 6)
+                .padding(.vertical, 10)
                 .background(
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
                         .fill(Color.white.opacity(0.6))
                 )
 
@@ -351,7 +351,7 @@ struct PrioritySectionHeader: View {
             .onTapGesture {
                 onToggle()
             }
-            .frame(minHeight: 35, alignment: .bottom)
+            .frame(minHeight: 50, alignment: .bottom)
         }
     }
 }

@@ -481,9 +481,9 @@ struct FocusTabView: View {
                         onSubmit: { title in
                             await viewModel.createTaskWithCommitment(title: title, section: .focus)
                         },
-                        textFont: .sf(size: 17, weight: .regular),
-                        iconFont: .sf(size: 17),
-                        verticalPadding: 14
+                        textFont: .sf(.body, weight: .regular),
+                        iconFont: .sf(.body),
+                        verticalPadding: 8
                     )
                     .padding(.horizontal, 16)
                     .frame(maxWidth: .infinity, minHeight: isEmpty ? 192 : nil)
@@ -560,7 +560,7 @@ struct FocusTabView: View {
                 case .allDoneState:
                     HStack(spacing: 8) {
                         Text("All tasks are completed")
-                            .font(.sf(size: 17, weight: .regular))
+                            .font(.sf(.body, weight: .regular))
                             .foregroundColor(.secondary)
                         Image("CheckCircle")
                             .resizable()
@@ -2120,7 +2120,7 @@ struct CommitmentRow: View {
                 // Focus number
                 if let number = focusNumber {
                     Text("\(number)")
-                        .font(fontOverride ?? .sf(size: 17, weight: .regular))
+                        .font(fontOverride ?? .sf(.body, weight: .regular))
                         .foregroundColor(.secondary)
                         .monospacedDigit()
                 }
@@ -2128,7 +2128,7 @@ struct CommitmentRow: View {
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 6) {
                         Text(task.title)
-                            .font(fontOverride ?? .sf(size: 17, weight: .regular))
+                            .font(fontOverride ?? .sf(.body, weight: .regular))
                             .strikethrough(task.isCompleted)
                             .foregroundColor(task.isCompleted ? .secondary : .primary)
                         if task.type == .list {
@@ -2153,7 +2153,7 @@ struct CommitmentRow: View {
                             .foregroundColor(.appRed)
                     }
                 }
-                .frame(maxWidth: .infinity, minHeight: section == .focus ? 38 : (section == .todo ? 36 : nil), alignment: .leading)
+                .frame(maxWidth: .infinity, minHeight: section == .focus || section == .todo ? 36 : nil, alignment: .leading)
                 .contentShape(Rectangle())
                 .onTapGesture {
                     withAnimation(.easeInOut(duration: 0.2)) {

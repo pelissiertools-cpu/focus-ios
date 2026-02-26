@@ -1018,10 +1018,10 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
             )
         }
 
-        // Fixed layout for focus section — font size never changes
+        // Fixed layout for focus section — matches todo row sizing
         return FocusSectionConfig(
-            taskFont: .sf(size: 17),
-            verticalPadding: 14,
+            taskFont: .sf(.body),
+            verticalPadding: 8,
             containerMinHeight: 230,
             completedTaskFont: .sf(.subheadline),
             completedVerticalPadding: 6,

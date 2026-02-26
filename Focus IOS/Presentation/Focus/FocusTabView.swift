@@ -296,13 +296,9 @@ struct FocusTabView: View {
                     await viewModel.fetchCommitments()
                 }
             }
-            .alert("Error", isPresented: .constant(viewModel.errorMessage != nil)) {
+            .alert(viewModel.errorMessage ?? "", isPresented: .constant(viewModel.errorMessage != nil)) {
                 Button("OK") {
                     viewModel.errorMessage = nil
-                }
-            } message: {
-                if let error = viewModel.errorMessage {
-                    Text(error)
                 }
             }
             .sheet(item: $viewModel.selectedTaskForDetails) { task in

@@ -1123,7 +1123,16 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
         } else {
             // -- Cross-section move --
             if destSection == .focus {
-                guard canAddTask(to: .focus, timeframe: movedCommitment.timeframe, date: movedCommitment.commitmentDate) else { return }
+                guard canAddTask(to: .focus, timeframe: movedCommitment.timeframe, date: movedCommitment.commitmentDate) else {
+                    let max = Section.focus.maxTasks(for: movedCommitment.timeframe)!
+                    // Force the list to rebuild so the optimistically-moved row
+                    // snaps back to its original position immediately.
+                    // Touching commitments triggers @Published and regenerates flattenedDisplayItems.
+                    let snapshot = commitments
+                    commitments = snapshot
+                    errorMessage = "Focus section is full \(max)/\(max)"
+                    return
+                }
             }
 
             // Find insertion index among destination section's uncompleted commitments

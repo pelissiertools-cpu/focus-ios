@@ -133,7 +133,7 @@ struct FocusTabView: View {
                                 let fadeOpacity = min(1.0, max(0, height / 60.0))
                                 if height > 0 && bottomAnchor != nil && fadeOpacity > 0 {
                                     RoundedRectangle(cornerRadius: 20, style: .continuous)
-                                        .fill(Color.white.opacity(0.6 * fadeOpacity))
+                                        .fill(Color.white.opacity(0.4 * fadeOpacity))
                                         .frame(width: width, height: max(0, height))
                                         .position(x: proxy.size.width / 2, y: containerTop + max(0, height) / 2)
                                 }
@@ -401,7 +401,7 @@ struct FocusTabView: View {
             .opacity(viewModel.showAddTaskSheet ? 0 : 1)
             .allowsHitTesting(!viewModel.showAddTaskSheet)
         }
-        .padding(.horizontal, 28)
+        .padding(.horizontal, 42)
         .padding(.top, 8)
         .padding(.bottom, 10)
     }

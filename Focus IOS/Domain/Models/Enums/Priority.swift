@@ -32,7 +32,15 @@ enum Priority: String, Codable, CaseIterable {
         switch self {
         case .high: return .appRed
         case .medium: return .priorityOrange
-        case .low: return .priorityYellow
+        case .low: return .priorityBlue
+        }
+    }
+
+    var containerColor: Color {
+        switch self {
+        case .high: return .appRed.opacity(0.08)
+        case .medium: return .priorityOrange.opacity(0.08)
+        case .low: return .priorityBlue.opacity(0.10)
         }
     }
 }

@@ -315,24 +315,32 @@ struct PrioritySectionHeader: View {
         VStack(spacing: 0) {
             Spacer(minLength: 0)
 
-            HStack(spacing: 8) {
-                Circle()
-                    .fill(priority.dotColor)
-                    .frame(width: 8, height: 8)
+            HStack {
+                HStack(spacing: 8) {
+                    RoundedRectangle(cornerRadius: 3, style: .continuous)
+                        .fill(priority.dotColor)
+                        .frame(width: 10, height: 10)
 
-                Text(priority.displayName)
-                    .font(.golosText(size: 14))
+                    Text(priority.displayName)
+                        .font(.golosText(size: 14))
 
-                if count > 0 {
-                    Text("\(count)")
-                        .font(.sf(size: 10))
+                    if count > 0 {
+                        Text("\(count)")
+                            .font(.sf(size: 10))
+                            .foregroundColor(.secondary)
+                    }
+
+                    Image(systemName: "chevron.right")
+                        .font(.sf(size: 8, weight: .semibold))
                         .foregroundColor(.secondary)
+                        .rotationEffect(.degrees(isCollapsed ? 0 : 90))
                 }
-
-                Image(systemName: "chevron.right")
-                    .font(.sf(size: 8, weight: .semibold))
-                    .foregroundColor(.secondary)
-                    .rotationEffect(.degrees(isCollapsed ? 0 : 90))
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(Color.white.opacity(0.6))
+                )
 
                 Spacer()
             }

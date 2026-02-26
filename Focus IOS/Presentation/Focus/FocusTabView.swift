@@ -23,6 +23,16 @@ struct DrawerTopPreference: PreferenceKey {
     }
 }
 
+// MARK: - Focus Section Anchor Preference
+
+/// Collects anchor bounds from the focus section's first and last rows.
+struct FocusSectionBoundsKey: PreferenceKey {
+    static var defaultValue: [String: Anchor<CGRect>] = [:]
+    static func reduce(value: inout [String: Anchor<CGRect>], nextValue: () -> [String: Anchor<CGRect>]) {
+        value.merge(nextValue()) { $1 }
+    }
+}
+
 private enum FocusAddBarFocus: Hashable {
     case task, list, project
 }
@@ -105,6 +115,25 @@ struct FocusTabView: View {
                             .frame(maxHeight: .infinity)
                     } else {
                         focusList
+                        .backgroundPreferenceValue(FocusSectionBoundsKey.self) { anchors in
+                            GeometryReader { proxy in
+                                let topAnchor = anchors["top"]
+                                let bottomAnchor = anchors["bottom"]
+                                // When focus header scrolls off-screen, extend container to top edge
+                                let containerTop = topAnchor.map { proxy[$0].minY } ?? 0
+                                // When todo header scrolls off-screen, extend container to bottom edge
+                                let containerBottom = bottomAnchor.map { proxy[$0].minY } ?? proxy.size.height
+                                let height = containerBottom - containerTop
+                                let width = (topAnchor ?? bottomAnchor).map { proxy[$0].width + 4 } ?? (proxy.size.width - 8)
+                                if height > 0 {
+                                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                        .fill(Color.white)
+                                        .frame(width: width, height: height)
+                                        .position(x: proxy.size.width / 2, y: containerTop + height / 2)
+                                }
+                            }
+                            .clipped()
+                        }
                         .allowsHitTesting(!viewModel.showAddTaskSheet)
                     }
                 } else {
@@ -333,7 +362,7 @@ struct FocusTabView: View {
                     .zIndex(100)
                 }
             } // ZStack
-            .background(Color.lightBackground.ignoresSafeArea())
+            .background(Color.sectionedBackground.ignoresSafeArea())
         }
     }
 
@@ -355,10 +384,7 @@ struct FocusTabView: View {
                 switch item {
                 case .sectionHeader(let section):
                     let isTodoHeader = section == .todo && index > 0
-                    FocusSectionHeaderRow(section: section, viewModel: viewModel)
-                        .listRowBackground(Color.clear)
-                        .listRowInsets(EdgeInsets(top: isTodoHeader ? 20 : 8, leading: 16, bottom: 0, trailing: 16))
-                        .listRowSeparator(.hidden)
+                    sectionHeaderRow(section: section, isTodoHeader: isTodoHeader)
 
                 case .commitment(let commitment):
                     if let task = viewModel.tasksMap[commitment.taskId] {
@@ -637,6 +663,30 @@ struct FocusTabView: View {
                     continuation.resume()
                 }
             }
+        }
+    }
+
+    // MARK: - Section Header Row (extracted to help type checker)
+
+    @ViewBuilder
+    private func sectionHeaderRow(section: Section, isTodoHeader: Bool) -> some View {
+        if section == .focus {
+            FocusSectionHeaderRow(section: section, viewModel: viewModel)
+                .anchorPreference(key: FocusSectionBoundsKey.self, value: .bounds) { ["top": $0] }
+                .listRowBackground(Color.clear)
+                .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 0, trailing: 16))
+                .listRowSeparator(.hidden)
+        } else if section == .todo {
+            FocusSectionHeaderRow(section: section, viewModel: viewModel)
+                .anchorPreference(key: FocusSectionBoundsKey.self, value: .bounds) { ["bottom": $0] }
+                .listRowBackground(Color.clear)
+                .listRowInsets(EdgeInsets(top: isTodoHeader ? 20 : 8, leading: 16, bottom: 0, trailing: 16))
+                .listRowSeparator(.hidden)
+        } else {
+            FocusSectionHeaderRow(section: section, viewModel: viewModel)
+                .listRowBackground(Color.clear)
+                .listRowInsets(EdgeInsets(top: isTodoHeader ? 20 : 8, leading: 16, bottom: 0, trailing: 16))
+                .listRowSeparator(.hidden)
         }
     }
 

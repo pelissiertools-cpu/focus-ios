@@ -126,7 +126,7 @@ struct FocusTabView: View {
                                 let rawTop = topAnchor.map { proxy[$0].minY } ?? 0
                                 let containerTop = max(0, rawTop)
                                 // When todo header scrolls off-screen, extend container to bottom edge
-                                let containerBottom = bottomAnchor.map { proxy[$0].minY - 20 } ?? proxy.size.height
+                                let containerBottom = bottomAnchor.map { proxy[$0].minY + 4 } ?? proxy.size.height
                                 let height = containerBottom - containerTop
                                 let width = (topAnchor ?? bottomAnchor).map { proxy[$0].width + 4 } ?? (proxy.size.width - 8)
                                 // Fade out container as it shrinks, hide when bottom anchor recycled
@@ -471,9 +471,10 @@ struct FocusTabView: View {
                     )
                     .padding(.leading, 32)
                     .padding(.trailing, 12)
-                        .listRowBackground(Color.clear)
-                        .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
-                        .listRowSeparator(.hidden)
+                    .frame(minHeight: 44)
+                    .listRowBackground(Color.clear)
+                    .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+                    .listRowSeparator(.hidden)
 
                 case .addFocusRow:
                     let focusCount = viewModel.uncompletedCommitmentsForSection(.focus).count
@@ -695,6 +696,7 @@ struct FocusTabView: View {
         }
         .listStyle(.plain)
         .listRowSpacing(0)
+        .environment(\.defaultMinListRowHeight, 0)
         .scrollContentBackground(.hidden)
         .animation(.easeInOut(duration: 0.25), value: viewModel.isFocusDoneExpanded)
         .animation(.easeInOut(duration: 0.2), value: viewModel.isFocusSectionCollapsed)
@@ -722,10 +724,11 @@ struct FocusTabView: View {
                 .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 0, trailing: 16))
                 .listRowSeparator(.hidden)
         } else if section == .todo {
-            FocusSectionHeaderRow(section: section, viewModel: viewModel)
+            Color.clear
+                .frame(height: 28)
                 .anchorPreference(key: FocusSectionBoundsKey.self, value: .bounds) { ["bottom": $0] }
                 .listRowBackground(Color.clear)
-                .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+                .listRowInsets(EdgeInsets())
                 .listRowSeparator(.hidden)
         } else {
             FocusSectionHeaderRow(section: section, viewModel: viewModel)

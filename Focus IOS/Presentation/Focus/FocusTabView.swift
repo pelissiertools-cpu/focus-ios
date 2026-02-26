@@ -109,14 +109,16 @@ struct FocusTabView: View {
                 if viewMode == .focus {
                     // MARK: - Focus Mode Content
 
-                    // Fixed "To-Do" title with add button (non-scrollable)
-                    todoTitleBar
+                    // Fixed "To-Do" title with add button (non-scrollable, daily only)
+                    if viewModel.selectedTimeframe == .daily {
+                        todoTitleBar
+                    }
 
                     // Content
                     if viewModel.isLoading {
                         ProgressView("Loading...")
                             .frame(maxHeight: .infinity)
-                    } else {
+                    } else if viewModel.selectedTimeframe == .daily {
                         focusList
                         .backgroundPreferenceValue(FocusSectionBoundsKey.self) { anchors in
                             GeometryReader { proxy in
@@ -130,6 +132,37 @@ struct FocusTabView: View {
                                 let height = containerBottom - containerTop
                                 let width = (topAnchor ?? bottomAnchor).map { proxy[$0].width + 4 } ?? (proxy.size.width - 8)
                                 // Fade out container as it shrinks, hide when bottom anchor recycled
+                                let fadeOpacity = min(1.0, max(0, height / 60.0))
+                                if height > 0 && bottomAnchor != nil && fadeOpacity > 0 {
+                                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                        .fill(Color.white.opacity(0.4 * fadeOpacity))
+                                        .frame(width: width, height: max(0, height))
+                                        .position(x: proxy.size.width / 2, y: containerTop + max(0, height) / 2)
+                                }
+                            }
+                            .clipped()
+                        }
+                        .allowsHitTesting(!viewModel.showAddTaskSheet)
+                        .overlay(alignment: .top) {
+                            LinearGradient(
+                                colors: [Color.sectionedBackground, Color.sectionedBackground.opacity(0)],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                            .frame(height: 16)
+                            .allowsHitTesting(false)
+                        }
+                    } else {
+                        periodFocusList
+                        .backgroundPreferenceValue(FocusSectionBoundsKey.self) { anchors in
+                            GeometryReader { proxy in
+                                let topAnchor = anchors["top"]
+                                let bottomAnchor = anchors["bottom"]
+                                let rawTop = topAnchor.map { proxy[$0].minY } ?? 0
+                                let containerTop = max(0, rawTop)
+                                let containerBottom = bottomAnchor.map { proxy[$0].minY + 4 } ?? proxy.size.height
+                                let height = containerBottom - containerTop
+                                let width = (topAnchor ?? bottomAnchor).map { proxy[$0].width + 4 } ?? (proxy.size.width - 8)
                                 let fadeOpacity = min(1.0, max(0, height / 60.0))
                                 if height > 0 && bottomAnchor != nil && fadeOpacity > 0 {
                                     RoundedRectangle(cornerRadius: 20, style: .continuous)
@@ -714,7 +747,7 @@ struct FocusTabView: View {
         }
     }
 
-    // MARK: - Section Header Row (extracted to help type checker)
+    // MARK: - Section Header Row (daily only)
 
     @ViewBuilder
     private func sectionHeaderRow(section: Section, isTodoHeader: Bool) -> some View {
@@ -735,6 +768,353 @@ struct FocusTabView: View {
             FocusSectionHeaderRow(section: section, viewModel: viewModel)
                 .listRowBackground(Color.clear)
                 .listRowInsets(EdgeInsets(top: isTodoHeader ? 20 : 8, leading: 16, bottom: 0, trailing: 16))
+                .listRowSeparator(.hidden)
+        }
+    }
+
+    // MARK: - Period Focus List (week / month / year)
+
+    private var periodFocusList: some View {
+        let flat = viewModel.flattenedDisplayItems
+        return List {
+            ForEach(Array(flat.enumerated()), id: \.element.id) { index, item in
+                let nextIsSection: Bool = {
+                    let nextIdx = index + 1
+                    if nextIdx >= flat.count { return true }
+                    if case .sectionHeader = flat[nextIdx] { return true }
+                    if case .rollupSectionHeader = flat[nextIdx] { return true }
+                    if case .rollupDayHeader = flat[nextIdx] { return true }
+                    return false
+                }()
+                switch item {
+                case .sectionHeader(let section):
+                    periodSectionHeaderRow(section: section, index: index)
+
+                case .commitment(let commitment):
+                    if let task = viewModel.tasksMap[commitment.taskId] {
+                        let config = viewModel.sectionConfig(for: commitment.section)
+                        let focusNum: Int? = commitment.section == .focus ? flat[0..<index].filter {
+                            if case .commitment(let c) = $0, c.section == .focus { return true }
+                            return false
+                        }.count + 1 : nil
+                        CommitmentRow(
+                            commitment: commitment,
+                            task: task,
+                            section: commitment.section,
+                            viewModel: viewModel,
+                            fontOverride: commitment.section == .focus ? config.taskFont : nil,
+                            verticalPaddingOverride: commitment.section == .focus ? config.verticalPadding : nil,
+                            focusNumber: focusNum
+                        )
+                        .moveDisabled(false)
+                        .listRowBackground(Color.clear)
+                        .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+                        .listRowSeparator(nextIsSection ? .hidden : .visible)
+                        .listRowSeparatorTint(Color.secondary.opacity(0.2))
+                        .alignmentGuide(.listRowSeparatorLeading) { d in d[.leading] + 4 }
+                        .alignmentGuide(.listRowSeparatorTrailing) { d in d[.trailing] - 4 }
+                    }
+
+                case .subtask(let subtask, let parentCommitment):
+                    FocusSubtaskRow(subtask: subtask, parentId: parentCommitment.taskId, parentCommitment: parentCommitment, viewModel: viewModel)
+                        .padding(.leading, 32)
+                        .padding(.trailing, 12)
+                        .moveDisabled(subtask.isCompleted)
+                        .listRowBackground(Color.clear)
+                        .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+                        .listRowSeparator(nextIsSection ? .hidden : .visible)
+                        .listRowSeparatorTint(Color.secondary.opacity(0.2))
+                        .alignmentGuide(.listRowSeparatorLeading) { d in d[.leading] + 4 }
+                        .alignmentGuide(.listRowSeparatorTrailing) { d in d[.trailing] - 4 }
+
+                case .addSubtaskRow(let parentId, _):
+                    InlineAddRow(
+                        placeholder: "Subtask",
+                        buttonLabel: "Add subtask",
+                        onSubmit: { title in await viewModel.createSubtask(title: title, parentId: parentId) },
+                        verticalPadding: 6
+                    )
+                    .padding(.leading, 32)
+                    .padding(.trailing, 12)
+                    .frame(minHeight: 44)
+                    .listRowBackground(Color.clear)
+                    .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+                    .listRowSeparator(.hidden)
+
+                case .addFocusRow:
+                    let focusCount = viewModel.uncompletedCommitmentsForSection(.focus).count
+                    let isEmpty = focusCount == 0 && viewModel.completedCommitmentsForSection(.focus).isEmpty
+                    InlineAddRow(
+                        placeholder: "Add focus",
+                        buttonLabel: "Add focus",
+                        onSubmit: { title in
+                            await viewModel.createTaskWithCommitment(title: title, section: .focus)
+                        },
+                        textFont: .sf(.body, weight: .regular),
+                        iconFont: .sf(.body),
+                        verticalPadding: 8
+                    )
+                    .padding(.horizontal, 16)
+                    .frame(maxWidth: .infinity, minHeight: isEmpty ? 192 : nil)
+                    .moveDisabled(true)
+                    .listRowBackground(Color.clear)
+                    .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+                    .listRowSeparator(.hidden)
+
+                case .completedCommitment(let commitment):
+                    if let task = viewModel.tasksMap[commitment.taskId] {
+                        let config = viewModel.sectionConfig(for: commitment.section)
+                        CommitmentRow(
+                            commitment: commitment,
+                            task: task,
+                            section: commitment.section,
+                            viewModel: viewModel,
+                            fontOverride: config.completedTaskFont,
+                            verticalPaddingOverride: config.completedVerticalPadding
+                        )
+                        .opacity(config.completedOpacity)
+                        .listRowBackground(Color.clear)
+                        .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+                        .listRowSeparator(nextIsSection ? .hidden : .visible)
+                        .listRowSeparatorTint(Color.secondary.opacity(0.2))
+                        .alignmentGuide(.listRowSeparatorLeading) { d in d[.leading] + 4 }
+                        .alignmentGuide(.listRowSeparatorTrailing) { d in d[.trailing] - 4 }
+                    }
+
+                case .emptyState(let section):
+                    Group {
+                        if section == .focus {
+                            VStack(spacing: 4) {
+                                Text("Nothing to focus on")
+                                    .font(.sf(.headline))
+                                    .bold()
+                                if !viewModel.showAddTaskSheet {
+                                    Text("Tap + to add tasks")
+                                        .font(.sf(.subheadline))
+                                }
+                            }
+                            .foregroundColor(.secondary)
+                            .frame(maxWidth: .infinity)
+                        } else {
+                            VStack {
+                                Spacer(minLength: 0)
+                                VStack(spacing: 4) {
+                                    Text("Nothing to do")
+                                        .font(.sf(.headline))
+                                        .bold()
+                                    if !viewModel.showAddTaskSheet {
+                                        Text("Tap + to add tasks")
+                                            .font(.sf(.subheadline))
+                                    }
+                                }
+                                .foregroundColor(.secondary)
+                                .frame(maxWidth: .infinity)
+                                Spacer(minLength: 0)
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                    .frame(maxWidth: .infinity, minHeight: section == .focus ? 192 : 240, alignment: .leading)
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        viewModel.addTaskSection = section
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                            viewModel.showAddTaskSheet = true
+                        }
+                    }
+                    .listRowBackground(Color.clear)
+                    .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+                    .listRowSeparator(.hidden)
+
+                case .allDoneState:
+                    HStack(spacing: 8) {
+                        Text("All tasks are completed")
+                            .font(.sf(.body, weight: .regular))
+                            .foregroundColor(.secondary)
+                        Image("CheckCircle")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 34, height: 34)
+                            .foregroundColor(Color.completedPurple)
+                            .scaleEffect(viewModel.allDoneCheckPulse ? 1.35 : 1.0)
+                    }
+                    .frame(maxWidth: .infinity, minHeight: 120)
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        withAnimation(.easeInOut(duration: 0.25)) {
+                            viewModel.isFocusDoneExpanded.toggle()
+                        }
+                    }
+                    .listRowBackground(Color.clear)
+                    .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+                    .listRowSeparator(.hidden)
+
+                case .donePill:
+                    DonePillView(
+                        completedCommitments: viewModel.completedCommitmentsForSection(.todo),
+                        section: .todo,
+                        viewModel: viewModel
+                    )
+                    .listRowBackground(Color.clear)
+                    .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+                    .listRowSeparator(.hidden)
+
+                case .focusSpacer(let height):
+                    Color.clear
+                        .frame(height: height)
+                        .listRowBackground(Color.clear)
+                        .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+                        .listRowSeparator(.hidden)
+
+                case .rollupSectionHeader:
+                    RollupSectionHeaderRow(viewModel: viewModel)
+                        .listRowBackground(Color.clear)
+                        .listRowInsets(EdgeInsets(top: 20, leading: 16, bottom: 0, trailing: 16))
+                        .listRowSeparator(.hidden)
+                        .moveDisabled(true)
+
+                case .rollupDayHeader(let date, let label):
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            viewModel.toggleRollupGroup(date)
+                        }
+                    } label: {
+                        HStack(spacing: 6) {
+                            Text(label.uppercased())
+                                .font(.sf(.caption, weight: .semibold))
+                                .foregroundColor(.secondary)
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.sf(size: 9, weight: .semibold))
+                                .foregroundColor(.secondary)
+                                .rotationEffect(.degrees(viewModel.isRollupGroupExpanded(date) ? 90 : 0))
+                                .animation(.easeInOut(duration: 0.2), value: viewModel.isRollupGroupExpanded(date))
+                        }
+                        .padding(.horizontal, 12)
+                    }
+                    .buttonStyle(.plain)
+                    .listRowBackground(Color.clear)
+                    .listRowInsets(EdgeInsets(top: 16, leading: 16, bottom: 4, trailing: 16))
+                    .listRowSeparator(.hidden)
+                    .moveDisabled(true)
+
+                case .rollupCommitment(let commitment):
+                    if let task = viewModel.tasksMap[commitment.taskId] {
+                        CommitmentRow(
+                            commitment: commitment,
+                            task: task,
+                            section: commitment.section,
+                            allowBreakdown: false,
+                            viewModel: viewModel
+                        )
+                        .opacity(0.8)
+                        .moveDisabled(true)
+                        .listRowBackground(Color.clear)
+                        .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+                        .listRowSeparator(nextIsSection ? .hidden : .visible)
+                        .listRowSeparatorTint(Color.secondary.opacity(0.2))
+                        .alignmentGuide(.listRowSeparatorLeading) { d in d[.leading] + 4 }
+                        .alignmentGuide(.listRowSeparatorTrailing) { d in d[.trailing] - 4 }
+                    }
+
+                // Daily-only items — should not appear in period data, but handle gracefully
+                case .todoPriorityHeader, .addTodoTaskRow:
+                    EmptyView()
+                }
+            }
+            .onMove { from, to in
+                viewModel.handleFlatMove(from: from, to: to)
+            }
+
+            // Extra scroll space at the bottom
+            Color.clear
+                .frame(height: 100)
+                .listRowBackground(Color.clear)
+                .listRowInsets(EdgeInsets())
+                .listRowSeparator(.hidden)
+        }
+        .listStyle(.plain)
+        .listRowSpacing(0)
+        .environment(\.defaultMinListRowHeight, 0)
+        .scrollContentBackground(.hidden)
+        .animation(.easeInOut(duration: 0.25), value: viewModel.isFocusDoneExpanded)
+        .animation(.easeInOut(duration: 0.2), value: viewModel.isFocusSectionCollapsed)
+        .animation(.easeInOut(duration: 0.2), value: viewModel.expandedRollupGroups)
+        .animation(.easeInOut(duration: 0.2), value: viewModel.isRollupSectionCollapsed)
+        .animation(.easeInOut(duration: 0.2), value: viewModel.isTodoSectionCollapsed)
+        .refreshable {
+            await withCheckedContinuation { continuation in
+                _Concurrency.Task { @MainActor in
+                    await viewModel.fetchCommitments()
+                    continuation.resume()
+                }
+            }
+        }
+    }
+
+    // MARK: - Period Section Header Row (week / month / year)
+
+    @ViewBuilder
+    private func periodSectionHeaderRow(section: Section, index: Int) -> some View {
+        if section == .focus {
+            FocusSectionHeaderRow(section: section, viewModel: viewModel)
+                .anchorPreference(key: FocusSectionBoundsKey.self, value: .bounds) { ["top": $0] }
+                .listRowBackground(Color.clear)
+                .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 0, trailing: 16))
+                .listRowSeparator(.hidden)
+        } else if section == .todo {
+            VStack(spacing: 0) {
+                // Invisible anchor for the focus container bottom edge
+                Color.clear
+                    .frame(height: 0)
+                    .anchorPreference(key: FocusSectionBoundsKey.self, value: .bounds) { ["bottom": $0] }
+
+                HStack {
+                    HStack(spacing: 8) {
+                        Text("Unassigned Tasks")
+                            .font(.golosText(size: 22))
+                        Image(systemName: "chevron.right")
+                            .font(.sf(size: 8, weight: .semibold))
+                            .foregroundColor(.secondary)
+                            .rotationEffect(.degrees(viewModel.isTodoSectionCollapsed ? 0 : 90))
+                            .animation(.easeInOut(duration: 0.2), value: viewModel.isTodoSectionCollapsed)
+                    }
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            viewModel.isTodoSectionCollapsed.toggle()
+                        }
+                    }
+                    Spacer()
+                    if !viewModel.isTodoSectionCollapsed {
+                        Button {
+                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                            viewModel.addTaskSection = .todo
+                            withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                                viewModel.showAddTaskSheet = true
+                            }
+                        } label: {
+                            Image(systemName: "plus")
+                                .font(.sf(.caption, weight: .semibold))
+                                .foregroundColor(.white)
+                                .frame(width: 26, height: 26)
+                                .background(Color.darkGray, in: Circle())
+                        }
+                        .buttonStyle(.plain)
+                        .opacity(viewModel.showAddTaskSheet ? 0 : 1)
+                        .allowsHitTesting(!viewModel.showAddTaskSheet)
+                    }
+                }
+                .padding(.horizontal, 12)
+                .padding(.top, 28)
+            }
+            .listRowBackground(Color.clear)
+            .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 10, trailing: 16))
+            .listRowSeparator(.hidden)
+        } else {
+            FocusSectionHeaderRow(section: section, viewModel: viewModel)
+                .listRowBackground(Color.clear)
+                .listRowInsets(EdgeInsets(top: index > 0 ? 20 : 8, leading: 16, bottom: 0, trailing: 16))
                 .listRowSeparator(.hidden)
         }
     }
@@ -2081,11 +2461,6 @@ struct RollupSectionHeaderRow: View {
             }
             .padding(.vertical, 6)
             .padding(.horizontal, 12)
-
-            Rectangle()
-                .fill(Color.secondary.opacity(0.7))
-                .frame(height: 1)
-                .padding(.horizontal, 4)
         }
     }
 }

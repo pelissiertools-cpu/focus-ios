@@ -25,9 +25,9 @@ enum Section: String, Codable, CaseIterable {
         switch self {
         case .focus:
             switch timeframe {
-            case .daily: return 3
+            case .daily, .weekly: return 3
+            case .monthly: return 5
             case .yearly: return 10
-            default: return 5
             }
         case .todo:
             return nil // Unlimited

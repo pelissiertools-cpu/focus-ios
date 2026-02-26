@@ -917,10 +917,11 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
 
             // During collapse, use a FIXED spacer matching the post-collapse layout.
             // This prevents discrete jumps — To-Do section glides smoothly as items disappear.
+            let minFocusRows = Section.focus.maxTasks(for: selectedTimeframe) ?? 3
             if isFocusDoneCollapsing {
                 let focusRowCount = focusCompleted.count
-                if focusRowCount > 0 && focusRowCount < 3 {
-                    let spacerHeight = CGFloat(3 - focusRowCount) * 48
+                if focusRowCount > 0 && focusRowCount < minFocusRows {
+                    let spacerHeight = CGFloat(minFocusRows - focusRowCount) * 48
                     result.append(.focusSpacer(spacerHeight))
                 }
             } else {
@@ -928,33 +929,55 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
                 // with the same natural margin whether 1 or 5 items are done.
                 let allCompleted = focusUncompleted.isEmpty && !focusCompleted.isEmpty
                 if !allCompleted {
-                    // Ensure focus section has minimum height of ~3 rows, plus a
-                    // minimum drop-zone gap so cross-section drag always has room.
+                    // Ensure focus section has minimum height matching the max focus slots,
+                    // plus a minimum drop-zone gap so cross-section drag always has room.
                     let focusRowCount = focusUncompleted.count + focusCompleted.count
-                    if focusRowCount > 0 && focusRowCount < 3 {
-                        let spacerHeight = CGFloat(3 - focusRowCount) * 48
+                    if focusRowCount > 0 && focusRowCount < minFocusRows {
+                        let spacerHeight = CGFloat(minFocusRows - focusRowCount) * 48
                         result.append(.focusSpacer(spacerHeight))
                     }
                 }
             }
         }
 
-        // -- To-Do section (always open, always grouped by priority) --
+        // -- To-Do section --
         result.append(.sectionHeader(.todo))
 
-        let priorities: [Priority] = todoPrioritySortDirection == .highestFirst
-            ? Priority.allCases
-            : Priority.allCases.reversed()
+        if selectedTimeframe == .daily {
+            // Daily: grouped by priority with collapsible headers
+            let priorities: [Priority] = todoPrioritySortDirection == .highestFirst
+                ? Priority.allCases
+                : Priority.allCases.reversed()
 
-        for priority in priorities {
-            let commitmentsForPriority = todoUncompleted.filter { c in
-                (tasksMap[c.taskId]?.priority ?? .low) == priority
+            for priority in priorities {
+                let commitmentsForPriority = todoUncompleted.filter { c in
+                    (tasksMap[c.taskId]?.priority ?? .low) == priority
+                }
+
+                result.append(.todoPriorityHeader(priority))
+
+                if !collapsedTodoPriorities.contains(priority) {
+                    for c in commitmentsForPriority {
+                        result.append(.commitment(c))
+                        if expandedTasks.contains(c.taskId) {
+                            for subtask in getUncompletedSubtasks(for: c.taskId) {
+                                result.append(.subtask(subtask, parentCommitment: c))
+                            }
+                            for subtask in getCompletedSubtasks(for: c.taskId) {
+                                result.append(.subtask(subtask, parentCommitment: c))
+                            }
+                            result.append(.addSubtaskRow(parentId: c.taskId, parentCommitment: c))
+                        }
+                    }
+                    if commitmentsForPriority.isEmpty {
+                        result.append(.addTodoTaskRow(priority))
+                    }
+                }
             }
-
-            result.append(.todoPriorityHeader(priority))
-
-            if !collapsedTodoPriorities.contains(priority) {
-                for c in commitmentsForPriority {
+        } else {
+            // Week/month/year: flat list without priority grouping
+            if !isTodoSectionCollapsed {
+                for c in todoUncompleted {
                     result.append(.commitment(c))
                     if expandedTasks.contains(c.taskId) {
                         for subtask in getUncompletedSubtasks(for: c.taskId) {
@@ -966,13 +989,14 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
                         result.append(.addSubtaskRow(parentId: c.taskId, parentCommitment: c))
                     }
                 }
-                if commitmentsForPriority.isEmpty {
-                    result.append(.addTodoTaskRow(priority))
+
+                if !todoCompleted.isEmpty {
+                    result.append(.donePill)
                 }
             }
         }
 
-        if !todoCompleted.isEmpty {
+        if selectedTimeframe == .daily && !todoCompleted.isEmpty {
             result.append(.donePill)
         }
 
@@ -1016,11 +1040,13 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
             )
         }
 
-        // Fixed layout for focus section — matches todo row sizing
+        // Fixed layout for focus section — scale container to max focus slots
+        let maxSlots = Section.focus.maxTasks(for: selectedTimeframe) ?? 3
+        let minHeight = CGFloat(maxSlots) * 48 + 86  // 48pt per row + header/padding
         return FocusSectionConfig(
             taskFont: .sf(.body),
             verticalPadding: 8,
-            containerMinHeight: 230,
+            containerMinHeight: minHeight,
             completedTaskFont: .sf(.subheadline),
             completedVerticalPadding: 6,
             completedOpacity: 0.45

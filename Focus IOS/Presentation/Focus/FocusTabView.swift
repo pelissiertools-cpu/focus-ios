@@ -403,6 +403,7 @@ struct FocusTabView: View {
         }
         .padding(.horizontal, 28)
         .padding(.top, 8)
+        .padding(.bottom, 10)
     }
 
     // MARK: - Focus List

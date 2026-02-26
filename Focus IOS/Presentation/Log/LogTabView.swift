@@ -211,6 +211,8 @@ struct LogTabView: View {
 
     private var logContentStack: some View {
         ZStack(alignment: .bottom) {
+            Color.appBackground.ignoresSafeArea()
+
             VStack(spacing: 0) {
                 // Row 0: Profile button — own row, right-aligned
                 HStack {

@@ -24,10 +24,12 @@ extension Color {
             ? UIColor.systemBackground
             : UIColor(red: 0xFC/255.0, green: 0xFC/255.0, blue: 0xFC/255.0, alpha: 1)
     })
-    /// Gray background for section-container contrast
-    static let sectionedBackground = Color(UIColor { traits in
+    /// App-wide page background — single source of truth for all screens (#ECECEE light, systemBackground dark)
+    static let appBackground = Color(UIColor { traits in
         traits.userInterfaceStyle == .dark
             ? UIColor.systemBackground
             : UIColor(red: 0xEC/255.0, green: 0xEC/255.0, blue: 0xEE/255.0, alpha: 1)
     })
+    /// Alias kept for backward compatibility
+    static let sectionedBackground = appBackground
 }

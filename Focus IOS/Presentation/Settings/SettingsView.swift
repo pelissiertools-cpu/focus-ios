@@ -312,7 +312,7 @@ struct SettingsView: View {
                 .padding(.top, 20)
             }
         }
-        .background(Color(.systemBackground))
+        .background(Color.appBackground)
         .navigationTitle("Settings")
         .navigationBarTitleDisplayMode(.inline)
         .overlay {

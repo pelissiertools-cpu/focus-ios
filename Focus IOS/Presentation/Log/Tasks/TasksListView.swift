@@ -351,7 +351,7 @@ struct PrioritySectionHeader: View {
             .onTapGesture {
                 onToggle()
             }
-            .frame(minHeight: 70, alignment: .bottom)
+            .frame(minHeight: 35, alignment: .bottom)
         }
     }
 }

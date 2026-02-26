@@ -299,10 +299,6 @@ struct FocusTabView: View {
             }
             .onChange(of: viewModel.showAddTaskSheet) { _, isShowing in
                 if isShowing {
-                    // Auto-expand To-Do section if collapsed
-                    if viewModel.addTaskSection == .todo && viewModel.isSectionCollapsed(.todo) {
-                        viewModel.isTodoSectionCollapsed = false
-                    }
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                         switch addBarMode {
                         case .task: addBarTitleFocus = .task
@@ -371,6 +367,32 @@ struct FocusTabView: View {
     private var focusList: some View {
         let flat = viewModel.flattenedDisplayItems
         return List {
+            // Standalone "To-Do" title with add button above the Focus container
+            HStack {
+                Text("To-Do")
+                    .font(.golosText(size: 22))
+                Spacer()
+                Button {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    viewModel.addTaskSection = .todo
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                        viewModel.showAddTaskSheet = true
+                    }
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.sf(.caption, weight: .semibold))
+                        .foregroundColor(.white)
+                        .frame(width: 26, height: 26)
+                        .background(Color.darkGray, in: Circle())
+                }
+                .buttonStyle(.plain)
+                .opacity(viewModel.showAddTaskSheet ? 0 : 1)
+                .allowsHitTesting(!viewModel.showAddTaskSheet)
+            }
+            .listRowBackground(Color.clear)
+            .listRowInsets(EdgeInsets(top: 8, leading: 28, bottom: 0, trailing: 28))
+            .listRowSeparator(.hidden)
+
             ForEach(Array(flat.enumerated()), id: \.element.id) { index, item in
                 let nextIsSection: Bool = {
                     let nextIdx = index + 1
@@ -654,7 +676,6 @@ struct FocusTabView: View {
         .animation(.easeInOut(duration: 0.2), value: viewModel.isFocusSectionCollapsed)
         .animation(.easeInOut(duration: 0.2), value: viewModel.expandedRollupGroups)
         .animation(.easeInOut(duration: 0.2), value: viewModel.isRollupSectionCollapsed)
-        .animation(.easeInOut(duration: 0.2), value: viewModel.todoPrioritySortEnabled)
         .animation(.easeInOut(duration: 0.2), value: viewModel.collapsedTodoPriorities)
         .refreshable {
             await withCheckedContinuation { continuation in
@@ -1944,114 +1965,53 @@ struct FocusSectionHeaderRow: View {
 
     var body: some View {
         VStack(spacing: 0) {
-        HStack(spacing: 12) {
-            // Title + chevron
-            HStack(alignment: .lastTextBaseline, spacing: 8) {
-                Text(section == .todo && viewModel.selectedTimeframe != .daily ? "Unassigned Tasks" : section.displayName)
-                    .font(.golosText(size: 22))
+            if section == .focus {
+                // Focus section: pill-style header matching priority level design
+                HStack {
+                    HStack(spacing: 8) {
+                        RoundedRectangle(cornerRadius: 3, style: .continuous)
+                            .fill(Color.completedPurple)
+                            .frame(width: 10, height: 10)
 
-                HStack(spacing: 6) {
-                    Image(systemName: "chevron.right")
-                        .font(.sf(size: 8, weight: .semibold))
-                        .foregroundColor(.secondary)
-                        .rotationEffect(.degrees(viewModel.isSectionCollapsed(section) ? 0 : 90))
-                        .animation(.easeInOut(duration: 0.2), value: viewModel.isSectionCollapsed(section))
+                        Text(section.displayName)
+                            .font(.golosText(size: 14))
 
-                    if section != .focus {
-                        Text("\(sectionCommitments.count)")
-                            .font(.sf(size: 10))
+                        if let maxTasks = section.maxTasks(for: viewModel.selectedTimeframe) {
+                            Text("\(sectionCommitments.count)/\(maxTasks)")
+                                .font(.sf(size: 10))
+                                .foregroundColor(.secondary)
+                        }
+
+                        Image(systemName: "chevron.right")
+                            .font(.sf(size: 8, weight: .semibold))
                             .foregroundColor(.secondary)
+                            .rotationEffect(.degrees(viewModel.isSectionCollapsed(section) ? 0 : 90))
+                            .animation(.easeInOut(duration: 0.2), value: viewModel.isSectionCollapsed(section))
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .fill(Color.white.opacity(0.6))
+                    )
+
+                    Spacer()
+                }
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        viewModel.toggleSectionCollapsed(section)
                     }
                 }
-                .alignmentGuide(.lastTextBaseline) { d in d[.bottom] - 1 }
+                .padding(.vertical, 6)
+                .padding(.horizontal, 12)
+            } else {
+                // Non-focus sections: divider only
+                Rectangle()
+                    .fill(Color.secondary.opacity(0.7))
+                    .frame(height: 1)
+                    .padding(.horizontal, 4)
             }
-
-            Spacer()
-
-            // Fraction pill (focus only, right side)
-            if section == .focus, let maxTasks = section.maxTasks(for: viewModel.selectedTimeframe) {
-                Text("\(sectionCommitments.count)/\(maxTasks)")
-                    .font(.sf(size: 10))
-                    .foregroundColor(.secondary)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .clipShape(Capsule())
-                    .glassEffect(.regular.interactive(), in: .capsule)
-            }
-
-            // Sort menu (todo only)
-            if section == .todo {
-                Menu {
-                    Button {
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            viewModel.toggleTodoPrioritySort()
-                        }
-                    } label: {
-                        if viewModel.todoPrioritySortEnabled {
-                            Label("Sort by Priority", systemImage: "checkmark")
-                        } else {
-                            Text("Sort by Priority")
-                        }
-                    }
-
-                    if viewModel.todoPrioritySortEnabled {
-                        Divider()
-                        ForEach([SortDirection.highestFirst, .lowestFirst], id: \.self) { direction in
-                            Button {
-                                withAnimation(.easeInOut(duration: 0.2)) {
-                                    viewModel.todoPrioritySortDirection = direction
-                                }
-                            } label: {
-                                if viewModel.todoPrioritySortDirection == direction {
-                                    Label(direction.displayName(for: .priority), systemImage: "checkmark")
-                                } else {
-                                    Text(direction.displayName(for: .priority))
-                                }
-                            }
-                        }
-                    }
-                } label: {
-                    Image(systemName: "ellipsis")
-                        .font(.sf(.caption, weight: .semibold))
-                        .foregroundColor(.primary)
-                        .frame(width: 26, height: 26)
-                }
-                .menuIndicator(.hidden)
-            }
-
-            // Add button - hidden for focus (uses inline add row), hidden when adding task
-            if section != .focus {
-                Button {
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                    viewModel.addTaskSection = section
-                    withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
-                        viewModel.showAddTaskSheet = true
-                    }
-                } label: {
-                    Image(systemName: "plus")
-                        .font(.sf(.caption, weight: .semibold))
-                        .foregroundColor(.white)
-                        .frame(width: 26, height: 26)
-                        .background(Color.darkGray, in: Circle())
-                }
-                .buttonStyle(.plain)
-                .opacity(viewModel.showAddTaskSheet ? 0 : 1)
-                .allowsHitTesting(!viewModel.showAddTaskSheet)
-            }
-        }
-        .contentShape(Rectangle())
-        .onTapGesture {
-            withAnimation(.easeInOut(duration: 0.2)) {
-                viewModel.toggleSectionCollapsed(section)
-            }
-        }
-        .padding(.vertical, 6)
-        .padding(.horizontal, 12)
-
-            Rectangle()
-                .fill(Color.secondary.opacity(0.7))
-                .frame(height: 1)
-                .padding(.horizontal, 4)
         }
     }
 }

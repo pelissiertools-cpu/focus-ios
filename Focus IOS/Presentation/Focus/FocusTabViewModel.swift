@@ -121,7 +121,7 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
     @Published var addTaskSection: Section = .todo
 
     // To-Do priority sort state
-    @Published var todoPrioritySortEnabled: Bool = false
+    @Published var todoPrioritySortEnabled: Bool = true
     @Published var todoPrioritySortDirection: SortDirection = .highestFirst
     @Published var collapsedTodoPriorities: Set<Priority> = []
 
@@ -941,46 +941,22 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
             }
         }
 
-        // -- To-Do section --
+        // -- To-Do section (always open, always grouped by priority) --
         result.append(.sectionHeader(.todo))
 
-        if !isSectionCollapsed(.todo) {
-            if todoUncompleted.isEmpty && todoCompleted.isEmpty {
-                result.append(.emptyState(.todo))
-            } else if todoPrioritySortEnabled {
-                // Group by priority with sub-headers
-                let priorities: [Priority] = todoPrioritySortDirection == .highestFirst
-                    ? Priority.allCases
-                    : Priority.allCases.reversed()
+        let priorities: [Priority] = todoPrioritySortDirection == .highestFirst
+            ? Priority.allCases
+            : Priority.allCases.reversed()
 
-                for priority in priorities {
-                    let commitmentsForPriority = todoUncompleted.filter { c in
-                        (tasksMap[c.taskId]?.priority ?? .low) == priority
-                    }
+        for priority in priorities {
+            let commitmentsForPriority = todoUncompleted.filter { c in
+                (tasksMap[c.taskId]?.priority ?? .low) == priority
+            }
 
-                    result.append(.todoPriorityHeader(priority))
+            result.append(.todoPriorityHeader(priority))
 
-                    if !collapsedTodoPriorities.contains(priority) {
-                        for c in commitmentsForPriority {
-                            result.append(.commitment(c))
-                            if expandedTasks.contains(c.taskId) {
-                                for subtask in getUncompletedSubtasks(for: c.taskId) {
-                                    result.append(.subtask(subtask, parentCommitment: c))
-                                }
-                                for subtask in getCompletedSubtasks(for: c.taskId) {
-                                    result.append(.subtask(subtask, parentCommitment: c))
-                                }
-                                result.append(.addSubtaskRow(parentId: c.taskId, parentCommitment: c))
-                            }
-                        }
-                        if commitmentsForPriority.isEmpty {
-                            result.append(.addTodoTaskRow(priority))
-                        }
-                    }
-                }
-            } else {
-                // Original flat list (no priority grouping)
-                for c in todoUncompleted {
+            if !collapsedTodoPriorities.contains(priority) {
+                for c in commitmentsForPriority {
                     result.append(.commitment(c))
                     if expandedTasks.contains(c.taskId) {
                         for subtask in getUncompletedSubtasks(for: c.taskId) {
@@ -992,12 +968,14 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
                         result.append(.addSubtaskRow(parentId: c.taskId, parentCommitment: c))
                     }
                 }
+                if commitmentsForPriority.isEmpty {
+                    result.append(.addTodoTaskRow(priority))
+                }
             }
+        }
 
-            if !todoCompleted.isEmpty {
-                result.append(.donePill)
-            }
-
+        if !todoCompleted.isEmpty {
+            result.append(.donePill)
         }
 
         // -- Rollup section (child timeframe items within current period) --

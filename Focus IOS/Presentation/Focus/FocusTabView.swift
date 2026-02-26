@@ -2027,9 +2027,9 @@ struct FocusSectionHeaderRow: View {
                 .padding(.vertical, 6)
                 .padding(.horizontal, 12)
             } else {
-                // Non-focus sections: divider only
+                // Non-focus sections: invisible divider (matches background)
                 Rectangle()
-                    .fill(Color.secondary.opacity(0.7))
+                    .fill(Color.sectionedBackground)
                     .frame(height: 1)
                     .padding(.horizontal, 4)
             }

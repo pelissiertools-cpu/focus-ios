@@ -122,13 +122,15 @@ struct FocusTabView: View {
                             GeometryReader { proxy in
                                 let topAnchor = anchors["top"]
                                 let bottomAnchor = anchors["bottom"]
-                                // When focus header scrolls off-screen, extend container to top edge
-                                let containerTop = topAnchor.map { proxy[$0].minY } ?? 0
+                                // When focus header scrolls off-screen, clamp to top edge
+                                let rawTop = topAnchor.map { proxy[$0].minY } ?? 0
+                                let containerTop = max(0, rawTop)
                                 // When todo header scrolls off-screen, extend container to bottom edge
                                 let containerBottom = bottomAnchor.map { proxy[$0].minY - 20 } ?? proxy.size.height
                                 let height = containerBottom - containerTop
                                 let width = (topAnchor ?? bottomAnchor).map { proxy[$0].width + 4 } ?? (proxy.size.width - 8)
-                                if height > 0 {
+                                // Only draw when bottom anchor exists (not recycled by lazy List) and has enough height
+                                if height > 40 && bottomAnchor != nil {
                                     RoundedRectangle(cornerRadius: 20, style: .continuous)
                                         .fill(Color.white.opacity(0.6))
                                         .frame(width: width, height: height)

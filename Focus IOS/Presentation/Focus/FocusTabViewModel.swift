@@ -919,8 +919,8 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
             // This prevents discrete jumps — To-Do section glides smoothly as items disappear.
             if isFocusDoneCollapsing {
                 let focusRowCount = focusCompleted.count
-                if focusRowCount > 0 && focusRowCount < 4 {
-                    let spacerHeight = CGFloat(4 - focusRowCount) * 48
+                if focusRowCount > 0 && focusRowCount < 3 {
+                    let spacerHeight = CGFloat(3 - focusRowCount) * 48
                     result.append(.focusSpacer(spacerHeight))
                 }
             } else {
@@ -928,13 +928,13 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
                 // with the same natural margin whether 1 or 5 items are done.
                 let allCompleted = focusUncompleted.isEmpty && !focusCompleted.isEmpty
                 if !allCompleted {
-                    // Ensure focus section has minimum height of ~4 rows, plus a
+                    // Ensure focus section has minimum height of ~3 rows, plus a
                     // minimum drop-zone gap so cross-section drag always has room.
                     let focusRowCount = focusUncompleted.count + focusCompleted.count
-                    if focusRowCount > 0 && focusRowCount < 4 {
-                        let spacerHeight = CGFloat(4 - focusRowCount) * 48
+                    if focusRowCount > 0 && focusRowCount < 3 {
+                        let spacerHeight = CGFloat(3 - focusRowCount) * 48
                         result.append(.focusSpacer(spacerHeight))
-                    } else if focusRowCount >= 4 && canAddTask(to: .focus) {
+                    } else if focusRowCount >= 3 && canAddTask(to: .focus) {
                         result.append(.focusSpacer(48))
                     }
                 }
@@ -1020,7 +1020,7 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
 
         // Fixed layout for focus section — font size never changes
         return FocusSectionConfig(
-            taskFont: .sf(.title3),
+            taskFont: .sf(size: 17),
             verticalPadding: 14,
             containerMinHeight: 230,
             completedTaskFont: .sf(.subheadline),

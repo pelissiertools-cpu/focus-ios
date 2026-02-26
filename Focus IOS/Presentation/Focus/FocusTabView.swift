@@ -109,6 +109,9 @@ struct FocusTabView: View {
                 if viewMode == .focus {
                     // MARK: - Focus Mode Content
 
+                    // Fixed "To-Do" title with add button (non-scrollable)
+                    todoTitleBar
+
                     // Content
                     if viewModel.isLoading {
                         ProgressView("Loading...")
@@ -127,7 +130,7 @@ struct FocusTabView: View {
                                 let width = (topAnchor ?? bottomAnchor).map { proxy[$0].width + 4 } ?? (proxy.size.width - 8)
                                 if height > 0 {
                                     RoundedRectangle(cornerRadius: 20, style: .continuous)
-                                        .fill(Color.white)
+                                        .fill(Color.white.opacity(0.6))
                                         .frame(width: width, height: height)
                                         .position(x: proxy.size.width / 2, y: containerTop + height / 2)
                                 }
@@ -135,6 +138,15 @@ struct FocusTabView: View {
                             .clipped()
                         }
                         .allowsHitTesting(!viewModel.showAddTaskSheet)
+                        .overlay(alignment: .top) {
+                            LinearGradient(
+                                colors: [Color.sectionedBackground, Color.sectionedBackground.opacity(0)],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                            .frame(height: 16)
+                            .allowsHitTesting(false)
+                        }
                     }
                 } else {
                     // MARK: - Schedule Mode Content
@@ -362,37 +374,39 @@ struct FocusTabView: View {
         }
     }
 
+    // MARK: - Fixed To-Do Title Bar
+
+    private var todoTitleBar: some View {
+        HStack {
+            Text("To-Do")
+                .font(.golosText(size: 22))
+            Spacer()
+            Button {
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                viewModel.addTaskSection = .todo
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                    viewModel.showAddTaskSheet = true
+                }
+            } label: {
+                Image(systemName: "plus")
+                    .font(.sf(.caption, weight: .semibold))
+                    .foregroundColor(.white)
+                    .frame(width: 26, height: 26)
+                    .background(Color.darkGray, in: Circle())
+            }
+            .buttonStyle(.plain)
+            .opacity(viewModel.showAddTaskSheet ? 0 : 1)
+            .allowsHitTesting(!viewModel.showAddTaskSheet)
+        }
+        .padding(.horizontal, 28)
+        .padding(.top, 8)
+    }
+
     // MARK: - Focus List
 
     private var focusList: some View {
         let flat = viewModel.flattenedDisplayItems
         return List {
-            // Standalone "To-Do" title with add button above the Focus container
-            HStack {
-                Text("To-Do")
-                    .font(.golosText(size: 22))
-                Spacer()
-                Button {
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                    viewModel.addTaskSection = .todo
-                    withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
-                        viewModel.showAddTaskSheet = true
-                    }
-                } label: {
-                    Image(systemName: "plus")
-                        .font(.sf(.caption, weight: .semibold))
-                        .foregroundColor(.white)
-                        .frame(width: 26, height: 26)
-                        .background(Color.darkGray, in: Circle())
-                }
-                .buttonStyle(.plain)
-                .opacity(viewModel.showAddTaskSheet ? 0 : 1)
-                .allowsHitTesting(!viewModel.showAddTaskSheet)
-            }
-            .listRowBackground(Color.clear)
-            .listRowInsets(EdgeInsets(top: 8, leading: 28, bottom: 0, trailing: 28))
-            .listRowSeparator(.hidden)
-
             ForEach(Array(flat.enumerated()), id: \.element.id) { index, item in
                 let nextIsSection: Bool = {
                     let nextIdx = index + 1
@@ -467,8 +481,8 @@ struct FocusTabView: View {
                         onSubmit: { title in
                             await viewModel.createTaskWithCommitment(title: title, section: .focus)
                         },
-                        textFont: .sf(.title3, weight: .regular),
-                        iconFont: .sf(.title3),
+                        textFont: .sf(size: 17, weight: .regular),
+                        iconFont: .sf(size: 17),
                         verticalPadding: 14
                     )
                     .padding(.horizontal, 16)
@@ -546,7 +560,7 @@ struct FocusTabView: View {
                 case .allDoneState:
                     HStack(spacing: 8) {
                         Text("All tasks are completed")
-                            .font(.sf(.title3, weight: .regular))
+                            .font(.sf(size: 17, weight: .regular))
                             .foregroundColor(.secondary)
                         Image("CheckCircle")
                             .resizable()
@@ -668,6 +682,13 @@ struct FocusTabView: View {
             .onMove { from, to in
                 viewModel.handleFlatMove(from: from, to: to)
             }
+
+            // Extra scroll space at the bottom
+            Color.clear
+                .frame(height: 100)
+                .listRowBackground(Color.clear)
+                .listRowInsets(EdgeInsets())
+                .listRowSeparator(.hidden)
         }
         .listStyle(.plain)
         .listRowSpacing(0)
@@ -2099,7 +2120,7 @@ struct CommitmentRow: View {
                 // Focus number
                 if let number = focusNumber {
                     Text("\(number)")
-                        .font(fontOverride ?? .sf(.title3, weight: .regular))
+                        .font(fontOverride ?? .sf(size: 17, weight: .regular))
                         .foregroundColor(.secondary)
                         .monospacedDigit()
                 }
@@ -2107,7 +2128,7 @@ struct CommitmentRow: View {
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 6) {
                         Text(task.title)
-                            .font(fontOverride ?? .sf(.title3, weight: .regular))
+                            .font(fontOverride ?? .sf(size: 17, weight: .regular))
                             .strikethrough(task.isCompleted)
                             .foregroundColor(task.isCompleted ? .secondary : .primary)
                         if task.type == .list {

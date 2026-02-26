@@ -934,8 +934,6 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
                     if focusRowCount > 0 && focusRowCount < 3 {
                         let spacerHeight = CGFloat(3 - focusRowCount) * 48
                         result.append(.focusSpacer(spacerHeight))
-                    } else if focusRowCount >= 3 && canAddTask(to: .focus) {
-                        result.append(.focusSpacer(48))
                     }
                 }
             }

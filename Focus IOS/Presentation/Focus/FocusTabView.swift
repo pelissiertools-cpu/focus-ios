@@ -125,7 +125,7 @@ struct FocusTabView: View {
                                 // When focus header scrolls off-screen, extend container to top edge
                                 let containerTop = topAnchor.map { proxy[$0].minY } ?? 0
                                 // When todo header scrolls off-screen, extend container to bottom edge
-                                let containerBottom = bottomAnchor.map { proxy[$0].minY } ?? proxy.size.height
+                                let containerBottom = bottomAnchor.map { proxy[$0].minY - 20 } ?? proxy.size.height
                                 let height = containerBottom - containerTop
                                 let width = (topAnchor ?? bottomAnchor).map { proxy[$0].width + 4 } ?? (proxy.size.width - 8)
                                 if height > 0 {
@@ -722,7 +722,7 @@ struct FocusTabView: View {
             FocusSectionHeaderRow(section: section, viewModel: viewModel)
                 .anchorPreference(key: FocusSectionBoundsKey.self, value: .bounds) { ["bottom": $0] }
                 .listRowBackground(Color.clear)
-                .listRowInsets(EdgeInsets(top: isTodoHeader ? 20 : 8, leading: 16, bottom: 0, trailing: 16))
+                .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
                 .listRowSeparator(.hidden)
         } else {
             FocusSectionHeaderRow(section: section, viewModel: viewModel)
@@ -2024,7 +2024,8 @@ struct FocusSectionHeaderRow: View {
                         viewModel.toggleSectionCollapsed(section)
                     }
                 }
-                .padding(.vertical, 6)
+                .padding(.top, 6)
+                .padding(.bottom, 0)
                 .padding(.horizontal, 12)
             } else {
                 // Non-focus sections: invisible divider (matches background)

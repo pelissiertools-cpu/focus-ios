@@ -398,6 +398,10 @@ struct CategorySelectorHeader<TrailingContent: View>: View {
                         .font(.golosText(size: 30))
                         .foregroundColor(.primary)
 
+                    Image(systemName: "chevron.right")
+                        .font(.sf(size: 10, weight: .semibold))
+                        .foregroundColor(.secondary)
+
                     Text("\(count) \(countSuffix)\(count == 1 ? "" : "s")")
                         .font(.sf(size: 12))
                         .foregroundColor(.secondary)

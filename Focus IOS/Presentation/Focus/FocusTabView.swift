@@ -433,6 +433,10 @@ struct FocusTabView: View {
         .padding(.horizontal, 42)
         .padding(.top, 8)
         .padding(.bottom, 10)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+        }
     }
 
     // MARK: - Focus List
@@ -728,6 +732,7 @@ struct FocusTabView: View {
         .listRowSpacing(0)
         .environment(\.defaultMinListRowHeight, 0)
         .scrollContentBackground(.hidden)
+        .scrollDismissesKeyboard(.immediately)
         .animation(.easeInOut(duration: 0.25), value: viewModel.isFocusDoneExpanded)
         .animation(.easeInOut(duration: 0.2), value: viewModel.isFocusSectionCollapsed)
         .animation(.easeInOut(duration: 0.2), value: viewModel.expandedRollupGroups)
@@ -1033,6 +1038,7 @@ struct FocusTabView: View {
         .listRowSpacing(0)
         .environment(\.defaultMinListRowHeight, 0)
         .scrollContentBackground(.hidden)
+        .scrollDismissesKeyboard(.immediately)
         .animation(.easeInOut(duration: 0.25), value: viewModel.isFocusDoneExpanded)
         .animation(.easeInOut(duration: 0.2), value: viewModel.isFocusSectionCollapsed)
         .animation(.easeInOut(duration: 0.2), value: viewModel.expandedRollupGroups)

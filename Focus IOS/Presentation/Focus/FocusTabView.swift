@@ -129,12 +129,13 @@ struct FocusTabView: View {
                                 let containerBottom = bottomAnchor.map { proxy[$0].minY - 20 } ?? proxy.size.height
                                 let height = containerBottom - containerTop
                                 let width = (topAnchor ?? bottomAnchor).map { proxy[$0].width + 4 } ?? (proxy.size.width - 8)
-                                // Only draw when bottom anchor exists (not recycled by lazy List) and has enough height
-                                if height > 40 && bottomAnchor != nil {
+                                // Fade out container as it shrinks, hide when bottom anchor recycled
+                                let fadeOpacity = min(1.0, max(0, height / 60.0))
+                                if height > 0 && bottomAnchor != nil && fadeOpacity > 0 {
                                     RoundedRectangle(cornerRadius: 20, style: .continuous)
-                                        .fill(Color.white.opacity(0.6))
-                                        .frame(width: width, height: height)
-                                        .position(x: proxy.size.width / 2, y: containerTop + height / 2)
+                                        .fill(Color.white.opacity(0.6 * fadeOpacity))
+                                        .frame(width: width, height: max(0, height))
+                                        .position(x: proxy.size.width / 2, y: containerTop + max(0, height) / 2)
                                 }
                             }
                             .clipped()

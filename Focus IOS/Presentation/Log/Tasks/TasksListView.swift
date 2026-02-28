@@ -621,7 +621,7 @@ struct FlatTaskRow: View {
                         .foregroundColor(.secondary)
                 }
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(maxWidth: .infinity, minHeight: isParent ? 36 : nil, alignment: .leading)
 
             // Completion checkbox (hidden in edit mode)
             if !isEditMode {
@@ -642,7 +642,7 @@ struct FlatTaskRow: View {
                 .buttonStyle(.plain)
             }
         }
-        .frame(minHeight: isParent ? 70 : 44)
+        .padding(.vertical, isParent ? 8 : 6)
         .contentShape(Rectangle())
         .onTapGesture {
             if isEditMode && !task.isCompleted && isParent {
@@ -767,7 +767,7 @@ struct ExpandableTaskRow: View {
                         .foregroundColor(.secondary)
                 }
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(maxWidth: .infinity, minHeight: 36, alignment: .leading)
 
             // Completion button (hidden in edit mode)
             if !isEditMode {
@@ -784,7 +784,7 @@ struct ExpandableTaskRow: View {
                 .buttonStyle(.plain)
             }
         }
-        .frame(minHeight: 70)
+        .padding(.vertical, 8)
         .contentShape(Rectangle())
         .onTapGesture {
             if isEditMode && !task.isCompleted {
@@ -881,7 +881,7 @@ struct SubtaskRow: View {
             }
             .buttonStyle(.plain)
         }
-        .padding(.vertical, 12)
+        .padding(.vertical, 6)
         .contentShape(Rectangle())
         .onTapGesture {
             viewModel.selectedTaskForDetails = subtask

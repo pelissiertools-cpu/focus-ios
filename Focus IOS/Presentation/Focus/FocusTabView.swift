@@ -689,7 +689,6 @@ struct FocusTabView: View {
         }
         .listStyle(.plain)
         .listRowSpacing(0)
-        .environment(\.defaultMinListRowHeight, 0)
         .scrollContentBackground(.hidden)
         .scrollDismissesKeyboard(.immediately)
         .animation(.easeInOut(duration: 0.25), value: viewModel.isFocusDoneExpanded)
@@ -972,7 +971,6 @@ struct FocusTabView: View {
         }
         .listStyle(.plain)
         .listRowSpacing(0)
-        .environment(\.defaultMinListRowHeight, 0)
         .scrollContentBackground(.hidden)
         .scrollDismissesKeyboard(.immediately)
         .animation(.easeInOut(duration: 0.25), value: viewModel.isFocusDoneExpanded)

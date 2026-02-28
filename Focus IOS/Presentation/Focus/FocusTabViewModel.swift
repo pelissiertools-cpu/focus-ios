@@ -1078,9 +1078,11 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
 
         let sourceSection = movedCommitment.section
 
-        // Determine destination section by scanning backward for nearest section header or priority header
+        // Determine destination section by scanning backward for nearest section header or priority header.
+        // Use destination - 1 so that inserting *before* a section header belongs to the previous section.
         var destSection: Section = .focus
-        for i in stride(from: min(destination, flat.count - 1), through: 0, by: -1) {
+        let sectionLookup = max(0, min(destination - 1, flat.count - 1))
+        for i in stride(from: sectionLookup, through: 0, by: -1) {
             if case .sectionHeader(let section) = flat[i] {
                 destSection = section
                 break
@@ -1269,7 +1271,10 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
                 return priority
             }
         }
-        return .low
+        // No priority header found above destination — return the first priority in sort order
+        let firstPriority: Priority = todoPrioritySortDirection == .highestFirst
+            ? Priority.allCases.first! : Priority.allCases.last!
+        return firstPriority
     }
 
     /// Handle drag-and-drop within the to-do section when priority sort is enabled

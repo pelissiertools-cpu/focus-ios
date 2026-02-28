@@ -1425,7 +1425,6 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
         switch section {
         case .focus: isFocusSectionCollapsed.toggle()
         case .todo: isTodoSectionCollapsed.toggle()
-        default: break
         }
     }
 
@@ -1434,7 +1433,6 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
         switch section {
         case .focus: return isFocusSectionCollapsed
         case .todo: return isTodoSectionCollapsed
-        default: return false
         }
     }
 

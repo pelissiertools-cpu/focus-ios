@@ -13,7 +13,7 @@ struct CommitmentSelectionSheet: View {
     @Environment(\.dismiss) var dismiss
 
     @State private var selectedTimeframe: Timeframe = .daily
-    @State private var selectedSection: Section = .focus
+    @State private var selectedSection: Section = .todo
     @State private var showError = false
     @State private var errorMessage = ""
     @State private var subtaskCount = 0

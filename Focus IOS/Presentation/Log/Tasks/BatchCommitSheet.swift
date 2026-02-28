@@ -13,7 +13,7 @@ struct BatchCommitSheet<VM: LogFilterable>: View {
     @Environment(\.dismiss) var dismiss
 
     @State private var selectedTimeframe: Timeframe = .daily
-    @State private var selectedSection: Section = .focus
+    @State private var selectedSection: Section = .todo
     @State private var selectedDates: Set<Date> = []
     @State private var isSaving = false
     @State private var showError = false

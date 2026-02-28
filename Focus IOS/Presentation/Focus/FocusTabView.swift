@@ -130,7 +130,7 @@ struct FocusTabView: View {
                                 // When todo header scrolls off-screen, extend container to bottom edge
                                 let containerBottom = bottomAnchor.map { proxy[$0].minY + 4 } ?? proxy.size.height
                                 let height = containerBottom - containerTop
-                                let width = (topAnchor ?? bottomAnchor).map { proxy[$0].width + 4 } ?? (proxy.size.width - 8)
+                                let width = proxy.size.width - 28
                                 // Fade out container as it shrinks, hide when bottom anchor recycled
                                 let fadeOpacity = min(1.0, max(0, height / 60.0))
                                 if height > 0 && bottomAnchor != nil && fadeOpacity > 0 {
@@ -143,15 +143,6 @@ struct FocusTabView: View {
                             .clipped()
                         }
                         .allowsHitTesting(!viewModel.showAddTaskSheet)
-                        .overlay(alignment: .top) {
-                            LinearGradient(
-                                colors: [Color.sectionedBackground, Color.sectionedBackground.opacity(0)],
-                                startPoint: .top,
-                                endPoint: .bottom
-                            )
-                            .frame(height: 16)
-                            .allowsHitTesting(false)
-                        }
                     } else {
                         periodFocusList
                         .backgroundPreferenceValue(FocusSectionBoundsKey.self) { anchors in
@@ -162,7 +153,7 @@ struct FocusTabView: View {
                                 let containerTop = max(0, rawTop)
                                 let containerBottom = bottomAnchor.map { proxy[$0].minY + 4 } ?? proxy.size.height
                                 let height = containerBottom - containerTop
-                                let width = (topAnchor ?? bottomAnchor).map { proxy[$0].width + 4 } ?? (proxy.size.width - 8)
+                                let width = proxy.size.width - 28
                                 let fadeOpacity = min(1.0, max(0, height / 60.0))
                                 if height > 0 && bottomAnchor != nil && fadeOpacity > 0 {
                                     RoundedRectangle(cornerRadius: 20, style: .continuous)
@@ -174,15 +165,6 @@ struct FocusTabView: View {
                             .clipped()
                         }
                         .allowsHitTesting(!viewModel.showAddTaskSheet)
-                        .overlay(alignment: .top) {
-                            LinearGradient(
-                                colors: [Color.sectionedBackground, Color.sectionedBackground.opacity(0)],
-                                startPoint: .top,
-                                endPoint: .bottom
-                            )
-                            .frame(height: 16)
-                            .allowsHitTesting(false)
-                        }
                     }
                 } else {
                     // MARK: - Schedule Mode Content

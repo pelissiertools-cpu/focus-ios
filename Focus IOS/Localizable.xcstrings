@@ -351,9 +351,6 @@
         }
       }
     },
-    "All tasks are completed" : {
-
-    },
     "Already added" : {
       "extractionState" : "stale",
       "localizations" : {

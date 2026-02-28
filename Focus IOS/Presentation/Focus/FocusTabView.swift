@@ -128,7 +128,7 @@ struct FocusTabView: View {
                                 let rawTop = topAnchor.map { proxy[$0].minY } ?? 0
                                 let containerTop = max(0, rawTop)
                                 // When todo header scrolls off-screen, extend container to bottom edge
-                                let containerBottom = bottomAnchor.map { proxy[$0].minY + 4 } ?? proxy.size.height
+                                let containerBottom = bottomAnchor.map { proxy[$0].minY - 4 } ?? proxy.size.height
                                 let height = containerBottom - containerTop
                                 let width = proxy.size.width - 28
                                 // Fade out container as it shrinks, hide when bottom anchor recycled
@@ -151,7 +151,7 @@ struct FocusTabView: View {
                                 let bottomAnchor = anchors["bottom"]
                                 let rawTop = topAnchor.map { proxy[$0].minY } ?? 0
                                 let containerTop = max(0, rawTop)
-                                let containerBottom = bottomAnchor.map { proxy[$0].minY + 4 } ?? proxy.size.height
+                                let containerBottom = bottomAnchor.map { proxy[$0].minY - 4 } ?? proxy.size.height
                                 let height = containerBottom - containerTop
                                 let width = proxy.size.width - 28
                                 let fadeOpacity = min(1.0, max(0, height / 60.0))
@@ -532,27 +532,11 @@ struct FocusTabView: View {
                     .listRowSeparator(.hidden)
 
                 case .allDoneState:
-                    HStack(spacing: 8) {
-                        Text("All tasks are completed")
-                            .font(.inter(.body))
-                            .foregroundColor(.secondary)
-                        Image("CheckCircle")
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 34, height: 34)
-                            .foregroundColor(Color.completedPurple)
-                            .scaleEffect(viewModel.allDoneCheckPulse ? 1.35 : 1.0)
-                    }
-                    .frame(maxWidth: .infinity, minHeight: 120)
-                    .contentShape(Rectangle())
-                    .onTapGesture {
-                        withAnimation(.easeInOut(duration: 0.25)) {
-                            viewModel.isFocusDoneExpanded.toggle()
-                        }
-                    }
-                    .listRowBackground(Color.clear)
-                    .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
-                    .listRowSeparator(.hidden)
+                    // Handled inline in FocusSectionHeaderRow
+                    EmptyView()
+                        .listRowBackground(Color.clear)
+                        .listRowInsets(EdgeInsets())
+                        .listRowSeparator(.hidden)
 
                 case .donePill:
                     DonePillView(
@@ -843,27 +827,11 @@ struct FocusTabView: View {
                     .listRowSeparator(.hidden)
 
                 case .allDoneState:
-                    HStack(spacing: 8) {
-                        Text("All tasks are completed")
-                            .font(.inter(.body))
-                            .foregroundColor(.secondary)
-                        Image("CheckCircle")
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 34, height: 34)
-                            .foregroundColor(Color.completedPurple)
-                            .scaleEffect(viewModel.allDoneCheckPulse ? 1.35 : 1.0)
-                    }
-                    .frame(maxWidth: .infinity, minHeight: 120)
-                    .contentShape(Rectangle())
-                    .onTapGesture {
-                        withAnimation(.easeInOut(duration: 0.25)) {
-                            viewModel.isFocusDoneExpanded.toggle()
-                        }
-                    }
-                    .listRowBackground(Color.clear)
-                    .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
-                    .listRowSeparator(.hidden)
+                    // Handled inline in FocusSectionHeaderRow
+                    EmptyView()
+                        .listRowBackground(Color.clear)
+                        .listRowInsets(EdgeInsets())
+                        .listRowSeparator(.hidden)
 
                 case .donePill:
                     DonePillView(
@@ -2122,24 +2090,8 @@ struct SectionView: View {
                             }
 
                             if uncompletedCommitments.isEmpty && !completedCommitments.isEmpty && section == .focus {
-                                // All-done state
-                                HStack(spacing: 8) {
-                                    Text("All tasks are completed")
-                                        .font(.inter(.title3))
-                                        .foregroundColor(.secondary)
-                                    Image("CheckCircle")
-                                        .resizable()
-                                        .scaledToFit()
-                                        .frame(width: 34, height: 34)
-                                        .foregroundColor(Color.completedPurple)
-                                        .scaleEffect(viewModel.allDoneCheckPulse ? 1.35 : 1.0)
-                                }
-                                .contentShape(Rectangle())
-                                .onTapGesture {
-                                    withAnimation(.easeInOut(duration: 0.25)) {
-                                        viewModel.isFocusDoneExpanded.toggle()
-                                    }
-                                }
+                                // All-done state — handled inline in FocusSectionHeaderRow
+                                EmptyView()
                             } else {
                                 // Uncompleted commitments
                                 ForEach(Array(uncompletedCommitments.enumerated()), id: \.element.id) { index, commitment in
@@ -2296,6 +2248,13 @@ struct FocusSectionHeaderRow: View {
         }
     }
 
+    private var isAllDone: Bool {
+        section == .focus &&
+        viewModel.uncompletedCommitmentsForSection(.focus).isEmpty &&
+        !viewModel.completedCommitmentsForSection(.focus).isEmpty &&
+        !viewModel.isFocusDoneCollapsing
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             if section == .focus {
@@ -2336,7 +2295,23 @@ struct FocusSectionHeaderRow: View {
                             .fill(Color.pillBackground)
                     )
 
-                    Spacer()
+                    if isAllDone {
+                        Spacer()
+                        HStack(spacing: 4) {
+                            Text("Completed")
+                                .font(.inter(size: 14, weight: .medium))
+                                .foregroundColor(.secondary)
+                            Image("CheckCircle")
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 18, height: 18)
+                                .foregroundColor(Color.completedPurple)
+                                .scaleEffect(viewModel.allDoneCheckPulse ? 1.35 : 1.0)
+                        }
+                        Spacer()
+                    } else {
+                        Spacer()
+                    }
 
                     if let onAddTap {
                         Button {
@@ -2377,8 +2352,14 @@ struct FocusSectionHeaderRow: View {
                 .frame(minHeight: 50)
                 .contentShape(Rectangle())
                 .onTapGesture {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        viewModel.toggleSectionCollapsed(section)
+                    if isAllDone {
+                        withAnimation(.easeInOut(duration: 0.25)) {
+                            viewModel.isFocusDoneExpanded.toggle()
+                        }
+                    } else {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            viewModel.toggleSectionCollapsed(section)
+                        }
                     }
                 }
                 .padding(.top, 6)

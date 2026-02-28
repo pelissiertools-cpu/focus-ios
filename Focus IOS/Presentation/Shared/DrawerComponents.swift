@@ -76,7 +76,7 @@ struct DrawerContainer<Content: View>: View {
                     .font(.inter(.subheadline, weight: .semiBold))
                     .foregroundColor(.primary)
                     .frame(width: 30, height: 30)
-                    .background(.white, in: Circle())
+                    .background(Color.pillBackground, in: Circle())
             }
         case .check(let action, let highlighted):
             Button(action: action) {
@@ -85,7 +85,7 @@ struct DrawerContainer<Content: View>: View {
                     .foregroundColor(highlighted ? .white : .secondary)
                     .frame(width: 30, height: 30)
             }
-            .background(highlighted ? Color.appRed : Color(.systemGray5))
+            .background(highlighted ? Color.completedPurple : Color(.systemGray5))
             .clipShape(Circle())
             .buttonStyle(.plain)
         }

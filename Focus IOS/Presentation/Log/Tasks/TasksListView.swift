@@ -340,7 +340,7 @@ struct PrioritySectionHeader: View {
                 .padding(.vertical, 10)
                 .background(
                     RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .fill(Color.white.opacity(0.6))
+                        .fill(Color.pillBackground)
                 )
 
                 Spacer()

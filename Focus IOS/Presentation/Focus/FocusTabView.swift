@@ -135,7 +135,7 @@ struct FocusTabView: View {
                                 let fadeOpacity = min(1.0, max(0, height / 60.0))
                                 if height > 0 && bottomAnchor != nil && fadeOpacity > 0 {
                                     RoundedRectangle(cornerRadius: 20, style: .continuous)
-                                        .fill(Color.white.opacity(0.4 * fadeOpacity))
+                                        .fill(Color.focusContainerFill.opacity(fadeOpacity))
                                         .frame(width: width, height: max(0, height))
                                         .position(x: proxy.size.width / 2, y: containerTop + max(0, height) / 2)
                                 }
@@ -166,7 +166,7 @@ struct FocusTabView: View {
                                 let fadeOpacity = min(1.0, max(0, height / 60.0))
                                 if height > 0 && bottomAnchor != nil && fadeOpacity > 0 {
                                     RoundedRectangle(cornerRadius: 20, style: .continuous)
-                                        .fill(Color.white.opacity(0.4 * fadeOpacity))
+                                        .fill(Color.focusContainerFill.opacity(fadeOpacity))
                                         .frame(width: width, height: max(0, height))
                                         .position(x: proxy.size.width / 2, y: containerTop + max(0, height) / 2)
                                 }
@@ -247,7 +247,7 @@ struct FocusTabView: View {
                                                 .font(.inter(.title2, weight: .semiBold))
                                                 .foregroundColor(.white)
                                                 .frame(width: 56, height: 56)
-                                                .glassEffect(.regular.tint(.appRed).interactive(), in: .circle)
+                                                .glassEffect(.regular.tint(.charcoal).interactive(), in: .circle)
                                                 .shadow(radius: 4, y: 2)
                                         }
                                         .padding(.trailing, 20)
@@ -1195,7 +1195,7 @@ struct FocusTabView: View {
                     .padding(.horizontal, 14)
                     .padding(.vertical, 8)
                     .background(
-                        !isAddTaskTitleEmpty ? Color.white : Color.clear,
+                        !isAddTaskTitleEmpty ? Color.pillBackground : Color.clear,
                         in: Capsule()
                     )
                 }
@@ -2351,7 +2351,7 @@ struct FocusSectionHeaderRow: View {
                     .padding(.vertical, 12)
                     .background(
                         RoundedRectangle(cornerRadius: 10, style: .continuous)
-                            .fill(Color.white.opacity(0.6))
+                            .fill(Color.pillBackground)
                     )
 
                     Spacer()

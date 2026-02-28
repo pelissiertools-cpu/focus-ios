@@ -13,8 +13,14 @@ extension Color {
     static let priorityBlue = Color(red: 0x72/255.0, green: 0x9F/255.0, blue: 0xFF/255.0)
     /// Blue for Focus section (#2E59F4)
     static let completedPurple = Color(red: 0x2E/255.0, green: 0x59/255.0, blue: 0xF4/255.0)
-    /// Dark gray for FAB and filter pill backgrounds
-    static let darkGray = Color(red: 0xC7/255.0, green: 0xC6/255.0, blue: 0xC6/255.0)
+    /// Dark gray for small plus buttons and filter pill backgrounds — charcoal in dark mode
+    static let darkGray = Color(UIColor { traits in
+        traits.userInterfaceStyle == .dark
+            ? UIColor(red: 0x2C/255.0, green: 0x2C/255.0, blue: 0x2E/255.0, alpha: 1)
+            : UIColor(red: 0xC7/255.0, green: 0xC6/255.0, blue: 0xC6/255.0, alpha: 1)
+    })
+    /// Charcoal for FAB background
+    static let charcoal = Color(red: 0x2C/255.0, green: 0x2C/255.0, blue: 0x2E/255.0)
     /// Blue gradient colors for commit pills
     static let commitGradientDark = Color(red: 0.0, green: 0.2, blue: 1.0)
     static let commitGradientLight = Color(red: 0.15, green: 0.35, blue: 1.0)
@@ -32,4 +38,16 @@ extension Color {
     })
     /// Alias kept for backward compatibility
     static let sectionedBackground = appBackground
+    /// Focus container overlay — visible in light, subtle in dark
+    static let focusContainerFill = Color(UIColor { traits in
+        traits.userInterfaceStyle == .dark
+            ? UIColor.white.withAlphaComponent(0.08)
+            : UIColor.white.withAlphaComponent(0.4)
+    })
+    /// Pill background for section headers — visible in light, subtle in dark
+    static let pillBackground = Color(UIColor { traits in
+        traits.userInterfaceStyle == .dark
+            ? UIColor.white.withAlphaComponent(0.1)
+            : UIColor.white.withAlphaComponent(0.6)
+    })
 }

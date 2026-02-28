@@ -455,7 +455,7 @@ struct LogTabView: View {
                         .font(.inter(.title2, weight: .semiBold))
                         .foregroundColor(.white)
                         .frame(width: 56, height: 56)
-                        .background(Color.darkGray, in: Circle())
+                        .glassEffect(.regular.tint(.charcoal).interactive(), in: .circle)
                         .shadow(radius: 4, y: 2)
                 }
                 .padding(.trailing, 20)
@@ -655,7 +655,7 @@ struct LogTabView: View {
                     .padding(.horizontal, 14)
                     .padding(.vertical, 8)
                     .background(
-                        !isAddTaskTitleEmpty ? Color.white : Color.clear,
+                        !isAddTaskTitleEmpty ? Color.pillBackground : Color.clear,
                         in: Capsule()
                     )
                 }
@@ -671,7 +671,7 @@ struct LogTabView: View {
                         .foregroundColor(isAddTaskTitleEmpty ? .secondary : .white)
                         .frame(width: 36, height: 36)
                         .background(
-                            isAddTaskTitleEmpty ? Color(.systemGray4) : Color.appRed,
+                            isAddTaskTitleEmpty ? Color(.systemGray4) : Color.completedPurple,
                             in: Circle()
                         )
                 }
@@ -914,7 +914,7 @@ struct LogTabView: View {
                         .foregroundColor(isAddListTitleEmpty ? .secondary : .white)
                         .frame(width: 36, height: 36)
                         .background(
-                            isAddListTitleEmpty ? Color(.systemGray4) : Color.appRed,
+                            isAddListTitleEmpty ? Color(.systemGray4) : Color.completedPurple,
                             in: Circle()
                         )
                 }
@@ -1162,7 +1162,7 @@ struct LogTabView: View {
                         .foregroundColor(isAddProjectTitleEmpty ? .secondary : .white)
                         .frame(width: 36, height: 36)
                         .background(
-                            isAddProjectTitleEmpty ? Color(.systemGray4) : Color.appRed,
+                            isAddProjectTitleEmpty ? Color(.systemGray4) : Color.completedPurple,
                             in: Circle()
                         )
                 }

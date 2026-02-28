@@ -2602,7 +2602,7 @@ struct CommitmentRow: View {
                                 await viewModel.pushCommitmentToNext(commitment)
                             }
                         } label: {
-                            Label("Push to \(commitment.timeframe.nextTimeframeLabel)", systemImage: "arrow.turn.right.down")
+                            Label("Push to \(commitment.timeframe.nextTimeframeLabel)", systemImage: "arrow.right")
                         }
                     }
 

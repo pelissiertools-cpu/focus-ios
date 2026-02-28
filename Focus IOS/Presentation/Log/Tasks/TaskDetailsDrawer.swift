@@ -587,7 +587,7 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
 
             // Push to Next (committed, non-completed parent task)
             if let commitment = commitment, !isSubtask, !task.isCompleted {
-                DrawerActionRow(icon: "arrow.turn.right.down", text: "Push to \(commitment.timeframe.nextTimeframeLabel)") {
+                DrawerActionRow(icon: "arrow.right", text: "Push to \(commitment.timeframe.nextTimeframeLabel)") {
                     _Concurrency.Task {
                         let success = await focusViewModel.pushCommitmentToNext(commitment)
                         if success { dismiss() }

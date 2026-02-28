@@ -268,21 +268,21 @@ struct ProjectsListView: View {
             Button {
                 viewModel.toggleDoneCollapsed()
             } label: {
-                HStack(spacing: 5) {
+                HStack(spacing: 4) {
                     Text("Completed")
-                        .font(.sf(.subheadline, weight: .medium))
+                        .font(.sf(size: 12, weight: .medium))
                         .foregroundColor(.secondary)
 
                     Text("\(viewModel.completedProjects.count)")
-                        .font(.sf(.subheadline))
+                        .font(.sf(size: 12))
                         .foregroundColor(.secondary)
 
                     Image(systemName: viewModel.isDoneCollapsed ? "chevron.right" : "chevron.down")
-                        .font(.sf(size: 10, weight: .semibold))
+                        .font(.sf(size: 8, weight: .semibold))
                         .foregroundColor(.secondary)
                 }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
                 .clipShape(Capsule())
                 .glassEffect(.regular.interactive(), in: .capsule)
             }

@@ -2306,30 +2306,33 @@ struct DonePillView: View {
     var body: some View {
         VStack(spacing: 0) {
             // Done pill header
-            Button {
-                withAnimation(.easeInOut(duration: 0.2)) {
+            HStack(spacing: 8) {
+                Button {
                     viewModel.toggleDoneSubsectionCollapsed()
+                } label: {
+                    HStack(spacing: 4) {
+                        Text("Completed")
+                            .font(.sf(size: 12, weight: .medium))
+                            .foregroundColor(.secondary)
+
+                        Text("\(completedCommitments.count)")
+                            .font(.sf(size: 12))
+                            .foregroundColor(.secondary)
+
+                        Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
+                            .font(.sf(size: 8, weight: .semibold))
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .clipShape(Capsule())
+                    .glassEffect(.regular.interactive(), in: .capsule)
                 }
-            } label: {
-                HStack(spacing: 8) {
-                    Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
-                        .font(.sf(.caption))
-                        .foregroundColor(.secondary)
+                .buttonStyle(.plain)
 
-                    Text("Done")
-                        .font(.sf(.subheadline, weight: .medium))
-                        .foregroundColor(.secondary)
-
-                    Text("(\(completedCommitments.count))")
-                        .font(.sf(.subheadline))
-                        .foregroundColor(.secondary)
-
-                    Spacer()
-                }
-                .padding(.vertical, 10)
-                .contentShape(Rectangle())
+                Spacer()
             }
-            .buttonStyle(.plain)
+            .padding(.vertical, 10)
 
             // Expanded completed tasks
             if isExpanded {

@@ -65,7 +65,7 @@ struct ProjectCard: View {
             // Edit mode: selection circle
             if viewModel.isEditMode && !project.isCompleted {
                 Image(systemName: viewModel.selectedProjectIds.contains(project.id) ? "checkmark.circle.fill" : "circle.dashed")
-                    .font(.sf(.title3))
+                    .font(.inter(.title3))
                     .foregroundColor(viewModel.selectedProjectIds.contains(project.id) ? .appRed : .secondary)
             }
 
@@ -78,7 +78,7 @@ struct ProjectCard: View {
             // Title and progress
             VStack(alignment: .leading, spacing: 6) {
                 Text(project.title)
-                    .font(.sf(.title3, weight: .bold))
+                    .font(.inter(.title3, weight: .bold))
                     .lineLimit(1)
                     .strikethrough(project.isCompleted)
                     .foregroundColor(project.isCompleted ? .secondary : .primary)
@@ -86,17 +86,17 @@ struct ProjectCard: View {
                 HStack(spacing: 16) {
                     HStack(spacing: 4) {
                         Text("Task")
-                            .font(.sf(.caption))
+                            .font(.inter(.caption))
                         Text("\(taskProgress.completed)/\(taskProgress.total)")
-                            .font(.sf(.caption))
+                            .font(.inter(.caption))
                     }
                     .foregroundColor(.secondary)
 
                     HStack(spacing: 4) {
                         Text("Sub Task")
-                            .font(.sf(.caption))
+                            .font(.inter(.caption))
                         Text("\(subtaskProgress.completed)/\(subtaskProgress.total)")
-                            .font(.sf(.caption))
+                            .font(.inter(.caption))
                     }
                     .foregroundColor(.secondary)
                 }
@@ -107,7 +107,7 @@ struct ProjectCard: View {
             if project.isCompleted {
                 // Checkmark for completed projects
                 Image(systemName: "checkmark.circle.fill")
-                    .font(.sf(.title3))
+                    .font(.inter(.title3))
                     .foregroundColor(.appRed)
             } else if !viewModel.isEditMode, let onDragChanged, let onDragEnded {
                 // Drag handle
@@ -162,7 +162,7 @@ struct ProjectCard: View {
                 if items.count <= 1 {
                     // Only the addTaskRow — no tasks yet
                     Text("No tasks yet")
-                        .font(.sf(.headline))
+                        .font(.inter(.headline))
                         .bold()
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding()
@@ -207,7 +207,7 @@ struct ProjectCard: View {
                                     buttonLabel: "Add subtask",
                                     onSubmit: { title in await viewModel.createSubtask(title: title, parentId: parentId) },
                                     isAnyAddFieldActive: $isInlineAddFocused,
-                                    iconFont: .sf(.caption),
+                                    iconFont: .inter(.caption),
                                     verticalPadding: 6
                                 )
                                 .padding(.leading, 32)
@@ -268,13 +268,13 @@ struct ProjectTaskRow: View {
             // Task title + subtask count
             VStack(alignment: .leading, spacing: 4) {
                 Text(task.title)
-                    .font(.sf(.body))
+                    .font(.inter(.body))
                     .strikethrough(task.isCompleted)
                     .foregroundColor(task.isCompleted ? .secondary : .primary)
 
                 if subtaskCount.total > 0 {
                     Text("\(subtaskCount.completed)/\(subtaskCount.total) subtasks")
-                        .font(.sf(.caption))
+                        .font(.inter(.caption))
                         .foregroundColor(.secondary)
                 }
             }
@@ -288,7 +288,7 @@ struct ProjectTaskRow: View {
                 }
             } label: {
                 Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
-                    .font(.sf(.title3))
+                    .font(.inter(.title3))
                     .foregroundColor(task.isCompleted ? .appRed : .gray)
             }
             .buttonStyle(.plain)
@@ -340,7 +340,7 @@ struct ProjectSubtaskRow: View {
     var body: some View {
         HStack(spacing: 12) {
             Text(subtask.title)
-                .font(.sf(.subheadline))
+                .font(.inter(.subheadline))
                 .strikethrough(subtask.isCompleted)
                 .foregroundColor(subtask.isCompleted ? .secondary : .primary)
 
@@ -353,7 +353,7 @@ struct ProjectSubtaskRow: View {
                 }
             } label: {
                 Image(systemName: subtask.isCompleted ? "checkmark.circle.fill" : "circle")
-                    .font(.sf(.subheadline))
+                    .font(.inter(.subheadline))
                     .foregroundColor(subtask.isCompleted ? .appRed : .gray)
             }
             .buttonStyle(.plain)

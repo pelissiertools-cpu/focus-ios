@@ -33,11 +33,11 @@ struct DraftSubtaskListEditor: View {
                 ForEach(subtasks) { subtask in
                     HStack(spacing: 8) {
                         Image(systemName: "circle")
-                            .font(.sf(.caption2))
+                            .font(.inter(.caption2))
                             .foregroundColor(.secondary.opacity(0.5))
 
                         TextField(placeholder, text: binding(for: subtask.id), axis: .vertical)
-                            .font(.sf(.body))
+                            .font(.inter(.body))
                             .textFieldStyle(.plain)
                             .focused(focusedSubtaskId, equals: subtask.id)
                             .lineLimit(1...3)
@@ -56,7 +56,7 @@ struct DraftSubtaskListEditor: View {
                             }
                         } label: {
                             Image(systemName: "xmark.circle.fill")
-                                .font(.sf(.caption))
+                                .font(.inter(.caption))
                                 .foregroundColor(.secondary)
                         }
                         .buttonStyle(.plain)

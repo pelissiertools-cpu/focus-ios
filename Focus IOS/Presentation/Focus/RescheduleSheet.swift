@@ -43,7 +43,7 @@ struct RescheduleSheet: View {
                     // Current schedule card
                     VStack(alignment: .leading, spacing: 0) {
                         Text("Current Schedule")
-                            .font(.sf(.footnote, weight: .medium))
+                            .font(.inter(.footnote, weight: .medium))
                             .foregroundColor(.secondary)
                             .padding(.horizontal, 14)
                             .padding(.top, 12)
@@ -77,7 +77,7 @@ struct RescheduleSheet: View {
                     // New schedule card
                     VStack(alignment: .leading, spacing: 0) {
                         Text("New Schedule")
-                            .font(.sf(.footnote, weight: .medium))
+                            .font(.inter(.footnote, weight: .medium))
                             .foregroundColor(.secondary)
                             .padding(.horizontal, 14)
                             .padding(.top, 12)

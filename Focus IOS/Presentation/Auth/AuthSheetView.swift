@@ -40,7 +40,7 @@ struct AuthSheetView: View {
 
                     // Logo
                     Image(systemName: "target")
-                        .font(.sf(size: 40))
+                        .font(.inter(size: 40))
                         .foregroundColor(.primary)
                         .padding(.top, 8)
 
@@ -60,7 +60,7 @@ struct AuthSheetView: View {
                 if step == 2 {
                     Button(action: { withAnimation { step = 1 } }) {
                         Image(systemName: "chevron.left")
-                            .font(.sf(size: 16, weight: .semibold))
+                            .font(.inter(size: 16, weight: .semiBold))
                             .foregroundColor(.primary)
                             .frame(width: 36, height: 36)
                             .background(.ultraThinMaterial)
@@ -72,7 +72,7 @@ struct AuthSheetView: View {
 
                 Button(action: { dismiss() }) {
                     Image(systemName: "xmark")
-                        .font(.sf(size: 14, weight: .semibold))
+                        .font(.inter(size: 14, weight: .semiBold))
                         .foregroundColor(.primary)
                         .frame(width: 36, height: 36)
                         .background(.ultraThinMaterial)
@@ -116,11 +116,11 @@ struct AuthSheetView: View {
         VStack(spacing: 16) {
             // Title
             Text("Log in or sign up")
-                .font(.sf(.title2, weight: .bold))
+                .font(.inter(.title2, weight: .bold))
 
             // Subtitle
             Text("Enter your email to get started")
-                .font(.sf(.subheadline))
+                .font(.inter(.subheadline))
                 .foregroundStyle(.secondary)
 
             // Email field
@@ -143,7 +143,7 @@ struct AuthSheetView: View {
             if let errorMessage = authService.errorMessage {
                 Text(errorMessage)
                     .foregroundColor(.red)
-                    .font(.sf(.caption))
+                    .font(.inter(.caption))
             }
 
             // Continue button
@@ -168,7 +168,7 @@ struct AuthSheetView: View {
                             .tint(.white)
                     } else {
                         Text("Continue")
-                            .font(.sf(.body, weight: .semibold))
+                            .font(.inter(.body, weight: .semiBold))
                     }
                 }
                 .frame(maxWidth: .infinity)
@@ -186,7 +186,7 @@ struct AuthSheetView: View {
                     .frame(height: 1)
                     .foregroundStyle(Color(.separator))
                 Text("OR")
-                    .font(.sf(.caption, weight: .medium))
+                    .font(.inter(.caption, weight: .medium))
                     .foregroundStyle(.secondary)
                 Rectangle()
                     .frame(height: 1)
@@ -200,7 +200,7 @@ struct AuthSheetView: View {
                     GoogleLogoView()
                         .frame(width: 18, height: 18)
                     Text("Continue with Google")
-                        .font(.sf(.body, weight: .semibold))
+                        .font(.inter(.body, weight: .semiBold))
                         .foregroundColor(.primary)
                 }
                 .frame(maxWidth: .infinity)
@@ -219,9 +219,9 @@ struct AuthSheetView: View {
             Button(action: handleAppleSignIn) {
                 HStack(spacing: 8) {
                     Image(systemName: "apple.logo")
-                        .font(.sf(size: 18))
+                        .font(.inter(size: 18))
                     Text("Continue with Apple")
-                        .font(.sf(.body, weight: .semibold))
+                        .font(.inter(.body, weight: .semiBold))
                 }
                 .foregroundColor(.primary)
                 .frame(maxWidth: .infinity)
@@ -244,13 +244,13 @@ struct AuthSheetView: View {
         VStack(spacing: 16) {
             // Title
             Text(detectedMode == .logIn ? "Welcome back" : "Create your account")
-                .font(.sf(.title2, weight: .bold))
+                .font(.inter(.title2, weight: .bold))
 
             // Subtitle
             Text(detectedMode == .logIn
                  ? "Enter your password to continue"
                  : "Set your password for Focus to continue")
-                .font(.sf(.subheadline))
+                .font(.inter(.subheadline))
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
 
@@ -299,7 +299,7 @@ struct AuthSheetView: View {
             if let errorMessage = authService.errorMessage {
                 Text(errorMessage)
                     .foregroundColor(.red)
-                    .font(.sf(.caption))
+                    .font(.inter(.caption))
             }
 
             // Continue button
@@ -311,7 +311,7 @@ struct AuthSheetView: View {
                             .tint(.white)
                     } else {
                         Text("Continue")
-                            .font(.sf(.body, weight: .semibold))
+                            .font(.inter(.body, weight: .semiBold))
                     }
                 }
                 .frame(maxWidth: .infinity)
@@ -329,7 +329,7 @@ struct AuthSheetView: View {
                     forgotPasswordEmail = email
                     showForgotPassword = true
                 }
-                .font(.sf(.subheadline))
+                .font(.inter(.subheadline))
                 .disabled(authService.isLoading)
             }
         }

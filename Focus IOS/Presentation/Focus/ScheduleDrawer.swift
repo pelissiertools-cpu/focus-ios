@@ -96,7 +96,7 @@ struct ScheduleDrawer: View {
 
             // Title
             titleView
-                .font(.sf(.title2, weight: .bold))
+                .font(.inter(.title2, weight: .bold))
                 .padding(.horizontal)
                 .padding(.top, 8)
                 .padding(.bottom, 12)
@@ -108,11 +108,11 @@ struct ScheduleDrawer: View {
             } label: {
                 HStack(spacing: 12) {
                     Image(systemName: "plus.circle")
-                        .font(.sf(.body))
+                        .font(.inter(.body))
                         .foregroundColor(.secondary)
 
                     Text("Add a task")
-                        .font(.sf(.body))
+                        .font(.inter(.body))
                         .foregroundColor(.secondary)
 
                     Spacer()
@@ -178,21 +178,21 @@ struct ScheduleDrawer: View {
                             }
                         } label: {
                             Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
-                                .font(.sf(.title3))
+                                .font(.inter(.title3))
                                 .foregroundColor(task.isCompleted ? Color.completedPurple.opacity(0.6) : .gray)
                         }
                         .buttonStyle(.plain)
 
                         VStack(alignment: .leading, spacing: 4) {
                             Text(task.title)
-                                .font(.sf(.body))
+                                .font(.inter(.body))
                                 .strikethrough(task.isCompleted)
                                 .foregroundColor(task.isCompleted ? .secondary : .primary)
 
                             if hasSubtasks {
                                 let completedCount = subtasks.filter { $0.isCompleted }.count
                                 Text("\(completedCount)/\(subtasks.count) subtasks")
-                                    .font(.sf(.caption))
+                                    .font(.inter(.caption))
                                     .foregroundColor(.secondary)
                             }
                         }
@@ -294,21 +294,21 @@ struct ScheduleDrawer: View {
                             }
                         } label: {
                             Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
-                                .font(.sf(.title3))
+                                .font(.inter(.title3))
                                 .foregroundColor(task.isCompleted ? Color.completedPurple.opacity(0.6) : .gray)
                         }
                         .buttonStyle(.plain)
 
                         VStack(alignment: .leading, spacing: 4) {
                             Text(task.title)
-                                .font(.sf(.body))
+                                .font(.inter(.body))
                                 .strikethrough(task.isCompleted)
                                 .foregroundColor(task.isCompleted ? .secondary : .primary)
 
                             if hasSubtasks {
                                 let completedCount = subtasks.filter { $0.isCompleted }.count
                                 Text("\(completedCount)/\(subtasks.count) subtasks")
-                                    .font(.sf(.caption))
+                                    .font(.inter(.caption))
                                     .foregroundColor(.secondary)
                             }
                         }
@@ -374,7 +374,7 @@ struct ScheduleDrawer: View {
     private func logSubtaskRow(subtask: FocusTask, parentId: UUID) -> some View {
         HStack(spacing: 12) {
             Text(subtask.title)
-                .font(.sf(.subheadline))
+                .font(.inter(.subheadline))
                 .strikethrough(subtask.isCompleted)
                 .foregroundColor(subtask.isCompleted ? .secondary : .primary)
 
@@ -387,7 +387,7 @@ struct ScheduleDrawer: View {
                 }
             } label: {
                 Image(systemName: subtask.isCompleted ? "checkmark.circle.fill" : "circle")
-                    .font(.sf(.subheadline))
+                    .font(.inter(.subheadline))
                     .foregroundColor(subtask.isCompleted ? Color.completedPurple.opacity(0.6) : .gray)
             }
             .buttonStyle(.plain)
@@ -530,7 +530,7 @@ private struct FilterPill: View {
     var body: some View {
         Button(action: action) {
             Text(LocalizedStringKey(title))
-                .font(.sf(.subheadline, weight: .medium))
+                .font(.inter(.subheadline, weight: .medium))
                 .foregroundColor(isSelected ? .white : .secondary)
                 .padding(.horizontal, 16)
                 .padding(.vertical, 8)

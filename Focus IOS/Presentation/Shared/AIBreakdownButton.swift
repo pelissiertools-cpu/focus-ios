@@ -21,10 +21,10 @@ struct AIBreakdownButton: View {
                         .tint(.primary)
                 } else {
                     Image(systemName: hasGenerated ? "arrow.clockwise" : "sparkles")
-                        .font(.sf(.body, weight: .semibold))
+                        .font(.inter(.body, weight: .semiBold))
                 }
                 Text(LocalizedStringKey(hasGenerated ? "Regenerate" : "Break Down task"))
-                    .font(.sf(.subheadline, weight: .medium))
+                    .font(.inter(.subheadline, weight: .medium))
             }
             .foregroundColor(.primary)
             .frame(maxWidth: .infinity)

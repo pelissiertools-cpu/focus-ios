@@ -232,7 +232,7 @@ struct LogTabView: View {
                             }
                         } label: {
                             Text(LocalizedStringKey(key))
-                                .font(.sf(.subheadline, weight: selectedTab == index ? .semibold : .medium))
+                                .font(.inter(.subheadline, weight: selectedTab == index ? .semiBold : .medium))
                                 .foregroundStyle(selectedTab == index ? .primary : .secondary)
                                 .padding(.horizontal, 16)
                                 .padding(.vertical, 8)
@@ -338,7 +338,7 @@ struct LogTabView: View {
             showSettings = true
         } label: {
             Image(systemName: "person")
-                .font(.sf(.body, weight: .medium))
+                .font(.inter(.body, weight: .medium))
                 .foregroundColor(.primary)
                 .frame(width: 36, height: 36)
                 .glassEffect(.regular.interactive(), in: .circle)
@@ -373,7 +373,7 @@ struct LogTabView: View {
                 }
             } label: {
                 Image(systemName: "xmark")
-                    .font(.sf(.body, weight: .medium))
+                    .font(.inter(.body, weight: .medium))
                     .foregroundColor(.secondary)
                     .frame(width: 30, height: 30)
                     .background(Color(.systemGray5))
@@ -452,7 +452,7 @@ struct LogTabView: View {
                     action()
                 } label: {
                     Image(systemName: "plus")
-                        .font(.sf(.title2, weight: .semibold))
+                        .font(.inter(.title2, weight: .semiBold))
                         .foregroundColor(.white)
                         .frame(width: 56, height: 56)
                         .background(Color.darkGray, in: Circle())
@@ -495,7 +495,7 @@ struct LogTabView: View {
             }
         } label: {
             Image(systemName: isActive && mode == .project ? "folder.fill" : icon)
-                .font(.sf(.body, weight: .medium))
+                .font(.inter(.body, weight: .medium))
                 .foregroundColor(isActive ? .white : .primary)
                 .frame(width: 36, height: 36)
                 .glassEffect(
@@ -514,7 +514,7 @@ struct LogTabView: View {
         VStack(spacing: 0) {
             // Task title row
             TextField("Create a new task", text: $addTaskTitle)
-                .font(.sf(.title3))
+                .font(.inter(.title3))
                 .textFieldStyle(.plain)
                 .focused($addBarTitleFocus, equals: .task)
                 .submitLabel(.return)
@@ -564,7 +564,7 @@ struct LogTabView: View {
                         }
                     } label: {
                         Image(systemName: "xmark")
-                            .font(.sf(.body, weight: .semibold))
+                            .font(.inter(.body, weight: .semiBold))
                             .foregroundColor(.primary)
                             .frame(width: 36, height: 36)
                             .background(Color(.systemGray4), in: Circle())
@@ -583,7 +583,7 @@ struct LogTabView: View {
                         }
                     } label: {
                         Image(systemName: "checkmark")
-                            .font(.sf(.body, weight: .semibold))
+                            .font(.inter(.body, weight: .semiBold))
                             .foregroundColor(hasDateChanges ? .white : .secondary)
                             .frame(width: 36, height: 36)
                             .background(
@@ -606,9 +606,9 @@ struct LogTabView: View {
                 } label: {
                     HStack(spacing: 4) {
                         Image(systemName: "plus")
-                            .font(.sf(.caption))
+                            .font(.inter(.caption))
                         Text("Sub-task")
-                            .font(.sf(.caption))
+                            .font(.inter(.caption))
                     }
                     .foregroundColor(.white)
                     .padding(.horizontal, 10)
@@ -624,7 +624,7 @@ struct LogTabView: View {
                     }
                 } label: {
                     Image(systemName: "ellipsis")
-                        .font(.sf(.caption, weight: .bold))
+                        .font(.inter(.caption, weight: .bold))
                         .foregroundColor(.black)
                         .frame(minHeight: UIFont.preferredFont(forTextStyle: .caption1).lineHeight)
                         .padding(.horizontal, 10)
@@ -645,11 +645,11 @@ struct LogTabView: View {
                                 .tint(.primary)
                         } else {
                             Image(systemName: hasGeneratedBreakdown ? "arrow.clockwise" : "sparkles")
-                                .font(.sf(.subheadline, weight: .semibold))
+                                .font(.inter(.subheadline, weight: .semiBold))
                                 .foregroundColor(!isAddTaskTitleEmpty ? .blue : .primary)
                         }
                         Text(LocalizedStringKey(hasGeneratedBreakdown ? "Regenerate" : "Suggest Breakdown"))
-                            .font(.sf(.caption, weight: .medium))
+                            .font(.inter(.caption, weight: .medium))
                             .foregroundColor(.primary)
                     }
                     .padding(.horizontal, 14)
@@ -667,7 +667,7 @@ struct LogTabView: View {
                     saveLogTask()
                 } label: {
                     Image(systemName: "checkmark")
-                        .font(.sf(.body, weight: .semibold))
+                        .font(.inter(.body, weight: .semiBold))
                         .foregroundColor(isAddTaskTitleEmpty ? .secondary : .white)
                         .frame(width: 36, height: 36)
                         .background(
@@ -710,9 +710,9 @@ struct LogTabView: View {
                 } label: {
                     HStack(spacing: 4) {
                         Image(systemName: "folder")
-                            .font(.sf(.caption))
+                            .font(.inter(.caption))
                         Text(LocalizedStringKey(categoryPillLabel))
-                            .font(.sf(.caption))
+                            .font(.inter(.caption))
                     }
                     .foregroundColor(.black)
                     .padding(.horizontal, 10)
@@ -731,9 +731,9 @@ struct LogTabView: View {
                 } label: {
                     HStack(spacing: 4) {
                         Image(systemName: "arrow.right.circle")
-                            .font(.sf(.caption))
+                            .font(.inter(.caption))
                         Text("Schedule")
-                            .font(.sf(.caption))
+                            .font(.inter(.caption))
                     }
                     .foregroundColor(!addTaskDates.isEmpty ? .white : .black)
                     .padding(.horizontal, 10)
@@ -761,7 +761,7 @@ struct LogTabView: View {
                             .fill(addTaskPriority.dotColor)
                             .frame(width: 8, height: 8)
                         Text(addTaskPriority.displayName)
-                            .font(.sf(.caption))
+                            .font(.inter(.caption))
                     }
                     .foregroundColor(.black)
                     .padding(.horizontal, 10)
@@ -787,7 +787,7 @@ struct LogTabView: View {
         VStack(spacing: 0) {
             // List title row
             TextField("Create a new list", text: $addListTitle)
-                .font(.sf(.title3))
+                .font(.inter(.title3))
                 .textFieldStyle(.plain)
                 .focused($addBarTitleFocus, equals: .list)
                 .submitLabel(.return)
@@ -836,7 +836,7 @@ struct LogTabView: View {
                         }
                     } label: {
                         Image(systemName: "xmark")
-                            .font(.sf(.body, weight: .semibold))
+                            .font(.inter(.body, weight: .semiBold))
                             .foregroundColor(.primary)
                             .frame(width: 36, height: 36)
                             .background(Color(.systemGray4), in: Circle())
@@ -854,7 +854,7 @@ struct LogTabView: View {
                         }
                     } label: {
                         Image(systemName: "checkmark")
-                            .font(.sf(.body, weight: .semibold))
+                            .font(.inter(.body, weight: .semiBold))
                             .foregroundColor(hasDateChanges ? .white : .secondary)
                             .frame(width: 36, height: 36)
                             .background(
@@ -876,9 +876,9 @@ struct LogTabView: View {
                 } label: {
                     HStack(spacing: 4) {
                         Image(systemName: "plus")
-                            .font(.sf(.caption))
+                            .font(.inter(.caption))
                         Text("Item")
-                            .font(.sf(.caption))
+                            .font(.inter(.caption))
                     }
                     .foregroundColor(.white)
                     .padding(.horizontal, 10)
@@ -894,7 +894,7 @@ struct LogTabView: View {
                     }
                 } label: {
                     Image(systemName: "ellipsis")
-                        .font(.sf(.caption, weight: .bold))
+                        .font(.inter(.caption, weight: .bold))
                         .foregroundColor(.black)
                         .frame(minHeight: UIFont.preferredFont(forTextStyle: .caption1).lineHeight)
                         .padding(.horizontal, 10)
@@ -910,7 +910,7 @@ struct LogTabView: View {
                     saveLogList()
                 } label: {
                     Image(systemName: "checkmark")
-                        .font(.sf(.body, weight: .semibold))
+                        .font(.inter(.body, weight: .semiBold))
                         .foregroundColor(isAddListTitleEmpty ? .secondary : .white)
                         .frame(width: 36, height: 36)
                         .background(
@@ -953,9 +953,9 @@ struct LogTabView: View {
                 } label: {
                     HStack(spacing: 4) {
                         Image(systemName: "folder")
-                            .font(.sf(.caption))
+                            .font(.inter(.caption))
                         Text(LocalizedStringKey(listCategoryPillLabel))
-                            .font(.sf(.caption))
+                            .font(.inter(.caption))
                     }
                     .foregroundColor(.black)
                     .padding(.horizontal, 10)
@@ -972,9 +972,9 @@ struct LogTabView: View {
                 } label: {
                     HStack(spacing: 4) {
                         Image(systemName: "arrow.right.circle")
-                            .font(.sf(.caption))
+                            .font(.inter(.caption))
                         Text("Schedule")
-                            .font(.sf(.caption))
+                            .font(.inter(.caption))
                     }
                     .foregroundColor(!addListDates.isEmpty ? .white : .black)
                     .padding(.horizontal, 10)
@@ -1002,7 +1002,7 @@ struct LogTabView: View {
                             .fill(addListPriority.dotColor)
                             .frame(width: 8, height: 8)
                         Text(addListPriority.displayName)
-                            .font(.sf(.caption))
+                            .font(.inter(.caption))
                     }
                     .foregroundColor(.black)
                     .padding(.horizontal, 10)
@@ -1028,7 +1028,7 @@ struct LogTabView: View {
         VStack(spacing: 0) {
             // Project title row
             TextField("Create a new project", text: $addProjectTitle)
-                .font(.sf(.title3))
+                .font(.inter(.title3))
                 .textFieldStyle(.plain)
                 .focused($addBarTitleFocus, equals: .project)
                 .submitLabel(.return)
@@ -1084,7 +1084,7 @@ struct LogTabView: View {
                         }
                     } label: {
                         Image(systemName: "xmark")
-                            .font(.sf(.body, weight: .semibold))
+                            .font(.inter(.body, weight: .semiBold))
                             .foregroundColor(.primary)
                             .frame(width: 36, height: 36)
                             .background(Color(.systemGray4), in: Circle())
@@ -1102,7 +1102,7 @@ struct LogTabView: View {
                         }
                     } label: {
                         Image(systemName: "checkmark")
-                            .font(.sf(.body, weight: .semibold))
+                            .font(.inter(.body, weight: .semiBold))
                             .foregroundColor(hasDateChanges ? .white : .secondary)
                             .frame(width: 36, height: 36)
                             .background(
@@ -1124,9 +1124,9 @@ struct LogTabView: View {
                 } label: {
                     HStack(spacing: 4) {
                         Image(systemName: "plus")
-                            .font(.sf(.caption))
+                            .font(.inter(.caption))
                         Text("Task")
-                            .font(.sf(.caption))
+                            .font(.inter(.caption))
                     }
                     .foregroundColor(.white)
                     .padding(.horizontal, 10)
@@ -1142,7 +1142,7 @@ struct LogTabView: View {
                     }
                 } label: {
                     Image(systemName: "ellipsis")
-                        .font(.sf(.caption, weight: .bold))
+                        .font(.inter(.caption, weight: .bold))
                         .foregroundColor(.black)
                         .frame(minHeight: UIFont.preferredFont(forTextStyle: .caption1).lineHeight)
                         .padding(.horizontal, 10)
@@ -1158,7 +1158,7 @@ struct LogTabView: View {
                     saveLogProject()
                 } label: {
                     Image(systemName: "checkmark")
-                        .font(.sf(.body, weight: .semibold))
+                        .font(.inter(.body, weight: .semiBold))
                         .foregroundColor(isAddProjectTitleEmpty ? .secondary : .white)
                         .frame(width: 36, height: 36)
                         .background(
@@ -1201,9 +1201,9 @@ struct LogTabView: View {
                 } label: {
                     HStack(spacing: 4) {
                         Image(systemName: "folder")
-                            .font(.sf(.caption))
+                            .font(.inter(.caption))
                         Text(LocalizedStringKey(projectCategoryPillLabel))
-                            .font(.sf(.caption))
+                            .font(.inter(.caption))
                     }
                     .foregroundColor(.black)
                     .padding(.horizontal, 10)
@@ -1220,9 +1220,9 @@ struct LogTabView: View {
                 } label: {
                     HStack(spacing: 4) {
                         Image(systemName: "arrow.right.circle")
-                            .font(.sf(.caption))
+                            .font(.inter(.caption))
                         Text("Schedule")
-                            .font(.sf(.caption))
+                            .font(.inter(.caption))
                     }
                     .foregroundColor(!addProjectDates.isEmpty ? .white : .black)
                     .padding(.horizontal, 10)
@@ -1250,7 +1250,7 @@ struct LogTabView: View {
                             .fill(addProjectPriority.dotColor)
                             .frame(width: 8, height: 8)
                         Text(addProjectPriority.displayName)
-                            .font(.sf(.caption))
+                            .font(.inter(.caption))
                     }
                     .foregroundColor(.black)
                     .padding(.horizontal, 10)
@@ -1277,11 +1277,11 @@ struct LogTabView: View {
         // Task row
         HStack(spacing: 8) {
             Image(systemName: "circle")
-                .font(.sf(.caption2))
+                .font(.inter(.caption2))
                 .foregroundColor(.secondary.opacity(0.5))
 
             TextField("Task", text: projectTaskBinding(for: task.id), axis: .vertical)
-                .font(.sf(.title3))
+                .font(.inter(.title3))
                 .textFieldStyle(.plain)
                 .focused($focusedProjectTaskId, equals: task.id)
                 .lineLimit(1...3)
@@ -1298,7 +1298,7 @@ struct LogTabView: View {
                 removeProjectTask(id: task.id)
             } label: {
                 Image(systemName: "xmark.circle.fill")
-                    .font(.sf(.caption))
+                    .font(.inter(.caption))
                     .foregroundColor(.secondary)
             }
             .buttonStyle(.plain)
@@ -1308,11 +1308,11 @@ struct LogTabView: View {
         ForEach(task.subtasks) { subtask in
             HStack(spacing: 8) {
                 Image(systemName: "circle")
-                    .font(.sf(.caption2))
+                    .font(.inter(.caption2))
                     .foregroundColor(.secondary.opacity(0.5))
 
                 TextField("Sub-task", text: projectSubtaskBinding(forSubtask: subtask.id, inTask: task.id), axis: .vertical)
-                    .font(.sf(.body))
+                    .font(.inter(.body))
                     .textFieldStyle(.plain)
                     .focused($focusedProjectTaskId, equals: subtask.id)
                     .lineLimit(1...3)
@@ -1330,7 +1330,7 @@ struct LogTabView: View {
                     removeProjectSubtask(id: subtask.id, fromTask: task.id)
                 } label: {
                     Image(systemName: "xmark.circle.fill")
-                        .font(.sf(.caption))
+                        .font(.inter(.caption))
                         .foregroundColor(.secondary)
                 }
                 .buttonStyle(.plain)
@@ -1347,9 +1347,9 @@ struct LogTabView: View {
         } label: {
             HStack(spacing: 4) {
                 Image(systemName: "plus")
-                    .font(.sf(.subheadline))
+                    .font(.inter(.subheadline))
                 Text("Sub-task")
-                    .font(.sf(.subheadline))
+                    .font(.inter(.subheadline))
             }
             .foregroundColor(.secondary)
             .padding(.vertical, 4)

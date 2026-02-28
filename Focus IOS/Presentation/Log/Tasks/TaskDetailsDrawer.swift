@@ -199,7 +199,7 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
     private var titleCard: some View {
         VStack(alignment: .leading, spacing: 0) {
             TextField("Task title", text: $taskTitle, axis: .vertical)
-                .font(.sf(.title3))
+                .font(.inter(.title3))
                 .textFieldStyle(.plain)
                 .focused($isTitleFocused)
                 .onSubmit { saveTitle() }
@@ -208,7 +208,7 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
 
             if isSubtask, let parent = parentTask {
                 Text(parent.title)
-                    .font(.sf(.caption))
+                    .font(.inter(.caption))
                     .foregroundColor(.secondary)
                     .padding(.horizontal, 14)
                     .padding(.top, -8)
@@ -235,7 +235,7 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
             // Header: "Subtasks" label + "Break Down" button
             HStack {
                 Text("Subtasks")
-                    .font(.sf(.subheadline, weight: .medium))
+                    .font(.inter(.subheadline, weight: .medium))
                     .foregroundColor(.primary)
                 Spacer()
                 if !task.isCompleted {
@@ -249,10 +249,10 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                             } else {
                                 Image(systemName: hasGeneratedBreakdown ? "arrow.clockwise" : "sparkles")
                                     .symbolRenderingMode(.monochrome)
-                                    .font(.sf(.subheadline, weight: .semibold))
+                                    .font(.inter(.subheadline, weight: .semiBold))
                             }
                             Text(LocalizedStringKey(hasGeneratedBreakdown ? "Regenerate" : "Suggest Breakdown"))
-                                .font(.sf(.caption, weight: .medium))
+                                .font(.inter(.caption, weight: .medium))
                         }
                         .foregroundColor(.primary)
                         .padding(.horizontal, 14)
@@ -276,11 +276,11 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                 ForEach(draftSuggestions) { draft in
                     HStack(spacing: 8) {
                         Image(systemName: "sparkles")
-                            .font(.sf(.caption2))
+                            .font(.inter(.caption2))
                             .foregroundColor(.purple.opacity(0.6))
 
                         TextField("Subtask", text: draftBinding(for: draft.id))
-                            .font(.sf(.body))
+                            .font(.inter(.body))
                             .textFieldStyle(.plain)
 
                         Button {
@@ -289,7 +289,7 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                             }
                         } label: {
                             Image(systemName: "xmark.circle.fill")
-                                .font(.sf(.caption))
+                                .font(.inter(.caption))
                                 .foregroundColor(.secondary)
                         }
                         .buttonStyle(.plain)
@@ -300,11 +300,11 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                 if showNewSubtaskField || !newSubtaskTitle.isEmpty {
                     HStack(spacing: 8) {
                         Image(systemName: "circle")
-                            .font(.sf(.caption2))
+                            .font(.inter(.caption2))
                             .foregroundColor(.secondary.opacity(0.5))
 
                         TextField("Subtask", text: $newSubtaskTitle)
-                            .font(.sf(.body))
+                            .font(.inter(.body))
                             .textFieldStyle(.plain)
                             .focused($isNewSubtaskFocused)
                             .onAppear { isNewSubtaskFocused = true }
@@ -316,7 +316,7 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                             isNewSubtaskFocused = false
                         } label: {
                             Image(systemName: "xmark.circle.fill")
-                                .font(.sf(.caption))
+                                .font(.inter(.caption))
                                 .foregroundColor(.secondary)
                         }
                         .buttonStyle(.plain)
@@ -335,9 +335,9 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                         } label: {
                             HStack(spacing: 4) {
                                 Image(systemName: "plus")
-                                    .font(.sf(.caption))
+                                    .font(.inter(.caption))
                                 Text("Sub-task")
-                                    .font(.sf(.caption))
+                                    .font(.inter(.caption))
                             }
                             .foregroundColor(.white)
                             .padding(.horizontal, 10)
@@ -363,7 +363,7 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
     private func compactSubtaskRow(_ subtask: FocusTask) -> some View {
         HStack(spacing: 8) {
             Image(systemName: subtask.isCompleted ? "checkmark.circle.fill" : "circle")
-                .font(.sf(.caption2))
+                .font(.inter(.caption2))
                 .foregroundColor(subtask.isCompleted ? Color.completedPurple.opacity(0.6) : .secondary.opacity(0.5))
 
             // Editable title
@@ -375,7 +375,7 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                     pendingDeletions.insert(subtask.id)
                 } label: {
                     Image(systemName: "xmark.circle.fill")
-                        .font(.sf(.caption))
+                        .font(.inter(.caption))
                         .foregroundColor(.secondary)
                 }
                 .buttonStyle(.plain)
@@ -416,7 +416,7 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                             .fill(selectedPriority.dotColor)
                             .frame(width: 8, height: 8)
                         Text(LocalizedStringKey(selectedPriority.displayName))
-                            .font(.sf(.subheadline, weight: .medium))
+                            .font(.inter(.subheadline, weight: .medium))
                             .lineLimit(1)
                     }
                     .foregroundColor(.primary)
@@ -458,9 +458,9 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                 } label: {
                     HStack(spacing: 6) {
                         Image(systemName: "folder")
-                            .font(.sf(.subheadline))
+                            .font(.inter(.subheadline))
                         Text(LocalizedStringKey(currentCategoryName))
-                            .font(.sf(.subheadline, weight: .medium))
+                            .font(.inter(.subheadline, weight: .medium))
                             .lineLimit(1)
                     }
                     .foregroundColor(.primary)
@@ -484,9 +484,9 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                 } label: {
                     HStack(spacing: 6) {
                         Image(systemName: "arrow.right.circle")
-                            .font(.sf(.subheadline))
+                            .font(.inter(.subheadline))
                         Text("Schedule")
-                            .font(.sf(.subheadline, weight: .medium))
+                            .font(.inter(.subheadline, weight: .medium))
                             .lineLimit(1)
                     }
                     .foregroundColor(commitPillIsActive ? .white : .primary)
@@ -509,7 +509,7 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                 showingDeleteConfirmation = true
             } label: {
                 Image(systemName: "trash")
-                    .font(.sf(.body, weight: .semibold))
+                    .font(.inter(.body, weight: .semiBold))
                     .foregroundColor(.red)
                     .frame(width: 44, height: 44)
                     .glassEffect(.regular.interactive(), in: .circle)
@@ -607,7 +607,7 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
     private var noteCard: some View {
         VStack(alignment: .leading, spacing: 0) {
             Text("Note")
-                .font(.sf(.subheadline, weight: .medium))
+                .font(.inter(.subheadline, weight: .medium))
                 .foregroundColor(.primary)
                 .padding(.horizontal, 14)
                 .padding(.top, 12)
@@ -616,13 +616,13 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
             ZStack(alignment: .topLeading) {
                 if noteText.isEmpty {
                     Text("Add a note...")
-                        .font(.sf(.body))
+                        .font(.inter(.body))
                         .foregroundColor(.secondary.opacity(0.5))
                         .padding(.horizontal, 10)
                         .padding(.vertical, 8)
                 }
                 TextEditor(text: $noteText)
-                    .font(.sf(.body))
+                    .font(.inter(.body))
                     .frame(minHeight: 60)
                     .scrollContentBackground(.hidden)
                     .padding(.horizontal, 6)
@@ -901,7 +901,7 @@ private struct SubtaskTextField<VM: TaskEditingViewModel>: View {
 
     var body: some View {
         TextField("Subtask", text: $editingTitle)
-            .font(.sf(.body))
+            .font(.inter(.body))
             .textFieldStyle(.plain)
             .strikethrough(subtask.isCompleted)
             .foregroundColor(subtask.isCompleted ? .secondary : .primary)

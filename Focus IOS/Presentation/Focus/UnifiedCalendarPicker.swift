@@ -75,7 +75,7 @@ struct DailyCalendarView: View {
                 Spacer()
 
                 Text(monthYearText)
-                    .font(.sf(.headline))
+                    .font(.inter(.headline))
                     .foregroundColor(.primary)
 
                 Spacer()
@@ -98,7 +98,7 @@ struct DailyCalendarView: View {
             LazyVGrid(columns: columns, spacing: 0) {
                 ForEach(weekdaySymbols, id: \.self) { symbol in
                     Text(symbol)
-                        .font(.sf(.caption))
+                        .font(.inter(.caption))
                         .foregroundColor(.secondary)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 4)
@@ -223,7 +223,7 @@ struct DayCell: View {
             }
         } label: {
             Text(dayNumber)
-                .font(.sf(.body, weight: isToday ? .bold : .regular))
+                .font(.inter(.body, weight: isToday ? .bold : .regular))
                 .foregroundColor(textColor)
                 .frame(width: 36, height: 36)
                 .background(backgroundColor)
@@ -231,7 +231,7 @@ struct DayCell: View {
                 .overlay(
                     isExcluded ?
                         Image(systemName: "checkmark")
-                            .font(.sf(.caption2))
+                            .font(.inter(.caption2))
                             .foregroundColor(.green) : nil
                 )
         }
@@ -284,13 +284,13 @@ struct WeeklyCalendarView: View {
                         showingMonthPicker = true
                     } label: {
                         Text(monthYearText)
-                            .font(.sf(.headline))
+                            .font(.inter(.headline))
                             .foregroundColor(.primary)
                     }
                     .buttonStyle(.plain)
                 } else {
                     Text(monthYearText)
-                        .font(.sf(.headline))
+                        .font(.inter(.headline))
                         .foregroundColor(.primary)
                 }
 
@@ -446,11 +446,11 @@ struct WeekPillView: View {
         } label: {
             VStack(spacing: 4) {
                 Text("Week \(weekNumber)")
-                    .font(.sf(.body, weight: .medium))
+                    .font(.inter(.body, weight: .medium))
                     .foregroundColor(isSelected ? .white : (isExcluded ? .secondary : .primary))
 
                 Text(shortDateRange)
-                    .font(.sf(.caption2))
+                    .font(.inter(.caption2))
                     .foregroundColor(isSelected ? .white.opacity(0.8) : .secondary)
             }
             .frame(maxWidth: .infinity)
@@ -464,7 +464,7 @@ struct WeekPillView: View {
             .overlay(alignment: .topTrailing) {
                 if isExcluded {
                     Image(systemName: "checkmark")
-                        .font(.sf(.caption2))
+                        .font(.inter(.caption2))
                         .foregroundColor(.green)
                         .padding(6)
                 }
@@ -545,7 +545,7 @@ struct MonthlyCalendarView: View {
             if fixedYear != nil {
                 // Fixed year mode: static text, no navigation
                 Text(String(effectiveYear))
-                    .font(.sf(.headline))
+                    .font(.inter(.headline))
                     .padding(.vertical, 8)
             } else {
                 // Navigable year mode
@@ -564,7 +564,7 @@ struct MonthlyCalendarView: View {
                         showingYearPicker = true
                     } label: {
                         Text(yearText)
-                            .font(.sf(.headline))
+                            .font(.inter(.headline))
                             .foregroundColor(.primary)
                     }
                     .buttonStyle(.plain)
@@ -700,7 +700,7 @@ struct MonthButton: View {
         } label: {
             ZStack {
                 Text(monthName)
-                    .font(.sf(.body, weight: .medium))
+                    .font(.inter(.body, weight: .medium))
                     .foregroundColor(isSelected ? .white : (isExcluded ? .secondary : .primary))
                     .frame(maxWidth: .infinity)
                     .frame(height: 50)
@@ -713,7 +713,7 @@ struct MonthButton: View {
 
                 if isExcluded {
                     Image(systemName: "checkmark")
-                        .font(.sf(.caption))
+                        .font(.inter(.caption))
                         .foregroundColor(.green)
                         .offset(x: 25, y: -15)
                 }
@@ -803,7 +803,7 @@ struct YearButton: View {
             toggleSelection()
         } label: {
             Text(String(year))
-                .font(.sf(.title3, weight: .medium))
+                .font(.inter(.title3, weight: .medium))
                 .foregroundColor(isSelected ? .white : .primary)
                 .frame(maxWidth: .infinity)
                 .frame(height: 60)

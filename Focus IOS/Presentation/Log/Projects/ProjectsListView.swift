@@ -62,20 +62,20 @@ struct ProjectsListView: View {
                             }
                         } label: {
                             Text(LocalizedStringKey(viewModel.allUncompletedSelected ? "Deselect All" : "Select All"))
-                                .font(.sf(.subheadline, weight: .medium))
+                                .font(.inter(.subheadline, weight: .medium))
                                 .foregroundColor(.appRed)
                         }
                         .buttonStyle(.plain)
 
                         Text("\(viewModel.selectedCount) selected")
-                            .font(.sf(.subheadline))
+                            .font(.inter(.subheadline))
                             .foregroundColor(.secondary)
 
                         Button {
                             viewModel.exitEditMode()
                         } label: {
                             Text("Done")
-                                .font(.sf(.subheadline, weight: .medium))
+                                .font(.inter(.subheadline, weight: .medium))
                                 .foregroundColor(.appRed)
                         }
                         .buttonStyle(.plain)
@@ -87,7 +87,7 @@ struct ProjectsListView: View {
                         if let onSearchTap {
                             Button(action: onSearchTap) {
                                 Image(systemName: "magnifyingglass")
-                                    .font(.sf(.body, weight: .medium))
+                                    .font(.inter(.body, weight: .medium))
                                     .foregroundColor(.primary)
                                     .frame(width: 36, height: 36)
                                     .glassEffect(.regular.interactive(), in: .circle)
@@ -189,10 +189,10 @@ struct ProjectsListView: View {
     private var emptyState: some View {
         VStack(spacing: 4) {
             Text("No projects yet")
-                .font(.sf(.headline))
+                .font(.inter(.headline))
                 .bold()
             Text("Tap to create your first project")
-                .font(.sf(.subheadline))
+                .font(.inter(.subheadline))
                 .foregroundColor(.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -270,15 +270,15 @@ struct ProjectsListView: View {
             } label: {
                 HStack(spacing: 4) {
                     Text("Completed")
-                        .font(.sf(size: 12, weight: .medium))
+                        .font(.inter(size: 12, weight: .medium))
                         .foregroundColor(.secondary)
 
                     Text("\(viewModel.completedProjects.count)")
-                        .font(.sf(size: 12))
+                        .font(.inter(size: 12))
                         .foregroundColor(.secondary)
 
                     Image(systemName: viewModel.isDoneCollapsed ? "chevron.right" : "chevron.down")
-                        .font(.sf(size: 8, weight: .semibold))
+                        .font(.inter(size: 8, weight: .semiBold))
                         .foregroundColor(.secondary)
                 }
                 .padding(.horizontal, 10)
@@ -295,7 +295,7 @@ struct ProjectsListView: View {
                     showClearCompletedConfirmation = true
                 } label: {
                     Text("Clear list")
-                        .font(.sf(.caption))
+                        .font(.inter(.caption))
                         .foregroundColor(.white)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 4)

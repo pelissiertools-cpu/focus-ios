@@ -12,7 +12,7 @@ import SwiftUI
 struct DragHandleView: View {
     var body: some View {
         Image(systemName: "line.3.horizontal")
-            .font(.sf(.subheadline))
+            .font(.inter(.subheadline))
             .foregroundColor(.secondary)
     }
 }

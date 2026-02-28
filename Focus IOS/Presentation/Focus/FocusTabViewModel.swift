@@ -1028,10 +1028,10 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
     func sectionConfig(for section: Section) -> FocusSectionConfig {
         guard section == .focus else {
             return FocusSectionConfig(
-                taskFont: .sf(.body),
+                taskFont: .inter(.body),
                 verticalPadding: 8,
                 containerMinHeight: 0,
-                completedTaskFont: .sf(.subheadline),
+                completedTaskFont: .inter(.subheadline),
                 completedVerticalPadding: 6,
                 completedOpacity: 0.45
             )
@@ -1041,10 +1041,10 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
         let maxSlots = Section.focus.maxTasks(for: selectedTimeframe) ?? 3
         let minHeight = CGFloat(maxSlots) * 48 + 86  // 48pt per row + header/padding
         return FocusSectionConfig(
-            taskFont: .sf(.body),
+            taskFont: .inter(.body),
             verticalPadding: 8,
             containerMinHeight: minHeight,
-            completedTaskFont: .sf(.subheadline),
+            completedTaskFont: .inter(.subheadline),
             completedVerticalPadding: 6,
             completedOpacity: 0.45
         )

@@ -48,11 +48,11 @@ struct CommitmentSelectionSheet: View {
                     // Task title card
                     VStack(alignment: .leading, spacing: 4) {
                         Text(task.title)
-                            .font(.sf(.headline))
+                            .font(.inter(.headline))
                         if isParentTask {
                             let itemLabel = task.type == .list ? "item" : "subtask"
                             Text("Includes \(subtaskCount) \(itemLabel)\(subtaskCount == 1 ? "" : "s")")
-                                .font(.sf(.caption))
+                                .font(.inter(.caption))
                                 .foregroundColor(.secondary)
                         }
                     }

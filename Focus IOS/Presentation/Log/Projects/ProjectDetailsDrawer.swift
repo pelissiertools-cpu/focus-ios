@@ -121,7 +121,7 @@ struct ProjectDetailsDrawer: View {
     private var titleCard: some View {
         VStack(alignment: .leading, spacing: 0) {
             TextField("Project title", text: $projectTitle, axis: .vertical)
-                .font(.sf(.title3))
+                .font(.inter(.title3))
                 .textFieldStyle(.plain)
                 .focused($isTitleFocused)
                 .onSubmit { saveTitle() }
@@ -147,7 +147,7 @@ struct ProjectDetailsDrawer: View {
             // Header: "Tasks" label + "Suggest Breakdown" button
             HStack {
                 Text("Tasks")
-                    .font(.sf(.subheadline, weight: .medium))
+                    .font(.inter(.subheadline, weight: .medium))
                     .foregroundColor(.primary)
                 Spacer()
                 if !project.isCompleted {
@@ -160,10 +160,10 @@ struct ProjectDetailsDrawer: View {
                                     .tint(.primary)
                             } else {
                                 Image(systemName: hasGeneratedBreakdown ? "arrow.clockwise" : "sparkles")
-                                    .font(.sf(.subheadline, weight: .semibold))
+                                    .font(.inter(.subheadline, weight: .semiBold))
                             }
                             Text(LocalizedStringKey(hasGeneratedBreakdown ? "Regenerate" : "Suggest Breakdown"))
-                                .font(.sf(.caption, weight: .medium))
+                                .font(.inter(.caption, weight: .medium))
                         }
                         .foregroundColor(.primary)
                         .padding(.horizontal, 14)
@@ -187,11 +187,11 @@ struct ProjectDetailsDrawer: View {
                 ForEach(draftSuggestions) { draft in
                     HStack(spacing: 8) {
                         Image(systemName: "sparkles")
-                            .font(.sf(.caption2))
+                            .font(.inter(.caption2))
                             .foregroundColor(.purple.opacity(0.6))
 
                         TextField("Task", text: draftBinding(for: draft.id))
-                            .font(.sf(.body))
+                            .font(.inter(.body))
                             .textFieldStyle(.plain)
 
                         Button {
@@ -200,7 +200,7 @@ struct ProjectDetailsDrawer: View {
                             }
                         } label: {
                             Image(systemName: "xmark.circle.fill")
-                                .font(.sf(.caption))
+                                .font(.inter(.caption))
                                 .foregroundColor(.secondary)
                         }
                         .buttonStyle(.plain)
@@ -211,11 +211,11 @@ struct ProjectDetailsDrawer: View {
                 if showNewTaskField || !newTaskTitle.isEmpty {
                     HStack(spacing: 8) {
                         Image(systemName: "circle")
-                            .font(.sf(.caption2))
+                            .font(.inter(.caption2))
                             .foregroundColor(.secondary.opacity(0.5))
 
                         TextField("Task", text: $newTaskTitle)
-                            .font(.sf(.body))
+                            .font(.inter(.body))
                             .textFieldStyle(.plain)
                             .focused($isNewTaskFocused)
                             .onAppear { isNewTaskFocused = true }
@@ -227,7 +227,7 @@ struct ProjectDetailsDrawer: View {
                             isNewTaskFocused = false
                         } label: {
                             Image(systemName: "xmark.circle.fill")
-                                .font(.sf(.caption))
+                                .font(.inter(.caption))
                                 .foregroundColor(.secondary)
                         }
                         .buttonStyle(.plain)
@@ -246,9 +246,9 @@ struct ProjectDetailsDrawer: View {
                         } label: {
                             HStack(spacing: 4) {
                                 Image(systemName: "plus")
-                                    .font(.sf(.caption))
+                                    .font(.inter(.caption))
                                 Text("Task")
-                                    .font(.sf(.caption))
+                                    .font(.inter(.caption))
                             }
                             .foregroundColor(.white)
                             .padding(.horizontal, 10)
@@ -274,7 +274,7 @@ struct ProjectDetailsDrawer: View {
     private func compactTaskRow(_ task: FocusTask) -> some View {
         HStack(spacing: 8) {
             Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
-                .font(.sf(.caption2))
+                .font(.inter(.caption2))
                 .foregroundColor(task.isCompleted ? Color.completedPurple.opacity(0.6) : .secondary.opacity(0.5))
 
             ProjectTaskTextField(task: task, viewModel: viewModel, focusedId: $focusedTaskId)
@@ -284,7 +284,7 @@ struct ProjectDetailsDrawer: View {
                     pendingDeletions.insert(task.id)
                 } label: {
                     Image(systemName: "xmark.circle.fill")
-                        .font(.sf(.caption))
+                        .font(.inter(.caption))
                         .foregroundColor(.secondary)
                 }
                 .buttonStyle(.plain)
@@ -316,7 +316,7 @@ struct ProjectDetailsDrawer: View {
                         .fill(selectedPriority.dotColor)
                         .frame(width: 8, height: 8)
                     Text(LocalizedStringKey(selectedPriority.displayName))
-                        .font(.sf(.subheadline, weight: .medium))
+                        .font(.inter(.subheadline, weight: .medium))
                         .lineLimit(1)
                 }
                 .foregroundColor(.primary)
@@ -356,9 +356,9 @@ struct ProjectDetailsDrawer: View {
             } label: {
                 HStack(spacing: 6) {
                     Image(systemName: "folder")
-                        .font(.sf(.subheadline))
+                        .font(.inter(.subheadline))
                     Text(LocalizedStringKey(currentCategoryName))
-                        .font(.sf(.subheadline, weight: .medium))
+                        .font(.inter(.subheadline, weight: .medium))
                         .lineLimit(1)
                 }
                 .foregroundColor(.primary)
@@ -374,7 +374,7 @@ struct ProjectDetailsDrawer: View {
                 showingDeleteConfirmation = true
             } label: {
                 Image(systemName: "trash")
-                    .font(.sf(.body, weight: .semibold))
+                    .font(.inter(.body, weight: .semiBold))
                     .foregroundColor(.red)
                     .frame(width: 44, height: 44)
                     .glassEffect(.regular.interactive(), in: .circle)
@@ -390,7 +390,7 @@ struct ProjectDetailsDrawer: View {
     private var noteCard: some View {
         VStack(alignment: .leading, spacing: 0) {
             Text("Note")
-                .font(.sf(.subheadline, weight: .medium))
+                .font(.inter(.subheadline, weight: .medium))
                 .foregroundColor(.primary)
                 .padding(.horizontal, 14)
                 .padding(.top, 12)
@@ -399,13 +399,13 @@ struct ProjectDetailsDrawer: View {
             ZStack(alignment: .topLeading) {
                 if noteText.isEmpty {
                     Text("Add a note...")
-                        .font(.sf(.body))
+                        .font(.inter(.body))
                         .foregroundColor(.secondary.opacity(0.5))
                         .padding(.horizontal, 10)
                         .padding(.vertical, 8)
                 }
                 TextEditor(text: $noteText)
-                    .font(.sf(.body))
+                    .font(.inter(.body))
                     .frame(minHeight: 60)
                     .scrollContentBackground(.hidden)
                     .padding(.horizontal, 6)
@@ -545,7 +545,7 @@ private struct ProjectTaskTextField: View {
 
     var body: some View {
         TextField("Task", text: $editingTitle)
-            .font(.sf(.body))
+            .font(.inter(.body))
             .textFieldStyle(.plain)
             .strikethrough(task.isCompleted)
             .foregroundColor(task.isCompleted ? .secondary : .primary)

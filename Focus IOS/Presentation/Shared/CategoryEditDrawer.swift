@@ -52,7 +52,7 @@ struct CategoryEditDrawer<VM: LogFilterable>: View {
                 SwiftUI.Section {
                     if displayedCategories.isEmpty {
                         Text("No categories yet")
-                            .font(.sf(.body))
+                            .font(.inter(.body))
                             .foregroundColor(.secondary)
                             .listRowBackground(Color(.secondarySystemGroupedBackground))
                     } else {
@@ -146,7 +146,7 @@ struct CategoryEditDrawer<VM: LogFilterable>: View {
                 }
             } label: {
                 Image(systemName: selectedCategoryIds.contains(category.id) ? "checkmark.circle.fill" : "circle.dashed")
-                    .font(.sf(.title3))
+                    .font(.inter(.title3))
                     .foregroundColor(selectedCategoryIds.contains(category.id) ? .appRed : .secondary)
             }
             .buttonStyle(.plain)
@@ -154,7 +154,7 @@ struct CategoryEditDrawer<VM: LogFilterable>: View {
             // Name (editable on tap)
             if editingCategoryId == category.id {
                 TextField("Category name", text: $editingCategoryName)
-                    .font(.sf(.body))
+                    .font(.inter(.body))
                     .focused($focusedRenameId, equals: category.id)
                     .onSubmit {
                         commitRename(for: category.id)
@@ -162,7 +162,7 @@ struct CategoryEditDrawer<VM: LogFilterable>: View {
             } else {
                 let displayName = pendingRenames[category.id] ?? category.name
                 Text(displayName)
-                    .font(.sf(.body))
+                    .font(.inter(.body))
                     .foregroundColor(.primary)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .contentShape(Rectangle())
@@ -186,7 +186,7 @@ struct CategoryEditDrawer<VM: LogFilterable>: View {
         if isAddingCategory {
             HStack(spacing: 8) {
                 TextField("Category name", text: $newCategoryName)
-                    .font(.sf(.body))
+                    .font(.inter(.body))
                     .focused($isNewCategoryFocused)
                     .onSubmit { submitNewCategory() }
 
@@ -194,7 +194,7 @@ struct CategoryEditDrawer<VM: LogFilterable>: View {
                     submitNewCategory()
                 } label: {
                     Image(systemName: "checkmark")
-                        .font(.sf(.subheadline, weight: .semibold))
+                        .font(.inter(.subheadline, weight: .semiBold))
                         .foregroundColor(
                             newCategoryName.trimmingCharacters(in: .whitespaces).isEmpty
                             ? .secondary : .white
@@ -214,7 +214,7 @@ struct CategoryEditDrawer<VM: LogFilterable>: View {
                     newCategoryName = ""
                 } label: {
                     Image(systemName: "xmark")
-                        .font(.sf(.subheadline, weight: .semibold))
+                        .font(.inter(.subheadline, weight: .semiBold))
                         .foregroundColor(.secondary)
                         .frame(width: 30, height: 30)
                         .background(Color(.systemGray4), in: Circle())
@@ -235,9 +235,9 @@ struct CategoryEditDrawer<VM: LogFilterable>: View {
                 } label: {
                     HStack(spacing: 6) {
                         Image(systemName: "plus")
-                            .font(.sf(.subheadline))
+                            .font(.inter(.subheadline))
                         Text("New Category")
-                            .font(.sf(.subheadline, weight: .medium))
+                            .font(.inter(.subheadline, weight: .medium))
                             .lineLimit(1)
                     }
                     .foregroundColor(.primary)
@@ -257,9 +257,9 @@ struct CategoryEditDrawer<VM: LogFilterable>: View {
                 } label: {
                     HStack(spacing: 6) {
                         Image(systemName: "arrow.triangle.merge")
-                            .font(.sf(.subheadline))
+                            .font(.inter(.subheadline))
                         Text("Merge")
-                            .font(.sf(.subheadline, weight: .medium))
+                            .font(.inter(.subheadline, weight: .medium))
                             .lineLimit(1)
                     }
                     .foregroundColor(canMerge ? .primary : .secondary.opacity(0.5))
@@ -277,7 +277,7 @@ struct CategoryEditDrawer<VM: LogFilterable>: View {
                     }
                 } label: {
                     Image(systemName: "trash")
-                        .font(.sf(.body, weight: .semibold))
+                        .font(.inter(.body, weight: .semiBold))
                         .foregroundColor(hasSelection ? .red : .secondary.opacity(0.5))
                         .frame(width: 44, height: 44)
                         .glassEffect(.regular.interactive(), in: .circle)

@@ -103,7 +103,7 @@ struct ListDetailsDrawer: View {
     private var titleCard: some View {
         VStack(alignment: .leading, spacing: 0) {
             TextField("List title", text: $listTitle, axis: .vertical)
-                .font(.sf(.title3))
+                .font(.inter(.title3))
                 .textFieldStyle(.plain)
                 .focused($isTitleFocused)
                 .onSubmit { saveTitle() }
@@ -145,7 +145,7 @@ struct ListDetailsDrawer: View {
                         .fill(selectedPriority.dotColor)
                         .frame(width: 8, height: 8)
                     Text(LocalizedStringKey(selectedPriority.displayName))
-                        .font(.sf(.subheadline, weight: .medium))
+                        .font(.inter(.subheadline, weight: .medium))
                         .lineLimit(1)
                 }
                 .foregroundColor(.primary)
@@ -185,9 +185,9 @@ struct ListDetailsDrawer: View {
             } label: {
                 HStack(spacing: 6) {
                     Image(systemName: "folder")
-                        .font(.sf(.subheadline))
+                        .font(.inter(.subheadline))
                     Text(LocalizedStringKey(currentCategoryName))
-                        .font(.sf(.subheadline, weight: .medium))
+                        .font(.inter(.subheadline, weight: .medium))
                         .lineLimit(1)
                 }
                 .foregroundColor(.primary)
@@ -202,9 +202,9 @@ struct ListDetailsDrawer: View {
             } label: {
                 HStack(spacing: 6) {
                     Image(systemName: "arrow.right.circle")
-                        .font(.sf(.subheadline))
+                        .font(.inter(.subheadline))
                     Text("Schedule")
-                        .font(.sf(.subheadline, weight: .medium))
+                        .font(.inter(.subheadline, weight: .medium))
                         .lineLimit(1)
                 }
                 .foregroundColor(.primary)
@@ -221,7 +221,7 @@ struct ListDetailsDrawer: View {
                 showingDeleteConfirmation = true
             } label: {
                 Image(systemName: "trash")
-                    .font(.sf(.body, weight: .semibold))
+                    .font(.inter(.body, weight: .semiBold))
                     .foregroundColor(.red)
                     .frame(width: 44, height: 44)
                     .glassEffect(.regular.interactive(), in: .circle)
@@ -237,7 +237,7 @@ struct ListDetailsDrawer: View {
     private var noteCard: some View {
         VStack(alignment: .leading, spacing: 0) {
             Text("Note")
-                .font(.sf(.subheadline, weight: .medium))
+                .font(.inter(.subheadline, weight: .medium))
                 .foregroundColor(.primary)
                 .padding(.horizontal, 14)
                 .padding(.top, 12)
@@ -246,13 +246,13 @@ struct ListDetailsDrawer: View {
             ZStack(alignment: .topLeading) {
                 if noteText.isEmpty {
                     Text("Add a note...")
-                        .font(.sf(.body))
+                        .font(.inter(.body))
                         .foregroundColor(.secondary.opacity(0.5))
                         .padding(.horizontal, 10)
                         .padding(.vertical, 8)
                 }
                 TextEditor(text: $noteText)
-                    .font(.sf(.body))
+                    .font(.inter(.body))
                     .frame(minHeight: 60)
                     .scrollContentBackground(.hidden)
                     .padding(.horizontal, 6)

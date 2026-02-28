@@ -53,7 +53,7 @@ struct CommitSheet: View {
                 // Header info
                 HStack {
                     Text(task.title)
-                        .font(.sf(.headline))
+                        .font(.inter(.headline))
                     Spacer()
                     Button {
                         generateBreakdown()
@@ -64,10 +64,10 @@ struct CommitSheet: View {
                                     .tint(.primary)
                             } else {
                                 Image(systemName: hasGeneratedBreakdown ? "arrow.clockwise" : "sparkles")
-                                    .font(.sf(.subheadline, weight: .semibold))
+                                    .font(.inter(.subheadline, weight: .semiBold))
                             }
                             Text(LocalizedStringKey(hasGeneratedBreakdown ? "Regenerate" : "Suggest Breakdown"))
-                                .font(.sf(.caption, weight: .medium))
+                                .font(.inter(.caption, weight: .medium))
                         }
                         .foregroundColor(.primary)
                         .padding(.horizontal, 14)
@@ -87,11 +87,11 @@ struct CommitSheet: View {
                         ForEach(draftSuggestions) { draft in
                             HStack(spacing: 8) {
                                 Image(systemName: "sparkles")
-                                    .font(.sf(.caption2))
+                                    .font(.inter(.caption2))
                                     .foregroundColor(.purple.opacity(0.6))
 
                                 TextField("Subtask", text: draftBinding(for: draft.id))
-                                    .font(.sf(.body))
+                                    .font(.inter(.body))
                                     .textFieldStyle(.plain)
 
                                 Button {
@@ -100,7 +100,7 @@ struct CommitSheet: View {
                                     }
                                 } label: {
                                     Image(systemName: "xmark.circle.fill")
-                                        .font(.sf(.caption))
+                                        .font(.inter(.caption))
                                         .foregroundColor(.secondary)
                                 }
                                 .buttonStyle(.plain)
@@ -119,7 +119,7 @@ struct CommitSheet: View {
                         Image(systemName: "checkmark.circle.fill")
                             .foregroundColor(.green)
                         Text("\(existingChildrenForTimeframe.count) already scheduled to \(selectedTargetTimeframe.displayName.lowercased())")
-                            .font(.sf(.caption))
+                            .font(.inter(.caption))
                             .foregroundColor(.secondary)
                     }
                     .padding(.horizontal)
@@ -296,13 +296,13 @@ struct SubtaskCommitSheet: View {
                 // Header info
                 VStack(alignment: .leading, spacing: 8) {
                     Text(subtask.title)
-                        .font(.sf(.headline))
+                        .font(.inter(.headline))
 
                     HStack {
                         Image(systemName: "arrow.down.forward.circle")
                             .foregroundColor(.appRed)
                         Text("Schedule subtask to lower timeframe")
-                            .font(.sf(.subheadline))
+                            .font(.inter(.subheadline))
                             .foregroundColor(.secondary)
                     }
                 }

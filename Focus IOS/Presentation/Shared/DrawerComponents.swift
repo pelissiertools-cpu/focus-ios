@@ -64,16 +64,16 @@ struct DrawerContainer<Content: View>: View {
             Button("Cancel", action: action)
         case .save(let action, let disabled):
             Button("Save", action: action)
-                .font(.sf(.body, weight: .semibold))
+                .font(.inter(.body, weight: .semiBold))
                 .disabled(disabled)
         case .add(let action, let disabled):
             Button("Add", action: action)
-                .font(.sf(.body, weight: .semibold))
+                .font(.inter(.body, weight: .semiBold))
                 .disabled(disabled)
         case .close(let action):
             Button(action: action) {
                 Image(systemName: "xmark")
-                    .font(.sf(.subheadline, weight: .semibold))
+                    .font(.inter(.subheadline, weight: .semiBold))
                     .foregroundColor(.primary)
                     .frame(width: 30, height: 30)
                     .background(.white, in: Circle())
@@ -81,7 +81,7 @@ struct DrawerContainer<Content: View>: View {
         case .check(let action, let highlighted):
             Button(action: action) {
                 Image(systemName: "checkmark")
-                    .font(.sf(.subheadline, weight: .semibold))
+                    .font(.inter(.subheadline, weight: .semiBold))
                     .foregroundColor(highlighted ? .white : .secondary)
                     .frame(width: 30, height: 30)
             }
@@ -259,16 +259,16 @@ struct DrawerActionLabel: View {
     var body: some View {
         HStack(spacing: 10) {
             Image(systemName: icon)
-                .font(.sf(.body))
+                .font(.inter(.body))
                 .foregroundColor(iconColor)
                 .frame(width: 24)
             Text(LocalizedStringKey(text))
-                .font(.sf(.body))
+                .font(.inter(.body))
                 .foregroundColor(.primary)
             Spacer()
             if let trailing {
                 Text(trailing)
-                    .font(.sf(.subheadline))
+                    .font(.inter(.subheadline))
                     .foregroundColor(.secondary)
             }
         }

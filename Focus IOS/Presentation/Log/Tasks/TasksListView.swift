@@ -65,20 +65,20 @@ struct TasksListView: View {
                             }
                         } label: {
                             Text(LocalizedStringKey(viewModel.allUncompletedSelected ? "Deselect All" : "Select All"))
-                                .font(.sf(.subheadline, weight: .medium))
+                                .font(.inter(.subheadline, weight: .medium))
                                 .foregroundColor(.appRed)
                         }
                         .buttonStyle(.plain)
 
                         Text("\(viewModel.selectedCount) selected")
-                            .font(.sf(.subheadline))
+                            .font(.inter(.subheadline))
                             .foregroundColor(.secondary)
 
                         Button {
                             viewModel.exitEditMode()
                         } label: {
                             Text("Done")
-                                .font(.sf(.subheadline, weight: .medium))
+                                .font(.inter(.subheadline, weight: .medium))
                                 .foregroundColor(.appRed)
                         }
                         .buttonStyle(.plain)
@@ -90,7 +90,7 @@ struct TasksListView: View {
                         if let onSearchTap {
                             Button(action: onSearchTap) {
                                 Image(systemName: "magnifyingglass")
-                                    .font(.sf(.body, weight: .medium))
+                                    .font(.inter(.body, weight: .medium))
                                     .foregroundColor(.primary)
                                     .frame(width: 36, height: 36)
                                     .glassEffect(.regular.interactive(), in: .circle)
@@ -194,10 +194,10 @@ struct TasksListView: View {
     private var emptyState: some View {
         VStack(spacing: 4) {
             Text("No tasks yet")
-                .font(.sf(.headline))
+                .font(.inter(.headline))
                 .bold()
             Text("Tap + to create your first task")
-                .font(.sf(.subheadline))
+                .font(.inter(.subheadline))
                 .foregroundColor(.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -327,12 +327,12 @@ struct PrioritySectionHeader: View {
 
                     if count > 0 {
                         Text("\(count)")
-                            .font(.sf(size: 10))
+                            .font(.inter(size: 10))
                             .foregroundColor(.secondary)
                     }
 
                     Image(systemName: "chevron.right")
-                        .font(.sf(size: 8, weight: .semibold))
+                        .font(.inter(size: 8, weight: .semiBold))
                         .foregroundColor(.secondary)
                         .rotationEffect(.degrees(isCollapsed ? 0 : 90))
                 }
@@ -350,7 +350,7 @@ struct PrioritySectionHeader: View {
                         onAddTap()
                     } label: {
                         Image(systemName: "plus")
-                            .font(.sf(.caption, weight: .semibold))
+                            .font(.inter(.caption, weight: .semiBold))
                             .foregroundColor(.white)
                             .frame(width: 26, height: 26)
                             .background(Color.darkGray, in: Circle())
@@ -409,15 +409,15 @@ struct CategorySelectorHeader<TrailingContent: View>: View {
                 // Title displayed independently (not inside Menu label to avoid clip animation)
                 HStack(alignment: .center, spacing: 8) {
                     Text(title)
-                        .font(.golosText(size: 30))
+                        .font(.inter(size: 30, weight: .semiBold))
                         .foregroundColor(.primary)
 
                     Image(systemName: "chevron.right")
-                        .font(.sf(size: 10, weight: .semibold))
+                        .font(.inter(size: 10, weight: .semiBold))
                         .foregroundColor(.secondary)
 
                     Text("\(count) \(countSuffix)\(count == 1 ? "" : "s")")
-                        .font(.sf(size: 12))
+                        .font(.inter(size: 12))
                         .foregroundColor(.secondary)
                 }
                 .overlay {
@@ -514,15 +514,15 @@ struct LogDonePillView: View {
                 } label: {
                     HStack(spacing: 4) {
                         Text("Completed")
-                            .font(.sf(size: 12, weight: .medium))
+                            .font(.inter(size: 12, weight: .medium))
                             .foregroundColor(.secondary)
 
                         Text("\(completedTasks.count)")
-                            .font(.sf(size: 12))
+                            .font(.inter(size: 12))
                             .foregroundColor(.secondary)
 
                         Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
-                            .font(.sf(size: 8, weight: .semibold))
+                            .font(.inter(size: 8, weight: .semiBold))
                             .foregroundColor(.secondary)
                     }
                     .padding(.horizontal, 10)
@@ -539,7 +539,7 @@ struct LogDonePillView: View {
                         showClearConfirmation = true
                     } label: {
                         Text("Clear list")
-                            .font(.sf(.caption))
+                            .font(.inter(.caption))
                             .foregroundColor(.white)
                             .padding(.horizontal, 10)
                             .padding(.vertical, 4)
@@ -602,14 +602,14 @@ struct FlatTaskRow: View {
             // Edit mode: selection circle (uncompleted parent tasks only)
             if isEditMode && !task.isCompleted && isParent {
                 Image(systemName: isSelected ? "checkmark.circle.fill" : "circle.dashed")
-                    .font(.sf(.title3))
+                    .font(.inter(.title3))
                     .foregroundColor(isSelected ? .appRed : .secondary)
             }
 
             // Task content
             VStack(alignment: .leading, spacing: 4) {
                 Text(task.title)
-                    .font(isParent ? .sf(.body) : .sf(.subheadline))
+                    .font(isParent ? .inter(.body) : .inter(.subheadline))
                     .strikethrough(task.isCompleted)
                     .foregroundColor(task.isCompleted ? .secondary : .primary)
 
@@ -617,7 +617,7 @@ struct FlatTaskRow: View {
                 if isParent, let subtasks = viewModel.subtasksMap[task.id], !subtasks.isEmpty {
                     let completedCount = subtasks.filter { $0.isCompleted }.count
                     Text("\(completedCount)/\(subtasks.count) subtasks")
-                        .font(.sf(.caption))
+                        .font(.inter(.caption))
                         .foregroundColor(.secondary)
                 }
             }
@@ -636,7 +636,7 @@ struct FlatTaskRow: View {
                     }
                 } label: {
                     Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
-                        .font(isParent ? .sf(.title3) : .sf(.subheadline))
+                        .font(isParent ? .inter(.title3) : .inter(.subheadline))
                         .foregroundColor(task.isCompleted ? Color.completedPurple.opacity(0.6) : .gray)
                 }
                 .buttonStyle(.plain)
@@ -749,7 +749,7 @@ struct ExpandableTaskRow: View {
             // Edit mode: selection circle (uncompleted tasks only)
             if isEditMode && !task.isCompleted {
                 Image(systemName: isSelected ? "checkmark.circle.fill" : "circle.dashed")
-                    .font(.sf(.title3))
+                    .font(.inter(.title3))
                     .foregroundColor(isSelected ? .appRed : .secondary)
             }
 
@@ -763,7 +763,7 @@ struct ExpandableTaskRow: View {
                 if let subtasks = viewModel.subtasksMap[task.id], !subtasks.isEmpty {
                     let completedCount = subtasks.filter { $0.isCompleted }.count
                     Text("\(completedCount)/\(subtasks.count) subtasks")
-                        .font(.sf(.caption))
+                        .font(.inter(.caption))
                         .foregroundColor(.secondary)
                 }
             }
@@ -778,7 +778,7 @@ struct ExpandableTaskRow: View {
                     }
                 } label: {
                     Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
-                        .font(.sf(.title3))
+                        .font(.inter(.title3))
                         .foregroundColor(task.isCompleted ? Color.completedPurple.opacity(0.6) : .gray)
                 }
                 .buttonStyle(.plain)
@@ -862,7 +862,7 @@ struct SubtaskRow: View {
     var body: some View {
         HStack(spacing: 12) {
             Text(subtask.title)
-                .font(.sf(.subheadline))
+                .font(.inter(.subheadline))
                 .strikethrough(subtask.isCompleted)
                 .foregroundColor(subtask.isCompleted ? .secondary : .primary)
 
@@ -876,7 +876,7 @@ struct SubtaskRow: View {
                 }
             } label: {
                 Image(systemName: subtask.isCompleted ? "checkmark.circle.fill" : "circle")
-                    .font(.sf(.subheadline))
+                    .font(.inter(.subheadline))
                     .foregroundColor(subtask.isCompleted ? Color.completedPurple.opacity(0.6) : .gray)
             }
             .buttonStyle(.plain)
@@ -969,7 +969,7 @@ struct SortMenuButton<VM: LogFilterable>: View {
         .tint(.appRed)
         .background(
             Image(systemName: "ellipsis")
-                .font(.sf(.body, weight: .semibold))
+                .font(.inter(.body, weight: .semiBold))
                 .foregroundColor(.primary)
                 .frame(width: 36, height: 36)
                 .glassEffect(.regular.interactive(), in: .circle)

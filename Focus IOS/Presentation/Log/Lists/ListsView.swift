@@ -53,20 +53,20 @@ struct ListsView: View {
                             }
                         } label: {
                             Text(LocalizedStringKey(viewModel.allUncompletedSelected ? "Deselect All" : "Select All"))
-                                .font(.sf(.subheadline, weight: .medium))
+                                .font(.inter(.subheadline, weight: .medium))
                                 .foregroundColor(.appRed)
                         }
                         .buttonStyle(.plain)
 
                         Text("\(viewModel.selectedCount) selected")
-                            .font(.sf(.subheadline))
+                            .font(.inter(.subheadline))
                             .foregroundColor(.secondary)
 
                         Button {
                             viewModel.exitEditMode()
                         } label: {
                             Text("Done")
-                                .font(.sf(.subheadline, weight: .medium))
+                                .font(.inter(.subheadline, weight: .medium))
                                 .foregroundColor(.appRed)
                         }
                         .buttonStyle(.plain)
@@ -78,7 +78,7 @@ struct ListsView: View {
                         if let onSearchTap {
                             Button(action: onSearchTap) {
                                 Image(systemName: "magnifyingglass")
-                                    .font(.sf(.body, weight: .medium))
+                                    .font(.inter(.body, weight: .medium))
                                     .foregroundColor(.primary)
                                     .frame(width: 36, height: 36)
                                     .glassEffect(.regular.interactive(), in: .circle)
@@ -112,7 +112,7 @@ struct ListsView: View {
                 } else if viewModel.filteredLists.isEmpty {
                     VStack(spacing: 12) {
                         Text("No matching lists")
-                            .font(.sf(.headline))
+                            .font(.inter(.headline))
                             .foregroundColor(.secondary)
                     }
                     .padding()
@@ -184,10 +184,10 @@ struct ListsView: View {
     private var emptyState: some View {
         VStack(spacing: 4) {
             Text("No lists yet")
-                .font(.sf(.headline))
+                .font(.inter(.headline))
                 .bold()
             Text("Tap to create your first list")
-                .font(.sf(.subheadline))
+                .font(.inter(.subheadline))
                 .foregroundColor(.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -293,18 +293,18 @@ struct ListRow: View {
             // Edit mode: selection circle
             if isEditMode {
                 Image(systemName: isSelected ? "checkmark.circle.fill" : "circle.dashed")
-                    .font(.sf(.title3))
+                    .font(.inter(.title3))
                     .foregroundColor(isSelected ? .appRed : .secondary)
             }
 
             // Title + item count
             VStack(alignment: .leading, spacing: 4) {
                 Text(list.title)
-                    .font(.sf(.body))
+                    .font(.inter(.body))
                     .lineLimit(1)
 
                 Text("\(itemCount.uncompleted) item\(itemCount.uncompleted == 1 ? "" : "s")")
-                    .font(.sf(.caption))
+                    .font(.inter(.caption))
                     .foregroundColor(.secondary)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -381,7 +381,7 @@ struct ListItemRow: View {
     var body: some View {
         HStack(spacing: 12) {
             Text(item.title)
-                .font(.sf(.subheadline))
+                .font(.inter(.subheadline))
                 .strikethrough(item.isCompleted)
                 .foregroundColor(item.isCompleted ? .secondary : .primary)
 
@@ -395,7 +395,7 @@ struct ListItemRow: View {
                 }
             } label: {
                 Image(systemName: item.isCompleted ? "checkmark.circle.fill" : "circle")
-                    .font(.sf(.subheadline))
+                    .font(.inter(.subheadline))
                     .foregroundColor(item.isCompleted ? Color.completedPurple.opacity(0.6) : .gray)
             }
             .buttonStyle(.plain)
@@ -469,15 +469,15 @@ struct ListDoneSection: View {
                     } label: {
                         HStack(spacing: 4) {
                             Text("Completed")
-                                .font(.sf(size: 12, weight: .medium))
+                                .font(.inter(size: 12, weight: .medium))
                                 .foregroundColor(.secondary)
 
                             Text("\(completedItems.count)")
-                                .font(.sf(size: 12))
+                                .font(.inter(size: 12))
                                 .foregroundColor(.secondary)
 
                             Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
-                                .font(.sf(size: 8, weight: .semibold))
+                                .font(.inter(size: 8, weight: .semiBold))
                                 .foregroundColor(.secondary)
                         }
                         .padding(.horizontal, 10)
@@ -494,7 +494,7 @@ struct ListDoneSection: View {
                             showClearConfirmation = true
                         } label: {
                             Text("Clear list")
-                                .font(.sf(.caption))
+                                .font(.inter(.caption))
                                 .foregroundColor(.white)
                                 .padding(.horizontal, 10)
                                 .padding(.vertical, 4)

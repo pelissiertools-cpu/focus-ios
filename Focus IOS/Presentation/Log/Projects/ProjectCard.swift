@@ -259,10 +259,9 @@ struct ProjectTaskRow: View {
     @ObservedObject var viewModel: ProjectsViewModel
     @State private var showDeleteConfirmation = false
 
-    private var subtaskCount: (completed: Int, total: Int) {
+    private var subtaskCount: Int {
         let subtasks = viewModel.subtasksMap[task.id] ?? []
-        let completed = subtasks.filter { $0.isCompleted }.count
-        return (completed, subtasks.count)
+        return subtasks.count
     }
 
     var body: some View {
@@ -274,8 +273,8 @@ struct ProjectTaskRow: View {
                     .strikethrough(task.isCompleted)
                     .foregroundColor(task.isCompleted ? .secondary : .primary)
 
-                if subtaskCount.total > 0 {
-                    Text("\(subtaskCount.completed)/\(subtaskCount.total) subtasks")
+                if subtaskCount > 0 {
+                    Text("\(subtaskCount) subtask\(subtaskCount == 1 ? "" : "s")")
                         .font(.inter(.caption))
                         .foregroundColor(.secondary)
                 }

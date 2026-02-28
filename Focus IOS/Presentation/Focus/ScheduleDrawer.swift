@@ -190,8 +190,7 @@ struct ScheduleDrawer: View {
                                 .foregroundColor(task.isCompleted ? .secondary : .primary)
 
                             if hasSubtasks {
-                                let completedCount = subtasks.filter { $0.isCompleted }.count
-                                Text("\(completedCount)/\(subtasks.count) subtasks")
+                                Text("\(subtasks.count) subtask\(subtasks.count == 1 ? "" : "s")")
                                     .font(.inter(.caption))
                                     .foregroundColor(.secondary)
                             }
@@ -214,7 +213,7 @@ struct ScheduleDrawer: View {
                                 DragGesture(minimumDistance: 5, coordinateSpace: .global)
                                     .onChanged { value in
                                         let subtaskLabel: String? = hasSubtasks
-                                            ? "\(subtasks.filter { $0.isCompleted }.count)/\(subtasks.count) subtasks"
+                                            ? "\(subtasks.count) subtask\(subtasks.count == 1 ? "" : "s")"
                                             : nil
                                         timelineVM.handleScheduleDragChanged(
                                             location: value.location,
@@ -306,8 +305,7 @@ struct ScheduleDrawer: View {
                                 .foregroundColor(task.isCompleted ? .secondary : .primary)
 
                             if hasSubtasks {
-                                let completedCount = subtasks.filter { $0.isCompleted }.count
-                                Text("\(completedCount)/\(subtasks.count) subtasks")
+                                Text("\(subtasks.count) subtask\(subtasks.count == 1 ? "" : "s")")
                                     .font(.inter(.caption))
                                     .foregroundColor(.secondary)
                             }
@@ -327,7 +325,7 @@ struct ScheduleDrawer: View {
                                 DragGesture(minimumDistance: 5, coordinateSpace: .global)
                                     .onChanged { value in
                                         let subtaskLabel: String? = hasSubtasks
-                                            ? "\(subtasks.filter { $0.isCompleted }.count)/\(subtasks.count) subtasks"
+                                            ? "\(subtasks.count) subtask\(subtasks.count == 1 ? "" : "s")"
                                             : nil
                                         timelineVM.handleScheduleDragChanged(
                                             location: value.location,

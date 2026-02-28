@@ -135,13 +135,13 @@ struct DateNavigator: View {
 
                             VStack(spacing: 4) {
                                 Text(primaryDateText)
-                                    .font(.inter(size: 32, weight: .bold))
+                                    .font(.inter(size: 32, weight: .regular))
                                     .foregroundColor(.primary)
 
                                 if let secondary = secondaryDateText {
                                     Text(secondary)
                                         .font(.montserratHeader(.subheadline, weight: .medium))
-                                        .foregroundColor(.primary)
+                                        .foregroundColor(.secondary)
                                 }
                             }
                             .contentShape(Rectangle())

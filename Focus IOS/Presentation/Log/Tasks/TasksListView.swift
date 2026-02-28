@@ -615,8 +615,7 @@ struct FlatTaskRow: View {
 
                 // Parent: subtask count badge
                 if isParent, let subtasks = viewModel.subtasksMap[task.id], !subtasks.isEmpty {
-                    let completedCount = subtasks.filter { $0.isCompleted }.count
-                    Text("\(completedCount)/\(subtasks.count) subtasks")
+                    Text("\(subtasks.count) subtask\(subtasks.count == 1 ? "" : "s")")
                         .font(.inter(.caption))
                         .foregroundColor(.secondary)
                 }
@@ -761,8 +760,7 @@ struct ExpandableTaskRow: View {
 
                 // Subtask count indicator
                 if let subtasks = viewModel.subtasksMap[task.id], !subtasks.isEmpty {
-                    let completedCount = subtasks.filter { $0.isCompleted }.count
-                    Text("\(completedCount)/\(subtasks.count) subtasks")
+                    Text("\(subtasks.count) subtask\(subtasks.count == 1 ? "" : "s")")
                         .font(.inter(.caption))
                         .foregroundColor(.secondary)
                 }

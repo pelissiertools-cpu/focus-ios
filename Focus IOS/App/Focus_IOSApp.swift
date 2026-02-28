@@ -19,6 +19,14 @@ struct Focus_IOSApp: App {
         let auth = AuthService()
         _authService = StateObject(wrappedValue: auth)
         _focusViewModel = StateObject(wrappedValue: FocusTabViewModel(authService: auth))
+
+        // DEBUG: Print available Inter fonts — remove after testing
+        for family in UIFont.familyNames.sorted() where family.contains("Inter") {
+            print("Family: \(family)")
+            for name in UIFont.fontNames(forFamilyName: family) {
+                print("  -> \(name)")
+            }
+        }
     }
 
     var body: some Scene {

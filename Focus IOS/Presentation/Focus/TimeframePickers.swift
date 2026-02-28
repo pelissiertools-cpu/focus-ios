@@ -76,7 +76,7 @@ struct DateNavigator: View {
                         Spacer()
                         Button(action: onProfileTap) {
                             Image(systemName: "person")
-                                .font(.sf(.body, weight: .medium))
+                                .font(.inter(.body, weight: .medium))
                                 .foregroundColor(.primary)
                                 .frame(width: 36, height: 36)
                                 .glassEffect(.regular.interactive(), in: .circle)
@@ -108,9 +108,9 @@ struct DateNavigator: View {
                         } label: {
                             HStack(spacing: 4) {
                                 Text(LocalizedStringKey(selectedTimeframe.displayName))
-                                    .font(.sf(.subheadline, weight: .medium))
+                                    .font(.inter(.subheadline, weight: .medium))
                                 Image(systemName: "chevron.down")
-                                    .font(.sf(.caption2, weight: .semibold))
+                                    .font(.inter(.caption2, weight: .semiBold))
                             }
                             .foregroundColor(.secondary)
                             .padding(.horizontal, 12)
@@ -124,7 +124,7 @@ struct DateNavigator: View {
                                 navigatePrev()
                             } label: {
                                 Image(systemName: "chevron.left")
-                                    .font(.sf(.body, weight: .medium))
+                                    .font(.inter(.body, weight: .medium))
                                     .foregroundColor(.secondary)
                                     .frame(width: 44, height: 44)
                                     .contentShape(Rectangle())
@@ -135,7 +135,7 @@ struct DateNavigator: View {
 
                             VStack(spacing: 4) {
                                 Text(primaryDateText)
-                                    .font(.system(size: 32, weight: .bold, design: .serif))
+                                    .font(.inter(size: 32, weight: .bold))
                                     .foregroundColor(.primary)
 
                                 if let secondary = secondaryDateText {
@@ -158,7 +158,7 @@ struct DateNavigator: View {
                                 navigateNext()
                             } label: {
                                 Image(systemName: "chevron.right")
-                                    .font(.sf(.body, weight: .medium))
+                                    .font(.inter(.body, weight: .medium))
                                     .foregroundColor(.secondary)
                                     .frame(width: 44, height: 44)
                                     .contentShape(Rectangle())

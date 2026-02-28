@@ -904,10 +904,7 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
                 }
             }
 
-            // Inline add row after existing focus items (when there's room)
-            if !focusUncompleted.isEmpty && canAddTask(to: .focus) {
-                result.append(.addFocusRow)
-            }
+            // (Add button is now on the Focus header pill — no inline add row when items exist)
 
             if isFocusDoneExpanded || !focusUncompleted.isEmpty || isFocusDoneCollapsing {
                 for c in focusCompleted where !focusDoneHiddenIds.contains(c.id) {

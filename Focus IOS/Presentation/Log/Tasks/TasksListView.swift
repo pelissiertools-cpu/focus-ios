@@ -310,6 +310,7 @@ struct PrioritySectionHeader: View {
     let count: Int
     let isCollapsed: Bool
     let onToggle: () -> Void
+    var onAddTap: (() -> Void)? = nil
 
     var body: some View {
         VStack(spacing: 0) {
@@ -322,7 +323,7 @@ struct PrioritySectionHeader: View {
                         .frame(width: 15, height: 15)
 
                     Text(priority.displayName)
-                        .font(.golosText(size: 14))
+                        .font(.inter(size: 14))
 
                     if count > 0 {
                         Text("\(count)")
@@ -343,6 +344,19 @@ struct PrioritySectionHeader: View {
                 )
 
                 Spacer()
+
+                if let onAddTap {
+                    Button {
+                        onAddTap()
+                    } label: {
+                        Image(systemName: "plus")
+                            .font(.sf(.caption, weight: .semibold))
+                            .foregroundColor(.white)
+                            .frame(width: 26, height: 26)
+                            .background(Color.darkGray, in: Circle())
+                    }
+                    .buttonStyle(.plain)
+                }
             }
             .padding(.leading, 16)
             .padding(.trailing, 12)

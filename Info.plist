@@ -45,6 +45,14 @@
 		<string>GolosText-Bold.ttf</string>
 		<string>GolosText-ExtraBold.ttf</string>
 		<string>GolosText-Black.ttf</string>
+		<string>Inter_18pt-Thin.ttf</string>
+		<string>Inter_18pt-ExtraLight.ttf</string>
+		<string>Inter_18pt-Light.ttf</string>
+		<string>Inter_18pt-Regular.ttf</string>
+		<string>Inter_18pt-Medium.ttf</string>
+		<string>Inter_18pt-SemiBold.ttf</string>
+		<string>Inter_18pt-Bold.ttf</string>
+		<string>Inter_18pt-ExtraBold.ttf</string>
 	</array>
 </dict>
 </plist>

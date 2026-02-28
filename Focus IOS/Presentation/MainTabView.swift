@@ -27,7 +27,12 @@ struct MainTabView: View {
         TabView(selection: $selectedTab) {
             FocusTabView(selectedTab: $selectedTab)
                 .tabItem {
-                    Label("Focus", systemImage: "target")
+                    Label {
+                        Text("Focus")
+                    } icon: {
+                        Image("CheckCircle")
+                            .renderingMode(.template)
+                    }
                 }
                 .tag(0)
                 .environmentObject(focusViewModel)
@@ -66,7 +71,7 @@ private class TabBarSetterView: UIView {
             }
             return
         }
-        items[0].selectedImage = UIImage(systemName: "target")?
+        items[0].selectedImage = UIImage(named: "CheckCircle")?
             .withTintColor(.label, renderingMode: .alwaysOriginal)
         items[1].selectedImage = UIImage(systemName: "tray.full")?
             .withTintColor(.label, renderingMode: .alwaysOriginal)

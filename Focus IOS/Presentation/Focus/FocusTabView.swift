@@ -501,7 +501,6 @@ struct FocusTabView: View {
                         .font(.inter(.subheadline))
                         .foregroundColor(.secondary)
                         .frame(maxWidth: .infinity, minHeight: isEmpty ? 120 : nil)
-                        .moveDisabled(true)
                         .listRowBackground(Color.clear)
                         .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
                     .listRowSeparator(.hidden)
@@ -813,7 +812,6 @@ struct FocusTabView: View {
                         .font(.inter(.subheadline))
                         .foregroundColor(.secondary)
                         .frame(maxWidth: .infinity, minHeight: isEmpty ? 120 : nil)
-                        .moveDisabled(true)
                         .listRowBackground(Color.clear)
                         .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
                     .listRowSeparator(.hidden)
@@ -2507,8 +2505,7 @@ struct CommitmentRow: View {
 
                     // Subtask count indicator
                     if hasSubtasks {
-                        let completedCount = subtasks.filter { $0.isCompleted }.count
-                        Text("\(completedCount)/\(subtasks.count) subtasks")
+                        Text("\(subtasks.count) subtask\(subtasks.count == 1 ? "" : "s")")
                             .font(.inter(.caption))
                             .foregroundColor(.secondary)
                     }

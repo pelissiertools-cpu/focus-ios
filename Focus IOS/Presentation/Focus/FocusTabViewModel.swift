@@ -1053,7 +1053,17 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
     // MARK: - Flat Move Handler
 
     /// Handle .onMove from the flat ForEach — supports commitment reorder, cross-section moves, and subtask reorder.
+    /// Wrapped in a disabled-animation transaction to prevent stacking glitches from
+    /// SwiftUI's optimistic .onMove animation conflicting with our data-driven reorder.
     func handleFlatMove(from source: IndexSet, to destination: Int) {
+        var transaction = Transaction()
+        transaction.animation = nil
+        withTransaction(transaction) {
+            performFlatMove(from: source, to: destination)
+        }
+    }
+
+    private func performFlatMove(from source: IndexSet, to destination: Int) {
         let flat = flattenedDisplayItems
         guard let fromIdx = source.first else { return }
 
@@ -1068,11 +1078,16 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
 
         let sourceSection = movedCommitment.section
 
-        // Determine destination section by scanning backward for nearest section header
+        // Determine destination section by scanning backward for nearest section header or priority header
         var destSection: Section = .focus
         for i in stride(from: min(destination, flat.count - 1), through: 0, by: -1) {
             if case .sectionHeader(let section) = flat[i] {
                 destSection = section
+                break
+            }
+            // A todoPriorityHeader unambiguously means we're in the .todo section
+            if case .todoPriorityHeader = flat[i] {
+                destSection = .todo
                 break
             }
         }
@@ -1106,14 +1121,16 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
                 var uncompleted = uncompletedCommitmentsForSection(sourceSection)
                 uncompleted.move(fromOffsets: IndexSet(integer: commitmentFrom), toOffset: commitmentTo)
 
-                // Reassign sort orders
+                // Reassign sort orders on snapshot, then apply atomically
+                var updatedCommitments = commitments
                 var updates: [(id: UUID, sortOrder: Int)] = []
                 for (index, c) in uncompleted.enumerated() {
-                    if let mainIndex = commitments.firstIndex(where: { $0.id == c.id }) {
-                        commitments[mainIndex].sortOrder = index
+                    if let mainIndex = updatedCommitments.firstIndex(where: { $0.id == c.id }) {
+                        updatedCommitments[mainIndex].sortOrder = index
                     }
                     updates.append((id: c.id, sortOrder: index))
                 }
+                commitments = updatedCommitments
                 _Concurrency.Task { await persistCommitmentSortOrders(updates) }
             }
 
@@ -1132,23 +1149,115 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
                 }
             }
 
-            // Find insertion index among destination section's uncompleted commitments
-            let destCommitments = flat.enumerated().compactMap { (i, item) -> (flatIdx: Int, commitment: Commitment)? in
-                if case .commitment(let c) = item, c.section == destSection {
-                    return (i, c)
-                }
-                return nil
-            }
+            if destSection == .todo && todoPrioritySortEnabled {
+                // -- Priority-aware cross-section move into To-Do --
+                let destPriority = resolveDestinationTodoPriority(flat: flat, destination: destination)
 
-            var insertIdx = destCommitments.count
-            for (ci, entry) in destCommitments.enumerated() {
-                if destination <= entry.flatIdx {
-                    insertIdx = ci
-                    break
+                // Prepare task priority update (don't apply yet)
+                var taskToUpdate: FocusTask? = nil
+                if var task = tasksMap[movedCommitment.taskId], task.priority != destPriority {
+                    task.priority = destPriority
+                    task.modifiedDate = Date()
+                    taskToUpdate = task
                 }
-            }
 
-            moveCommitmentToSectionAtIndex(movedCommitment, to: destSection, atIndex: insertIdx)
+                // Find insertion index within the destination priority group
+                // (use current tasksMap for lookup since we haven't applied the priority change yet)
+                let destPriorityCommitments = flat.enumerated().compactMap { (i, item) -> (flatIdx: Int, commitment: Commitment)? in
+                    if case .commitment(let c) = item,
+                       c.section == .todo,
+                       (tasksMap[c.taskId]?.priority ?? .low) == destPriority {
+                        return (i, c)
+                    }
+                    return nil
+                }
+
+                var priorityInsertIdx = destPriorityCommitments.count
+                for (ci, entry) in destPriorityCommitments.enumerated() {
+                    if destination <= entry.flatIdx {
+                        priorityInsertIdx = ci
+                        break
+                    }
+                }
+
+                // Compute all changes on a snapshot, then apply atomically
+                let sourceList = uncompletedCommitmentsForSection(sourceSection)
+                    .filter { $0.id != movedCommitment.id }
+                var destPriorityList = uncompletedTodoCommitments(for: destPriority)
+                let clampedIdx = min(priorityInsertIdx, destPriorityList.count)
+                var movedC = movedCommitment
+                movedC.section = .todo
+                destPriorityList.insert(movedC, at: clampedIdx)
+
+                // Build the new commitments array with all changes applied at once
+                var updatedCommitments = commitments
+
+                // Apply section change
+                if let mainIndex = updatedCommitments.firstIndex(where: { $0.id == movedCommitment.id }) {
+                    updatedCommitments[mainIndex].section = .todo
+                }
+
+                // Reassign sort orders for source section
+                var allUpdates: [(id: UUID, sortOrder: Int, section: Section)] = []
+                for (index, c) in sourceList.enumerated() {
+                    if let mainIndex = updatedCommitments.firstIndex(where: { $0.id == c.id }) {
+                        updatedCommitments[mainIndex].sortOrder = index
+                    }
+                    allUpdates.append((id: c.id, sortOrder: index, section: sourceSection))
+                }
+
+                // Reassign sort orders for destination priority group
+                for (index, c) in destPriorityList.enumerated() {
+                    if let mainIndex = updatedCommitments.firstIndex(where: { $0.id == c.id }) {
+                        updatedCommitments[mainIndex].sortOrder = index
+                    }
+                    allUpdates.append((id: c.id, sortOrder: index, section: .todo))
+                }
+
+                // Reassign sort orders for other todo priority groups (keep consistent)
+                for priority in Priority.allCases where priority != destPriority {
+                    let prioList = uncompletedTodoCommitments(for: priority)
+                    for (index, c) in prioList.enumerated() {
+                        if let mainIndex = updatedCommitments.firstIndex(where: { $0.id == c.id }) {
+                            updatedCommitments[mainIndex].sortOrder = index
+                        }
+                        allUpdates.append((id: c.id, sortOrder: index, section: .todo))
+                    }
+                }
+
+                // Apply all state changes atomically (single @Published batch)
+                if let task = taskToUpdate {
+                    tasksMap[task.id] = task
+                }
+                commitments = updatedCommitments
+
+                // Persist in background
+                _Concurrency.Task { @MainActor in
+                    if let task = taskToUpdate {
+                        do { try await self.taskRepository.updateTask(task) }
+                        catch { self.errorMessage = "Failed to update priority: \(error.localizedDescription)" }
+                    }
+                    await self.persistCommitmentSortOrdersAndSections(allUpdates)
+                }
+            } else {
+                // -- Standard cross-section move (no priority awareness needed) --
+                let destCommitments = flat.enumerated().compactMap { (i, item) -> (flatIdx: Int, commitment: Commitment)? in
+                    if case .commitment(let c) = item, c.section == destSection {
+                        return (i, c)
+                    }
+                    return nil
+                }
+
+                var insertIdx = destCommitments.count
+                for (ci, entry) in destCommitments.enumerated() {
+                    if destination <= entry.flatIdx {
+                        insertIdx = ci
+                        break
+                    }
+                }
+
+                moveCommitmentToSectionAtIndex(movedCommitment, to: destSection, atIndex: insertIdx)
+            }
         }
     }
 
@@ -1195,13 +1304,15 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
             guard let fromIdx = samePriorityList.firstIndex(where: { $0.id == movedCommitment.id }) else { return }
             samePriorityList.move(fromOffsets: IndexSet(integer: fromIdx), toOffset: min(commitmentTo, samePriorityList.count))
 
+            var updatedCommitments = commitments
             var updates: [(id: UUID, sortOrder: Int)] = []
             for (index, c) in samePriorityList.enumerated() {
-                if let mainIndex = commitments.firstIndex(where: { $0.id == c.id }) {
-                    commitments[mainIndex].sortOrder = index
+                if let mainIndex = updatedCommitments.firstIndex(where: { $0.id == c.id }) {
+                    updatedCommitments[mainIndex].sortOrder = index
                 }
                 updates.append((id: c.id, sortOrder: index))
             }
+            commitments = updatedCommitments
             _Concurrency.Task { await persistCommitmentSortOrders(updates) }
 
         } else {
@@ -1210,7 +1321,6 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
             let oldPriority = task.priority
             task.priority = destinationPriority
             task.modifiedDate = Date()
-            tasksMap[task.id] = task
 
             // Find insertion index in destination priority
             let destCommitments = flat.enumerated().compactMap { (i, item) -> (flatIdx: Int, commitment: Commitment)? in
@@ -1237,10 +1347,12 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
             let clampedIdx = min(insertIdx, destList.count)
             destList.insert(movedCommitment, at: clampedIdx)
 
+            // Build updated commitments snapshot
+            var updatedCommitments = commitments
             var updates: [(id: UUID, sortOrder: Int)] = []
             for (index, c) in destList.enumerated() {
-                if let mainIndex = commitments.firstIndex(where: { $0.id == c.id }) {
-                    commitments[mainIndex].sortOrder = index
+                if let mainIndex = updatedCommitments.firstIndex(where: { $0.id == c.id }) {
+                    updatedCommitments[mainIndex].sortOrder = index
                 }
                 updates.append((id: c.id, sortOrder: index))
             }
@@ -1248,11 +1360,15 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
             // Reassign sort orders in source priority group
             let sourceList = uncompletedTodoCommitments(for: oldPriority)
             for (index, c) in sourceList.enumerated() {
-                if let mainIndex = commitments.firstIndex(where: { $0.id == c.id }) {
-                    commitments[mainIndex].sortOrder = index
+                if let mainIndex = updatedCommitments.firstIndex(where: { $0.id == c.id }) {
+                    updatedCommitments[mainIndex].sortOrder = index
                 }
                 updates.append((id: c.id, sortOrder: index))
             }
+
+            // Apply all state changes atomically
+            tasksMap[task.id] = task
+            commitments = updatedCommitments
 
             // Persist priority change + sort orders
             _Concurrency.Task {

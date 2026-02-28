@@ -2493,13 +2493,6 @@ struct CommitmentRow: View {
                         .foregroundColor(.secondary)
                 }
 
-                // Focus number
-                if let number = focusNumber {
-                    Text("\(number)")
-                        .font(fontOverride ?? .inter(.body))
-                        .foregroundColor(.secondary)
-                        .monospacedDigit()
-                }
 
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 6) {

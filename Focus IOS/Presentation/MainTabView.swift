@@ -12,10 +12,11 @@ struct MainTabView: View {
     @EnvironmentObject var focusViewModel: FocusTabViewModel
 
     init() {
+        let tabGray = UIColor(red: 0x6A/255.0, green: 0x6A/255.0, blue: 0x6A/255.0, alpha: 1)
         let appearance = UITabBarAppearance()
-        appearance.stackedLayoutAppearance.normal.iconColor = UIColor.secondaryLabel
-        appearance.stackedLayoutAppearance.normal.titleTextAttributes = [.foregroundColor: UIColor.secondaryLabel]
-        appearance.stackedLayoutAppearance.selected.iconColor = UIColor.label
+        appearance.stackedLayoutAppearance.normal.iconColor = tabGray
+        appearance.stackedLayoutAppearance.normal.titleTextAttributes = [.foregroundColor: tabGray]
+        appearance.stackedLayoutAppearance.selected.iconColor = .label
         appearance.stackedLayoutAppearance.selected.titleTextAttributes = [.foregroundColor: UIColor.label]
         UITabBar.appearance().standardAppearance = appearance
         UITabBar.appearance().scrollEdgeAppearance = appearance

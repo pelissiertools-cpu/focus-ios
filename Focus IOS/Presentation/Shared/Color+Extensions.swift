@@ -14,7 +14,7 @@ extension Color {
     /// Blue for Focus section (#2E59F4)
     static let completedPurple = Color(red: 0x2E/255.0, green: 0x59/255.0, blue: 0xF4/255.0)
     /// Dark gray for FAB and filter pill backgrounds
-    static let darkGray = Color(red: 40/255, green: 45/255, blue: 46/255)
+    static let darkGray = Color(red: 0x6A/255.0, green: 0x6A/255.0, blue: 0x6A/255.0)
     /// Blue gradient colors for commit pills
     static let commitGradientDark = Color(red: 0.0, green: 0.2, blue: 1.0)
     static let commitGradientLight = Color(red: 0.15, green: 0.35, blue: 1.0)

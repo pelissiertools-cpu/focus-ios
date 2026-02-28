@@ -50,4 +50,10 @@ extension Color {
             ? UIColor.white.withAlphaComponent(0.1)
             : UIColor.white.withAlphaComponent(0.6)
     })
+    /// Subtle glass tint — reduces white glare in light mode, invisible in dark
+    static let glassTint = Color(UIColor { traits in
+        traits.userInterfaceStyle == .dark
+            ? UIColor(white: 0.5, alpha: 0.01)
+            : UIColor(white: 0.5, alpha: 0.12)
+    })
 }

@@ -90,7 +90,7 @@ struct ProjectsListView: View {
                                     .font(.inter(.body, weight: .medium))
                                     .foregroundColor(.primary)
                                     .frame(width: 36, height: 36)
-                                    .glassEffect(.regular.interactive(), in: .circle)
+                                    .glassEffect(.regular.tint(.glassTint).interactive(), in: .circle)
                             }
                             .buttonStyle(.plain)
                         }
@@ -284,7 +284,7 @@ struct ProjectsListView: View {
                 .padding(.horizontal, 10)
                 .padding(.vertical, 6)
                 .clipShape(Capsule())
-                .glassEffect(.regular.interactive(), in: .capsule)
+                .glassEffect(.regular.tint(.glassTint).interactive(), in: .capsule)
             }
             .buttonStyle(.plain)
 

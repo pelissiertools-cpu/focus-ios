@@ -240,7 +240,7 @@ struct LogTabView: View {
                                 .background {
                                     if selectedTab == index {
                                         Color.clear
-                                            .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 16))
+                                            .glassEffect(.regular.tint(.glassTint).interactive(), in: .rect(cornerRadius: 16))
                                             .matchedGeometryEffect(id: "activeTab", in: segmentedAnimation)
                                     }
                                 }
@@ -249,7 +249,7 @@ struct LogTabView: View {
                     }
                 }
                 .padding(4)
-                .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 20))
+                .glassEffect(.regular.tint(.glassTint).interactive(), in: .rect(cornerRadius: 20))
                 .padding(.horizontal, 32)
                 .padding(.top, 8)
                 .padding(.bottom, 14)
@@ -341,7 +341,7 @@ struct LogTabView: View {
                 .font(.inter(.body, weight: .medium))
                 .foregroundColor(.primary)
                 .frame(width: 36, height: 36)
-                .glassEffect(.regular.interactive(), in: .circle)
+                .glassEffect(.regular.tint(.glassTint).interactive(), in: .circle)
         }
     }
 

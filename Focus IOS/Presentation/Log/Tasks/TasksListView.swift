@@ -93,7 +93,7 @@ struct TasksListView: View {
                                     .font(.inter(.body, weight: .medium))
                                     .foregroundColor(.primary)
                                     .frame(width: 36, height: 36)
-                                    .glassEffect(.regular.interactive(), in: .circle)
+                                    .glassEffect(.regular.tint(.glassTint).interactive(), in: .circle)
                             }
                             .buttonStyle(.plain)
                         }
@@ -528,7 +528,7 @@ struct LogDonePillView: View {
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
                     .clipShape(Capsule())
-                    .glassEffect(.regular.interactive(), in: .capsule)
+                    .glassEffect(.regular.tint(.glassTint).interactive(), in: .capsule)
                 }
                 .buttonStyle(.plain)
 
@@ -970,7 +970,7 @@ struct SortMenuButton<VM: LogFilterable>: View {
                 .font(.inter(.body, weight: .semiBold))
                 .foregroundColor(.primary)
                 .frame(width: 36, height: 36)
-                .glassEffect(.regular.interactive(), in: .circle)
+                .glassEffect(.regular.tint(.glassTint).interactive(), in: .circle)
                 .allowsHitTesting(false)
         )
     }

@@ -974,24 +974,22 @@ struct FocusTabView: View {
                         }
                     }
                     Spacer()
-                    if !viewModel.isTodoSectionCollapsed {
-                        Button {
-                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                            viewModel.addTaskSection = .todo
-                            withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
-                                viewModel.showAddTaskSheet = true
-                            }
-                        } label: {
-                            Image(systemName: "plus")
-                                .font(.inter(.caption, weight: .semiBold))
-                                .foregroundColor(.white)
-                                .frame(width: 26, height: 26)
-                                .background(Color.darkGray, in: Circle())
+                    Button {
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        viewModel.addTaskSection = .todo
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                            viewModel.showAddTaskSheet = true
                         }
-                        .buttonStyle(.plain)
-                        .opacity(viewModel.showAddTaskSheet ? 0 : 1)
-                        .allowsHitTesting(!viewModel.showAddTaskSheet)
+                    } label: {
+                        Image(systemName: "plus")
+                            .font(.inter(.caption, weight: .semiBold))
+                            .foregroundColor(.white)
+                            .frame(width: 26, height: 26)
+                            .background(Color.darkGray, in: Circle())
                     }
+                    .buttonStyle(.plain)
+                    .opacity(viewModel.showAddTaskSheet ? 0 : 1)
+                    .allowsHitTesting(!viewModel.showAddTaskSheet)
                 }
                 .padding(.horizontal, 12)
                 .padding(.top, 28)

@@ -33,7 +33,7 @@ struct LogTabView: View {
     @State private var addTaskCategoryId: UUID? = nil
     @State private var addTaskCommitExpanded = false
     @State private var addTaskTimeframe: Timeframe = .daily
-    @State private var addTaskSection: Section = .focus
+    @State private var addTaskSection: Section = .todo
     @State private var addTaskDates: Set<Date> = []
     @State private var addTaskPriority: Priority = .low
     @State private var addTaskOptionsExpanded = false
@@ -48,7 +48,7 @@ struct LogTabView: View {
     @State private var addListCategoryId: UUID? = nil
     @State private var addListCommitExpanded = false
     @State private var addListTimeframe: Timeframe = .daily
-    @State private var addListSection: Section = .focus
+    @State private var addListSection: Section = .todo
     @State private var addListDates: Set<Date> = []
     @State private var addListDatesSnapshot: Set<Date> = []
     @State private var addListOptionsExpanded = false
@@ -61,7 +61,7 @@ struct LogTabView: View {
     @State private var addProjectCategoryId: UUID? = nil
     @State private var addProjectCommitExpanded = false
     @State private var addProjectTimeframe: Timeframe = .daily
-    @State private var addProjectSection: Section = .focus
+    @State private var addProjectSection: Section = .todo
     @State private var addProjectDates: Set<Date> = []
     @State private var addProjectDatesSnapshot: Set<Date> = []
     @State private var addProjectOptionsExpanded = false

@@ -2099,7 +2099,7 @@ struct SectionView: View {
                 }
             }
             .padding(.vertical, 8)
-            .padding(.horizontal, 14)
+            .padding(.horizontal, 16)
 
             // Committed Tasks (hidden when collapsed)
             if !viewModel.isSectionCollapsed(section) {
@@ -2362,7 +2362,14 @@ struct FocusSectionHeaderRow: View {
 
                     if let onAddTap {
                         Button {
-                            onAddTap()
+                            if section == .focus && !viewModel.canAddTask(to: .focus) {
+                                showCapacityPopover = true
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                                    showCapacityPopover = false
+                                }
+                            } else {
+                                onAddTap()
+                            }
                         } label: {
                             Image(systemName: "plus")
                                 .font(.inter(.caption, weight: .semiBold))
@@ -2371,6 +2378,22 @@ struct FocusSectionHeaderRow: View {
                                 .background(Color.darkGray, in: Circle())
                         }
                         .buttonStyle(.plain)
+                        .popover(isPresented: $showCapacityPopover) {
+                            let current = viewModel.taskCount(for: .focus)
+                            let max = Section.focus.maxTasks(for: viewModel.selectedTimeframe) ?? 0
+                            VStack(spacing: 4) {
+                                Text("Focus")
+                                    .font(.inter(.caption))
+                                    .foregroundStyle(.secondary)
+                                Text("Section full")
+                                    .font(.inter(.subheadline, weight: .semiBold))
+                                Text("\(current)/\(max)")
+                                    .font(.inter(.title3, weight: .bold))
+                                    .foregroundStyle(Color.appRed)
+                            }
+                            .padding()
+                            .presentationCompactAdaptation(.popover)
+                        }
                     }
                 }
                 .frame(minHeight: 50)
@@ -2382,7 +2405,8 @@ struct FocusSectionHeaderRow: View {
                 }
                 .padding(.top, 6)
                 .padding(.bottom, 0)
-                .padding(.horizontal, 12)
+                .padding(.leading, 12)
+                .padding(.trailing, 16)
             } else {
                 // Non-focus sections: invisible divider (matches background)
                 Rectangle()
@@ -2601,6 +2625,7 @@ struct CommitmentRow: View {
                     Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
                         .font(.inter(.title3))
                         .foregroundColor(task.isCompleted ? Color.completedPurple.opacity(0.6) : .gray)
+                        .frame(width: 26)
                 }
                 .buttonStyle(.plain)
             }

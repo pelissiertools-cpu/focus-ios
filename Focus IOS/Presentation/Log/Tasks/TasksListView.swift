@@ -359,7 +359,7 @@ struct PrioritySectionHeader: View {
                 }
             }
             .padding(.leading, 16)
-            .padding(.trailing, 12)
+            .padding(.trailing, 16)
             .padding(.bottom, 8)
             .contentShape(Rectangle())
             .onTapGesture {

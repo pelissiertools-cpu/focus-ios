@@ -79,7 +79,7 @@ struct DateNavigator: View {
                                 .font(.inter(.body, weight: .medium))
                                 .foregroundColor(.primary)
                                 .frame(width: 36, height: 36)
-                                .glassEffect(.regular.interactive(), in: .circle)
+                                .glassEffect(.regular.tint(.glassTint).interactive(), in: .circle)
                         }
                     }
                     .padding(.trailing, 32)

@@ -572,12 +572,12 @@ struct FocusTabView: View {
                             Text(label.uppercased())
                                 .font(.inter(.caption, weight: .semiBold))
                                 .foregroundColor(.secondary)
-                            Spacer()
                             Image(systemName: "chevron.right")
                                 .font(.inter(size: 9, weight: .semiBold))
                                 .foregroundColor(.secondary)
                                 .rotationEffect(.degrees(viewModel.isRollupGroupExpanded(date) ? 90 : 0))
                                 .animation(.easeInOut(duration: 0.2), value: viewModel.isRollupGroupExpanded(date))
+                            Spacer()
                         }
                         .padding(.horizontal, 12)
                     }
@@ -592,11 +592,10 @@ struct FocusTabView: View {
                         CommitmentRow(
                             commitment: commitment,
                             task: task,
-                            section: commitment.section,
+                            section: .todo,
                             allowBreakdown: false,
                             viewModel: viewModel
                         )
-                        .opacity(0.8)
                         .moveDisabled(true)
                         .listRowBackground(Color.clear)
                         .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
@@ -867,12 +866,12 @@ struct FocusTabView: View {
                             Text(label.uppercased())
                                 .font(.inter(.caption, weight: .semiBold))
                                 .foregroundColor(.secondary)
-                            Spacer()
                             Image(systemName: "chevron.right")
                                 .font(.inter(size: 9, weight: .semiBold))
                                 .foregroundColor(.secondary)
                                 .rotationEffect(.degrees(viewModel.isRollupGroupExpanded(date) ? 90 : 0))
                                 .animation(.easeInOut(duration: 0.2), value: viewModel.isRollupGroupExpanded(date))
+                            Spacer()
                         }
                         .padding(.horizontal, 12)
                     }
@@ -887,11 +886,10 @@ struct FocusTabView: View {
                         CommitmentRow(
                             commitment: commitment,
                             task: task,
-                            section: commitment.section,
+                            section: .todo,
                             allowBreakdown: false,
                             viewModel: viewModel
                         )
-                        .opacity(0.8)
                         .moveDisabled(true)
                         .listRowBackground(Color.clear)
                         .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
@@ -962,7 +960,7 @@ struct FocusTabView: View {
                 HStack {
                     HStack(spacing: 8) {
                         Text("Unassigned Tasks")
-                            .font(.inter(size: 22, weight: .semiBold))
+                            .font(.inter(size: 22, weight: .medium))
                         Image(systemName: "chevron.right")
                             .font(.inter(size: 8, weight: .semiBold))
                             .foregroundColor(.secondary)
@@ -1981,7 +1979,7 @@ struct SectionView: View {
             // Section Header
             HStack(alignment: .lastTextBaseline, spacing: 12) {
                 Text(title)
-                    .font(.inter(size: 22, weight: .semiBold))
+                    .font(.inter(size: 22, weight: .medium))
 
                 // Count display
                 if let maxTasks = section.maxTasks(for: viewModel.selectedTimeframe) {
@@ -2387,7 +2385,7 @@ struct RollupSectionHeaderRow: View {
             HStack(spacing: 12) {
                 HStack(spacing: 8) {
                     Text(viewModel.overviewSectionTitle)
-                        .font(.inter(size: 22, weight: .semiBold))
+                        .font(.inter(size: 22, weight: .medium))
                     Image(systemName: "chevron.right")
                         .font(.inter(size: 8, weight: .semiBold))
                         .foregroundColor(.secondary)

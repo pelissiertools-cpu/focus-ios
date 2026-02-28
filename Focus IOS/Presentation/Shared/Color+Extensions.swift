@@ -14,7 +14,7 @@ extension Color {
     /// Blue for Focus section (#2E59F4)
     static let completedPurple = Color(red: 0x2E/255.0, green: 0x59/255.0, blue: 0xF4/255.0)
     /// Dark gray for FAB and filter pill backgrounds
-    static let darkGray = Color(red: 0x6A/255.0, green: 0x6A/255.0, blue: 0x6A/255.0)
+    static let darkGray = Color(red: 0xC7/255.0, green: 0xC6/255.0, blue: 0xC6/255.0)
     /// Blue gradient colors for commit pills
     static let commitGradientDark = Color(red: 0.0, green: 0.2, blue: 1.0)
     static let commitGradientLight = Color(red: 0.15, green: 0.35, blue: 1.0)
@@ -28,7 +28,7 @@ extension Color {
     static let appBackground = Color(UIColor { traits in
         traits.userInterfaceStyle == .dark
             ? UIColor.systemBackground
-            : UIColor(red: 0xEC/255.0, green: 0xEC/255.0, blue: 0xEE/255.0, alpha: 1)
+            : UIColor(red: 0xF1/255.0, green: 0xF1/255.0, blue: 0xF1/255.0, alpha: 1)
     })
     /// Alias kept for backward compatibility
     static let sectionedBackground = appBackground

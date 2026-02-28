@@ -248,6 +248,7 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                                     .tint(.primary)
                             } else {
                                 Image(systemName: hasGeneratedBreakdown ? "arrow.clockwise" : "sparkles")
+                                    .symbolRenderingMode(.monochrome)
                                     .font(.sf(.subheadline, weight: .semibold))
                             }
                             Text(LocalizedStringKey(hasGeneratedBreakdown ? "Regenerate" : "Suggest Breakdown"))

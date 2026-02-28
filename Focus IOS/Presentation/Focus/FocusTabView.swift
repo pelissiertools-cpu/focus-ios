@@ -1215,7 +1215,7 @@ struct FocusTabView: View {
                         .foregroundColor(isAddTaskTitleEmpty ? .secondary : .white)
                         .frame(width: 36, height: 36)
                         .background(
-                            isAddTaskTitleEmpty ? Color(.systemGray4) : Color.appRed,
+                            isAddTaskTitleEmpty ? Color(.systemGray4) : Color.completedPurple,
                             in: Circle()
                         )
                 }
@@ -1373,7 +1373,7 @@ struct FocusTabView: View {
                         .foregroundColor(isAddListTitleEmpty ? .secondary : .white)
                         .frame(width: 36, height: 36)
                         .background(
-                            isAddListTitleEmpty ? Color(.systemGray4) : Color.appRed,
+                            isAddListTitleEmpty ? Color(.systemGray4) : Color.completedPurple,
                             in: Circle()
                         )
                 }
@@ -1538,7 +1538,7 @@ struct FocusTabView: View {
                         .foregroundColor(isAddProjectTitleEmpty ? .secondary : .white)
                         .frame(width: 36, height: 36)
                         .background(
-                            isAddProjectTitleEmpty ? Color(.systemGray4) : Color.appRed,
+                            isAddProjectTitleEmpty ? Color(.systemGray4) : Color.completedPurple,
                             in: Circle()
                         )
                 }

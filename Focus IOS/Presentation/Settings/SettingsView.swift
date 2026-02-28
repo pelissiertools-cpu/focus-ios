@@ -39,14 +39,14 @@ struct SettingsView: View {
             VStack(spacing: 0) {
                 // App branding
                 Text("Focus")
-                    .font(.sf(size: 48, weight: .bold))
+                    .font(.inter(size: 48, weight: .bold))
                     .padding(.top, 24)
                     .padding(.bottom, 28)
 
                 // Account section
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Account")
-                        .font(.sf(.footnote))
+                        .font(.inter(.footnote))
                         .foregroundStyle(.secondary)
                         .padding(.horizontal, 4)
 
@@ -129,7 +129,7 @@ struct SettingsView: View {
                 // App section
                 VStack(alignment: .leading, spacing: 8) {
                     Text("App")
-                        .font(.sf(.footnote))
+                        .font(.inter(.footnote))
                         .foregroundStyle(.secondary)
                         .padding(.horizontal, 4)
 
@@ -142,22 +142,22 @@ struct SettingsView: View {
                         } label: {
                             HStack(spacing: 12) {
                                 Image(systemName: "globe")
-                                    .font(.sf(.body))
+                                    .font(.inter(.body))
                                     .foregroundStyle(.primary)
                                     .frame(width: 24)
 
                                 Text("App Language")
-                                    .font(.sf(.body))
+                                    .font(.inter(.body))
 
                                 Spacer()
 
                                 Text(languageManager.currentLanguage.displayName)
-                                    .font(.sf(.body))
+                                    .font(.inter(.body))
                                     .foregroundStyle(.secondary)
                                     .lineLimit(1)
 
                                 Image(systemName: "chevron.right")
-                                    .font(.sf(.caption, weight: .semibold))
+                                    .font(.inter(.caption, weight: .semiBold))
                                     .foregroundStyle(.tertiary)
                                     .rotationEffect(.degrees(showLanguagePicker ? 90 : 0))
                             }
@@ -184,14 +184,14 @@ struct SettingsView: View {
                                             .frame(width: 24)
 
                                         Text(language.displayName)
-                                            .font(.sf(.body))
+                                            .font(.inter(.body))
                                             .foregroundStyle(.primary)
 
                                         Spacer()
 
                                         if languageManager.currentLanguage == language {
                                             Image(systemName: "checkmark")
-                                                .font(.sf(.body, weight: .semibold))
+                                                .font(.inter(.body, weight: .semiBold))
                                                 .foregroundColor(Color.appRed)
                                         }
                                     }
@@ -214,22 +214,22 @@ struct SettingsView: View {
                         } label: {
                             HStack(spacing: 12) {
                                 Image(systemName: "sun.min")
-                                    .font(.sf(.body))
+                                    .font(.inter(.body))
                                     .foregroundStyle(.primary)
                                     .frame(width: 24, alignment: .center)
 
                                 Text("Appearance")
-                                    .font(.sf(.body))
+                                    .font(.inter(.body))
                                     .foregroundStyle(.primary)
 
                                 Spacer()
 
                                 Text(appearanceManager.currentAppearance.displayName)
-                                    .font(.sf(.body))
+                                    .font(.inter(.body))
                                     .foregroundStyle(.secondary)
 
                                 Image(systemName: "chevron.right")
-                                    .font(.sf(.caption, weight: .semibold))
+                                    .font(.inter(.caption, weight: .semiBold))
                                     .foregroundStyle(.tertiary)
                                     .rotationEffect(.degrees(showAppearancePicker ? 90 : 0))
                             }
@@ -256,14 +256,14 @@ struct SettingsView: View {
                                             .frame(width: 24)
 
                                         Text(appearance.displayName)
-                                            .font(.sf(.body))
+                                            .font(.inter(.body))
                                             .foregroundStyle(.primary)
 
                                         Spacer()
 
                                         if appearanceManager.currentAppearance == appearance {
                                             Image(systemName: "checkmark")
-                                                .font(.sf(.body, weight: .semibold))
+                                                .font(.inter(.body, weight: .semiBold))
                                                 .foregroundColor(Color.appRed)
                                         }
                                     }
@@ -389,25 +389,25 @@ struct SettingsView: View {
     ) -> some View {
         HStack(spacing: 12) {
             Image(systemName: icon)
-                .font(.sf(.body))
+                .font(.inter(.body))
                 .foregroundStyle(.primary)
                 .frame(width: 24)
 
             Text(title)
-                .font(.sf(.body))
+                .font(.inter(.body))
 
             Spacer()
 
             if let value {
                 Text(value)
-                    .font(.sf(.body))
+                    .font(.inter(.body))
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             }
 
             if showChevron {
                 Image(systemName: "chevron.right")
-                    .font(.sf(.caption, weight: .semibold))
+                    .font(.inter(.caption, weight: .semiBold))
                     .foregroundStyle(.tertiary)
             }
         }
@@ -439,9 +439,9 @@ private struct SettingsAlertOverlay<Fields: View>: View {
                 // Title + message
                 VStack(spacing: 4) {
                     Text(title)
-                        .font(.sf(.headline))
+                        .font(.inter(.headline))
                     Text(message)
-                        .font(.sf(.caption))
+                        .font(.inter(.caption))
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
                 }
@@ -465,7 +465,7 @@ private struct SettingsAlertOverlay<Fields: View>: View {
                         isPresented = false
                     } label: {
                         Text("Cancel")
-                            .font(.sf(.body))
+                            .font(.inter(.body))
                             .foregroundColor(.primary)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 12)
@@ -478,7 +478,7 @@ private struct SettingsAlertOverlay<Fields: View>: View {
 
                     Button(action: onUpdate) {
                         Text("Update")
-                            .font(.sf(.body, weight: hasInput() ? .semibold : .regular))
+                            .font(.inter(.body, weight: hasInput() ? .semiBold : .regular))
                             .foregroundColor(hasInput() ? Color.appRed : .secondary)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 12)

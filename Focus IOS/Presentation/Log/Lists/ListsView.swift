@@ -307,9 +307,9 @@ struct ListRow: View {
                     .font(.inter(.caption))
                     .foregroundColor(.secondary)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(maxWidth: .infinity, minHeight: 36, alignment: .leading)
         }
-        .frame(minHeight: 70)
+        .padding(.vertical, 8)
         .contentShape(Rectangle())
         .onTapGesture {
             if isEditMode {
@@ -400,7 +400,7 @@ struct ListItemRow: View {
             }
             .buttonStyle(.plain)
         }
-        .padding(.vertical, 12)
+        .padding(.vertical, 6)
         .contentShape(Rectangle())
         .onTapGesture {
             viewModel.selectedItemForDetails = item

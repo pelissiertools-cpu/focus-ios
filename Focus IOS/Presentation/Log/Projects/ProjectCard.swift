@@ -105,10 +105,12 @@ struct ProjectCard: View {
             Spacer()
 
             if project.isCompleted {
-                // Checkmark for completed projects
-                Image(systemName: "checkmark.circle.fill")
-                    .font(.inter(.title3))
-                    .foregroundColor(.appRed)
+                // Checkmark for completed projects (matches Focus tab all-done icon)
+                Image("CheckCircle")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 28, height: 28)
+                    .foregroundColor(Color.completedPurple)
             } else if !viewModel.isEditMode, let onDragChanged, let onDragEnded {
                 // Drag handle
                 DragHandleView()
@@ -239,8 +241,8 @@ struct ProjectCard: View {
                     .scrollContentBackground(.hidden)
                     .keyboardDismissOverlay(isActive: $isInlineAddFocused)
                     .frame(minHeight: items.reduce(CGFloat(0)) { sum, item in
-                        if case .task(let t) = item, t.parentTaskId == nil { return sum + 70 }
-                        return sum + 44
+                        if case .task(let t) = item, t.parentTaskId == nil { return sum + 52 }
+                        return sum + 32
                     })
                 }
             }
@@ -278,7 +280,7 @@ struct ProjectTaskRow: View {
                         .foregroundColor(.secondary)
                 }
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(maxWidth: .infinity, minHeight: 36, alignment: .leading)
 
             // Completion button
             Button {
@@ -289,11 +291,11 @@ struct ProjectTaskRow: View {
             } label: {
                 Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
                     .font(.inter(.title3))
-                    .foregroundColor(task.isCompleted ? .appRed : .gray)
+                    .foregroundColor(task.isCompleted ? Color.completedPurple.opacity(0.6) : .gray)
             }
             .buttonStyle(.plain)
         }
-        .frame(minHeight: 70)
+        .padding(.vertical, 8)
         .contentShape(Rectangle())
         .onTapGesture {
             _Concurrency.Task {
@@ -354,11 +356,11 @@ struct ProjectSubtaskRow: View {
             } label: {
                 Image(systemName: subtask.isCompleted ? "checkmark.circle.fill" : "circle")
                     .font(.inter(.subheadline))
-                    .foregroundColor(subtask.isCompleted ? .appRed : .gray)
+                    .foregroundColor(subtask.isCompleted ? Color.completedPurple.opacity(0.6) : .gray)
             }
             .buttonStyle(.plain)
         }
-        .frame(minHeight: 44)
+        .padding(.vertical, 6)
         .contentShape(Rectangle())
         .onTapGesture {
             viewModel.selectedTaskForDetails = subtask

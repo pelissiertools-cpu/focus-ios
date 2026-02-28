@@ -114,9 +114,7 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
     private func handleTaskCompletionNotification(_ notification: Notification) {
         guard let userInfo = notification.userInfo,
               let taskId = userInfo[TaskNotificationKeys.taskId] as? UUID,
-              let isCompleted = userInfo[TaskNotificationKeys.isCompleted] as? Bool,
-              let source = userInfo[TaskNotificationKeys.source] as? String,
-              source == TaskNotificationSource.focus.rawValue else {
+              let isCompleted = userInfo[TaskNotificationKeys.isCompleted] as? Bool else {
             return
         }
 
@@ -128,12 +126,16 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
             projects[index].completedDate = completedDate
         }
 
-        // Update projectTasksMap if this is a project task
+        // Update projectTasksMap if this is a project task and re-check auto-complete
         for (projectId, var tasks) in projectTasksMap {
             if let index = tasks.firstIndex(where: { $0.id == taskId }) {
                 tasks[index].isCompleted = isCompleted
                 tasks[index].completedDate = completedDate
                 projectTasksMap[projectId] = tasks
+                // Re-check whether the project should be completed/uncompleted
+                _Concurrency.Task { @MainActor in
+                    try? await checkProjectAutoComplete(projectId: projectId)
+                }
                 break
             }
         }

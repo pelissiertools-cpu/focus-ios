@@ -120,18 +120,18 @@ struct DateNavigator: View {
 
                         // Date display with prev/next chevrons
                         HStack(spacing: 0) {
+                            Spacer()
+
                             Button {
                                 navigatePrev()
                             } label: {
                                 Image(systemName: "chevron.left")
-                                    .font(.inter(.body, weight: .medium))
+                                    .font(.inter(size: 14, weight: .medium))
                                     .foregroundColor(.secondary)
                                     .frame(width: 44, height: 44)
                                     .contentShape(Rectangle())
                             }
                             .buttonStyle(.plain)
-
-                            Spacer()
 
                             VStack(spacing: 4) {
                                 Text(primaryDateText)
@@ -151,19 +151,20 @@ struct DateNavigator: View {
                                     showPills.toggle()
                                 }
                             }
-
-                            Spacer()
+                            .padding(.horizontal, 32)
 
                             Button {
                                 navigateNext()
                             } label: {
                                 Image(systemName: "chevron.right")
-                                    .font(.inter(.body, weight: .medium))
+                                    .font(.inter(size: 14, weight: .medium))
                                     .foregroundColor(.secondary)
                                     .frame(width: 44, height: 44)
                                     .contentShape(Rectangle())
                             }
                             .buttonStyle(.plain)
+
+                            Spacer()
                         }
                         .padding(.horizontal, 8)
                         .padding(.top, 4)

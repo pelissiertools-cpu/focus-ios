@@ -411,66 +411,9 @@ struct CategorySelectorHeader<TrailingContent: View>: View {
                         .font(.inter(size: 24, weight: .semiBold))
                         .foregroundColor(.primary)
 
-                    Image(systemName: "chevron.right")
-                        .font(.inter(size: 10, weight: .semiBold))
-                        .foregroundColor(.secondary)
-
                     Text("\(count) \(countSuffix)\(count == 1 ? "" : "s")")
                         .font(.inter(size: 12))
                         .foregroundColor(.secondary)
-                }
-                .overlay {
-                    // Invisible Menu tap target overlaid on top of the title
-                    Menu {
-                        // Header
-                        Label("Category", systemImage: "folder")
-                            .foregroundColor(.primary)
-
-                        Divider()
-
-                        // All categories
-                        Button {
-                            onSelectCategory(nil)
-                        } label: {
-                            if selectedCategoryId == nil {
-                                Label("All", systemImage: "checkmark")
-                                    .foregroundColor(.appRed)
-                            } else {
-                                Text("All")
-                                    .foregroundColor(.primary)
-                            }
-                        }
-
-                        ForEach(categories) { category in
-                            Button {
-                                onSelectCategory(category.id)
-                            } label: {
-                                if selectedCategoryId == category.id {
-                                    Label(category.name, systemImage: "checkmark")
-                                        .foregroundColor(.appRed)
-                                } else {
-                                    Text(category.name)
-                                        .foregroundColor(.primary)
-                                }
-                            }
-                        }
-
-                        if onEdit != nil {
-                            Divider()
-
-                            Button {
-                                onEdit?()
-                            } label: {
-                                Label("Edit", systemImage: "pencil")
-                                    .foregroundColor(.appRed)
-                            }
-                        }
-                    } label: {
-                        Color.clear
-                            .contentShape(Rectangle())
-                    }
-                    .menuIndicator(.hidden)
-                    .tint(.appRed)
                 }
 
                 Spacer()
@@ -479,8 +422,8 @@ struct CategorySelectorHeader<TrailingContent: View>: View {
                     .padding(.bottom, 6)
             }
             .padding(.vertical, 6)
-            .padding(.leading, 22)
-            .padding(.trailing, 16)
+            .padding(.leading, 16)
+            .padding(.trailing, 9)
 
         }
         .padding(.horizontal, 16)

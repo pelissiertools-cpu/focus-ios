@@ -17,8 +17,7 @@ struct LogTabView: View {
     @EnvironmentObject var languageManager: LanguageManager
     @State private var selectedTab = 0
     @State private var searchText = ""
-    @Namespace private var segmentedAnimation
-    @State private var isSearchActive = false
+@State private var isSearchActive = false
     @FocusState private var isSearchFieldFocused: Bool
 
     // Batch create alerts (Tasks tab only)
@@ -219,38 +218,18 @@ struct LogTabView: View {
                     Spacer()
                     profilePillButton
                 }
-                .padding(.trailing, 32)
+                .padding(.trailing, 25)
                 .padding(.top, 2)
                 .padding(.bottom, 8)
 
                 // Picker row
-                HStack(spacing: 0) {
+                Picker("", selection: $selectedTab) {
                     ForEach(Array(tabKeys.enumerated()), id: \.offset) { index, key in
-                        Button {
-                            withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
-                                selectedTab = index
-                            }
-                        } label: {
-                            Text(LocalizedStringKey(key))
-                                .font(.inter(.subheadline, weight: selectedTab == index ? .semiBold : .medium))
-                                .foregroundStyle(selectedTab == index ? .primary : .secondary)
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 8)
-                                .frame(maxWidth: .infinity)
-                                .background {
-                                    if selectedTab == index {
-                                        Color.clear
-                                            .glassEffect(.regular.tint(.glassTint).interactive(), in: .rect(cornerRadius: 16))
-                                            .matchedGeometryEffect(id: "activeTab", in: segmentedAnimation)
-                                    }
-                                }
-                        }
-                        .buttonStyle(.plain)
+                        Text(LocalizedStringKey(key)).tag(index)
                     }
                 }
-                .padding(4)
-                .glassEffect(.regular.tint(.glassTint).interactive(), in: .rect(cornerRadius: 20))
-                .padding(.horizontal, 32)
+                .pickerStyle(.segmented)
+                .padding(.horizontal, 20)
                 .padding(.top, 8)
                 .padding(.bottom, 14)
 

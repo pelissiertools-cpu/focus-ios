@@ -408,7 +408,7 @@ struct CategorySelectorHeader<TrailingContent: View>: View {
                 // Title displayed independently (not inside Menu label to avoid clip animation)
                 HStack(alignment: .center, spacing: 8) {
                     Text(title)
-                        .font(.inter(size: 24, weight: .semiBold))
+                        .font(.inter(size: 28, weight: .regular))
                         .foregroundColor(.primary)
 
                     Text("\(count) \(countSuffix)\(count == 1 ? "" : "s")")

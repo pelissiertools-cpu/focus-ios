@@ -19,8 +19,8 @@ struct LogTabView: View {
 
     init(mainTab: Binding<Int>) {
         _mainTab = mainTab
-        UISegmentedControl.appearance().backgroundColor = .white
-        UISegmentedControl.appearance().selectedSegmentTintColor = UIColor(white: 0.85, alpha: 1.0)
+        UISegmentedControl.appearance().backgroundColor = UIColor(red: 0xFF/255.0, green: 0xFF/255.0, blue: 0xFF/255.0, alpha: 1.0)
+        UISegmentedControl.appearance().selectedSegmentTintColor = UIColor(red: 0xDE/255.0, green: 0xDE/255.0, blue: 0xDE/255.0, alpha: 1.0)
     }
     @State private var searchText = ""
 @State private var isSearchActive = false

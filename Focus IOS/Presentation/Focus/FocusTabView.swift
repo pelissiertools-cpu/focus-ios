@@ -109,11 +109,6 @@ struct FocusTabView: View {
                 if viewMode == .focus {
                     // MARK: - Focus Mode Content
 
-                    // Fixed "To-Do" title with add button (non-scrollable, daily only)
-                    if viewModel.selectedTimeframe == .daily {
-                        todoTitleBar
-                    }
-
                     // Content
                     if viewModel.isLoading {
                         ProgressView("Loading...")

@@ -16,10 +16,10 @@ enum Timeframe: String, Codable, CaseIterable {
 
     var displayName: String {
         switch self {
-        case .daily: return "Daily"
-        case .weekly: return "Weekly"
-        case .monthly: return "Monthly"
-        case .yearly: return "Yearly"
+        case .daily: return "Day View"
+        case .weekly: return "Week View"
+        case .monthly: return "Month View"
+        case .yearly: return "Year View"
         }
     }
 

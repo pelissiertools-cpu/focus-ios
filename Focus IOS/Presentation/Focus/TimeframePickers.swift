@@ -17,6 +17,8 @@ struct DateNavigator: View {
     @EnvironmentObject var languageManager: LanguageManager
     @Environment(\.colorScheme) private var colorScheme
     @State private var visibleWeekStart: Date?
+    @State private var visibleMonthPage: Date?
+    @State private var visibleYearPageDate: Date?
     @State private var showCalendarPicker = false
 
     private var calendar: Calendar {
@@ -71,7 +73,7 @@ struct DateNavigator: View {
         } else {
             // Focus mode: full layout
             VStack(spacing: 0) {
-                // Profile button row
+                // Profile button row with centered To-Do title
                 if let onProfileTap {
                     HStack {
                         Spacer()
@@ -107,8 +109,12 @@ struct DateNavigator: View {
                                 }
                             }
                         } label: {
-                            Text(LocalizedStringKey(selectedTimeframe.displayName))
-                                .font(.inter(.subheadline, weight: .medium))
+                            HStack(spacing: 4) {
+                                Text(LocalizedStringKey(selectedTimeframe.displayName))
+                                    .font(.inter(.subheadline, weight: .medium))
+                                Image(systemName: "chevron.down")
+                                    .font(.inter(size: 8, weight: .semiBold))
+                            }
                             .foregroundColor(.secondary)
                             .padding(.horizontal, 12)
                             .padding(.vertical, 6)
@@ -130,10 +136,10 @@ struct DateNavigator: View {
                                     HStack(spacing: 4) {
                                         Text(secondary)
                                             .font(.montserratHeader(.subheadline, weight: .medium))
-                                            .foregroundColor(.secondary)
+                                            .foregroundColor(.primary)
                                         Image(systemName: "chevron.right")
                                             .font(.inter(size: 8, weight: .semiBold))
-                                            .foregroundColor(.secondary)
+                                            .foregroundColor(.primary)
                                     }
                                 }
                                 .buttonStyle(.plain)
@@ -141,7 +147,7 @@ struct DateNavigator: View {
                             }
                         }
                         .padding(.horizontal, 12)
-                        .padding(.top, 4)
+                        .padding(.top, 12)
                         .padding(.bottom, 4)
                     }
                     .padding(.horizontal)
@@ -339,30 +345,30 @@ struct DateNavigator: View {
         .padding(.horizontal, 14)
     }
 
-    // MARK: - Weekly Pill Row
+    // MARK: - Weekly Pill Row (paged by month, shows weeks of the month)
 
-    private var displayWeeks: [Date] {
-        guard let currentWeekStart = calendar.date(
-            from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: selectedDate)
-        ) else { return [] }
-        return (-4...4).compactMap { offset in
-            calendar.date(byAdding: .weekOfYear, value: offset, to: currentWeekStart)
+    private func monthStart(for date: Date) -> Date {
+        calendar.date(from: calendar.dateComponents([.year, .month], from: date)) ?? date
+    }
+
+    private var displayMonthPages: [Date] {
+        let anchor = monthStart(for: Date())
+        return (-24...24).compactMap { offset in
+            calendar.date(byAdding: .month, value: offset, to: anchor)
         }
     }
 
-    private func weekPillId(for date: Date) -> String {
-        let w = calendar.component(.weekOfYear, from: date)
-        let y = calendar.component(.yearForWeekOfYear, from: date)
-        return "week-\(y)-\(w)"
-    }
-
-    private func shortWeekRange(from weekStart: Date) -> String {
-        let startDay = calendar.component(.day, from: weekStart)
-        guard let weekEnd = calendar.date(byAdding: .day, value: 6, to: weekStart) else {
-            return "\(startDay)"
+    private func weeksInMonth(_ month: Date) -> [Date] {
+        guard let range = calendar.range(of: .day, in: .month, for: month) else { return [] }
+        var weeks: [Date] = []
+        for day in range {
+            guard let date = calendar.date(byAdding: .day, value: day - 1, to: month) else { continue }
+            let ws = weekStart(for: date)
+            if !weeks.contains(where: { calendar.isDate($0, equalTo: ws, toGranularity: .weekOfYear) }) {
+                weeks.append(ws)
+            }
         }
-        let endDay = calendar.component(.day, from: weekEnd)
-        return "\(startDay)-\(endDay)"
+        return weeks.sorted()
     }
 
     private func isSelectedWeek(_ weekStart: Date) -> Bool {
@@ -381,66 +387,114 @@ struct DateNavigator: View {
         return w1 == w2 && y1 == y2
     }
 
+    private func shortWeekRange(from weekStart: Date) -> String {
+        let startDay = calendar.component(.day, from: weekStart)
+        guard let weekEnd = calendar.date(byAdding: .day, value: 6, to: weekStart) else {
+            return "\(startDay)"
+        }
+        let endDay = calendar.component(.day, from: weekEnd)
+        return "\(startDay)-\(endDay)"
+    }
+
+    private func weekNumberInMonth(_ ws: Date, month: Date) -> Int {
+        let weeks = weeksInMonth(month)
+        return (weeks.firstIndex(where: { calendar.isDate($0, equalTo: ws, toGranularity: .weekOfYear) }) ?? 0) + 1
+    }
+
     private var weeklyPillRow: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            ScrollViewReader { proxy in
-                HStack(spacing: 8) {
-                    ForEach(displayWeeks, id: \.self) { weekStart in
-                        let isSelected = isSelectedWeek(weekStart)
-                        let isCurrent = isCurrentWeek(weekStart)
-                        let weekNum = calendar.component(.weekOfYear, from: weekStart)
-
-                        Button {
-                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                            withAnimation(.easeInOut(duration: 0.2)) {
-                                selectedDate = weekStart
-                            }
-                        } label: {
-                            VStack(spacing: 2) {
-                                Text("W\(weekNum)")
-                                    .font(.montserratHeader(.caption, weight: .bold))
-                                Text(shortWeekRange(from: weekStart))
-                                    .font(.montserratHeader(.caption2))
-                            }
-                            .foregroundColor(isSelected ? .white : (isCurrent ? Color.appRed : .primary))
-                            .frame(width: 68, height: 48)
-                            .background(
-                                RoundedRectangle(cornerRadius: 12)
-                                    .fill(isSelected ? Color.appRed : Color(.secondarySystemBackground))
-                            )
-                        }
-                        .buttonStyle(.plain)
-                        .id(weekPillId(for: weekStart))
-                    }
+            LazyHStack(spacing: 0) {
+                ForEach(displayMonthPages, id: \.self) { month in
+                    weekPageRow(for: month)
+                        .containerRelativeFrame(.horizontal)
                 }
-                .padding(.horizontal)
-                .onAppear {
-                    proxy.scrollTo(weekPillId(for: selectedDate), anchor: .center)
+            }
+            .scrollTargetLayout()
+        }
+        .scrollTargetBehavior(.viewAligned)
+        .scrollPosition(id: $visibleMonthPage)
+        .onAppear {
+            visibleMonthPage = monthStart(for: selectedDate)
+        }
+        .onChange(of: visibleMonthPage) {
+            guard let newMonth = visibleMonthPage else { return }
+            if monthStart(for: selectedDate) != newMonth {
+                // Move to same week-of-month in new month
+                let currentWeeks = weeksInMonth(monthStart(for: selectedDate))
+                let currentIdx = currentWeeks.firstIndex(where: { isSelectedWeek($0) }) ?? 0
+                let newWeeks = weeksInMonth(newMonth)
+                let clampedIdx = min(currentIdx, newWeeks.count - 1)
+                if clampedIdx >= 0 && clampedIdx < newWeeks.count {
+                    selectedDate = newWeeks[clampedIdx]
                 }
-                .onChange(of: selectedDate) {
-                    withAnimation(.easeInOut(duration: 0.3)) {
-                        proxy.scrollTo(weekPillId(for: selectedDate), anchor: .center)
-                    }
+            }
+        }
+        .onChange(of: selectedDate) {
+            let newMonth = monthStart(for: selectedDate)
+            if visibleMonthPage != newMonth {
+                withAnimation {
+                    visibleMonthPage = newMonth
                 }
             }
         }
     }
 
-    // MARK: - Monthly Pill Row
+    private func weekPageRow(for month: Date) -> some View {
+        let weeks = weeksInMonth(month)
+        return HStack(spacing: 0) {
+            ForEach(weeks, id: \.self) { ws in
+                let isSelected = isSelectedWeek(ws)
+                let isCurrent = isCurrentWeek(ws)
+                let weekInMonth = weekNumberInMonth(ws, month: month)
 
-    private var displayMonths: [Date] {
-        guard let currentMonthStart = calendar.date(
-            from: calendar.dateComponents([.year, .month], from: selectedDate)
-        ) else { return [] }
-        return (-3...8).compactMap { offset in
-            calendar.date(byAdding: .month, value: offset, to: currentMonthStart)
+                Button {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        selectedDate = ws
+                    }
+                } label: {
+                    VStack(spacing: 4) {
+                        Text("W\(weekInMonth)")
+                            .font(.montserratHeader(.caption2, weight: .medium))
+                            .foregroundColor(isSelected ? .primary : .secondary)
+
+                        Text(shortWeekRange(from: ws))
+                            .font(.montserratHeader(.body, weight: isSelected || isCurrent ? .bold : .regular))
+                            .foregroundColor(isSelected ? .white : .secondary)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 6)
+                            .background(
+                                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                    .fill(isSelected ? Color.darkGray : Color.clear)
+                            )
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 14)
+    }
+
+    // MARK: - Monthly Pill Row (paged by half-year, shows 6 months per page)
+
+    private func halfYearStart(for date: Date) -> Date {
+        let month = calendar.component(.month, from: date)
+        let year = calendar.component(.year, from: date)
+        let startMonth = month <= 6 ? 1 : 7
+        return calendar.date(from: DateComponents(year: year, month: startMonth, day: 1)) ?? date
+    }
+
+    private var displayHalfYearPages: [Date] {
+        let anchor = halfYearStart(for: Date())
+        // Generate half-year pages: each year has 2 pages (Jan, Jul)
+        return (-20...20).compactMap { offset in
+            calendar.date(byAdding: .month, value: offset * 6, to: anchor)
         }
     }
 
-    private func monthPillId(for date: Date) -> String {
-        let y = calendar.component(.year, from: date)
-        let m = calendar.component(.month, from: date)
-        return "month-\(y)-\(m)"
+    private func monthsInHalfYear(_ start: Date) -> [Date] {
+        (0..<6).compactMap { calendar.date(byAdding: .month, value: $0, to: start) }
     }
 
     private func isSelectedMonth(_ date: Date) -> Bool {
@@ -454,102 +508,120 @@ struct DateNavigator: View {
                calendar.component(.year, from: date) == calendar.component(.year, from: now)
     }
 
+    private func shortMonthName(for date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMM"
+        formatter.locale = LanguageManager.shared.locale
+        return formatter.string(from: date).uppercased()
+    }
+
     private var monthlyPillRow: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            ScrollViewReader { proxy in
-                HStack(spacing: 8) {
-                    ForEach(displayMonths, id: \.self) { monthDate in
-                        let isSelected = isSelectedMonth(monthDate)
-                        let isCurrent = isCurrentMonth(monthDate)
-                        let formatter = DateFormatter()
-
-                        Button {
-                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                            withAnimation(.easeInOut(duration: 0.2)) {
-                                selectedDate = monthDate
-                            }
-                        } label: {
-                            Text({
-                                formatter.dateFormat = "MMM"
-                                formatter.locale = LanguageManager.shared.locale
-                                return formatter.string(from: monthDate).uppercased()
-                            }())
-                                .font(.montserratHeader(.subheadline, weight: .medium))
-                                .foregroundColor(isSelected ? .white : (isCurrent ? Color.appRed : .primary))
-                                .frame(width: 64, height: 40)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 10)
-                                        .fill(isSelected ? Color.appRed : Color(.secondarySystemBackground))
-                                )
-                        }
-                        .buttonStyle(.plain)
-                        .id(monthPillId(for: monthDate))
-                    }
+            LazyHStack(spacing: 0) {
+                ForEach(displayHalfYearPages, id: \.self) { halfYear in
+                    monthPageRow(for: halfYear)
+                        .containerRelativeFrame(.horizontal)
                 }
-                .padding(.horizontal)
-                .onAppear {
-                    proxy.scrollTo(monthPillId(for: selectedDate), anchor: .center)
+            }
+            .scrollTargetLayout()
+        }
+        .scrollTargetBehavior(.viewAligned)
+        .scrollPosition(id: $visibleYearPageDate)
+        .onAppear {
+            visibleYearPageDate = halfYearStart(for: selectedDate)
+        }
+        .onChange(of: visibleYearPageDate) {
+            guard let newHalf = visibleYearPageDate else { return }
+            if halfYearStart(for: selectedDate) != newHalf {
+                // Move to same relative month in new half-year
+                let currentHalf = halfYearStart(for: selectedDate)
+                let currentMonth = calendar.component(.month, from: selectedDate)
+                let offsetInHalf = calendar.component(.month, from: currentHalf)
+                let relativeOffset = currentMonth - offsetInHalf
+                let newHalfMonth = calendar.component(.month, from: newHalf)
+                let targetMonth = newHalfMonth + min(relativeOffset, 5)
+                if let newDate = calendar.date(from: DateComponents(
+                    year: calendar.component(.year, from: newHalf),
+                    month: targetMonth,
+                    day: 1
+                )) {
+                    selectedDate = newDate
                 }
-                .onChange(of: selectedDate) {
-                    withAnimation(.easeInOut(duration: 0.3)) {
-                        proxy.scrollTo(monthPillId(for: selectedDate), anchor: .center)
-                    }
+            }
+        }
+        .onChange(of: selectedDate) {
+            let newHalf = halfYearStart(for: selectedDate)
+            if visibleYearPageDate != newHalf {
+                withAnimation {
+                    visibleYearPageDate = newHalf
                 }
             }
         }
     }
 
-    // MARK: - Yearly Pill Row
+    private func monthPageRow(for halfYearStart: Date) -> some View {
+        let months = monthsInHalfYear(halfYearStart)
+        return HStack(spacing: 0) {
+            ForEach(months, id: \.self) { monthDate in
+                let isSelected = isSelectedMonth(monthDate)
 
-    private var displayYears: [Int] {
-        let currentYear = calendar.component(.year, from: selectedDate)
-        return Array((currentYear - 3)...(currentYear + 3))
+                Button {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        selectedDate = monthDate
+                    }
+                } label: {
+                    VStack(spacing: 4) {
+                        Text(shortMonthName(for: monthDate))
+                            .font(.montserratHeader(.footnote, weight: .medium))
+                            .foregroundColor(isSelected ? .white : .secondary)
+                    }
+                    .padding(.horizontal, 4)
+                    .padding(.vertical, 8)
+                    .background(
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .fill(isSelected ? Color.darkGray : Color.clear)
+                    )
+                    .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 14)
     }
+
+    // MARK: - Yearly Pill Row (fixed: 2026–2030)
 
     private var yearlyPillRow: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            ScrollViewReader { proxy in
-                HStack(spacing: 8) {
-                    ForEach(displayYears, id: \.self) { year in
-                        let selectedYear = calendar.component(.year, from: selectedDate)
-                        let currentYear = calendar.component(.year, from: Date())
-                        let isSelected = year == selectedYear
-                        let isCurrent = year == currentYear
+        let years = Array(2026...2030)
+        let selectedYear = calendar.component(.year, from: selectedDate)
+        return HStack(spacing: 0) {
+            ForEach(years, id: \.self) { year in
+                let isSelected = year == selectedYear
 
-                        Button {
-                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                            if let newDate = calendar.date(from: DateComponents(year: year, month: calendar.component(.month, from: selectedDate), day: 1)) {
-                                withAnimation(.easeInOut(duration: 0.2)) {
-                                    selectedDate = newDate
-                                }
-                            }
-                        } label: {
-                            Text(String(year))
-                                .font(.montserratHeader(.subheadline, weight: .medium))
-                                .foregroundColor(isSelected ? .white : (isCurrent ? Color.appRed : .primary))
-                                .frame(width: 64, height: 40)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 10)
-                                        .fill(isSelected ? Color.appRed : Color(.secondarySystemBackground))
-                                )
+                Button {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    if let newDate = calendar.date(from: DateComponents(year: year, month: 1, day: 1)) {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            selectedDate = newDate
                         }
-                        .buttonStyle(.plain)
-                        .id("year-\(year)")
                     }
+                } label: {
+                    Text(String(year))
+                        .font(.montserratHeader(.footnote, weight: .medium))
+                        .foregroundColor(isSelected ? .white : .secondary)
+                        .padding(.horizontal, 4)
+                        .padding(.vertical, 8)
+                        .background(
+                            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                .fill(isSelected ? Color.darkGray : Color.clear)
+                        )
+                        .frame(maxWidth: .infinity)
                 }
-                .padding(.horizontal)
-                .onAppear {
-                    let selectedYear = calendar.component(.year, from: selectedDate)
-                    proxy.scrollTo("year-\(selectedYear)", anchor: .center)
-                }
-                .onChange(of: selectedDate) {
-                    let selectedYear = calendar.component(.year, from: selectedDate)
-                    withAnimation(.easeInOut(duration: 0.3)) {
-                        proxy.scrollTo("year-\(selectedYear)", anchor: .center)
-                    }
-                }
+                .buttonStyle(.plain)
             }
         }
+        .padding(.horizontal, 14)
     }
 
     // MARK: - Compact Subtitle (Schedule mode — always daily)

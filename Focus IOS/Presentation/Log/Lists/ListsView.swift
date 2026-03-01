@@ -258,7 +258,6 @@ struct ListsView: View {
         }
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
-        .background(Color.appBackground)
         .scrollDismissesKeyboard(.interactively)
         .keyboardDismissOverlay(isActive: $isInlineAddFocused)
         .refreshable {

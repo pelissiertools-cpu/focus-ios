@@ -85,8 +85,6 @@ struct TasksListView: View {
                     }
                 } else {
                     HStack(spacing: 8) {
-                        SortMenuButton(viewModel: viewModel)
-
                         if let onSearchTap {
                             Button(action: onSearchTap) {
                                 Image(systemName: "magnifyingglass")
@@ -97,6 +95,8 @@ struct TasksListView: View {
                             }
                             .buttonStyle(.plain)
                         }
+
+                        SortMenuButton(viewModel: viewModel, onEditCategories: { showCategoryEditDrawer = true })
                     }
                 }
             }
@@ -286,7 +286,6 @@ struct TasksListView: View {
         }
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
-        .background(Color.appBackground)
         .scrollDismissesKeyboard(.interactively)
         .keyboardDismissOverlay(isActive: $isInlineAddFocused)
         .refreshable {
@@ -481,13 +480,8 @@ struct CategorySelectorHeader<TrailingContent: View>: View {
             }
             .padding(.vertical, 6)
             .padding(.leading, 22)
-            .padding(.trailing, 9)
+            .padding(.trailing, 16)
 
-            Rectangle()
-                .fill(Color.black)
-                .frame(height: 1)
-                .padding(.leading, 4)
-                .padding(.trailing, 4)
         }
         .padding(.horizontal, 16)
     }
@@ -891,6 +885,7 @@ struct SubtaskRow: View {
 
 struct SortMenuButton<VM: LogFilterable>: View {
     @ObservedObject var viewModel: VM
+    var onEditCategories: (() -> Void)? = nil
 
     var body: some View {
         Menu {
@@ -958,6 +953,43 @@ struct SortMenuButton<VM: LogFilterable>: View {
                 }
             } label: {
                 Label("Multiple actions", systemImage: "checkmark.circle")
+            }
+
+            Divider()
+
+            // Category
+            Label("Category", systemImage: "folder")
+
+            Button {
+                viewModel.selectCategory(nil)
+            } label: {
+                if viewModel.selectedCategoryId == nil {
+                    Label("All", systemImage: "checkmark")
+                } else {
+                    Text("All")
+                }
+            }
+
+            ForEach(viewModel.categories) { category in
+                Button {
+                    viewModel.selectCategory(category.id)
+                } label: {
+                    if viewModel.selectedCategoryId == category.id {
+                        Label(category.name, systemImage: "checkmark")
+                    } else {
+                        Text(category.name)
+                    }
+                }
+            }
+
+            if let onEditCategories {
+                Divider()
+
+                Button {
+                    onEditCategories()
+                } label: {
+                    Label("Edit", systemImage: "pencil")
+                }
             }
         } label: {
             Color.clear

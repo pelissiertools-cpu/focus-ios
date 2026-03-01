@@ -573,7 +573,7 @@ struct DateNavigator: View {
                 } label: {
                     VStack(spacing: 4) {
                         Text(shortMonthName(for: monthDate))
-                            .font(.montserratHeader(.footnote, weight: .medium))
+                            .font(.montserratHeader(.body, weight: isSelected ? .bold : .regular))
                             .foregroundColor(isSelected ? .white : .secondary)
                     }
                     .padding(.horizontal, 4)
@@ -608,7 +608,7 @@ struct DateNavigator: View {
                     }
                 } label: {
                     Text(String(year))
-                        .font(.montserratHeader(.footnote, weight: .medium))
+                        .font(.montserratHeader(.body, weight: isSelected ? .bold : .regular))
                         .foregroundColor(isSelected ? .white : .secondary)
                         .padding(.horizontal, 4)
                         .padding(.vertical, 8)

@@ -73,8 +73,6 @@ struct ListsView: View {
                     }
                 } else {
                     HStack(spacing: 8) {
-                        SortMenuButton(viewModel: viewModel)
-
                         if let onSearchTap {
                             Button(action: onSearchTap) {
                                 Image(systemName: "magnifyingglass")
@@ -85,6 +83,8 @@ struct ListsView: View {
                             }
                             .buttonStyle(.plain)
                         }
+
+                        SortMenuButton(viewModel: viewModel)
                     }
                 }
             }

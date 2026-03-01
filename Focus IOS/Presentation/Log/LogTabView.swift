@@ -16,6 +16,12 @@ struct LogTabView: View {
     @Binding var mainTab: Int
     @EnvironmentObject var languageManager: LanguageManager
     @State private var selectedTab = 0
+
+    init(mainTab: Binding<Int>) {
+        _mainTab = mainTab
+        UISegmentedControl.appearance().backgroundColor = .white
+        UISegmentedControl.appearance().selectedSegmentTintColor = UIColor(white: 0.85, alpha: 1.0)
+    }
     @State private var searchText = ""
 @State private var isSearchActive = false
     @FocusState private var isSearchFieldFocused: Bool
@@ -229,6 +235,7 @@ struct LogTabView: View {
                     }
                 }
                 .pickerStyle(.segmented)
+                .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 2)
                 .padding(.horizontal, 20)
                 .padding(.top, 8)
                 .padding(.bottom, 14)

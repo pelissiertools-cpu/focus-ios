@@ -72,26 +72,12 @@ struct DateNavigator: View {
             }
         } else {
             // Focus mode: full layout
-            VStack(spacing: 0) {
-                // Profile button row with centered To-Do title
-                if let onProfileTap {
-                    HStack {
-                        Spacer()
-                        Button(action: onProfileTap) {
-                            Image(systemName: "person")
-                                .font(.inter(.body, weight: .medium))
-                                .foregroundColor(.primary)
-                                .frame(width: 36, height: 36)
-                                .glassEffect(.regular.tint(.glassTint).interactive(), in: .circle)
-                        }
-                    }
-                    .padding(.trailing, 32)
-                    .padding(.top, 2)
-                    .padding(.bottom, 8)
-                }
-
+            ZStack(alignment: .topTrailing) {
                 // Date navigator container
                 VStack(spacing: 0) {
+                    // Push content below profile button
+                    Color.clear
+                        .frame(height: 24)
                     // Upper section: dropdown + date display
                     VStack(alignment: .leading, spacing: 0) {
                         // Timeframe dropdown
@@ -119,7 +105,7 @@ struct DateNavigator: View {
                             .padding(.horizontal, 12)
                             .padding(.vertical, 6)
                         }
-                        .padding(.top, 10)
+                        .padding(.top, 2)
 
                         // Date display
                         HStack(alignment: .bottom, spacing: 8) {
@@ -163,6 +149,19 @@ struct DateNavigator: View {
                         timeframe: selectedTimeframe
                     )
                     .drawerStyle()
+                }
+
+                // Profile button overlaid top-right
+                if let onProfileTap {
+                    Button(action: onProfileTap) {
+                        Image(systemName: "person")
+                            .font(.inter(.body, weight: .medium))
+                            .foregroundColor(.primary)
+                            .frame(width: 36, height: 36)
+                            .glassEffect(.regular.tint(.glassTint).interactive(), in: .circle)
+                    }
+                    .padding(.trailing, 25)
+                    .padding(.top, 2)
                 }
             }
         }

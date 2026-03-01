@@ -16,7 +16,8 @@ struct DateNavigator: View {
     var onProfileTap: (() -> Void)? = nil
     @EnvironmentObject var languageManager: LanguageManager
     @Environment(\.colorScheme) private var colorScheme
-    @State private var showPills = false
+    @State private var visibleWeekStart: Date?
+    @State private var showCalendarPicker = false
 
     private var calendar: Calendar {
         var cal = Calendar.current
@@ -89,8 +90,8 @@ struct DateNavigator: View {
 
                 // Date navigator container
                 VStack(spacing: 0) {
-                    // Upper section: dropdown + date display (opaque, renders on top during pill transition)
-                    VStack(spacing: 0) {
+                    // Upper section: dropdown + date display
+                    VStack(alignment: .leading, spacing: 0) {
                         // Timeframe dropdown
                         Menu {
                             ForEach(Timeframe.allCases, id: \.self) { timeframe in
@@ -106,91 +107,57 @@ struct DateNavigator: View {
                                 }
                             }
                         } label: {
-                            HStack(spacing: 4) {
-                                Text(LocalizedStringKey(selectedTimeframe.displayName))
-                                    .font(.inter(.subheadline, weight: .medium))
-                                Image(systemName: "chevron.down")
-                                    .font(.inter(.caption2, weight: .semiBold))
-                            }
+                            Text(LocalizedStringKey(selectedTimeframe.displayName))
+                                .font(.inter(.subheadline, weight: .medium))
                             .foregroundColor(.secondary)
                             .padding(.horizontal, 12)
                             .padding(.vertical, 6)
                         }
                         .padding(.top, 10)
 
-                        // Date display with prev/next chevrons
-                        HStack(spacing: 0) {
-                            Spacer()
-
-                            Button {
-                                navigatePrev()
-                            } label: {
-                                Image(systemName: "chevron.left")
-                                    .font(.inter(size: 14, weight: .medium))
-                                    .foregroundColor(.secondary)
-                                    .frame(width: 44, height: 44)
-                                    .contentShape(Rectangle())
-                            }
-                            .buttonStyle(.plain)
-
-                            VStack(spacing: 4) {
-                                Text(primaryDateText)
-                                    .font(.inter(size: 32, weight: .regular))
-                                    .foregroundColor(.primary)
-
-                                if let secondary = secondaryDateText {
-                                    Text(secondary)
-                                        .font(.montserratHeader(.subheadline, weight: .medium))
-                                        .foregroundColor(.secondary)
-                                }
-                            }
-                            .contentShape(Rectangle())
-                            .onTapGesture {
-                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) {
-                                    showPills.toggle()
-                                }
-                            }
-                            .padding(.horizontal, 32)
-
-                            Button {
-                                navigateNext()
-                            } label: {
-                                Image(systemName: "chevron.right")
-                                    .font(.inter(size: 14, weight: .medium))
-                                    .foregroundColor(.secondary)
-                                    .frame(width: 44, height: 44)
-                                    .contentShape(Rectangle())
-                            }
-                            .buttonStyle(.plain)
+                        // Date display
+                        HStack(alignment: .bottom, spacing: 8) {
+                            Text(primaryDateText)
+                                .font(.inter(size: 32, weight: .regular))
+                                .foregroundColor(.primary)
 
                             Spacer()
+
+                            if let secondary = secondaryDateText {
+                                Button {
+                                    showCalendarPicker = true
+                                } label: {
+                                    HStack(spacing: 4) {
+                                        Text(secondary)
+                                            .font(.montserratHeader(.subheadline, weight: .medium))
+                                            .foregroundColor(.secondary)
+                                        Image(systemName: "chevron.right")
+                                            .font(.inter(size: 8, weight: .semiBold))
+                                            .foregroundColor(.secondary)
+                                    }
+                                }
+                                .buttonStyle(.plain)
+                                .padding(.bottom, 4)
+                            }
                         }
-                        .padding(.horizontal, 8)
+                        .padding(.horizontal, 12)
                         .padding(.top, 4)
-                        .padding(.bottom, showPills ? 4 : 12)
+                        .padding(.bottom, 4)
                     }
-                    // Pill row (togglable)
-                    if showPills {
-                        timeframePillRow
-                            .frame(height: 64)
-                            .mask(
-                                HStack(spacing: 0) {
-                                    LinearGradient(colors: [.clear, .black], startPoint: .leading, endPoint: .trailing)
-                                        .frame(width: 24)
-                                    Color.black
-                                    LinearGradient(colors: [.black, .clear], startPoint: .leading, endPoint: .trailing)
-                                        .frame(width: 24)
-                                }
-                            )
-                            .padding(.horizontal)
-                            .padding(.bottom, 8)
-                            .transition(.opacity)
-                    }
+                    .padding(.horizontal)
+                    // Pill row (always visible) — 14pt side margin to match focus container
+                    timeframePillRow
+                        .frame(height: 64)
+                        .padding(.bottom, 8)
                 }
-                .padding(.horizontal)
                 .clipped()
-                .animation(.spring(response: 0.3, dampingFraction: 0.85), value: showPills)
+                .sheet(isPresented: $showCalendarPicker) {
+                    SingleSelectCalendarPicker(
+                        selectedDate: $selectedDate,
+                        timeframe: selectedTimeframe
+                    )
+                    .drawerStyle()
+                }
             }
         }
     }
@@ -282,68 +249,94 @@ struct DateNavigator: View {
         }
     }
 
-    // MARK: - Daily Pill Row (infinite scroll)
+    // MARK: - Daily Pill Row (paged week view, Sun–Sat)
 
-    private var displayDays: [Date] {
-        (-14...14).compactMap { offset in
-            calendar.date(byAdding: .day, value: offset, to: selectedDate)
-        }
+    private func weekStart(for date: Date) -> Date {
+        calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: date)) ?? date
     }
 
-    private func dayPillId(for date: Date) -> String {
-        let y = calendar.component(.year, from: date)
-        let m = calendar.component(.month, from: date)
-        let d = calendar.component(.day, from: date)
-        return "day-\(y)-\(m)-\(d)"
+    private func daysInWeek(from weekStart: Date) -> [Date] {
+        (0..<7).compactMap { calendar.date(byAdding: .day, value: $0, to: weekStart) }
+    }
+
+    private var displayWeekStarts: [Date] {
+        let anchor = weekStart(for: Date())
+        return (-52...52).compactMap { offset in
+            calendar.date(byAdding: .weekOfYear, value: offset, to: anchor)
+        }
     }
 
     private var dailyPillRow: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            ScrollViewReader { proxy in
-                HStack(spacing: 8) {
-                    ForEach(displayDays, id: \.self) { date in
-                        let isSelected = calendar.isDate(date, inSameDayAs: selectedDate)
-                        let isToday = calendar.isDateInToday(date)
-                        let weekdayIndex = calendar.component(.weekday, from: date) - 1
-                        let dayNumber = calendar.component(.day, from: date)
-
-                        Button {
-                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                            withAnimation(.easeInOut(duration: 0.2)) {
-                                selectedDate = date
-                            }
-                        } label: {
-                            VStack(spacing: 4) {
-                                Text(String(dayAbbreviations[weekdayIndex].prefix(1)))
-                                    .font(.montserratHeader(.caption2, weight: .medium))
-                                    .foregroundColor(.primary)
-
-                                Text("\(dayNumber)")
-                                    .font(.montserratHeader(.body, weight: isSelected || isToday ? .bold : .regular))
-                                    .foregroundColor(isSelected ? .white : (isToday ? Color.appRed : .primary))
-                                    .frame(width: 32, height: 32)
-                                    .background(
-                                        Circle()
-                                            .fill(isSelected ? Color.appRed : Color.clear)
-                                    )
-                            }
-                            .frame(width: 44)
-                        }
-                        .buttonStyle(.plain)
-                        .id(dayPillId(for: date))
-                    }
+            LazyHStack(spacing: 0) {
+                ForEach(displayWeekStarts, id: \.self) { ws in
+                    weekDayRow(for: ws)
+                        .containerRelativeFrame(.horizontal)
                 }
-                .padding(.horizontal)
-                .onAppear {
-                    proxy.scrollTo(dayPillId(for: selectedDate), anchor: .center)
-                }
-                .onChange(of: selectedDate) {
-                    withAnimation(.easeInOut(duration: 0.3)) {
-                        proxy.scrollTo(dayPillId(for: selectedDate), anchor: .center)
-                    }
+            }
+            .scrollTargetLayout()
+        }
+        .scrollTargetBehavior(.viewAligned)
+        .scrollPosition(id: $visibleWeekStart)
+        .onAppear {
+            visibleWeekStart = weekStart(for: selectedDate)
+        }
+        .onChange(of: visibleWeekStart) {
+            guard let newWeekStart = visibleWeekStart else { return }
+            // Only update selectedDate if it's not already in the visible week
+            if weekStart(for: selectedDate) != newWeekStart {
+                let currentWeekday = calendar.component(.weekday, from: selectedDate)
+                let offset = currentWeekday - calendar.component(.weekday, from: newWeekStart)
+                if let newDate = calendar.date(byAdding: .day, value: offset, to: newWeekStart) {
+                    selectedDate = newDate
                 }
             }
         }
+        .onChange(of: selectedDate) {
+            let newWeek = weekStart(for: selectedDate)
+            if visibleWeekStart != newWeek {
+                withAnimation {
+                    visibleWeekStart = newWeek
+                }
+            }
+        }
+    }
+
+    private func weekDayRow(for weekStart: Date) -> some View {
+        let days = daysInWeek(from: weekStart)
+        return HStack(spacing: 0) {
+            ForEach(days, id: \.self) { date in
+                let isSelected = calendar.isDate(date, inSameDayAs: selectedDate)
+                let isToday = calendar.isDateInToday(date)
+                let weekdayIndex = calendar.component(.weekday, from: date) - 1
+                let dayNumber = calendar.component(.day, from: date)
+
+                Button {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        selectedDate = date
+                    }
+                } label: {
+                    VStack(spacing: 4) {
+                        Text(String(dayAbbreviations[weekdayIndex].prefix(1)))
+                            .font(.montserratHeader(.caption2, weight: .medium))
+                            .foregroundColor(isSelected ? .primary : .secondary)
+
+                        Text("\(dayNumber)")
+                            .font(.montserratHeader(.body, weight: isSelected || isToday ? .bold : .regular))
+                            .foregroundColor(isSelected ? .white : .secondary)
+                            .frame(width: 32, height: 32)
+                            .background(
+                                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                    .fill(isSelected ? Color.darkGray : Color.clear)
+                            )
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 14)
     }
 
     // MARK: - Weekly Pill Row

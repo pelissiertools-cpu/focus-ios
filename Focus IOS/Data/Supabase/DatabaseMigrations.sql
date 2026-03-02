@@ -239,3 +239,11 @@ ALTER TABLE commitments ADD CONSTRAINT commitments_section_check CHECK (section 
 -- Migrate existing data
 UPDATE commitments SET section = 'target' WHERE section = 'focus';
 UPDATE commitments SET section = 'todo'   WHERE section = 'extra';
+
+-- ==============================================
+-- PROJECT SECTIONS SUPPORT
+-- Sections are visual header dividers within projects.
+-- Stored as task rows with is_section = true.
+-- ==============================================
+
+ALTER TABLE tasks ADD COLUMN IF NOT EXISTS is_section BOOLEAN DEFAULT false;

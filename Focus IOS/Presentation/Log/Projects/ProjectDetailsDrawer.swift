@@ -37,7 +37,7 @@ struct ProjectDetailsDrawer: View {
 
     private var projectTasks: [FocusTask] {
         (viewModel.projectTasksMap[project.id] ?? [])
-            .filter { !pendingDeletions.contains($0.id) }
+            .filter { !$0.isSection && !pendingDeletions.contains($0.id) }
     }
 
     private var hasNoteChanges: Bool {

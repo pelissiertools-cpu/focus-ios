@@ -12,12 +12,14 @@ import Auth
 
 enum ProjectCardDisplayItem: Identifiable {
     case task(FocusTask)
+    case section(FocusTask)
     case addSubtaskRow(parentId: UUID)
     case addTaskRow
 
     var id: String {
         switch self {
         case .task(let task): return task.id.uuidString
+        case .section(let section): return "section-\(section.id.uuidString)"
         case .addSubtaskRow(let parentId): return "add-subtask-\(parentId.uuidString)"
         case .addTaskRow: return "add-task"
         }
@@ -32,12 +34,12 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
     @Published var errorMessage: String?
     @Published var showingAddProject = false
     @Published var selectedProjectForDetails: FocusTask?
+    @Published var selectedProjectForContent: FocusTask?
     @Published var selectedTaskForDetails: FocusTask?
     @Published var selectedTaskForSchedule: FocusTask?
 
     // Project tasks state management
     @Published var projectTasksMap: [UUID: [FocusTask]] = [:]
-    @Published var expandedProjects: Set<UUID> = []
     @Published var isLoadingProjectTasks: Set<UUID> = []
 
     // Subtasks for tasks within projects
@@ -249,15 +251,19 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
 
         var result: [ProjectCardDisplayItem] = []
         for task in uncompleted {
-            result.append(.task(task))
-            if expandedTasks.contains(task.id) {
-                for subtask in getUncompletedSubtasks(for: task.id) {
-                    result.append(.task(subtask))
+            if task.isSection {
+                result.append(.section(task))
+            } else {
+                result.append(.task(task))
+                if expandedTasks.contains(task.id) {
+                    for subtask in getUncompletedSubtasks(for: task.id) {
+                        result.append(.task(subtask))
+                    }
+                    for subtask in getCompletedSubtasks(for: task.id) {
+                        result.append(.task(subtask))
+                    }
+                    result.append(.addSubtaskRow(parentId: task.id))
                 }
-                for subtask in getCompletedSubtasks(for: task.id) {
-                    result.append(.task(subtask))
-                }
-                result.append(.addSubtaskRow(parentId: task.id))
             }
         }
         for task in completed {
@@ -277,7 +283,7 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
             projects.removeAll { completedIds.contains($0.id) }
             for projectId in completedIds {
                 projectTasksMap.removeValue(forKey: projectId)
-                expandedProjects.remove(projectId)
+
             }
         } catch {
             errorMessage = error.localizedDescription
@@ -285,21 +291,6 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
     }
 
     // MARK: - Project Expansion
-
-    func toggleExpanded(_ projectId: UUID) async {
-        if expandedProjects.contains(projectId) {
-            expandedProjects.remove(projectId)
-        } else {
-            expandedProjects.insert(projectId)
-            if projectTasksMap[projectId] == nil {
-                await fetchProjectTasks(for: projectId)
-            }
-        }
-    }
-
-    func isExpanded(_ projectId: UUID) -> Bool {
-        expandedProjects.contains(projectId)
-    }
 
     // MARK: - Task Expansion (within projects)
 
@@ -356,8 +347,8 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
             for task in allTasks where task.parentTaskId != nil {
                 subtasksMap[task.parentTaskId!, default: []].append(task)
             }
-            // Ensure empty entries for tasks without subtasks
-            for task in topLevelTasks {
+            // Ensure empty entries for tasks without subtasks (skip sections)
+            for task in topLevelTasks where !task.isSection {
                 if subtasksMap[task.id] == nil {
                     subtasksMap[task.id] = []
                 }
@@ -386,7 +377,7 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
     // MARK: - Progress Calculations
 
     func taskProgress(for projectId: UUID) -> (completed: Int, total: Int) {
-        let tasks = projectTasksMap[projectId] ?? []
+        let tasks = (projectTasksMap[projectId] ?? []).filter { !$0.isSection }
         let completed = tasks.filter { $0.isCompleted }.count
         return (completed, tasks.count)
     }
@@ -479,7 +470,7 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
             try await repository.deleteTask(id: project.id)
             projects.removeAll { $0.id == project.id }
             projectTasksMap.removeValue(forKey: project.id)
-            expandedProjects.remove(project.id)
+
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -493,7 +484,7 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
             try await repository.deleteTask(id: project.id)
             projects.removeAll { $0.id == project.id }
             projectTasksMap.removeValue(forKey: project.id)
-            expandedProjects.remove(project.id)
+
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -668,7 +659,7 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
     // MARK: - Project Auto-Complete
 
     private func checkProjectAutoComplete(projectId: UUID) async throws {
-        let tasks = projectTasksMap[projectId] ?? []
+        let tasks = (projectTasksMap[projectId] ?? []).filter { !$0.isSection }
         guard !tasks.isEmpty else { return }
 
         let allTasksComplete = tasks.allSatisfy { $0.isCompleted }
@@ -733,13 +724,46 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
         }
     }
 
+    // MARK: - Section CRUD
+
+    func createSection(title: String, projectId: UUID) async {
+        guard let userId = authService.currentUser?.id else {
+            errorMessage = "No authenticated user"
+            return
+        }
+        do {
+            let section = try await repository.createProjectSection(
+                title: title,
+                projectId: projectId,
+                userId: userId
+            )
+            if var tasks = projectTasksMap[projectId] {
+                tasks.append(section)
+                projectTasksMap[projectId] = tasks
+            } else {
+                projectTasksMap[projectId] = [section]
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func renameSection(_ section: FocusTask, newTitle: String) async {
+        let trimmed = newTitle.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty, trimmed != section.title else { return }
+        await updateTask(section, newTitle: trimmed)
+    }
+
+    func deleteSection(_ section: FocusTask, projectId: UUID) async {
+        await deleteProjectTask(section, projectId: projectId)
+    }
+
     // MARK: - Edit Mode
 
     func enterEditMode() {
         withAnimation(.easeInOut(duration: 0.25)) {
             isEditMode = true
             selectedProjectIds = []
-            expandedProjects.removeAll()
         }
     }
 
@@ -778,7 +802,7 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
             projects.removeAll { idsToDelete.contains($0.id) }
             for projectId in idsToDelete {
                 projectTasksMap.removeValue(forKey: projectId)
-                expandedProjects.remove(projectId)
+
             }
             exitEditMode()
         } catch {
@@ -802,7 +826,7 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
             projects.removeAll { idsToDelete.contains($0.id) }
             for projectId in idsToDelete {
                 projectTasksMap.removeValue(forKey: projectId)
-                expandedProjects.remove(projectId)
+
             }
             exitEditMode()
         } catch {
@@ -950,15 +974,23 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
         let flat = flattenedProjectItems(for: projectId)
         guard let fromIdx = source.first else { return }
 
-        // Only task items can be moved
-        guard case .task(let movedTask) = flat[fromIdx],
-              !movedTask.isCompleted else { return }
+        // Extract the moved item (task or section)
+        let movedTask: FocusTask
+        switch flat[fromIdx] {
+        case .task(let t): movedTask = t
+        case .section(let s): movedTask = s
+        default: return
+        }
+        guard !movedTask.isCompleted else { return }
 
         if movedTask.parentTaskId == nil {
-            // --- Parent task moved ---
+            // --- Top-level item moved (task or section) ---
             let parentIndices = flat.enumerated().compactMap { (i, item) -> (flatIdx: Int, task: FocusTask)? in
-                if case .task(let t) = item, t.parentTaskId == nil, !t.isCompleted { return (i, t) }
-                return nil
+                switch item {
+                case .task(let t) where t.parentTaskId == nil && !t.isCompleted: return (i, t)
+                case .section(let s): return (i, s)
+                default: return nil
+                }
             }
 
             guard let parentFrom = parentIndices.firstIndex(where: { $0.task.id == movedTask.id }) else { return }

@@ -125,6 +125,9 @@ struct ProjectsListView: View {
 
             Spacer(minLength: 0)
         }
+        .navigationDestination(item: $viewModel.selectedProjectForContent) { project in
+            ProjectContentView(project: project, viewModel: viewModel)
+        }
         .sheet(item: $viewModel.selectedProjectForDetails) { project in
             ProjectDetailsDrawer(project: project, viewModel: viewModel)
                 .drawerStyle()

@@ -12,7 +12,6 @@ struct ProjectCard: View {
     @ObservedObject var viewModel: ProjectsViewModel
     var onDragChanged: ((DragGesture.Value) -> Void)? = nil
     var onDragEnded: (() -> Void)? = nil
-    @State private var isInlineAddFocused = false
 
     private var taskProgress: (completed: Int, total: Int) {
         viewModel.taskProgress(for: project.id)
@@ -46,12 +45,7 @@ struct ProjectCard: View {
                 }
                 .frame(height: 3)
                 .padding(.horizontal)
-                .padding(.bottom, viewModel.isExpanded(project.id) ? 0 : 12)
-            }
-
-            // Expanded content
-            if viewModel.isExpanded(project.id) {
-                expandedContent
+                .padding(.bottom, 12)
             }
         }
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
@@ -130,125 +124,19 @@ struct ProjectCard: View {
             if viewModel.isEditMode && !project.isCompleted {
                 viewModel.toggleProjectSelection(project.id)
             } else if !viewModel.isEditMode {
-                _Concurrency.Task { @MainActor in
-                    await viewModel.toggleExpanded(project.id)
-                }
+                viewModel.selectedProjectForDetails = nil
+                viewModel.selectedProjectForContent = project
             }
         }
         .onLongPressGesture(minimumDuration: 0.35) {
             if !viewModel.isEditMode {
                 UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                viewModel.selectedProjectForContent = nil
                 viewModel.selectedProjectForDetails = project
             }
         }
     }
 
-    // MARK: - Expanded Content
-
-    private var expandedContent: some View {
-        VStack(spacing: 0) {
-            Divider()
-                .padding(.horizontal)
-
-            if viewModel.isLoadingProjectTasks.contains(project.id) {
-                HStack {
-                    Spacer()
-                    ProgressView()
-                        .scaleEffect(0.8)
-                    Spacer()
-                }
-                .padding()
-            } else {
-                let items = viewModel.flattenedProjectItems(for: project.id)
-
-                if items.count <= 1 {
-                    // Only the addTaskRow — no tasks yet
-                    Text("No tasks yet")
-                        .font(.inter(.headline))
-                        .bold()
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding()
-
-                    InlineAddRow(
-                        placeholder: "Task title",
-                        buttonLabel: "Add task",
-                        onSubmit: { title in await viewModel.createProjectTask(title: title, projectId: project.id) },
-                        isAnyAddFieldActive: $isInlineAddFocused,
-                        verticalPadding: 8
-                    )
-                    .padding(.horizontal, 16)
-                } else {
-                    List {
-                        ForEach(items) { item in
-                            switch item {
-                            case .task(let task):
-                                Group {
-                                    if task.parentTaskId != nil {
-                                        ProjectSubtaskRow(
-                                            subtask: task,
-                                            parentId: task.parentTaskId!,
-                                            viewModel: viewModel
-                                        )
-                                        .padding(.leading, 32)
-                                    } else {
-                                        ProjectTaskRow(
-                                            task: task,
-                                            projectId: project.id,
-                                            viewModel: viewModel
-                                        )
-                                    }
-                                }
-                                .moveDisabled(task.isCompleted || viewModel.isEditMode)
-                                .listRowInsets(EdgeInsets(top: 0, leading: 32, bottom: 0, trailing: 32))
-                                .listRowBackground(Color.clear)
-                                .listRowSeparator(.visible)
-
-                            case .addSubtaskRow(let parentId):
-                                InlineAddRow(
-                                    placeholder: "Subtask title",
-                                    buttonLabel: "Add subtask",
-                                    onSubmit: { title in await viewModel.createSubtask(title: title, parentId: parentId) },
-                                    isAnyAddFieldActive: $isInlineAddFocused,
-                                    iconFont: .inter(.caption),
-                                    verticalPadding: 6
-                                )
-                                .padding(.leading, 32)
-                                .moveDisabled(true)
-                                .listRowInsets(EdgeInsets(top: 0, leading: 32, bottom: 0, trailing: 32))
-                                .listRowBackground(Color.clear)
-                                .listRowSeparator(.hidden)
-
-                            case .addTaskRow:
-                                InlineAddRow(
-                                    placeholder: "Task title",
-                                    buttonLabel: "Add task",
-                                    onSubmit: { title in await viewModel.createProjectTask(title: title, projectId: project.id) },
-                                    isAnyAddFieldActive: $isInlineAddFocused,
-                                    verticalPadding: 8
-                                )
-                                .moveDisabled(true)
-                                .listRowInsets(EdgeInsets(top: 0, leading: 32, bottom: 0, trailing: 32))
-                                .listRowBackground(Color.clear)
-                                .listRowSeparator(.hidden)
-                            }
-                        }
-                        .onMove { from, to in
-                            viewModel.handleProjectContentFlatMove(from: from, to: to, projectId: project.id)
-                        }
-                    }
-                    .listStyle(.plain)
-                    .scrollDisabled(true)
-                    .scrollContentBackground(.hidden)
-                    .keyboardDismissOverlay(isActive: $isInlineAddFocused)
-                    .frame(minHeight: items.reduce(CGFloat(0)) { sum, item in
-                        if case .task(let t) = item, t.parentTaskId == nil { return sum + 52 }
-                        return sum + 32
-                    })
-                }
-            }
-        }
-        .padding(.bottom, 12)
-    }
 }
 
 // MARK: - Project Task Row

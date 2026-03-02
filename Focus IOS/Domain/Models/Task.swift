@@ -9,7 +9,9 @@ import Foundation
 
 /// Represents a task, project, or list in the Focus app
 /// Maps to the tasks table in Supabase
-struct FocusTask: Codable, Identifiable {
+struct FocusTask: Codable, Identifiable, Hashable {
+    static func == (lhs: FocusTask, rhs: FocusTask) -> Bool { lhs.id == rhs.id }
+    func hash(into hasher: inout Hasher) { hasher.combine(id) }
     let id: UUID
     let userId: UUID
     var title: String
@@ -23,6 +25,7 @@ struct FocusTask: Codable, Identifiable {
     var isInLog: Bool
     var previousCompletionState: [Bool]?
     var priority: Priority
+    var isSection: Bool
 
     // Foreign keys
     var categoryId: UUID?
@@ -44,6 +47,7 @@ struct FocusTask: Codable, Identifiable {
         case isInLog = "is_in_library"
         case previousCompletionState = "previous_completion_state"
         case priority
+        case isSection = "is_section"
         case categoryId = "category_id"
         case projectId = "project_id"
         case parentTaskId = "parent_task_id"
@@ -64,6 +68,7 @@ struct FocusTask: Codable, Identifiable {
         isInLog: Bool = true,
         previousCompletionState: [Bool]? = nil,
         priority: Priority = .low,
+        isSection: Bool = false,
         categoryId: UUID? = nil,
         projectId: UUID? = nil,
         parentTaskId: UUID? = nil
@@ -81,6 +86,7 @@ struct FocusTask: Codable, Identifiable {
         self.isInLog = isInLog
         self.previousCompletionState = previousCompletionState
         self.priority = priority
+        self.isSection = isSection
         self.categoryId = categoryId
         self.projectId = projectId
         self.parentTaskId = parentTaskId

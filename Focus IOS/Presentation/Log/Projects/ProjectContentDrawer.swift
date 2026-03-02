@@ -11,6 +11,7 @@ struct ProjectContentView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var isInlineAddFocused = false
     @State private var projectTitle: String
+    @State private var projectNotes: String
     @State private var editingSectionId: UUID?
     @FocusState private var isTitleFocused: Bool
 
@@ -18,6 +19,7 @@ struct ProjectContentView: View {
         self.project = project
         self.viewModel = viewModel
         _projectTitle = State(initialValue: project.title)
+        _projectNotes = State(initialValue: project.description ?? "")
     }
 
     var body: some View {
@@ -33,6 +35,15 @@ struct ProjectContentView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 20)
                     .padding(.top, 16)
+                    .padding(.bottom, 4)
+
+                // Notes
+                TextField("Notes", text: $projectNotes, axis: .vertical)
+                    .font(.inter(.body))
+                    .foregroundColor(.secondary)
+                    .textFieldStyle(.plain)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 20)
                     .padding(.bottom, 12)
 
                 // Task/section list
@@ -53,6 +64,7 @@ struct ProjectContentView: View {
             ToolbarItem(placement: .navigationBarLeading) {
                 Button {
                     saveProjectTitle()
+                    saveProjectNotes()
                     dismiss()
                 } label: {
                     Image(systemName: "chevron.left")
@@ -101,6 +113,15 @@ struct ProjectContentView: View {
         guard !trimmed.isEmpty, trimmed != project.title else { return }
         _Concurrency.Task {
             await viewModel.updateTask(project, newTitle: trimmed)
+        }
+    }
+
+    private func saveProjectNotes() {
+        let newNote = projectNotes.trimmingCharacters(in: .whitespacesAndNewlines)
+        let current = project.description?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        guard newNote != current else { return }
+        _Concurrency.Task {
+            await viewModel.updateTaskNote(project, newNote: newNote.isEmpty ? nil : newNote)
         }
     }
 

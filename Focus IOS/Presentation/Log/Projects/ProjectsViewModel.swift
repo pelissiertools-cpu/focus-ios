@@ -56,14 +56,21 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
     @Published var committedTaskIds: Set<UUID> = []
     @Published var taskDueDates: [UUID: Date] = [:]
 
-    // Edit mode
+    // Edit mode (project cards)
     @Published var isEditMode: Bool = false
     @Published var selectedProjectIds: Set<UUID> = []
 
-    // Batch operation triggers
+    // Batch operation triggers (project cards)
     @Published var showBatchDeleteConfirmation: Bool = false
     @Published var showBatchMovePicker: Bool = false
     @Published var showBatchCommitSheet: Bool = false
+
+    // Content-level edit mode (tasks within a project)
+    @Published var contentEditMode: Bool = false
+    @Published var selectedContentTaskIds: Set<UUID> = []
+    @Published var showContentBatchDeleteConfirmation: Bool = false
+    @Published var showContentBatchScheduleSheet: Bool = false
+    @Published var showContentBatchMovePicker: Bool = false
 
     // Search
     @Published var searchText: String = ""
@@ -758,7 +765,71 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
         await deleteProjectTask(section, projectId: projectId)
     }
 
-    // MARK: - Edit Mode
+    // MARK: - Content Edit Mode (tasks within a project)
+
+    func enterContentEditMode() {
+        withAnimation(.easeInOut(duration: 0.25)) {
+            contentEditMode = true
+            selectedContentTaskIds = []
+        }
+    }
+
+    func exitContentEditMode() {
+        withAnimation(.easeInOut(duration: 0.25)) {
+            contentEditMode = false
+            selectedContentTaskIds = []
+        }
+    }
+
+    func toggleContentTaskSelection(_ taskId: UUID) {
+        if selectedContentTaskIds.contains(taskId) {
+            selectedContentTaskIds.remove(taskId)
+        } else {
+            selectedContentTaskIds.insert(taskId)
+        }
+    }
+
+    func selectAllContentTasks(projectId: UUID) {
+        let tasks = (projectTasksMap[projectId] ?? []).filter { !$0.isSection && !$0.isCompleted }
+        selectedContentTaskIds = Set(tasks.map { $0.id })
+    }
+
+    func deselectAllContentTasks() {
+        selectedContentTaskIds = []
+    }
+
+    var allContentTasksSelected: Bool {
+        guard let projectId = selectedProjectForContent?.id else { return false }
+        let tasks = (projectTasksMap[projectId] ?? []).filter { !$0.isSection && !$0.isCompleted }
+        return !tasks.isEmpty && Set(tasks.map { $0.id }).isSubset(of: selectedContentTaskIds)
+    }
+
+    var selectedContentTasks: [FocusTask] {
+        guard let projectId = selectedProjectForContent?.id else { return [] }
+        let allTasks = projectTasksMap[projectId] ?? []
+        return allTasks.filter { selectedContentTaskIds.contains($0.id) }
+    }
+
+    func batchDeleteContentTasks(projectId: UUID) async {
+        let idsToDelete = selectedContentTaskIds
+        do {
+            for id in idsToDelete {
+                try await repository.deleteTask(id: id)
+            }
+            if var tasks = projectTasksMap[projectId] {
+                tasks.removeAll { idsToDelete.contains($0.id) }
+                projectTasksMap[projectId] = tasks
+            }
+            for id in idsToDelete {
+                subtasksMap.removeValue(forKey: id)
+            }
+            exitContentEditMode()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    // MARK: - Edit Mode (project cards)
 
     func enterEditMode() {
         withAnimation(.easeInOut(duration: 0.25)) {

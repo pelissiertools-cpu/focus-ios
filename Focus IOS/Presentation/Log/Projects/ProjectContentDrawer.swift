@@ -23,78 +23,114 @@ struct ProjectContentView: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 0) {
-                // Project title — editable inline
-                TextField("Project name", text: $projectTitle, axis: .vertical)
-                    .font(.inter(.title2, weight: .bold))
-                    .foregroundColor(.primary)
-                    .textFieldStyle(.plain)
-                    .focused($isTitleFocused)
-                    .onSubmit { saveProjectTitle() }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 20)
-                    .padding(.top, 16)
-                    .padding(.bottom, 4)
+        ZStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    // Project title — editable inline
+                    TextField("Project name", text: $projectTitle, axis: .vertical)
+                        .font(.inter(.title2, weight: .bold))
+                        .foregroundColor(.primary)
+                        .textFieldStyle(.plain)
+                        .focused($isTitleFocused)
+                        .onSubmit { saveProjectTitle() }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 20)
+                        .padding(.top, 16)
+                        .padding(.bottom, 4)
 
-                // Notes
-                TextField("Notes", text: $projectNotes, axis: .vertical)
-                    .font(.inter(.body))
-                    .foregroundColor(.secondary)
-                    .textFieldStyle(.plain)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 20)
-                    .padding(.bottom, 12)
+                    // Notes
+                    TextField("Notes", text: $projectNotes, axis: .vertical)
+                        .font(.inter(.body))
+                        .foregroundColor(.secondary)
+                        .textFieldStyle(.plain)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 20)
+                        .padding(.bottom, 12)
 
-                // Task/section list
-                contentList
+                    // Task/section list
+                    contentList
+                }
+                .padding(.bottom, 120)
             }
-            .padding(.bottom, 120)
-        }
-        .onTapGesture {
-            UIApplication.shared.sendAction(
-                #selector(UIResponder.resignFirstResponder),
-                to: nil, from: nil, for: nil
-            )
+            .onTapGesture {
+                UIApplication.shared.sendAction(
+                    #selector(UIResponder.resignFirstResponder),
+                    to: nil, from: nil, for: nil
+                )
+            }
+
+            // Edit mode action bar
+            if viewModel.contentEditMode {
+                ContentEditModeActionBar(viewModel: viewModel, projectId: project.id)
+            }
         }
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(true)
         .toolbarBackground(.hidden, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .navigationBarLeading) {
-                Button {
-                    saveProjectTitle()
-                    saveProjectNotes()
-                    dismiss()
-                } label: {
-                    Image(systemName: "chevron.left")
-                        .font(.inter(.body, weight: .semiBold))
-                        .foregroundColor(.primary)
+                if viewModel.contentEditMode {
+                    Button {
+                        viewModel.exitContentEditMode()
+                    } label: {
+                        Text("Done")
+                            .font(.inter(.body, weight: .medium))
+                            .foregroundColor(.appRed)
+                    }
+                } else {
+                    Button {
+                        saveProjectTitle()
+                        saveProjectNotes()
+                        dismiss()
+                    } label: {
+                        Image(systemName: "chevron.left")
+                            .font(.inter(.body, weight: .semiBold))
+                            .foregroundColor(.primary)
+                    }
                 }
             }
             ToolbarItem(placement: .navigationBarTrailing) {
-                Menu {
+                if viewModel.contentEditMode {
                     Button {
-                        _Concurrency.Task {
-                            await viewModel.createSection(
-                                title: "",
-                                projectId: project.id
-                            )
-                            // Focus the newly created section
-                            if let tasks = viewModel.projectTasksMap[project.id],
-                               let newSection = tasks.last(where: { $0.isSection }) {
-                                editingSectionId = newSection.id
-                            }
+                        if viewModel.allContentTasksSelected {
+                            viewModel.deselectAllContentTasks()
+                        } else {
+                            viewModel.selectAllContentTasks(projectId: project.id)
                         }
                     } label: {
-                        Label("Add section", systemImage: "plus")
+                        Text(viewModel.allContentTasksSelected ? "Deselect All" : "Select All")
+                            .font(.inter(.body, weight: .medium))
+                            .foregroundColor(.appRed)
                     }
-                } label: {
-                    Image(systemName: "ellipsis")
-                        .font(.inter(.body, weight: .semiBold))
-                        .foregroundColor(.primary)
-                        .frame(width: 30, height: 30)
-                        .background(Color.pillBackground, in: Circle())
+                } else {
+                    Menu {
+                        Button {
+                            viewModel.enterContentEditMode()
+                        } label: {
+                            Label("Select", systemImage: "checkmark.circle")
+                        }
+
+                        Button {
+                            _Concurrency.Task {
+                                await viewModel.createSection(
+                                    title: "",
+                                    projectId: project.id
+                                )
+                                if let tasks = viewModel.projectTasksMap[project.id],
+                                   let newSection = tasks.last(where: { $0.isSection }) {
+                                    editingSectionId = newSection.id
+                                }
+                            }
+                        } label: {
+                            Label("Add section", systemImage: "plus")
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis")
+                            .font(.inter(.body, weight: .semiBold))
+                            .foregroundColor(.primary)
+                            .frame(width: 30, height: 30)
+                            .background(Color.pillBackground, in: Circle())
+                    }
                 }
             }
         }
@@ -105,6 +141,33 @@ struct ProjectContentView: View {
         }
         .onChange(of: isTitleFocused) { _, focused in
             if !focused { saveProjectTitle() }
+        }
+        .onDisappear {
+            if viewModel.contentEditMode {
+                viewModel.exitContentEditMode()
+            }
+        }
+        .alert("Delete \(viewModel.selectedContentTaskIds.count) task\(viewModel.selectedContentTaskIds.count == 1 ? "" : "s")?",
+               isPresented: $viewModel.showContentBatchDeleteConfirmation) {
+            Button("Cancel", role: .cancel) { }
+            Button("Delete", role: .destructive) {
+                _Concurrency.Task {
+                    await viewModel.batchDeleteContentTasks(projectId: project.id)
+                }
+            }
+        }
+        .sheet(isPresented: $viewModel.showContentBatchScheduleSheet) {
+            BatchCommitSheet(
+                viewModel: viewModel,
+                tasks: viewModel.selectedContentTasks,
+                onComplete: { viewModel.exitContentEditMode() }
+            )
+            .drawerStyle()
+        }
+        .sheet(isPresented: $viewModel.showContentBatchMovePicker) {
+            // Placeholder — to be wired later
+            Text("Move")
+                .drawerStyle()
         }
     }
 
@@ -180,51 +243,57 @@ struct ProjectContentView: View {
                                         parentId: task.parentTaskId!,
                                         viewModel: viewModel
                                     )
-                                    .padding(.leading, 32)
+                                    .padding(.leading, viewModel.contentEditMode ? 0 : 32)
                                 } else {
-                                    ProjectTaskRow(
+                                    ContentTaskRow(
                                         task: task,
                                         projectId: project.id,
                                         viewModel: viewModel
                                     )
                                 }
                             }
-                            .moveDisabled(task.isCompleted)
+                            .moveDisabled(task.isCompleted || viewModel.contentEditMode)
                             .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
                             .listRowBackground(Color.clear)
                             .listRowSeparator(.visible)
 
                         case .addSubtaskRow(let parentId):
-                            InlineAddRow(
-                                placeholder: "Subtask title",
-                                buttonLabel: "Add subtask",
-                                onSubmit: { title in await viewModel.createSubtask(title: title, parentId: parentId) },
-                                isAnyAddFieldActive: $isInlineAddFocused,
-                                iconFont: .inter(.caption),
-                                verticalPadding: 6
-                            )
-                            .padding(.leading, 32)
-                            .moveDisabled(true)
-                            .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
-                            .listRowBackground(Color.clear)
-                            .listRowSeparator(.hidden)
+                            if !viewModel.contentEditMode {
+                                InlineAddRow(
+                                    placeholder: "Subtask title",
+                                    buttonLabel: "Add subtask",
+                                    onSubmit: { title in await viewModel.createSubtask(title: title, parentId: parentId) },
+                                    isAnyAddFieldActive: $isInlineAddFocused,
+                                    iconFont: .inter(.caption),
+                                    verticalPadding: 6
+                                )
+                                .padding(.leading, 32)
+                                .moveDisabled(true)
+                                .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+                                .listRowBackground(Color.clear)
+                                .listRowSeparator(.hidden)
+                            }
 
                         case .addTaskRow:
-                            InlineAddRow(
-                                placeholder: "Task title",
-                                buttonLabel: "Add task",
-                                onSubmit: { title in await viewModel.createProjectTask(title: title, projectId: project.id) },
-                                isAnyAddFieldActive: $isInlineAddFocused,
-                                verticalPadding: 8
-                            )
-                            .moveDisabled(true)
-                            .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
-                            .listRowBackground(Color.clear)
-                            .listRowSeparator(.hidden)
+                            if !viewModel.contentEditMode {
+                                InlineAddRow(
+                                    placeholder: "Task title",
+                                    buttonLabel: "Add task",
+                                    onSubmit: { title in await viewModel.createProjectTask(title: title, projectId: project.id) },
+                                    isAnyAddFieldActive: $isInlineAddFocused,
+                                    verticalPadding: 8
+                                )
+                                .moveDisabled(true)
+                                .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+                                .listRowBackground(Color.clear)
+                                .listRowSeparator(.hidden)
+                            }
                         }
                     }
                     .onMove { from, to in
-                        viewModel.handleProjectContentFlatMove(from: from, to: to, projectId: project.id)
+                        if !viewModel.contentEditMode {
+                            viewModel.handleProjectContentFlatMove(from: from, to: to, projectId: project.id)
+                        }
                     }
                 }
                 .listStyle(.plain)
@@ -235,12 +304,190 @@ struct ProjectContentView: View {
                     switch item {
                     case .section: return sum + 52
                     case .task(let t) where t.parentTaskId == nil: return sum + 52
-                    case .addTaskRow: return sum + 52
-                    case .addSubtaskRow: return sum + 40
+                    case .addTaskRow: return viewModel.contentEditMode ? sum : sum + 52
+                    case .addSubtaskRow: return viewModel.contentEditMode ? sum : sum + 40
                     default: return sum + 40
                     }
                 })
             }
+        }
+    }
+}
+
+// MARK: - Content Task Row (with selection support)
+
+private struct ContentTaskRow: View {
+    let task: FocusTask
+    let projectId: UUID
+    @ObservedObject var viewModel: ProjectsViewModel
+    @State private var showDeleteConfirmation = false
+
+    private var subtaskCount: Int {
+        (viewModel.subtasksMap[task.id] ?? []).count
+    }
+
+    var body: some View {
+        HStack(spacing: 12) {
+            // Selection circle in edit mode
+            if viewModel.contentEditMode {
+                Image(systemName: viewModel.selectedContentTaskIds.contains(task.id) ? "checkmark.circle.fill" : "circle")
+                    .font(.inter(.title3))
+                    .foregroundColor(viewModel.selectedContentTaskIds.contains(task.id) ? .appRed : .secondary)
+            }
+
+            // Task title + subtask count
+            VStack(alignment: .leading, spacing: 4) {
+                Text(task.title)
+                    .font(.inter(.body))
+                    .strikethrough(task.isCompleted)
+                    .foregroundColor(task.isCompleted ? .secondary : .primary)
+
+                if subtaskCount > 0 {
+                    Text("\(subtaskCount) subtask\(subtaskCount == 1 ? "" : "s")")
+                        .font(.inter(.caption))
+                        .foregroundColor(.secondary)
+                }
+            }
+            .frame(maxWidth: .infinity, minHeight: 36, alignment: .leading)
+
+            if !viewModel.contentEditMode {
+                // Completion button
+                Button {
+                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                    _Concurrency.Task {
+                        await viewModel.toggleTaskCompletion(task, projectId: projectId)
+                    }
+                } label: {
+                    Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
+                        .font(.inter(.title3))
+                        .foregroundColor(task.isCompleted ? Color.completedPurple.opacity(0.6) : .gray)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.vertical, 8)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            if viewModel.contentEditMode {
+                if !task.isCompleted {
+                    viewModel.toggleContentTaskSelection(task.id)
+                }
+            } else {
+                _Concurrency.Task {
+                    await viewModel.toggleTaskExpanded(task.id)
+                }
+            }
+        }
+        .contextMenu {
+            if !viewModel.contentEditMode && !task.isCompleted {
+                ContextMenuItems.editButton {
+                    viewModel.selectedTaskForDetails = task
+                }
+
+                ContextMenuItems.scheduleButton {
+                    viewModel.selectedTaskForSchedule = task
+                }
+
+                Divider()
+
+                ContextMenuItems.deleteButton {
+                    showDeleteConfirmation = true
+                }
+            }
+        }
+        .alert("Delete Task", isPresented: $showDeleteConfirmation) {
+            Button("Delete", role: .destructive) {
+                _Concurrency.Task {
+                    await viewModel.deleteProjectTask(task, projectId: projectId)
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Are you sure you want to delete \"\(task.title)\"?")
+        }
+    }
+}
+
+// MARK: - Content Edit Mode Action Bar
+
+struct ContentEditModeActionBar: View {
+    @ObservedObject var viewModel: ProjectsViewModel
+    let projectId: UUID
+
+    private var hasSelection: Bool { !viewModel.selectedContentTaskIds.isEmpty }
+
+    private struct ActionItem: Identifiable {
+        let id = UUID()
+        let icon: String
+        let label: String
+        let isDestructive: Bool
+        let action: () -> Void
+    }
+
+    private var actions: [ActionItem] {
+        [
+            ActionItem(icon: "trash", label: "Delete", isDestructive: true) {
+                viewModel.showContentBatchDeleteConfirmation = true
+            },
+            ActionItem(icon: "arrow.right", label: "Move", isDestructive: false) {
+                viewModel.showContentBatchMovePicker = true
+            },
+            ActionItem(icon: "calendar", label: "Schedule", isDestructive: false) {
+                viewModel.showContentBatchScheduleSheet = true
+            },
+        ]
+    }
+
+    var body: some View {
+        VStack {
+            HStack {
+                Spacer()
+
+                HStack(alignment: .top, spacing: 14) {
+                    // Floating labels
+                    VStack(alignment: .trailing, spacing: 0) {
+                        ForEach(Array(actions.reversed().enumerated()), id: \.element.id) { _, item in
+                            Text(LocalizedStringKey(item.label))
+                                .font(.inter(.subheadline, weight: .medium))
+                                .foregroundColor(item.isDestructive ? .red : .primary)
+                                .frame(height: 52)
+                                .contentShape(Rectangle())
+                                .onTapGesture {
+                                    if hasSelection { item.action() }
+                                }
+                        }
+                    }
+
+                    // Vertical glass capsule with icons
+                    VStack(spacing: 0) {
+                        ForEach(Array(actions.reversed().enumerated()), id: \.element.id) { index, item in
+                            Button {
+                                item.action()
+                            } label: {
+                                Image(systemName: item.icon)
+                                    .font(.inter(.title3))
+                                    .foregroundColor(item.isDestructive ? .red : .primary)
+                                    .frame(width: 52, height: 52)
+                                    .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                            .disabled(!hasSelection)
+
+                            if index < actions.count - 1 {
+                                Divider()
+                                    .frame(width: 28)
+                            }
+                        }
+                    }
+                    .padding(.vertical, 6)
+                    .glassEffect(.regular, in: .capsule)
+                    .shadow(radius: 4, y: 2)
+                }
+                .opacity(hasSelection ? 1.0 : 0.5)
+                .padding(.trailing, 20)
+                .padding(.top, 62)
+            }
+            Spacer()
         }
     }
 }
@@ -313,7 +560,6 @@ struct ProjectSectionRow: View {
     private func saveSectionTitle() {
         let trimmed = sectionTitle.trimmingCharacters(in: .whitespaces)
         if trimmed.isEmpty {
-            // Delete empty sections
             _Concurrency.Task {
                 await viewModel.deleteSection(section, projectId: projectId)
             }

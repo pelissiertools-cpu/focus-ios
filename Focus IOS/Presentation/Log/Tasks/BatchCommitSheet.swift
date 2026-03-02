@@ -12,12 +12,19 @@ struct BatchCommitSheet<VM: LogFilterable>: View {
     @EnvironmentObject var focusViewModel: FocusTabViewModel
     @Environment(\.dismiss) var dismiss
 
+    /// Optional override: supply tasks directly instead of using `viewModel.selectedItems`
+    var tasks: [FocusTask]?
+    /// Optional callback when scheduling completes (instead of `viewModel.exitEditMode()`)
+    var onComplete: (() -> Void)?
+
     @State private var selectedTimeframe: Timeframe = .daily
     @State private var selectedSection: Section = .todo
     @State private var selectedDates: Set<Date> = []
     @State private var isSaving = false
     @State private var showError = false
     @State private var errorMessage = ""
+
+    private var itemCount: Int { tasks?.count ?? viewModel.selectedCount }
 
     var body: some View {
         DrawerContainer(
@@ -30,7 +37,7 @@ struct BatchCommitSheet<VM: LogFilterable>: View {
         ) {
             Form {
                 SwiftUI.Section("Items") {
-                    Text("\(viewModel.selectedCount) item\(viewModel.selectedCount == 1 ? "" : "s") selected")
+                    Text("\(itemCount) item\(itemCount == 1 ? "" : "s") selected")
                         .font(.inter(.headline))
                 }
 
@@ -60,7 +67,7 @@ struct BatchCommitSheet<VM: LogFilterable>: View {
     private func saveCommitments() async {
         isSaving = true
         let commitmentRepository = CommitmentRepository()
-        let items = viewModel.selectedItems
+        let items = tasks ?? viewModel.selectedItems
 
         do {
             for item in items {
@@ -80,7 +87,11 @@ struct BatchCommitSheet<VM: LogFilterable>: View {
             await focusViewModel.fetchCommitments()
             await viewModel.fetchCommittedTaskIds()
 
-            viewModel.exitEditMode()
+            if let onComplete {
+                onComplete()
+            } else {
+                viewModel.exitEditMode()
+            }
             dismiss()
         } catch {
             errorMessage = error.localizedDescription

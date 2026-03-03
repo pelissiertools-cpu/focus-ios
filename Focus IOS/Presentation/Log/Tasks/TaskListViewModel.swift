@@ -1331,10 +1331,17 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
     func batchMoveToProject(_ projectId: UUID) async {
         do {
             let existingTasks = try await repository.fetchProjectTasks(projectId: projectId)
-            let startOrder = (existingTasks.map { $0.sortOrder }.max() ?? -1) + 1
+            let newCount = selectedTaskIds.count
 
+            // Shift existing items down to make room at the top
+            let shiftUpdates = existingTasks.map { (id: $0.id, sortOrder: $0.sortOrder + newCount) }
+            if !shiftUpdates.isEmpty {
+                try await repository.updateSortOrders(shiftUpdates)
+            }
+
+            // Insert new tasks at the top (sort orders 0..<newCount)
             for (offset, taskId) in selectedTaskIds.enumerated() {
-                try await repository.assignToProject(taskId: taskId, projectId: projectId, sortOrder: startOrder + offset)
+                try await repository.assignToProject(taskId: taskId, projectId: projectId, sortOrder: offset)
                 if let idx = tasks.firstIndex(where: { $0.id == taskId }) {
                     tasks[idx].projectId = projectId
                 }

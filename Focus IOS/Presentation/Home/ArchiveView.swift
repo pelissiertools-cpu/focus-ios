@@ -12,12 +12,38 @@ struct ArchiveView: View {
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 0) {
+                // Title
                 Text("Archive")
                     .font(.inter(size: 28, weight: .regular))
                     .foregroundColor(.primary)
                     .padding(.horizontal, 20)
                     .padding(.top, 16)
-                    .padding(.bottom, 16)
+                    .padding(.bottom, 4)
+
+                // Count + Clear
+                if viewModel.totalCount > 0 {
+                    HStack(spacing: 0) {
+                        Text("\(viewModel.totalCount) Completed")
+                            .font(.inter(.subheadline))
+                            .foregroundColor(.secondary)
+
+                        Text("  ·  ")
+                            .foregroundColor(.secondary)
+
+                        Button {
+                            viewModel.showClearConfirmation = true
+                        } label: {
+                            Text("Clear")
+                                .font(.inter(.subheadline, weight: .medium))
+                                .foregroundColor(.completedPurple)
+                        }
+                        .buttonStyle(.plain)
+
+                        Spacer()
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 12)
+                }
 
                 if viewModel.isLoading {
                     ProgressView()
@@ -39,8 +65,13 @@ struct ArchiveView: View {
                         ArchiveSectionHeader(title: section.title)
 
                         ForEach(section.tasks) { task in
-                            ArchiveItemRow(task: task)
-                                .padding(.horizontal, 32)
+                            ArchiveItemRow(
+                                task: task,
+                                isEditMode: viewModel.isEditMode,
+                                isSelected: viewModel.selectedIds.contains(task.id),
+                                onToggleSelection: { viewModel.toggleSelection(task.id) }
+                            )
+                            .padding(.horizontal, 32)
                         }
                     }
                 }
@@ -52,14 +83,95 @@ struct ArchiveView: View {
         .toolbarBackground(.hidden, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .navigationBarLeading) {
-                Button {
-                    dismiss()
-                } label: {
-                    Image(systemName: "chevron.left")
-                        .font(.inter(.body, weight: .semiBold))
-                        .foregroundColor(.primary)
+                if viewModel.isEditMode {
+                    Button {
+                        viewModel.exitEditMode()
+                    } label: {
+                        Text("Done")
+                            .font(.inter(.body, weight: .medium))
+                            .foregroundColor(.appRed)
+                    }
+                } else {
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "chevron.left")
+                            .font(.inter(.body, weight: .semiBold))
+                            .foregroundColor(.primary)
+                    }
                 }
             }
+            ToolbarItem(placement: .navigationBarTrailing) {
+                if viewModel.isEditMode {
+                    Button {
+                        if viewModel.allSelected {
+                            viewModel.deselectAll()
+                        } else {
+                            viewModel.selectAll()
+                        }
+                    } label: {
+                        Text(viewModel.allSelected ? "Deselect All" : "Select All")
+                            .font(.inter(.body, weight: .medium))
+                            .foregroundColor(.appRed)
+                    }
+                } else {
+                    Menu {
+                        Button {
+                            viewModel.enterEditMode()
+                        } label: {
+                            Label("Select", systemImage: "checkmark.circle")
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis")
+                            .font(.inter(.body, weight: .semiBold))
+                            .foregroundColor(.primary)
+                            .frame(width: 30, height: 30)
+                            .background(Color.pillBackground, in: Circle())
+                    }
+                }
+            }
+        }
+        .overlay(alignment: .bottom) {
+            if viewModel.isEditMode && !viewModel.selectedIds.isEmpty {
+                Button {
+                    viewModel.showDeleteConfirmation = true
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "trash")
+                        Text("Delete \(viewModel.selectedIds.count)")
+                    }
+                    .font(.inter(.body, weight: .medium))
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 24)
+                    .padding(.vertical, 12)
+                    .background(Color.appRed, in: Capsule())
+                    .shadow(radius: 4, y: 2)
+                }
+                .buttonStyle(.plain)
+                .padding(.bottom, 40)
+            }
+        }
+        .alert("Delete \(viewModel.selectedIds.count) item\(viewModel.selectedIds.count == 1 ? "" : "s")?",
+               isPresented: $viewModel.showDeleteConfirmation) {
+            Button("Cancel", role: .cancel) { }
+            Button("Delete", role: .destructive) {
+                _Concurrency.Task {
+                    await viewModel.deleteSelected()
+                }
+            }
+        } message: {
+            Text("This will permanently delete the selected items.")
+        }
+        .alert("Clear all completed items?",
+               isPresented: $viewModel.showClearConfirmation) {
+            Button("Cancel", role: .cancel) { }
+            Button("Clear", role: .destructive) {
+                _Concurrency.Task {
+                    await viewModel.clearAll()
+                }
+            }
+        } message: {
+            Text("This will permanently delete all \(viewModel.totalCount) completed items.")
         }
         .task {
             await viewModel.fetchCompletedItems()
@@ -96,12 +208,21 @@ private struct ArchiveSectionHeader: View {
 
 private struct ArchiveItemRow: View {
     let task: FocusTask
+    let isEditMode: Bool
+    let isSelected: Bool
+    let onToggleSelection: () -> Void
 
     var body: some View {
         HStack(spacing: 12) {
-            Image(systemName: "checkmark.circle.fill")
-                .font(.inter(.title3))
-                .foregroundColor(.completedPurple)
+            if isEditMode {
+                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                    .font(.inter(.title3))
+                    .foregroundColor(isSelected ? .appRed : .secondary)
+            } else {
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.inter(.title3))
+                    .foregroundColor(.completedPurple)
+            }
 
             Text(task.title)
                 .font(.inter(.body))
@@ -121,5 +242,11 @@ private struct ArchiveItemRow: View {
             }
         }
         .padding(.vertical, 8)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            if isEditMode {
+                onToggleSelection()
+            }
+        }
     }
 }

@@ -316,7 +316,7 @@ struct ProjectsListView: View {
                 }
             }
         } message: {
-            Text("This will permanently delete \(viewModel.completedProjects.count) completed project\(viewModel.completedProjects.count == 1 ? "" : "s").")
+            Text("This will clear \(viewModel.completedProjects.count) completed project\(viewModel.completedProjects.count == 1 ? "" : "s") from this view. They will still be available in Archive.")
         }
     }
 

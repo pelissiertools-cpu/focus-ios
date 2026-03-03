@@ -255,7 +255,7 @@ struct ProjectContentView: View {
                             .moveDisabled(task.isCompleted || viewModel.contentEditMode)
                             .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
                             .listRowBackground(Color.clear)
-                            .listRowSeparator(.visible)
+                            .listRowSeparator(.hidden)
 
                         case .addSubtaskRow(let parentId):
                             if !viewModel.contentEditMode {
@@ -273,6 +273,17 @@ struct ProjectContentView: View {
                                 .listRowBackground(Color.clear)
                                 .listRowSeparator(.hidden)
                             }
+
+                        case .completedHeader(let count):
+                            ProjectContentDonePill(
+                                count: count,
+                                isCollapsed: viewModel.isContentDoneCollapsed,
+                                onToggle: { viewModel.toggleContentDoneCollapsed() }
+                            )
+                            .moveDisabled(true)
+                            .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+                            .listRowBackground(Color.clear)
+                            .listRowSeparator(.hidden)
 
                         case .addTaskRow:
                             if !viewModel.contentEditMode {
@@ -304,6 +315,7 @@ struct ProjectContentView: View {
                     switch item {
                     case .section: return sum + 52
                     case .task(let t) where t.parentTaskId == nil: return sum + 52
+                    case .completedHeader: return sum + 48
                     case .addTaskRow: return viewModel.contentEditMode ? sum : sum + 52
                     case .addSubtaskRow: return viewModel.contentEditMode ? sum : sum + 40
                     default: return sum + 40
@@ -522,7 +534,7 @@ struct ProjectSectionRow: View {
                 .padding(.top, 16)
 
             Rectangle()
-                .fill(Color.appRed.opacity(0.4))
+                .fill(Color.secondary.opacity(0.7))
                 .frame(height: 1)
         }
         .contentShape(Rectangle())
@@ -569,5 +581,45 @@ struct ProjectSectionRow: View {
         _Concurrency.Task {
             await viewModel.renameSection(section, newTitle: trimmed)
         }
+    }
+}
+
+// MARK: - Project Content Done Pill
+
+private struct ProjectContentDonePill: View {
+    let count: Int
+    let isCollapsed: Bool
+    let onToggle: () -> Void
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    onToggle()
+                }
+            } label: {
+                HStack(spacing: 4) {
+                    Text("Completed")
+                        .font(.inter(size: 12, weight: .medium))
+                        .foregroundColor(.secondary)
+
+                    Text("\(count)")
+                        .font(.inter(size: 12))
+                        .foregroundColor(.secondary)
+
+                    Image(systemName: isCollapsed ? "chevron.right" : "chevron.down")
+                        .font(.inter(size: 8, weight: .semiBold))
+                        .foregroundColor(.secondary)
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .clipShape(Capsule())
+                .glassEffect(.regular.tint(.glassTint).interactive(), in: .capsule)
+            }
+            .buttonStyle(.plain)
+
+            Spacer()
+        }
+        .padding(.vertical, 10)
     }
 }

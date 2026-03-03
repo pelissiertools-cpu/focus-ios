@@ -428,12 +428,12 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
 
         do {
             let allTasks = try await repository.fetchTasks(ofType: .task)
-            // Filter to only top-level tasks (no parent)
-            self.tasks = allTasks.filter { $0.parentTaskId == nil }
+            // Filter to only top-level tasks (no parent), exclude cleared items
+            self.tasks = allTasks.filter { $0.parentTaskId == nil && !$0.isCleared }
 
             // Pre-populate subtasksMap from already-fetched data
             var newSubtasksMap: [UUID: [FocusTask]] = [:]
-            for task in allTasks where task.parentTaskId != nil {
+            for task in allTasks where task.parentTaskId != nil && !task.isCleared {
                 newSubtasksMap[task.parentTaskId!, default: []].append(task)
             }
             for task in self.tasks {
@@ -644,19 +644,14 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
         }
     }
 
-    /// Clear all completed tasks from the log
+    /// Clear all completed tasks from the log (soft-delete — still visible in Archive)
     func clearCompletedTasks() async {
-        let completedTaskIds = tasks.filter { $0.isCompleted }.map { $0.id }
+        let completedIds = Set(tasks.filter { $0.isCompleted }.map { $0.id })
+        guard !completedIds.isEmpty else { return }
 
         do {
-            // Delete commitments and tasks for each completed task
-            for taskId in completedTaskIds {
-                try await commitmentRepository.deleteCommitments(forTask: taskId)
-                try await repository.deleteTask(id: taskId)
-            }
-
-            // Remove from local array
-            tasks.removeAll { $0.isCompleted }
+            try await repository.clearTasks(ids: completedIds)
+            tasks.removeAll { completedIds.contains($0.id) }
         } catch {
             errorMessage = error.localizedDescription
         }

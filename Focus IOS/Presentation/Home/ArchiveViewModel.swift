@@ -5,6 +5,7 @@
 
 import Foundation
 import Combine
+import SwiftUI
 
 struct ArchiveSection: Identifiable {
     let id: String
@@ -17,6 +18,74 @@ class ArchiveViewModel: ObservableObject {
     @Published var sections: [ArchiveSection] = []
     @Published var isLoading = false
     @Published var errorMessage: String?
+
+    // Edit mode
+    @Published var isEditMode = false
+    @Published var selectedIds: Set<UUID> = []
+    @Published var showDeleteConfirmation = false
+    @Published var showClearConfirmation = false
+
+    var totalCount: Int {
+        sections.reduce(0) { $0 + $1.tasks.count }
+    }
+
+    var allSelected: Bool {
+        let allIds = Set(sections.flatMap { $0.tasks.map { $0.id } })
+        return !allIds.isEmpty && allIds.isSubset(of: selectedIds)
+    }
+
+    func enterEditMode() {
+        withAnimation(.easeInOut(duration: 0.25)) {
+            isEditMode = true
+            selectedIds = []
+        }
+    }
+
+    func exitEditMode() {
+        withAnimation(.easeInOut(duration: 0.25)) {
+            isEditMode = false
+            selectedIds = []
+        }
+    }
+
+    func toggleSelection(_ id: UUID) {
+        if selectedIds.contains(id) {
+            selectedIds.remove(id)
+        } else {
+            selectedIds.insert(id)
+        }
+    }
+
+    func selectAll() {
+        selectedIds = Set(sections.flatMap { $0.tasks.map { $0.id } })
+    }
+
+    func deselectAll() {
+        selectedIds = []
+    }
+
+    func deleteSelected() async {
+        guard !selectedIds.isEmpty else { return }
+        do {
+            try await repository.deleteTasks(ids: selectedIds)
+            selectedIds = []
+            isEditMode = false
+            await fetchCompletedItems()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func clearAll() async {
+        let allIds = Set(sections.flatMap { $0.tasks.map { $0.id } })
+        guard !allIds.isEmpty else { return }
+        do {
+            try await repository.deleteTasks(ids: allIds)
+            await fetchCompletedItems()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
 
     private let repository: TaskRepository
     private var cancellables = Set<AnyCancellable>()

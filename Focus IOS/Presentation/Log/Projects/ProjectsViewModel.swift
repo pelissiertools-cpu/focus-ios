@@ -15,13 +15,15 @@ enum ProjectCardDisplayItem: Identifiable {
     case section(FocusTask)
     case addSubtaskRow(parentId: UUID)
     case addTaskRow
+    case completedHeader(count: Int)
 
     var id: String {
         switch self {
-        case .task(let task): return task.id.uuidString
+        case .task(let task): return "\(task.id.uuidString)-\(task.isCompleted)"
         case .section(let section): return "section-\(section.id.uuidString)"
         case .addSubtaskRow(let parentId): return "add-subtask-\(parentId.uuidString)"
         case .addTaskRow: return "add-task"
+        case .completedHeader: return "completed-header"
         }
     }
 }
@@ -81,6 +83,7 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
 
     // Done section
     @Published var isDoneCollapsed: Bool = true
+    @Published var isContentDoneCollapsed: Bool = true
 
     private let repository: TaskRepository
     let commitmentRepository: CommitmentRepository
@@ -250,6 +253,10 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
         isDoneCollapsed.toggle()
     }
 
+    func toggleContentDoneCollapsed() {
+        isContentDoneCollapsed.toggle()
+    }
+
     /// Flat display array for a project's expanded content: tasks interleaved with their subtasks and add rows.
     func flattenedProjectItems(for projectId: UUID) -> [ProjectCardDisplayItem] {
         let allTasks = projectTasksMap[projectId] ?? []
@@ -273,24 +280,28 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
                 }
             }
         }
-        for task in completed {
-            result.append(.task(task))
+        if !completed.isEmpty {
+            result.append(.completedHeader(count: completed.count))
+            if !isContentDoneCollapsed {
+                for task in completed {
+                    result.append(.task(task))
+                }
+            }
         }
         result.append(.addTaskRow)
         return result
     }
 
+    /// Clear completed projects (soft-delete — still visible in Archive)
     func clearCompletedProjects() async {
-        let completedIds = completedProjects.map { $0.id }
+        let completedIds = Set(completedProjects.map { $0.id })
+        guard !completedIds.isEmpty else { return }
+
         do {
-            for projectId in completedIds {
-                try await commitmentRepository.deleteCommitments(forTask: projectId)
-                try await repository.deleteTask(id: projectId)
-            }
+            try await repository.clearTasks(ids: completedIds)
             projects.removeAll { completedIds.contains($0.id) }
             for projectId in completedIds {
                 projectTasksMap.removeValue(forKey: projectId)
-
             }
         } catch {
             errorMessage = error.localizedDescription
@@ -324,7 +335,7 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
         errorMessage = nil
 
         do {
-            self.projects = try await repository.fetchProjects()
+            self.projects = try await repository.fetchProjects().filter { !$0.isCleared }
             self.categories = try await categoryRepository.fetchCategories()
             await fetchCommittedTaskIds()
 
@@ -346,12 +357,12 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
 
         do {
             let allTasks = try await repository.fetchProjectTasks(projectId: projectId)
-            // Separate top-level tasks and subtasks
-            let topLevelTasks = allTasks.filter { $0.parentTaskId == nil }
+            // Separate top-level tasks and subtasks, exclude cleared items
+            let topLevelTasks = allTasks.filter { $0.parentTaskId == nil && !$0.isCleared }
             projectTasksMap[projectId] = topLevelTasks
 
             // Pre-populate subtasksMap
-            for task in allTasks where task.parentTaskId != nil {
+            for task in allTasks where task.parentTaskId != nil && !task.isCleared {
                 subtasksMap[task.parentTaskId!, default: []].append(task)
             }
             // Ensure empty entries for tasks without subtasks (skip sections)
@@ -373,7 +384,7 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
 
         do {
             let subtasks = try await repository.fetchSubtasks(parentId: taskId)
-            subtasksMap[taskId] = subtasks
+            subtasksMap[taskId] = subtasks.filter { !$0.isCleared }
         } catch {
             if !Task.isCancelled { errorMessage = error.localizedDescription }
         }

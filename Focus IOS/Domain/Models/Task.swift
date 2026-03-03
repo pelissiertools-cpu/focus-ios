@@ -26,6 +26,7 @@ struct FocusTask: Codable, Identifiable, Hashable {
     var previousCompletionState: [Bool]?
     var priority: Priority
     var isSection: Bool
+    var isCleared: Bool
 
     // Foreign keys
     var categoryId: UUID?
@@ -48,6 +49,7 @@ struct FocusTask: Codable, Identifiable, Hashable {
         case previousCompletionState = "previous_completion_state"
         case priority
         case isSection = "is_section"
+        case isCleared = "is_cleared"
         case categoryId = "category_id"
         case projectId = "project_id"
         case parentTaskId = "parent_task_id"
@@ -69,6 +71,7 @@ struct FocusTask: Codable, Identifiable, Hashable {
         previousCompletionState: [Bool]? = nil,
         priority: Priority = .low,
         isSection: Bool = false,
+        isCleared: Bool = false,
         categoryId: UUID? = nil,
         projectId: UUID? = nil,
         parentTaskId: UUID? = nil
@@ -87,8 +90,31 @@ struct FocusTask: Codable, Identifiable, Hashable {
         self.previousCompletionState = previousCompletionState
         self.priority = priority
         self.isSection = isSection
+        self.isCleared = isCleared
         self.categoryId = categoryId
         self.projectId = projectId
         self.parentTaskId = parentTaskId
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        userId = try container.decode(UUID.self, forKey: .userId)
+        title = try container.decode(String.self, forKey: .title)
+        description = try container.decodeIfPresent(String.self, forKey: .description)
+        type = try container.decode(TaskType.self, forKey: .type)
+        isCompleted = try container.decode(Bool.self, forKey: .isCompleted)
+        completedDate = try container.decodeIfPresent(Date.self, forKey: .completedDate)
+        createdDate = try container.decode(Date.self, forKey: .createdDate)
+        modifiedDate = try container.decode(Date.self, forKey: .modifiedDate)
+        sortOrder = try container.decode(Int.self, forKey: .sortOrder)
+        isInLog = try container.decode(Bool.self, forKey: .isInLog)
+        previousCompletionState = try container.decodeIfPresent([Bool].self, forKey: .previousCompletionState)
+        priority = try container.decode(Priority.self, forKey: .priority)
+        isSection = try container.decode(Bool.self, forKey: .isSection)
+        isCleared = try container.decodeIfPresent(Bool.self, forKey: .isCleared) ?? false
+        categoryId = try container.decodeIfPresent(UUID.self, forKey: .categoryId)
+        projectId = try container.decodeIfPresent(UUID.self, forKey: .projectId)
+        parentTaskId = try container.decodeIfPresent(UUID.self, forKey: .parentTaskId)
     }
 }

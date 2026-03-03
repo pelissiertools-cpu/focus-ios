@@ -523,7 +523,7 @@ struct ListDoneSection: View {
                     }
                 }
             } message: {
-                Text("This will permanently delete \(completedItems.count) completed item\(completedItems.count == 1 ? "" : "s").")
+                Text("This will clear \(completedItems.count) completed item\(completedItems.count == 1 ? "" : "s") from this view. They will still be available in Archive.")
             }
         }
     }

@@ -338,7 +338,7 @@ class ListsViewModel: ObservableObject, LogFilterable, TaskEditingViewModel {
         errorMessage = nil
 
         do {
-            self.lists = try await repository.fetchTasks(ofType: .list)
+            self.lists = try await repository.fetchTasks(ofType: .list).filter { !$0.isCleared }
             self.categories = try await categoryRepository.fetchCategories()
             await fetchCommittedTaskIds()
 
@@ -360,7 +360,7 @@ class ListsViewModel: ObservableObject, LogFilterable, TaskEditingViewModel {
 
         do {
             let items = try await repository.fetchSubtasks(parentId: listId)
-            itemsMap[listId] = items
+            itemsMap[listId] = items.filter { !$0.isCleared }
         } catch {
             if !Task.isCancelled { errorMessage = error.localizedDescription }
         }
@@ -557,17 +557,15 @@ class ListsViewModel: ObservableObject, LogFilterable, TaskEditingViewModel {
 
     // MARK: - Clear Done
 
+    /// Clear completed items from a list (soft-delete — still visible in Archive)
     func clearCompletedItems(for listId: UUID) async {
-        guard var items = itemsMap[listId] else { return }
-        let completedItems = items.filter { $0.isCompleted }
+        guard let items = itemsMap[listId] else { return }
+        let completedIds = Set(items.filter { $0.isCompleted }.map { $0.id })
+        guard !completedIds.isEmpty else { return }
 
         do {
-            for item in completedItems {
-                try await commitmentRepository.deleteCommitments(forTask: item.id)
-                try await repository.deleteTask(id: item.id)
-            }
-            items.removeAll { $0.isCompleted }
-            itemsMap[listId] = items
+            try await repository.clearTasks(ids: completedIds)
+            itemsMap[listId] = items.filter { !completedIds.contains($0.id) }
             doneSectionCollapsed.removeValue(forKey: listId)
         } catch {
             errorMessage = error.localizedDescription

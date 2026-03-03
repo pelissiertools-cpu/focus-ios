@@ -29,6 +29,17 @@ class TaskRepository {
         }
     }
 
+    /// Helper struct for clearing tasks (soft-delete)
+    private struct ClearUpdate: Encodable {
+        let isCleared: Bool
+        let modifiedDate: Date
+
+        enum CodingKeys: String, CodingKey {
+            case isCleared = "is_cleared"
+            case modifiedDate = "modified_date"
+        }
+    }
+
     /// Helper struct for sort order updates
     private struct SortOrderUpdate: Encodable {
         let sortOrder: Int
@@ -144,6 +155,17 @@ class TaskRepository {
         try await supabase
             .from("tasks")
             .delete()
+            .in("id", values: ids.map { $0.uuidString })
+            .execute()
+    }
+
+    /// Mark tasks as cleared (soft-delete — stays in Archive, hidden from local views)
+    func clearTasks(ids: Set<UUID>) async throws {
+        guard !ids.isEmpty else { return }
+        let update = ClearUpdate(isCleared: true, modifiedDate: Date())
+        try await supabase
+            .from("tasks")
+            .update(update)
             .in("id", values: ids.map { $0.uuidString })
             .execute()
     }

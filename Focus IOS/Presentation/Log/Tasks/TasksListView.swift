@@ -517,7 +517,7 @@ struct LogDonePillView: View {
                 }
             }
         } message: {
-            Text("This will permanently delete \(completedTasks.count) completed task\(completedTasks.count == 1 ? "" : "s").")
+            Text("This will clear \(completedTasks.count) completed task\(completedTasks.count == 1 ? "" : "s") from this view. They will still be available in Archive.")
         }
     }
 }

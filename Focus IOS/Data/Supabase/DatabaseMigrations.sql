@@ -247,3 +247,12 @@ UPDATE commitments SET section = 'todo'   WHERE section = 'extra';
 -- ==============================================
 
 ALTER TABLE tasks ADD COLUMN IF NOT EXISTS is_section BOOLEAN DEFAULT false;
+
+-- ==============================================
+-- ARCHIVE SOFT-DELETE SUPPORT
+-- Cleared items are hidden from local views but
+-- remain visible in Archive. Only Archive can
+-- permanently delete items.
+-- ==============================================
+
+ALTER TABLE tasks ADD COLUMN IF NOT EXISTS is_cleared BOOLEAN DEFAULT false;

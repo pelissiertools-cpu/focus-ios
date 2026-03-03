@@ -5,6 +5,7 @@
 
 import Foundation
 import Combine
+import SwiftUI
 
 enum HomeMenuItem: String, CaseIterable, Identifiable, Hashable {
     case today = "Today"
@@ -97,6 +98,36 @@ class HomeViewModel: ObservableObject {
             lists.removeAll { $0.id == list.id }
         } catch {
             errorMessage = error.localizedDescription
+        }
+    }
+
+    // MARK: - Reorder
+
+    func reorderProjects(from source: IndexSet, to destination: Int) {
+        projects.move(fromOffsets: source, toOffset: destination)
+        var updates: [(id: UUID, sortOrder: Int)] = []
+        for (index, project) in projects.enumerated() {
+            projects[index].sortOrder = index
+            updates.append((id: project.id, sortOrder: index))
+        }
+        _Concurrency.Task { await persistSortOrders(updates) }
+    }
+
+    func reorderLists(from source: IndexSet, to destination: Int) {
+        lists.move(fromOffsets: source, toOffset: destination)
+        var updates: [(id: UUID, sortOrder: Int)] = []
+        for (index, list) in lists.enumerated() {
+            lists[index].sortOrder = index
+            updates.append((id: list.id, sortOrder: index))
+        }
+        _Concurrency.Task { await persistSortOrders(updates) }
+    }
+
+    private func persistSortOrders(_ updates: [(id: UUID, sortOrder: Int)]) async {
+        do {
+            try await repository.updateSortOrders(updates)
+        } catch {
+            errorMessage = "Failed to save order: \(error.localizedDescription)"
         }
     }
 }

@@ -115,6 +115,9 @@ struct HomeView: View {
                                 .listRowBackground(Color.clear)
                                 .listRowSeparator(.hidden)
                             }
+                            .onMove { from, to in
+                                viewModel.reorderProjects(from: from, to: to)
+                            }
                         }
                         .listStyle(.plain)
                         .scrollDisabled(true)
@@ -155,6 +158,9 @@ struct HomeView: View {
                                 .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
                                 .listRowBackground(Color.clear)
                                 .listRowSeparator(.hidden)
+                            }
+                            .onMove { from, to in
+                                viewModel.reorderLists(from: from, to: to)
                             }
                         }
                         .listStyle(.plain)

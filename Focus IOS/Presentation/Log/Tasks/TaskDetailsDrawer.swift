@@ -12,6 +12,12 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
     let commitment: Commitment?
     let categories: [Category]
     @ObservedObject var viewModel: VM
+
+    // Pending schedule interception (used by UnassignedView)
+    var pendingSchedule: PendingScheduleInfo? = nil
+    var onScheduleCallback: ((Timeframe, Section, Set<Date>) -> Void)? = nil
+    var onClearSchedule: (() -> Void)? = nil
+
     @EnvironmentObject var focusViewModel: FocusTabViewModel
     @EnvironmentObject var languageManager: LanguageManager
     @State private var taskTitle: String
@@ -54,11 +60,17 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
             .filter { !pendingDeletions.contains($0.id) }
     }
 
-    init(task: FocusTask, viewModel: VM, commitment: Commitment? = nil, categories: [Category] = []) {
+    init(task: FocusTask, viewModel: VM, commitment: Commitment? = nil, categories: [Category] = [],
+         pendingSchedule: PendingScheduleInfo? = nil,
+         onSchedule: ((Timeframe, Section, Set<Date>) -> Void)? = nil,
+         onClearSchedule: (() -> Void)? = nil) {
         self.task = task
         self.viewModel = viewModel
         self.commitment = commitment
         self.categories = categories
+        self.pendingSchedule = pendingSchedule
+        self.onScheduleCallback = onSchedule
+        self.onClearSchedule = onClearSchedule
         _taskTitle = State(initialValue: task.title)
         _noteText = State(initialValue: task.description ?? "")
         _selectedCategoryId = State(initialValue: task.categoryId)
@@ -66,7 +78,7 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
     }
 
     private var commitPillIsActive: Bool {
-        !commitDates.isEmpty || hasExistingCommitments
+        !commitDates.isEmpty || hasExistingCommitments || pendingSchedule != nil
     }
 
     private var hasCommitChanges: Bool {
@@ -502,6 +514,27 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                 .buttonStyle(.plain)
             }
 
+            // Clear pending schedule pill
+            if pendingSchedule != nil, let onClearSchedule {
+                Button {
+                    onClearSchedule()
+                    dismiss()
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "xmark.circle")
+                            .font(.inter(.subheadline))
+                        Text("Clear")
+                            .font(.inter(.subheadline, weight: .medium))
+                            .lineLimit(1)
+                    }
+                    .foregroundColor(.primary)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 10)
+                    .glassEffect(.regular.interactive(), in: .capsule)
+                }
+                .buttonStyle(.plain)
+            }
+
             Spacer()
 
             // Delete circle
@@ -669,13 +702,20 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .padding(.horizontal, 16)
         .onAppear {
-            fetchTaskCommitments()
+            if let pending = pendingSchedule {
+                commitTimeframe = pending.timeframe
+                commitSection = pending.section
+                commitDates = pending.dates
+                originalCommitDates = pending.dates
+            } else if onScheduleCallback == nil {
+                fetchTaskCommitments()
+            }
         }
         .onChange(of: commitTimeframe) {
-            fetchTaskCommitments()
+            if onScheduleCallback == nil { fetchTaskCommitments() }
         }
         .onChange(of: commitSection) {
-            fetchTaskCommitments()
+            if onScheduleCallback == nil { fetchTaskCommitments() }
         }
     }
 
@@ -717,6 +757,14 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
 
     private func saveCommitChanges() {
         let currentDates = Set(commitDates.map { Calendar.current.startOfDay(for: $0) })
+
+        if let onScheduleCallback {
+            if !currentDates.isEmpty {
+                onScheduleCallback(commitTimeframe, commitSection, currentDates)
+            }
+            return
+        }
+
         guard originalCommitDates != currentDates else { return }
 
         let capturedOriginalCommitments = originalCommitments

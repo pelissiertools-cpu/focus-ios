@@ -16,6 +16,8 @@ struct BatchCommitSheet<VM: LogFilterable>: View {
     var tasks: [FocusTask]?
     /// Optional callback when scheduling completes (instead of `viewModel.exitEditMode()`)
     var onComplete: (() -> Void)?
+    /// Optional callback to intercept scheduling instead of writing to DB
+    var onBatchSchedule: (([FocusTask], Timeframe, Section, Set<Date>) -> Void)? = nil
 
     @State private var selectedTimeframe: Timeframe = .daily
     @State private var selectedSection: Section = .todo
@@ -66,8 +68,22 @@ struct BatchCommitSheet<VM: LogFilterable>: View {
 
     private func saveCommitments() async {
         isSaving = true
-        let commitmentRepository = CommitmentRepository()
         let items = tasks ?? viewModel.selectedItems
+
+        if let onBatchSchedule {
+            let normalizedDates = Set(selectedDates.map { Calendar.current.startOfDay(for: $0) })
+            onBatchSchedule(items, selectedTimeframe, selectedSection, normalizedDates)
+            if let onComplete {
+                onComplete()
+            } else {
+                viewModel.exitEditMode()
+            }
+            dismiss()
+            isSaving = false
+            return
+        }
+
+        let commitmentRepository = CommitmentRepository()
 
         do {
             for item in items {

@@ -10,6 +10,9 @@ import SwiftUI
 struct CommitmentSelectionSheet: View {
     let task: FocusTask
     @ObservedObject var focusViewModel: FocusTabViewModel
+    var onSchedule: ((Timeframe, Section, Set<Date>) -> Void)? = nil
+    var pendingSchedule: PendingScheduleInfo? = nil
+    var onClearSchedule: (() -> Void)? = nil
     @Environment(\.dismiss) var dismiss
 
     @State private var selectedTimeframe: Timeframe = .daily
@@ -23,12 +26,22 @@ struct CommitmentSelectionSheet: View {
     @State private var selectedDates: Set<Date> = []
     // Track original commitments to know what to add/remove
     @State private var originalCommitments: [Commitment] = []
+    // Track original pending dates to detect changes
+    @State private var originalPendingDates: Set<Date> = []
 
     private var isParentTask: Bool {
         task.parentTaskId == nil && subtaskCount > 0
     }
 
+    private var isPendingMode: Bool {
+        pendingSchedule != nil
+    }
+
     private var hasChanges: Bool {
+        if isPendingMode {
+            let currentDates = Set(selectedDates.map { normalizeDate($0) })
+            return originalPendingDates != currentDates
+        }
         let originalDates = Set(originalCommitments.map { normalizeDate($0.commitmentDate) })
         let currentDates = Set(selectedDates.map { normalizeDate($0) })
         return originalDates != currentDates
@@ -84,6 +97,29 @@ struct CommitmentSelectionSheet: View {
                     }
                     .background(Color(.secondarySystemGroupedBackground))
                     .clipShape(RoundedRectangle(cornerRadius: 12))
+
+                    // Clear scheduling pill (only in pending mode)
+                    if isPendingMode {
+                        HStack {
+                            Button {
+                                onClearSchedule?()
+                                dismiss()
+                            } label: {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "xmark.circle")
+                                        .font(.inter(.subheadline))
+                                    Text("Clear Scheduling")
+                                        .font(.inter(.subheadline, weight: .medium))
+                                }
+                                .foregroundColor(.primary)
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 10)
+                                .glassEffect(.regular.interactive(), in: .capsule)
+                            }
+                            .buttonStyle(.plain)
+                            Spacer()
+                        }
+                    }
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
@@ -95,13 +131,20 @@ struct CommitmentSelectionSheet: View {
             }
             .onAppear {
                 fetchSubtaskCount()
-                fetchTaskCommitments()
+                if let pending = pendingSchedule {
+                    selectedTimeframe = pending.timeframe
+                    selectedSection = pending.section
+                    selectedDates = pending.dates
+                    originalPendingDates = Set(pending.dates.map { normalizeDate($0) })
+                } else {
+                    fetchTaskCommitments()
+                }
             }
             .onChange(of: selectedTimeframe) {
-                fetchTaskCommitments()
+                if !isPendingMode { fetchTaskCommitments() }
             }
             .onChange(of: selectedSection) {
-                fetchTaskCommitments()
+                if !isPendingMode { fetchTaskCommitments() }
             }
         }
     }
@@ -112,6 +155,18 @@ struct CommitmentSelectionSheet: View {
 
     private func saveChanges() async {
         isSaving = true
+
+        if let onSchedule {
+            let normalizedDates = Set(selectedDates.map { normalizeDate($0) })
+            if normalizedDates.isEmpty {
+                onClearSchedule?()
+            } else {
+                onSchedule(selectedTimeframe, selectedSection, normalizedDates)
+            }
+            dismiss()
+            isSaving = false
+            return
+        }
 
         do {
             let commitmentRepository = CommitmentRepository()

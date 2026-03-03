@@ -6,6 +6,14 @@
 import SwiftUI
 import Auth
 
+struct PendingScheduleInfo {
+    let taskId: UUID
+    let userId: UUID
+    var timeframe: Timeframe
+    var section: Section
+    var dates: Set<Date>
+}
+
 struct UnassignedView: View {
     @StateObject private var taskListVM = TaskListViewModel(authService: AuthService())
     @StateObject private var projectsVM = ProjectsViewModel(authService: AuthService())
@@ -13,6 +21,10 @@ struct UnassignedView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var isInlineAddFocused = false
     @State private var isLoading = false
+
+    // Pending schedule state
+    @State private var pendingSchedules: [UUID: PendingScheduleInfo] = [:]
+    @State private var dismissedPendingBanner = false
 
     // Batch create alerts
     @State private var showCreateProjectAlert = false
@@ -41,13 +53,18 @@ struct UnassignedView: View {
         addTaskTitle.trimmingCharacters(in: .whitespaces).isEmpty
     }
 
-    /// Tasks not in a project
+    /// Tasks not in a project (excluding pending scheduled)
     private var standaloneUncompletedTasks: [FocusTask] {
-        taskListVM.uncompletedTasks.filter { $0.projectId == nil }
+        taskListVM.uncompletedTasks.filter { $0.projectId == nil && !pendingSchedules.keys.contains($0.id) }
+    }
+
+    /// Tasks that have been scheduled but not yet committed
+    private var pendingTasks: [FocusTask] {
+        taskListVM.uncompletedTasks.filter { $0.projectId == nil && pendingSchedules.keys.contains($0.id) }
     }
 
     private var isEmpty: Bool {
-        standaloneUncompletedTasks.isEmpty
+        standaloneUncompletedTasks.isEmpty && pendingTasks.isEmpty
     }
 
     var body: some View {
@@ -147,6 +164,9 @@ struct UnassignedView: View {
                 .zIndex(100)
             }
         }
+        .onDisappear {
+            commitPendingSchedules()
+        }
         .onChange(of: showingAddBar) { _, isShowing in
             if isShowing {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
@@ -156,12 +176,43 @@ struct UnassignedView: View {
         }
         // Task sheets
         .sheet(item: $taskListVM.selectedTaskForDetails) { task in
-            TaskDetailsDrawer(task: task, viewModel: taskListVM, categories: taskListVM.categories)
-                .drawerStyle()
+            TaskDetailsDrawer(
+                task: task,
+                viewModel: taskListVM,
+                categories: taskListVM.categories,
+                pendingSchedule: pendingSchedules[task.id],
+                onSchedule: { timeframe, section, dates in
+                    guard !dates.isEmpty else { return }
+                    pendingSchedules[task.id] = PendingScheduleInfo(
+                        taskId: task.id, userId: task.userId,
+                        timeframe: timeframe, section: section, dates: dates
+                    )
+                    dismissedPendingBanner = false
+                },
+                onClearSchedule: {
+                    pendingSchedules.removeValue(forKey: task.id)
+                }
+            )
+            .drawerStyle()
         }
         .sheet(item: $taskListVM.selectedTaskForSchedule) { task in
-            CommitmentSelectionSheet(task: task, focusViewModel: focusViewModel)
-                .drawerStyle()
+            CommitmentSelectionSheet(
+                task: task,
+                focusViewModel: focusViewModel,
+                onSchedule: { timeframe, section, dates in
+                    guard !dates.isEmpty else { return }
+                    pendingSchedules[task.id] = PendingScheduleInfo(
+                        taskId: task.id, userId: task.userId,
+                        timeframe: timeframe, section: section, dates: dates
+                    )
+                    dismissedPendingBanner = false
+                },
+                pendingSchedule: pendingSchedules[task.id],
+                onClearSchedule: {
+                    pendingSchedules.removeValue(forKey: task.id)
+                }
+            )
+            .drawerStyle()
         }
         // Batch delete confirmation
         .alert("Delete \(taskListVM.selectedCount) task\(taskListVM.selectedCount == 1 ? "" : "s")?", isPresented: $taskListVM.showBatchDeleteConfirmation) {
@@ -184,8 +235,20 @@ struct UnassignedView: View {
         }
         // Batch commit sheet
         .sheet(isPresented: $taskListVM.showBatchCommitSheet) {
-            BatchCommitSheet(viewModel: taskListVM)
-                .drawerStyle()
+            BatchCommitSheet(
+                viewModel: taskListVM,
+                onBatchSchedule: { tasks, timeframe, section, dates in
+                    guard !dates.isEmpty else { return }
+                    for task in tasks {
+                        pendingSchedules[task.id] = PendingScheduleInfo(
+                            taskId: task.id, userId: task.userId,
+                            timeframe: timeframe, section: section, dates: dates
+                        )
+                    }
+                    dismissedPendingBanner = false
+                }
+            )
+            .drawerStyle()
         }
         // Create project alert
         .alert("Create Project", isPresented: $showCreateProjectAlert) {
@@ -268,6 +331,15 @@ struct UnassignedView: View {
                 }
             }
         }
+        .onChange(of: taskListVM.tasks) { _, _ in
+            // Clean up pending entries for tasks that were completed or deleted
+            let currentIds = Set(taskListVM.uncompletedTasks.map { $0.id })
+            for taskId in pendingSchedules.keys {
+                if !currentIds.contains(taskId) {
+                    pendingSchedules.removeValue(forKey: taskId)
+                }
+            }
+        }
         .task {
             taskListVM.commitmentFilter = .uncommitted
 
@@ -292,15 +364,45 @@ struct UnassignedView: View {
         await projectsVM.fetchProjects()
     }
 
+    private func commitPendingSchedules() {
+        let schedulesToCommit = pendingSchedules
+        guard !schedulesToCommit.isEmpty else { return }
+
+        _Concurrency.Task { @MainActor in
+            let commitmentRepository = CommitmentRepository()
+
+            for (_, schedule) in schedulesToCommit {
+                for date in schedule.dates {
+                    let commitment = Commitment(
+                        userId: schedule.userId,
+                        taskId: schedule.taskId,
+                        timeframe: schedule.timeframe,
+                        section: schedule.section,
+                        commitmentDate: Calendar.current.startOfDay(for: date),
+                        sortOrder: 0
+                    )
+                    _ = try? await commitmentRepository.createCommitment(commitment)
+                }
+            }
+
+            await taskListVM.fetchCommittedTaskIds()
+            // Clear pending after committed IDs are refreshed so tasks
+            // go straight from pending section to hidden — no flash.
+            pendingSchedules.removeAll()
+            await focusViewModel.fetchCommitments()
+        }
+    }
+
     // MARK: - Item List
 
-    /// Flattened task display items excluding project-contained tasks
+    /// Flattened task display items excluding project-contained and pending tasks
     private var standaloneTaskDisplayItems: [FlatDisplayItem] {
         let projectTaskIds = Set(taskListVM.uncompletedTasks.filter { $0.projectId != nil }.map { $0.id })
+        let pendingTaskIds = Set(pendingSchedules.keys)
         return taskListVM.flattenedDisplayItems.filter { item in
             switch item {
-            case .task(let task): return task.projectId == nil
-            case .addSubtaskRow(let parentId): return !projectTaskIds.contains(parentId)
+            case .task(let task): return task.projectId == nil && !pendingTaskIds.contains(task.id)
+            case .addSubtaskRow(let parentId): return !projectTaskIds.contains(parentId) && !pendingTaskIds.contains(parentId)
             default: return true
             }
         }
@@ -346,6 +448,51 @@ struct UnassignedView: View {
                     EmptyView()
                         .listRowSeparator(.hidden)
                         .listRowBackground(Color.clear)
+                }
+            }
+
+            // Pending scheduled section
+            if !pendingTasks.isEmpty {
+                if !dismissedPendingBanner {
+                    HStack {
+                        Text("\(pendingTasks.count) to-do\(pendingTasks.count == 1 ? "" : "s") moved out of the Inbox")
+                            .font(.inter(.subheadline))
+                            .foregroundColor(.secondary)
+
+                        Spacer()
+
+                        Button {
+                            commitPendingSchedules()
+                        } label: {
+                            Text("OK")
+                                .font(.inter(.subheadline, weight: .semiBold))
+                                .foregroundColor(.primary)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 4)
+                                .background(Color.pillBackground, in: Capsule())
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .padding(.vertical, 8)
+                    .listRowInsets(EdgeInsets(top: 0, leading: 32, bottom: 0, trailing: 32))
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear)
+                }
+
+                ForEach(pendingTasks) { task in
+                    FlatTaskRow(
+                        task: task,
+                        viewModel: taskListVM,
+                        isEditMode: false,
+                        isSelected: false,
+                        onSelectToggle: nil
+                    )
+                    .opacity(0.5)
+                    .padding(.leading, task.parentTaskId != nil ? 32 : 0)
+                    .listRowInsets(EdgeInsets(top: 0, leading: 32, bottom: 0, trailing: 32))
+                    .listRowBackground(Color.clear)
+                    .alignmentGuide(.listRowSeparatorLeading) { d in d[.leading] - 12 }
+                    .alignmentGuide(.listRowSeparatorTrailing) { d in d[.trailing] + 12 }
                 }
             }
 

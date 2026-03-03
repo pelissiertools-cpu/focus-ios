@@ -321,6 +321,43 @@ struct UnassignedView: View {
                     }
                 } else {
                     Menu {
+                        // Sort By submenu
+                        Menu {
+                            ForEach(SortOption.allCases, id: \.self) { option in
+                                Button {
+                                    withAnimation(.easeInOut(duration: 0.2)) {
+                                        taskListVM.sortOption = option
+                                    }
+                                } label: {
+                                    if taskListVM.sortOption == option {
+                                        Label(option.displayName, systemImage: "checkmark")
+                                    } else {
+                                        Text(option.displayName)
+                                    }
+                                }
+                            }
+
+                            Divider()
+
+                            ForEach(taskListVM.sortOption.directionOrder, id: \.self) { direction in
+                                Button {
+                                    withAnimation(.easeInOut(duration: 0.2)) {
+                                        taskListVM.sortDirection = direction
+                                    }
+                                } label: {
+                                    if taskListVM.sortDirection == direction {
+                                        Label(direction.displayName(for: taskListVM.sortOption), systemImage: "checkmark")
+                                    } else {
+                                        Text(direction.displayName(for: taskListVM.sortOption))
+                                    }
+                                }
+                            }
+                        } label: {
+                            Label("Sort By", systemImage: "arrow.up.arrow.down")
+                        }
+
+                        Divider()
+
                         Button {
                             taskListVM.enterEditMode()
                         } label: {
@@ -436,10 +473,20 @@ struct UnassignedView: View {
             // Tasks (excluding project-contained)
             ForEach(standaloneTaskDisplayItems) { item in
                 switch item {
-                case .priorityHeader:
-                    EmptyView()
-                        .listRowSeparator(.hidden)
-                        .listRowBackground(Color.clear)
+                case .priorityHeader(let priority):
+                    PrioritySectionHeader(
+                        priority: priority,
+                        count: standaloneUncompletedTasks.filter { $0.priority == priority }.count,
+                        isCollapsed: taskListVM.isPriorityCollapsed(priority),
+                        onToggle: {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                taskListVM.togglePriorityCollapsed(priority)
+                            }
+                        }
+                    )
+                    .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear)
 
                 case .task(let task):
                     FlatTaskRow(

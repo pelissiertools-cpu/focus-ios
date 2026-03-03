@@ -11,6 +11,8 @@ struct HomeView: View {
     @StateObject private var projectsViewModel: ProjectsViewModel
     @StateObject private var listsViewModel: ListsViewModel
     @State private var showSettings = false
+    @State private var projectToDelete: FocusTask?
+    @State private var listToDelete: FocusTask?
 
     init(viewModel: HomeViewModel) {
         self.viewModel = viewModel
@@ -44,37 +46,23 @@ struct HomeView: View {
                     }
                     .padding(.horizontal, 20)
                     .padding(.top, 8)
+                    .padding(.bottom, 24)
 
-                    // MARK: - Todos Header
-                    Text("Todos")
-                        .font(.inter(size: 28, weight: .regular))
-                        .foregroundColor(.primary)
+                    // MARK: - Menu Items (Today, Upcoming, Unassign, Assign)
+                    ForEach([HomeMenuItem.today, .upcoming, .unassign, .assign], id: \.self) { item in
+                        homeMenuButton(item)
+                    }
+
+                    // MARK: - Divider
+                    Rectangle()
+                        .fill(Color.appRed.opacity(0.4))
+                        .frame(height: 1)
                         .padding(.horizontal, 20)
-                        .padding(.top, 24)
-                        .padding(.bottom, 12)
+                        .padding(.top, 12)
 
-                    // MARK: - Menu Items
-                    ForEach(HomeMenuItem.allCases) { item in
-                        Button {
-                            viewModel.selectedMenuItem = item
-                        } label: {
-                            HStack(spacing: 12) {
-                                Image(systemName: item.iconName)
-                                    .font(.inter(.body, weight: .medium))
-                                    .foregroundColor(.primary)
-                                    .frame(width: 24)
-
-                                Text(item.rawValue)
-                                    .font(.inter(.body))
-                                    .foregroundColor(.primary)
-
-                                Spacer()
-                            }
-                            .padding(.horizontal, 20)
-                            .padding(.vertical, 12)
-                            .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
+                    // MARK: - Menu Items (Braindump, Archive)
+                    ForEach([HomeMenuItem.braindump, .archive], id: \.self) { item in
+                        homeMenuButton(item)
                     }
 
                     // MARK: - Projects Header
@@ -109,7 +97,7 @@ struct HomeView: View {
                                     onTap: { viewModel.selectedProject = project },
                                     onEdit: { projectsViewModel.selectedProjectForDetails = project },
                                     onSchedule: { projectsViewModel.selectedTaskForSchedule = project },
-                                    onDelete: { await viewModel.deleteProject(project) }
+                                    onRequestDelete: { projectToDelete = project }
                                 )
                                 .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
                                 .listRowBackground(Color.clear)
@@ -122,7 +110,7 @@ struct HomeView: View {
                         .listStyle(.plain)
                         .scrollDisabled(true)
                         .scrollContentBackground(.hidden)
-                        .frame(minHeight: CGFloat(viewModel.projects.count) * 56 + 20)
+                        .frame(minHeight: CGFloat(viewModel.projects.count) * 56)
                     }
 
                     // MARK: - Lists Header
@@ -130,7 +118,7 @@ struct HomeView: View {
                         .font(.inter(.headline, weight: .bold))
                         .foregroundColor(.appRed)
                         .padding(.horizontal, 20)
-                        .padding(.top, 24)
+                        .padding(.top, 14)
                         .padding(.bottom, 6)
 
                     Rectangle()
@@ -153,7 +141,7 @@ struct HomeView: View {
                                     onTap: { viewModel.selectedList = list },
                                     onEdit: { listsViewModel.selectedListForDetails = list },
                                     onSchedule: { listsViewModel.selectedItemForSchedule = list },
-                                    onDelete: { await viewModel.deleteList(list) }
+                                    onRequestDelete: { listToDelete = list }
                                 )
                                 .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
                                 .listRowBackground(Color.clear)
@@ -166,7 +154,7 @@ struct HomeView: View {
                         .listStyle(.plain)
                         .scrollDisabled(true)
                         .scrollContentBackground(.hidden)
-                        .frame(minHeight: CGFloat(viewModel.lists.count) * 56 + 20)
+                        .frame(minHeight: CGFloat(viewModel.lists.count) * 56)
                     }
                 }
                 .padding(.bottom, 120)
@@ -234,7 +222,56 @@ struct HomeView: View {
                     _Concurrency.Task { await viewModel.fetchLists() }
                 }
             }
+            .alert("Delete Project", isPresented: Binding(
+                get: { projectToDelete != nil },
+                set: { if !$0 { projectToDelete = nil } }
+            )) {
+                Button("Delete", role: .destructive) {
+                    if let project = projectToDelete {
+                        _Concurrency.Task { await viewModel.deleteProject(project) }
+                    }
+                }
+                Button("Cancel", role: .cancel) { projectToDelete = nil }
+            } message: {
+                Text("Are you sure you want to delete \"\(projectToDelete?.title ?? "")\"?")
+            }
+            .alert("Delete List", isPresented: Binding(
+                get: { listToDelete != nil },
+                set: { if !$0 { listToDelete = nil } }
+            )) {
+                Button("Delete", role: .destructive) {
+                    if let list = listToDelete {
+                        _Concurrency.Task { await viewModel.deleteList(list) }
+                    }
+                }
+                Button("Cancel", role: .cancel) { listToDelete = nil }
+            } message: {
+                Text("Are you sure you want to delete \"\(listToDelete?.title ?? "")\"?")
+            }
         }
+    }
+
+    private func homeMenuButton(_ item: HomeMenuItem) -> some View {
+        Button {
+            viewModel.selectedMenuItem = item
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: item.iconName)
+                    .font(.inter(.body, weight: .medium))
+                    .foregroundColor(.primary)
+                    .frame(width: 24)
+
+                Text(item.rawValue)
+                    .font(.inter(.body))
+                    .foregroundColor(.primary)
+
+                Spacer()
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 12)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 }
 
@@ -245,8 +282,7 @@ private struct HomeProjectRow: View {
     let onTap: () -> Void
     let onEdit: () -> Void
     let onSchedule: () -> Void
-    let onDelete: () async -> Void
-    @State private var showDeleteConfirmation = false
+    let onRequestDelete: () -> Void
 
     var body: some View {
         HStack(spacing: 12) {
@@ -272,22 +308,14 @@ private struct HomeProjectRow: View {
             ContextMenuItems.editButton { onEdit() }
             ContextMenuItems.scheduleButton { onSchedule() }
             Divider()
-            ContextMenuItems.deleteButton { showDeleteConfirmation = true }
+            ContextMenuItems.deleteButton { onRequestDelete() }
         }
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
             Button(role: .destructive) {
-                showDeleteConfirmation = true
+                onRequestDelete()
             } label: {
                 Label("Delete", systemImage: "trash")
             }
-        }
-        .alert("Delete Project", isPresented: $showDeleteConfirmation) {
-            Button("Delete", role: .destructive) {
-                _Concurrency.Task { await onDelete() }
-            }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("Are you sure you want to delete \"\(project.title)\"?")
         }
     }
 }
@@ -299,8 +327,7 @@ private struct HomeListRow: View {
     let onTap: () -> Void
     let onEdit: () -> Void
     let onSchedule: () -> Void
-    let onDelete: () async -> Void
-    @State private var showDeleteConfirmation = false
+    let onRequestDelete: () -> Void
 
     var body: some View {
         HStack(spacing: 12) {
@@ -327,22 +354,14 @@ private struct HomeListRow: View {
             ContextMenuItems.editButton { onEdit() }
             ContextMenuItems.scheduleButton { onSchedule() }
             Divider()
-            ContextMenuItems.deleteButton { showDeleteConfirmation = true }
+            ContextMenuItems.deleteButton { onRequestDelete() }
         }
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
             Button(role: .destructive) {
-                showDeleteConfirmation = true
+                onRequestDelete()
             } label: {
                 Label("Delete", systemImage: "trash")
             }
-        }
-        .alert("Delete List", isPresented: $showDeleteConfirmation) {
-            Button("Delete", role: .destructive) {
-                _Concurrency.Task { await onDelete() }
-            }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("Are you sure you want to delete \"\(list.title)\"?")
         }
     }
 }

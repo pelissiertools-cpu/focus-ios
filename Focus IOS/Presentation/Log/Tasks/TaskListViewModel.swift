@@ -696,6 +696,8 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
                 subtasks[index].modifiedDate = Date()
                 subtasksMap[parentId] = subtasks
             }
+
+            NotificationCenter.default.post(name: .projectListChanged, object: nil)
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -729,6 +731,8 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
                 subtasks[index].modifiedDate = Date()
                 subtasksMap[parentId] = subtasks
             }
+
+            NotificationCenter.default.post(name: .projectListChanged, object: nil)
         } catch {
             errorMessage = error.localizedDescription
         }

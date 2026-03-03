@@ -132,6 +132,8 @@ struct HomeView: View {
             .navigationDestination(item: $viewModel.selectedMenuItem) { menuItem in
                 if menuItem == .archive {
                     ArchiveView()
+                } else if menuItem == .unassign {
+                    UnassignedView()
                 } else {
                     HomePlaceholderPage(title: menuItem.rawValue)
                 }

@@ -278,6 +278,7 @@ struct ListRow: View {
     @ObservedObject var viewModel: ListsViewModel
     var isEditMode: Bool = false
     var isSelected: Bool = false
+    var showIcon: Bool = false
     var onSelectToggle: (() -> Void)? = nil
     @State private var showDeleteConfirmation = false
 
@@ -294,6 +295,13 @@ struct ListRow: View {
                 Image(systemName: isSelected ? "checkmark.circle.fill" : "circle.dashed")
                     .font(.inter(.title3))
                     .foregroundColor(isSelected ? .appRed : .secondary)
+            }
+
+            // List icon
+            if showIcon {
+                Image(systemName: "list.bullet")
+                    .font(.inter(.body, weight: .medium))
+                    .foregroundColor(.appRed)
             }
 
             // Title + item count

@@ -10,6 +10,7 @@ import SwiftUI
 struct MainTabView: View {
     @EnvironmentObject var authService: AuthService
     @EnvironmentObject var focusViewModel: FocusTabViewModel
+    @StateObject private var homeViewModel = HomeViewModel(authService: AuthService())
 
     init() {
         let tabGray = UIColor(red: 0x6A/255.0, green: 0x6A/255.0, blue: 0x6A/255.0, alpha: 1)
@@ -44,6 +45,12 @@ struct MainTabView: View {
                 }
                 .tag(1)
                 .environmentObject(focusViewModel)
+
+            HomeView(viewModel: homeViewModel)
+                .tabItem {
+                    Label("Home", systemImage: "house")
+                }
+                .tag(2)
         }
         .background(TabBarSelectedImageSetter())
     }
@@ -65,7 +72,7 @@ private class TabBarSetterView: UIView {
 
     private func configureTabBar(in window: UIWindow) {
         guard let tabBar = window.findSubview(ofType: UITabBar.self),
-              let items = tabBar.items, items.count >= 2 else {
+              let items = tabBar.items, items.count >= 3 else {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
                 guard let window = self?.window else { return }
                 self?.configureTabBar(in: window)
@@ -75,6 +82,8 @@ private class TabBarSetterView: UIView {
         items[0].selectedImage = UIImage(named: "CheckCircle")?
             .withTintColor(.label, renderingMode: .alwaysOriginal)
         items[1].selectedImage = UIImage(systemName: "tray.full")?
+            .withTintColor(.label, renderingMode: .alwaysOriginal)
+        items[2].selectedImage = UIImage(systemName: "house")?
             .withTintColor(.label, renderingMode: .alwaysOriginal)
     }
 }

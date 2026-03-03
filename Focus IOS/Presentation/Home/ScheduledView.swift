@@ -1,12 +1,12 @@
 //
-//  AssignedView.swift
+//  ScheduledView.swift
 //  Focus IOS
 //
 
 import SwiftUI
 import Auth
 
-struct AssignedView: View {
+struct ScheduledView: View {
     @StateObject private var taskListVM = TaskListViewModel(authService: AuthService())
     @StateObject private var projectsVM = ProjectsViewModel(authService: AuthService())
     @StateObject private var listsVM = ListsViewModel(authService: AuthService())
@@ -275,7 +275,7 @@ struct AssignedView: View {
             Image(systemName: "tray.full")
                 .font(.inter(size: 22, weight: .regular))
                 .foregroundColor(.primary)
-            Text("Assign")
+            Text("Scheduled")
                 .font(.inter(size: 28, weight: .regular))
                 .foregroundColor(.primary)
             Spacer()
@@ -288,7 +288,7 @@ struct AssignedView: View {
     @ViewBuilder
     private var emptyStateView: some View {
         VStack(spacing: 4) {
-            Text("No assigned items")
+            Text("No scheduled items")
                 .font(.inter(.headline))
                 .bold()
             Text("Scheduled tasks, lists, and projects will appear here")
@@ -747,7 +747,7 @@ struct AssignedView: View {
 
 // MARK: - Add Task Bar
 
-private extension AssignedView {
+private extension ScheduledView {
     var addTaskBar: some View {
         VStack(spacing: 0) {
             addBarTitleField
@@ -976,7 +976,7 @@ private extension AssignedView {
 
 // MARK: - Toolbar Content
 
-private extension AssignedView {
+private extension ScheduledView {
     @ViewBuilder
     var leadingToolbarContent: some View {
         if taskListVM.isEditMode {

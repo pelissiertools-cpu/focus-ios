@@ -10,8 +10,8 @@ import SwiftUI
 enum HomeMenuItem: String, CaseIterable, Identifiable, Hashable {
     case today = "Today"
     case upcoming = "Upcoming"
-    case unassign = "Unassign"
-    case assign = "Assign"
+    case unassign = "Backlog"
+    case assign = "Scheduled"
     case braindump = "Braindump"
     case archive = "Archive"
 

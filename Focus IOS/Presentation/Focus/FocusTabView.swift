@@ -954,7 +954,7 @@ struct FocusTabView: View {
 
                 HStack {
                     HStack(spacing: 8) {
-                        Text("Unassigned Tasks")
+                        Text("Backlog")
                             .font(.inter(size: 22, weight: .medium))
                         Image(systemName: "chevron.right")
                             .font(.inter(size: 8, weight: .semiBold))

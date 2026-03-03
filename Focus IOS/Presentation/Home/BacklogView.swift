@@ -1,5 +1,5 @@
 //
-//  UnassignedView.swift
+//  BacklogView.swift
 //  Focus IOS
 //
 
@@ -14,7 +14,7 @@ struct PendingScheduleInfo {
     var dates: Set<Date>
 }
 
-struct UnassignedView: View {
+struct BacklogView: View {
     @StateObject private var taskListVM = TaskListViewModel(authService: AuthService())
     @StateObject private var projectsVM = ProjectsViewModel(authService: AuthService())
     @EnvironmentObject var focusViewModel: FocusTabViewModel
@@ -81,7 +81,7 @@ struct UnassignedView: View {
                         .font(.inter(size: 22, weight: .regular))
                         .foregroundColor(.primary)
 
-                    Text("Unassign")
+                    Text("Backlog")
                         .font(.inter(size: 28, weight: .regular))
                         .foregroundColor(.primary)
 
@@ -96,7 +96,7 @@ struct UnassignedView: View {
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else if isEmpty {
                     VStack(spacing: 4) {
-                        Text("No unassigned items")
+                        Text("No backlog items")
                             .font(.inter(.headline))
                             .bold()
                         Text("Tasks without a schedule will appear here")

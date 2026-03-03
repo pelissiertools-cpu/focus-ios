@@ -163,9 +163,9 @@ struct HomeView: View {
                 if menuItem == .archive {
                     ArchiveView()
                 } else if menuItem == .unassign {
-                    UnassignedView()
+                    BacklogView()
                 } else if menuItem == .assign {
-                    AssignedView()
+                    ScheduledView()
                 } else {
                     HomePlaceholderPage(title: menuItem.rawValue)
                 }

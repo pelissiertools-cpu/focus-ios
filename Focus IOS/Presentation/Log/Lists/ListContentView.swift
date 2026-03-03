@@ -272,7 +272,13 @@ struct ListContentView: View {
             .scrollDisabled(true)
             .scrollContentBackground(.hidden)
             .keyboardDismissOverlay(isActive: $isInlineAddFocused)
-            .frame(minHeight: CGFloat(items.count) * 48)
+            .frame(minHeight: items.reduce(CGFloat(0)) { sum, item in
+                switch item {
+                case .item: return sum + 56
+                case .addItemRow: return sum + 56
+                case .completedHeader: return sum + 52
+                }
+            } + 20)
         }
     }
 }

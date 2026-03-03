@@ -119,7 +119,7 @@ struct HomeView: View {
                         .listStyle(.plain)
                         .scrollDisabled(true)
                         .scrollContentBackground(.hidden)
-                        .frame(minHeight: CGFloat(viewModel.projects.count) * 48)
+                        .frame(minHeight: CGFloat(viewModel.projects.count) * 56 + 20)
                     }
 
                     // MARK: - Lists Header
@@ -160,7 +160,7 @@ struct HomeView: View {
                         .listStyle(.plain)
                         .scrollDisabled(true)
                         .scrollContentBackground(.hidden)
-                        .frame(minHeight: CGFloat(viewModel.lists.count) * 48)
+                        .frame(minHeight: CGFloat(viewModel.lists.count) * 56 + 20)
                     }
                 }
                 .padding(.bottom, 120)
@@ -206,7 +206,7 @@ struct HomeView: View {
             }
             .task {
                 if viewModel.projects.isEmpty && !viewModel.isLoading {
-                    await viewModel.fetchProjects()
+                    await viewModel.fetchProjects(showLoading: true)
                 }
                 if viewModel.lists.isEmpty {
                     await viewModel.fetchLists()
@@ -215,25 +215,7 @@ struct HomeView: View {
                 await projectsViewModel.fetchProjects()
                 await listsViewModel.fetchLists()
             }
-            .onChange(of: viewModel.selectedMenuItem) { _, newValue in
-                if newValue == nil {
-                    _Concurrency.Task {
-                        await viewModel.fetchProjects()
-                        await viewModel.fetchLists()
-                    }
-                }
-            }
-            .onChange(of: viewModel.selectedProject) { _, newValue in
-                if newValue == nil {
-                    _Concurrency.Task { await viewModel.fetchProjects() }
-                }
-            }
-            .onChange(of: viewModel.selectedList) { _, newValue in
-                if newValue == nil {
-                    _Concurrency.Task { await viewModel.fetchLists() }
-                }
-            }
-            // Refresh home data after edit drawer dismissals
+            // Silently refresh after edit drawer dismissals (user may have renamed/modified)
             .onChange(of: projectsViewModel.selectedProjectForDetails) { _, newValue in
                 if newValue == nil {
                     _Concurrency.Task { await viewModel.fetchProjects() }

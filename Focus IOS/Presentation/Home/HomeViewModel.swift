@@ -56,20 +56,21 @@ class HomeViewModel: ObservableObject {
                 guard let self else { return }
                 _Concurrency.Task { @MainActor in
                     await self.fetchProjects()
+                    await self.fetchLists()
                 }
             }
             .store(in: &cancellables)
     }
 
-    func fetchProjects() async {
-        isLoading = true
+    func fetchProjects(showLoading: Bool = false) async {
+        if showLoading { isLoading = true }
         do {
             let allProjects = try await repository.fetchProjects()
             projects = allProjects.filter { !$0.isCompleted }
         } catch {
             errorMessage = error.localizedDescription
         }
-        isLoading = false
+        if showLoading { isLoading = false }
     }
 
     func fetchLists() async {

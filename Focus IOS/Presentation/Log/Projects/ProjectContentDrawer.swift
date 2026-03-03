@@ -373,14 +373,14 @@ struct ProjectContentView: View {
                 .keyboardDismissOverlay(isActive: $isInlineAddFocused)
                 .frame(minHeight: items.reduce(CGFloat(0)) { sum, item in
                     switch item {
-                    case .section: return sum + 52
-                    case .task(let t) where t.parentTaskId == nil: return sum + 52
-                    case .completedHeader: return sum + 48
-                    case .addTaskRow: return viewModel.contentEditMode ? sum : sum + 52
-                    case .addSubtaskRow: return viewModel.contentEditMode ? sum : sum + 40
-                    default: return sum + 40
+                    case .section: return sum + 58
+                    case .task(let t) where t.parentTaskId == nil: return sum + 56
+                    case .completedHeader: return sum + 52
+                    case .addTaskRow: return viewModel.contentEditMode ? sum : sum + 56
+                    case .addSubtaskRow: return viewModel.contentEditMode ? sum : sum + 44
+                    default: return sum + 44
                     }
-                })
+                } + 20)
             }
         }
     }

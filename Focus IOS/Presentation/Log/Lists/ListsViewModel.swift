@@ -674,6 +674,36 @@ class ListsViewModel: ObservableObject, LogFilterable, TaskEditingViewModel {
         }
     }
 
+    // MARK: - List Content Move Handler (items within a single list)
+
+    func handleListContentFlatMove(from source: IndexSet, to destination: Int, listId: UUID) {
+        guard let fromIdx = source.first else { return }
+
+        let uncompleted = getUncompletedItems(for: listId)
+
+        // The flat display order is: [uncompleted items..., addItemRow, completedHeader?, completed items...]
+        // Only uncompleted items are movable, so fromIdx maps directly to the uncompleted array
+        guard fromIdx < uncompleted.count else { return }
+
+        let clampedTo = min(destination, uncompleted.count)
+        guard fromIdx != clampedTo && fromIdx + 1 != clampedTo else { return }
+
+        guard var allChildren = itemsMap[listId] else { return }
+        var ordered = allChildren.filter { !$0.isCompleted }.sorted { $0.sortOrder < $1.sortOrder }
+
+        ordered.move(fromOffsets: IndexSet(integer: fromIdx), toOffset: clampedTo)
+
+        var updates: [(id: UUID, sortOrder: Int)] = []
+        for (index, child) in ordered.enumerated() {
+            if let mapIndex = allChildren.firstIndex(where: { $0.id == child.id }) {
+                allChildren[mapIndex].sortOrder = index
+            }
+            updates.append((id: child.id, sortOrder: index))
+        }
+        itemsMap[listId] = allChildren
+        _Concurrency.Task { await persistSortOrders(updates) }
+    }
+
     // MARK: - Edit Mode
 
     func enterEditMode() {

@@ -8,11 +8,13 @@ import SwiftUI
 struct HomeView: View {
     @ObservedObject var viewModel: HomeViewModel
     @StateObject private var projectsViewModel: ProjectsViewModel
+    @StateObject private var listsViewModel: ListsViewModel
     @State private var showSettings = false
 
     init(viewModel: HomeViewModel) {
         self.viewModel = viewModel
         _projectsViewModel = StateObject(wrappedValue: ProjectsViewModel(authService: AuthService()))
+        _listsViewModel = StateObject(wrappedValue: ListsViewModel(authService: AuthService()))
     }
 
     var body: some View {
@@ -126,6 +128,56 @@ struct HomeView: View {
                             .buttonStyle(.plain)
                         }
                     }
+
+                    // MARK: - Lists Header
+                    Text("Lists")
+                        .font(.inter(.headline, weight: .bold))
+                        .foregroundColor(.appRed)
+                        .padding(.horizontal, 20)
+                        .padding(.top, 24)
+                        .padding(.bottom, 6)
+
+                    Rectangle()
+                        .fill(Color.appRed.opacity(0.4))
+                        .frame(height: 1)
+                        .padding(.horizontal, 20)
+
+                    // MARK: - List Rows
+                    if viewModel.lists.isEmpty {
+                        Text("No lists yet")
+                            .font(.inter(.subheadline))
+                            .foregroundColor(.secondary)
+                            .padding(.horizontal, 20)
+                            .padding(.top, 12)
+                    } else {
+                        ForEach(viewModel.lists) { list in
+                            Button {
+                                viewModel.selectedList = list
+                            } label: {
+                                HStack(spacing: 12) {
+                                    Image(systemName: "list.bullet")
+                                        .font(.inter(.body, weight: .medium))
+                                        .foregroundColor(.secondary)
+                                        .frame(width: 24)
+
+                                    Text(list.title)
+                                        .font(.inter(.body))
+                                        .foregroundColor(.primary)
+                                        .lineLimit(1)
+
+                                    Spacer()
+
+                                    Image(systemName: "chevron.right")
+                                        .font(.inter(size: 12, weight: .semiBold))
+                                        .foregroundColor(.secondary)
+                                }
+                                .padding(.horizontal, 20)
+                                .padding(.vertical, 10)
+                                .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
                 }
                 .padding(.bottom, 120)
             }
@@ -141,6 +193,9 @@ struct HomeView: View {
             .navigationDestination(item: $viewModel.selectedProject) { project in
                 ProjectContentView(project: project, viewModel: projectsViewModel)
             }
+            .navigationDestination(item: $viewModel.selectedList) { list in
+                ListContentView(list: list, viewModel: listsViewModel)
+            }
             .navigationDestination(isPresented: $showSettings) {
                 SettingsView()
             }
@@ -149,10 +204,26 @@ struct HomeView: View {
                 if viewModel.projects.isEmpty && !viewModel.isLoading {
                     await viewModel.fetchProjects()
                 }
+                if viewModel.lists.isEmpty {
+                    await viewModel.fetchLists()
+                }
+            }
+            .onChange(of: viewModel.selectedMenuItem) { _, newValue in
+                if newValue == nil {
+                    _Concurrency.Task {
+                        await viewModel.fetchProjects()
+                        await viewModel.fetchLists()
+                    }
+                }
             }
             .onChange(of: viewModel.selectedProject) { _, newValue in
                 if newValue == nil {
                     _Concurrency.Task { await viewModel.fetchProjects() }
+                }
+            }
+            .onChange(of: viewModel.selectedList) { _, newValue in
+                if newValue == nil {
+                    _Concurrency.Task { await viewModel.fetchLists() }
                 }
             }
         }

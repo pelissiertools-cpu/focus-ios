@@ -31,12 +31,14 @@ enum HomeMenuItem: String, CaseIterable, Identifiable, Hashable {
 @MainActor
 class HomeViewModel: ObservableObject {
     @Published var projects: [FocusTask] = []
+    @Published var lists: [FocusTask] = []
     @Published var isLoading = false
     @Published var errorMessage: String?
 
     // Navigation state
     @Published var selectedMenuItem: HomeMenuItem?
     @Published var selectedProject: FocusTask?
+    @Published var selectedList: FocusTask?
 
     private let repository: TaskRepository
     private var cancellables = Set<AnyCancellable>()
@@ -67,5 +69,14 @@ class HomeViewModel: ObservableObject {
             errorMessage = error.localizedDescription
         }
         isLoading = false
+    }
+
+    func fetchLists() async {
+        do {
+            let allLists = try await repository.fetchTasks(ofType: .list)
+            lists = allLists.filter { !$0.isCleared && !$0.isCompleted }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
     }
 }

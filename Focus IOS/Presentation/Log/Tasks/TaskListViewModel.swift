@@ -1312,12 +1312,12 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
             let createdList = try await repository.createTask(listTask)
 
             for (index, taskId) in selectedTaskIds.enumerated() {
-                try await repository.assignToProject(taskId: taskId, projectId: createdList.id, sortOrder: index)
+                try await repository.assignToList(taskId: taskId, listId: createdList.id, sortOrder: index)
             }
 
             for taskId in selectedTaskIds {
                 if let idx = tasks.firstIndex(where: { $0.id == taskId }) {
-                    tasks[idx].projectId = createdList.id
+                    tasks[idx].parentTaskId = createdList.id
                 }
             }
 

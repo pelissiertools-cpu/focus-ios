@@ -1328,6 +1328,25 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
         }
     }
 
+    func batchMoveToProject(_ projectId: UUID) async {
+        do {
+            let existingTasks = try await repository.fetchProjectTasks(projectId: projectId)
+            let startOrder = (existingTasks.map { $0.sortOrder }.max() ?? -1) + 1
+
+            for (offset, taskId) in selectedTaskIds.enumerated() {
+                try await repository.assignToProject(taskId: taskId, projectId: projectId, sortOrder: startOrder + offset)
+                if let idx = tasks.firstIndex(where: { $0.id == taskId }) {
+                    tasks[idx].projectId = projectId
+                }
+            }
+
+            exitEditMode()
+            NotificationCenter.default.post(name: .projectListChanged, object: nil)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
     func createCategoryAndMove(name: String, task: FocusTask) async {
         guard let userId = authService.currentUser?.id else {
             errorMessage = "No authenticated user"

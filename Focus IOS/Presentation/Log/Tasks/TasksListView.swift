@@ -162,8 +162,13 @@ struct TasksListView: View {
         }
         // Batch move category sheet
         .sheet(isPresented: $viewModel.showBatchMovePicker) {
-            BatchMoveCategorySheet(viewModel: viewModel)
-                .drawerStyle()
+            BatchMoveCategorySheet(
+                viewModel: viewModel,
+                onMoveToProject: { projectId in
+                    await viewModel.batchMoveToProject(projectId)
+                }
+            )
+            .drawerStyle()
         }
         // Batch commit sheet
         .sheet(isPresented: $viewModel.showBatchCommitSheet) {

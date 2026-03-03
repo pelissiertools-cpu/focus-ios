@@ -9,9 +9,11 @@ import SwiftUI
 
 struct BatchMoveCategorySheet<VM: LogFilterable>: View {
     @ObservedObject var viewModel: VM
+    var onMoveToProject: ((UUID) async -> Void)? = nil
     @Environment(\.dismiss) private var dismiss
     @State private var showingNewCategoryAlert = false
     @State private var newCategoryName = ""
+    @State private var projects: [FocusTask] = []
 
     var body: some View {
         DrawerContainer(
@@ -20,33 +22,56 @@ struct BatchMoveCategorySheet<VM: LogFilterable>: View {
         ) {
             VStack(spacing: 0) {
                 List {
-                    Button {
-                        _Concurrency.Task {
-                            await viewModel.batchMoveToCategory(nil)
-                            dismiss()
-                        }
-                    } label: {
-                        Label("None", systemImage: "xmark.circle")
-                            .foregroundColor(.primary)
-                    }
-
-                    ForEach(viewModel.categories) { category in
+                    SwiftUI.Section("Category") {
                         Button {
                             _Concurrency.Task {
-                                await viewModel.batchMoveToCategory(category.id)
+                                await viewModel.batchMoveToCategory(nil)
                                 dismiss()
                             }
                         } label: {
-                            Text(category.name)
+                            Label("None", systemImage: "xmark.circle")
                                 .foregroundColor(.primary)
+                        }
+
+                        ForEach(viewModel.categories) { category in
+                            Button {
+                                _Concurrency.Task {
+                                    await viewModel.batchMoveToCategory(category.id)
+                                    dismiss()
+                                }
+                            } label: {
+                                Text(category.name)
+                                    .foregroundColor(.primary)
+                            }
+                        }
+
+                        Button {
+                            showingNewCategoryAlert = true
+                        } label: {
+                            Label("New Category", systemImage: "plus")
+                                .foregroundColor(.appRed)
                         }
                     }
 
-                    Button {
-                        showingNewCategoryAlert = true
-                    } label: {
-                        Label("New Category", systemImage: "plus")
-                            .foregroundColor(.appRed)
+                    if onMoveToProject != nil {
+                        SwiftUI.Section("Project") {
+                            ForEach(projects) { project in
+                                Button {
+                                    _Concurrency.Task {
+                                        await onMoveToProject?(project.id)
+                                        dismiss()
+                                    }
+                                } label: {
+                                    Label(project.title, systemImage: "folder")
+                                        .foregroundColor(.primary)
+                                }
+                            }
+
+                            if projects.isEmpty {
+                                Text("No projects")
+                                    .foregroundColor(.secondary)
+                            }
+                        }
                     }
                 }
             }
@@ -63,6 +88,14 @@ struct BatchMoveCategorySheet<VM: LogFilterable>: View {
                         }
                         dismiss()
                     }
+                }
+            }
+            .task {
+                if onMoveToProject != nil {
+                    do {
+                        let repo = TaskRepository(supabase: SupabaseClientManager.shared.client)
+                        projects = try await repo.fetchProjects()
+                    } catch { }
                 }
             }
         }

@@ -51,6 +51,7 @@ struct MainTabView: View {
                     Label("Home", systemImage: "house")
                 }
                 .tag(2)
+                .environmentObject(focusViewModel)
         }
         .background(TabBarSelectedImageSetter())
     }

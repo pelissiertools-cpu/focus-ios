@@ -8,11 +8,13 @@ import SwiftUI
 struct ListContentView: View {
     let list: FocusTask
     @ObservedObject var viewModel: ListsViewModel
+    @EnvironmentObject var focusViewModel: FocusTabViewModel
     @Environment(\.dismiss) private var dismiss
     @State private var isInlineAddFocused = false
     @State private var listTitle: String
     @State private var listNotes: String
     @FocusState private var isTitleFocused: Bool
+    @FocusState private var isNotesFocused: Bool
 
     init(list: FocusTask, viewModel: ListsViewModel) {
         self.list = list
@@ -38,25 +40,41 @@ struct ListContentView: View {
                         .padding(.bottom, 4)
 
                     // Notes
-                    TextField("Notes", text: $listNotes, axis: .vertical)
-                        .font(.inter(.body))
-                        .foregroundColor(.secondary)
-                        .textFieldStyle(.plain)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal, 20)
-                        .padding(.bottom, 12)
+                    if isNotesFocused || listNotes.isEmpty {
+                        TextField("Notes", text: $listNotes, axis: .vertical)
+                            .font(.inter(.body))
+                            .foregroundColor(.secondary)
+                            .textFieldStyle(.plain)
+                            .focused($isNotesFocused)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, 20)
+                            .padding(.bottom, 12)
+                    } else {
+                        Text(linkifiedText(listNotes))
+                            .font(.inter(.body))
+                            .foregroundColor(.secondary)
+                            .tint(.blue.opacity(0.5))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, 20)
+                            .padding(.bottom, 12)
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                isNotesFocused = true
+                            }
+                    }
 
                     // Items list
                     contentList
                 }
                 .padding(.bottom, 120)
             }
-            .onTapGesture {
+            .scrollDismissesKeyboard(.immediately)
+            .simultaneousGesture(TapGesture().onEnded {
                 UIApplication.shared.sendAction(
                     #selector(UIResponder.resignFirstResponder),
                     to: nil, from: nil, for: nil
                 )
-            }
+            })
         }
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(true)
@@ -81,6 +99,22 @@ struct ListContentView: View {
         .onChange(of: isTitleFocused) { _, focused in
             if !focused { saveListTitle() }
         }
+        .onChange(of: isNotesFocused) { _, focused in
+            if !focused { saveListNotes() }
+        }
+        .onDisappear {
+            saveListNotes()
+        }
+        // Item edit drawer
+        .sheet(item: $viewModel.selectedItemForDetails) { item in
+            TaskDetailsDrawer(task: item, viewModel: viewModel, categories: viewModel.categories)
+                .drawerStyle()
+        }
+        // Item schedule sheet
+        .sheet(item: $viewModel.selectedItemForSchedule) { item in
+            CommitmentSelectionSheet(task: item, focusViewModel: focusViewModel)
+                .drawerStyle()
+        }
     }
 
     private func saveListTitle() {
@@ -98,6 +132,23 @@ struct ListContentView: View {
         _Concurrency.Task {
             await viewModel.updateTaskNote(list, newNote: newNote.isEmpty ? nil : newNote)
         }
+    }
+
+    private func linkifiedText(_ string: String) -> AttributedString {
+        var result = AttributedString(string)
+        guard let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue) else {
+            return result
+        }
+        let nsRange = NSRange(string.startIndex..<string.endIndex, in: string)
+        for match in detector.matches(in: string, range: nsRange) {
+            guard let url = match.url,
+                  let range = Range(match.range, in: string) else { continue }
+            if let lower = AttributedString.Index(range.lowerBound, within: result),
+               let upper = AttributedString.Index(range.upperBound, within: result) {
+                result[lower..<upper].link = url
+            }
+        }
+        return result
     }
 
     // MARK: - Content List
@@ -273,6 +324,15 @@ private struct ListContentItemRow: View {
 
                 ContextMenuItems.deleteButton {
                     showDeleteConfirmation = true
+                }
+            }
+        }
+        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+            if !item.isCompleted {
+                Button(role: .destructive) {
+                    showDeleteConfirmation = true
+                } label: {
+                    Label("Delete", systemImage: "trash")
                 }
             }
         }

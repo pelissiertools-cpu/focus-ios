@@ -41,6 +41,7 @@ class HomeViewModel: ObservableObject {
     @Published var selectedList: FocusTask?
 
     private let repository: TaskRepository
+    private let commitmentRepository = CommitmentRepository()
     private var cancellables = Set<AnyCancellable>()
 
     init(authService: AuthService) {
@@ -75,6 +76,24 @@ class HomeViewModel: ObservableObject {
         do {
             let allLists = try await repository.fetchTasks(ofType: .list)
             lists = allLists.filter { !$0.isCleared && !$0.isCompleted }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func deleteProject(_ project: FocusTask) async {
+        do {
+            try await repository.deleteTask(id: project.id)
+            projects.removeAll { $0.id == project.id }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func deleteList(_ list: FocusTask) async {
+        do {
+            try await repository.deleteTask(id: list.id)
+            lists.removeAll { $0.id == list.id }
         } catch {
             errorMessage = error.localizedDescription
         }

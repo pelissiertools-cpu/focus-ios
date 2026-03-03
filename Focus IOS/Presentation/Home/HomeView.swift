@@ -7,6 +7,7 @@ import SwiftUI
 
 struct HomeView: View {
     @ObservedObject var viewModel: HomeViewModel
+    @EnvironmentObject var focusViewModel: FocusTabViewModel
     @StateObject private var projectsViewModel: ProjectsViewModel
     @StateObject private var listsViewModel: ListsViewModel
     @State private var showSettings = false
@@ -101,32 +102,24 @@ struct HomeView: View {
                             .padding(.horizontal, 20)
                             .padding(.top, 12)
                     } else {
-                        ForEach(viewModel.projects) { project in
-                            Button {
-                                viewModel.selectedProject = project
-                            } label: {
-                                HStack(spacing: 12) {
-                                    ProjectIconShape()
-                                        .frame(width: 24, height: 24)
-                                        .foregroundColor(.secondary)
-
-                                    Text(project.title)
-                                        .font(.inter(.body))
-                                        .foregroundColor(.primary)
-                                        .lineLimit(1)
-
-                                    Spacer()
-
-                                    Image(systemName: "chevron.right")
-                                        .font(.inter(size: 12, weight: .semiBold))
-                                        .foregroundColor(.secondary)
-                                }
-                                .padding(.horizontal, 20)
-                                .padding(.vertical, 10)
-                                .contentShape(Rectangle())
+                        List {
+                            ForEach(viewModel.projects) { project in
+                                HomeProjectRow(
+                                    project: project,
+                                    onTap: { viewModel.selectedProject = project },
+                                    onEdit: { projectsViewModel.selectedProjectForDetails = project },
+                                    onSchedule: { projectsViewModel.selectedTaskForSchedule = project },
+                                    onDelete: { await viewModel.deleteProject(project) }
+                                )
+                                .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+                                .listRowBackground(Color.clear)
+                                .listRowSeparator(.hidden)
                             }
-                            .buttonStyle(.plain)
                         }
+                        .listStyle(.plain)
+                        .scrollDisabled(true)
+                        .scrollContentBackground(.hidden)
+                        .frame(minHeight: CGFloat(viewModel.projects.count) * 48)
                     }
 
                     // MARK: - Lists Header
@@ -150,33 +143,24 @@ struct HomeView: View {
                             .padding(.horizontal, 20)
                             .padding(.top, 12)
                     } else {
-                        ForEach(viewModel.lists) { list in
-                            Button {
-                                viewModel.selectedList = list
-                            } label: {
-                                HStack(spacing: 12) {
-                                    Image(systemName: "list.bullet")
-                                        .font(.inter(.body, weight: .medium))
-                                        .foregroundColor(.secondary)
-                                        .frame(width: 24)
-
-                                    Text(list.title)
-                                        .font(.inter(.body))
-                                        .foregroundColor(.primary)
-                                        .lineLimit(1)
-
-                                    Spacer()
-
-                                    Image(systemName: "chevron.right")
-                                        .font(.inter(size: 12, weight: .semiBold))
-                                        .foregroundColor(.secondary)
-                                }
-                                .padding(.horizontal, 20)
-                                .padding(.vertical, 10)
-                                .contentShape(Rectangle())
+                        List {
+                            ForEach(viewModel.lists) { list in
+                                HomeListRow(
+                                    list: list,
+                                    onTap: { viewModel.selectedList = list },
+                                    onEdit: { listsViewModel.selectedListForDetails = list },
+                                    onSchedule: { listsViewModel.selectedItemForSchedule = list },
+                                    onDelete: { await viewModel.deleteList(list) }
+                                )
+                                .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+                                .listRowBackground(Color.clear)
+                                .listRowSeparator(.hidden)
                             }
-                            .buttonStyle(.plain)
                         }
+                        .listStyle(.plain)
+                        .scrollDisabled(true)
+                        .scrollContentBackground(.hidden)
+                        .frame(minHeight: CGFloat(viewModel.lists.count) * 48)
                     }
                 }
                 .padding(.bottom, 120)
@@ -200,6 +184,26 @@ struct HomeView: View {
                 SettingsView()
             }
             .navigationBarHidden(true)
+            // Project edit drawer
+            .sheet(item: $projectsViewModel.selectedProjectForDetails) { project in
+                ProjectDetailsDrawer(project: project, viewModel: projectsViewModel)
+                    .drawerStyle()
+            }
+            // Project schedule sheet
+            .sheet(item: $projectsViewModel.selectedTaskForSchedule) { task in
+                CommitmentSelectionSheet(task: task, focusViewModel: focusViewModel)
+                    .drawerStyle()
+            }
+            // List edit drawer
+            .sheet(item: $listsViewModel.selectedListForDetails) { list in
+                ListDetailsDrawer(list: list, viewModel: listsViewModel)
+                    .drawerStyle()
+            }
+            // List schedule sheet
+            .sheet(item: $listsViewModel.selectedItemForSchedule) { item in
+                CommitmentSelectionSheet(task: item, focusViewModel: focusViewModel)
+                    .drawerStyle()
+            }
             .task {
                 if viewModel.projects.isEmpty && !viewModel.isLoading {
                     await viewModel.fetchProjects()
@@ -207,6 +211,9 @@ struct HomeView: View {
                 if viewModel.lists.isEmpty {
                     await viewModel.fetchLists()
                 }
+                // Pre-load categories for edit drawers
+                await projectsViewModel.fetchProjects()
+                await listsViewModel.fetchLists()
             }
             .onChange(of: viewModel.selectedMenuItem) { _, newValue in
                 if newValue == nil {
@@ -226,6 +233,126 @@ struct HomeView: View {
                     _Concurrency.Task { await viewModel.fetchLists() }
                 }
             }
+            // Refresh home data after edit drawer dismissals
+            .onChange(of: projectsViewModel.selectedProjectForDetails) { _, newValue in
+                if newValue == nil {
+                    _Concurrency.Task { await viewModel.fetchProjects() }
+                }
+            }
+            .onChange(of: listsViewModel.selectedListForDetails) { _, newValue in
+                if newValue == nil {
+                    _Concurrency.Task { await viewModel.fetchLists() }
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Home Project Row
+
+private struct HomeProjectRow: View {
+    let project: FocusTask
+    let onTap: () -> Void
+    let onEdit: () -> Void
+    let onSchedule: () -> Void
+    let onDelete: () async -> Void
+    @State private var showDeleteConfirmation = false
+
+    var body: some View {
+        HStack(spacing: 12) {
+            ProjectIconShape()
+                .frame(width: 24, height: 24)
+                .foregroundColor(.secondary)
+
+            Text(project.title)
+                .font(.inter(.body))
+                .foregroundColor(.primary)
+                .lineLimit(1)
+
+            Spacer()
+
+            Image(systemName: "chevron.right")
+                .font(.inter(size: 12, weight: .semiBold))
+                .foregroundColor(.secondary)
+        }
+        .padding(.vertical, 10)
+        .contentShape(Rectangle())
+        .onTapGesture { onTap() }
+        .contextMenu {
+            ContextMenuItems.editButton { onEdit() }
+            ContextMenuItems.scheduleButton { onSchedule() }
+            Divider()
+            ContextMenuItems.deleteButton { showDeleteConfirmation = true }
+        }
+        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+            Button(role: .destructive) {
+                showDeleteConfirmation = true
+            } label: {
+                Label("Delete", systemImage: "trash")
+            }
+        }
+        .alert("Delete Project", isPresented: $showDeleteConfirmation) {
+            Button("Delete", role: .destructive) {
+                _Concurrency.Task { await onDelete() }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Are you sure you want to delete \"\(project.title)\"?")
+        }
+    }
+}
+
+// MARK: - Home List Row
+
+private struct HomeListRow: View {
+    let list: FocusTask
+    let onTap: () -> Void
+    let onEdit: () -> Void
+    let onSchedule: () -> Void
+    let onDelete: () async -> Void
+    @State private var showDeleteConfirmation = false
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "list.bullet")
+                .font(.inter(.body, weight: .medium))
+                .foregroundColor(.secondary)
+                .frame(width: 24)
+
+            Text(list.title)
+                .font(.inter(.body))
+                .foregroundColor(.primary)
+                .lineLimit(1)
+
+            Spacer()
+
+            Image(systemName: "chevron.right")
+                .font(.inter(size: 12, weight: .semiBold))
+                .foregroundColor(.secondary)
+        }
+        .padding(.vertical, 10)
+        .contentShape(Rectangle())
+        .onTapGesture { onTap() }
+        .contextMenu {
+            ContextMenuItems.editButton { onEdit() }
+            ContextMenuItems.scheduleButton { onSchedule() }
+            Divider()
+            ContextMenuItems.deleteButton { showDeleteConfirmation = true }
+        }
+        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+            Button(role: .destructive) {
+                showDeleteConfirmation = true
+            } label: {
+                Label("Delete", systemImage: "trash")
+            }
+        }
+        .alert("Delete List", isPresented: $showDeleteConfirmation) {
+            Button("Delete", role: .destructive) {
+                _Concurrency.Task { await onDelete() }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Are you sure you want to delete \"\(list.title)\"?")
         }
     }
 }

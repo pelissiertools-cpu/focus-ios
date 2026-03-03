@@ -8,12 +8,14 @@ import SwiftUI
 struct ProjectContentView: View {
     let project: FocusTask
     @ObservedObject var viewModel: ProjectsViewModel
+    @EnvironmentObject var focusViewModel: FocusTabViewModel
     @Environment(\.dismiss) private var dismiss
     @State private var isInlineAddFocused = false
     @State private var projectTitle: String
     @State private var projectNotes: String
     @State private var editingSectionId: UUID?
     @FocusState private var isTitleFocused: Bool
+    @FocusState private var isNotesFocused: Bool
 
     init(project: FocusTask, viewModel: ProjectsViewModel) {
         self.project = project
@@ -39,25 +41,41 @@ struct ProjectContentView: View {
                         .padding(.bottom, 4)
 
                     // Notes
-                    TextField("Notes", text: $projectNotes, axis: .vertical)
-                        .font(.inter(.body))
-                        .foregroundColor(.secondary)
-                        .textFieldStyle(.plain)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal, 20)
-                        .padding(.bottom, 12)
+                    if isNotesFocused || projectNotes.isEmpty {
+                        TextField("Notes", text: $projectNotes, axis: .vertical)
+                            .font(.inter(.body))
+                            .foregroundColor(.secondary)
+                            .textFieldStyle(.plain)
+                            .focused($isNotesFocused)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, 20)
+                            .padding(.bottom, 12)
+                    } else {
+                        Text(linkifiedText(projectNotes))
+                            .font(.inter(.body))
+                            .foregroundColor(.secondary)
+                            .tint(.blue.opacity(0.5))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, 20)
+                            .padding(.bottom, 12)
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                isNotesFocused = true
+                            }
+                    }
 
                     // Task/section list
                     contentList
                 }
                 .padding(.bottom, 120)
             }
-            .onTapGesture {
+            .scrollDismissesKeyboard(.immediately)
+            .simultaneousGesture(TapGesture().onEnded {
                 UIApplication.shared.sendAction(
                     #selector(UIResponder.resignFirstResponder),
                     to: nil, from: nil, for: nil
                 )
-            }
+            })
 
             // Edit mode action bar
             if viewModel.contentEditMode {
@@ -88,6 +106,17 @@ struct ProjectContentView: View {
                             .foregroundColor(.primary)
                     }
                 }
+            }
+            ToolbarItem(placement: .principal) {
+                Color.clear
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        UIApplication.shared.sendAction(
+                            #selector(UIResponder.resignFirstResponder),
+                            to: nil, from: nil, for: nil
+                        )
+                    }
             }
             ToolbarItem(placement: .navigationBarTrailing) {
                 if viewModel.contentEditMode {
@@ -142,7 +171,11 @@ struct ProjectContentView: View {
         .onChange(of: isTitleFocused) { _, focused in
             if !focused { saveProjectTitle() }
         }
+        .onChange(of: isNotesFocused) { _, focused in
+            if !focused { saveProjectNotes() }
+        }
         .onDisappear {
+            saveProjectNotes()
             if viewModel.contentEditMode {
                 viewModel.exitContentEditMode()
             }
@@ -169,6 +202,33 @@ struct ProjectContentView: View {
             Text("Move")
                 .drawerStyle()
         }
+        // Task edit drawer
+        .sheet(item: $viewModel.selectedTaskForDetails) { task in
+            TaskDetailsDrawer(task: task, viewModel: viewModel, categories: viewModel.categories)
+                .drawerStyle()
+        }
+        // Task schedule sheet
+        .sheet(item: $viewModel.selectedTaskForSchedule) { task in
+            CommitmentSelectionSheet(task: task, focusViewModel: focusViewModel)
+                .drawerStyle()
+        }
+    }
+
+    private func linkifiedText(_ string: String) -> AttributedString {
+        var result = AttributedString(string)
+        guard let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue) else {
+            return result
+        }
+        let nsRange = NSRange(string.startIndex..<string.endIndex, in: string)
+        for match in detector.matches(in: string, range: nsRange) {
+            guard let url = match.url,
+                  let range = Range(match.range, in: string) else { continue }
+            if let lower = AttributedString.Index(range.lowerBound, within: result),
+               let upper = AttributedString.Index(range.upperBound, within: result) {
+                result[lower..<upper].link = url
+            }
+        }
+        return result
     }
 
     private func saveProjectTitle() {
@@ -404,6 +464,15 @@ private struct ContentTaskRow: View {
 
                 ContextMenuItems.deleteButton {
                     showDeleteConfirmation = true
+                }
+            }
+        }
+        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+            if !viewModel.contentEditMode && !task.isCompleted {
+                Button(role: .destructive) {
+                    showDeleteConfirmation = true
+                } label: {
+                    Label("Delete", systemImage: "trash")
                 }
             }
         }

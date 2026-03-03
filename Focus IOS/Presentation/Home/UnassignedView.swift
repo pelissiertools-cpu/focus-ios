@@ -24,6 +24,7 @@ struct UnassignedView: View {
 
     // Pending schedule state
     @State private var pendingSchedules: [UUID: PendingScheduleInfo] = [:]
+    @State private var pendingCompletions: Set<UUID> = []
     @State private var dismissedPendingBanner = false
 
     // Batch create alerts
@@ -53,14 +54,18 @@ struct UnassignedView: View {
         addTaskTitle.trimmingCharacters(in: .whitespaces).isEmpty
     }
 
-    /// Tasks not in a project (excluding pending scheduled)
+    /// Tasks not in a project (excluding pending scheduled/completed)
     private var standaloneUncompletedTasks: [FocusTask] {
-        taskListVM.uncompletedTasks.filter { $0.projectId == nil && !pendingSchedules.keys.contains($0.id) }
+        taskListVM.uncompletedTasks.filter {
+            $0.projectId == nil && !pendingSchedules.keys.contains($0.id) && !pendingCompletions.contains($0.id)
+        }
     }
 
-    /// Tasks that have been scheduled but not yet committed
+    /// Tasks that have been scheduled or completed but not yet committed
     private var pendingTasks: [FocusTask] {
-        taskListVM.uncompletedTasks.filter { $0.projectId == nil && pendingSchedules.keys.contains($0.id) }
+        taskListVM.uncompletedTasks.filter {
+            $0.projectId == nil && (pendingSchedules.keys.contains($0.id) || pendingCompletions.contains($0.id))
+        }
     }
 
     private var isEmpty: Bool {
@@ -332,11 +337,16 @@ struct UnassignedView: View {
             }
         }
         .onChange(of: taskListVM.tasks) { _, _ in
-            // Clean up pending entries for tasks that were completed or deleted
+            // Clean up pending entries for tasks that were deleted
             let currentIds = Set(taskListVM.uncompletedTasks.map { $0.id })
             for taskId in pendingSchedules.keys {
                 if !currentIds.contains(taskId) {
                     pendingSchedules.removeValue(forKey: taskId)
+                }
+            }
+            for taskId in pendingCompletions {
+                if !currentIds.contains(taskId) {
+                    pendingCompletions.remove(taskId)
                 }
             }
         }
@@ -366,22 +376,34 @@ struct UnassignedView: View {
 
     private func commitPendingSchedules() {
         let schedulesToCommit = pendingSchedules
-        guard !schedulesToCommit.isEmpty else { return }
+        let completionsToCommit = pendingCompletions
+        guard !schedulesToCommit.isEmpty || !completionsToCommit.isEmpty else { return }
 
         _Concurrency.Task { @MainActor in
-            let commitmentRepository = CommitmentRepository()
+            // Commit pending schedules
+            if !schedulesToCommit.isEmpty {
+                let commitmentRepository = CommitmentRepository()
+                for (_, schedule) in schedulesToCommit {
+                    for date in schedule.dates {
+                        let commitment = Commitment(
+                            userId: schedule.userId,
+                            taskId: schedule.taskId,
+                            timeframe: schedule.timeframe,
+                            section: schedule.section,
+                            commitmentDate: Calendar.current.startOfDay(for: date),
+                            sortOrder: 0
+                        )
+                        _ = try? await commitmentRepository.createCommitment(commitment)
+                    }
+                }
+            }
 
-            for (_, schedule) in schedulesToCommit {
-                for date in schedule.dates {
-                    let commitment = Commitment(
-                        userId: schedule.userId,
-                        taskId: schedule.taskId,
-                        timeframe: schedule.timeframe,
-                        section: schedule.section,
-                        commitmentDate: Calendar.current.startOfDay(for: date),
-                        sortOrder: 0
-                    )
-                    _ = try? await commitmentRepository.createCommitment(commitment)
+            // Commit pending completions
+            if !completionsToCommit.isEmpty {
+                for taskId in completionsToCommit {
+                    if let task = taskListVM.uncompletedTasks.first(where: { $0.id == taskId }) {
+                        await taskListVM.toggleCompletion(task)
+                    }
                 }
             }
 
@@ -389,6 +411,7 @@ struct UnassignedView: View {
             // Clear pending after committed IDs are refreshed so tasks
             // go straight from pending section to hidden — no flash.
             pendingSchedules.removeAll()
+            pendingCompletions.removeAll()
             await focusViewModel.fetchCommitments()
         }
     }
@@ -398,7 +421,7 @@ struct UnassignedView: View {
     /// Flattened task display items excluding project-contained and pending tasks
     private var standaloneTaskDisplayItems: [FlatDisplayItem] {
         let projectTaskIds = Set(taskListVM.uncompletedTasks.filter { $0.projectId != nil }.map { $0.id })
-        let pendingTaskIds = Set(pendingSchedules.keys)
+        let pendingTaskIds = Set(pendingSchedules.keys).union(pendingCompletions)
         return taskListVM.flattenedDisplayItems.filter { item in
             switch item {
             case .task(let task): return task.projectId == nil && !pendingTaskIds.contains(task.id)
@@ -424,13 +447,16 @@ struct UnassignedView: View {
                         viewModel: taskListVM,
                         isEditMode: taskListVM.isEditMode,
                         isSelected: taskListVM.selectedTaskIds.contains(task.id),
-                        onSelectToggle: { taskListVM.toggleTaskSelection(task.id) }
+                        onSelectToggle: { taskListVM.toggleTaskSelection(task.id) },
+                        onToggleCompletion: { t in
+                            pendingCompletions.insert(t.id)
+                            dismissedPendingBanner = false
+                        }
                     )
                     .padding(.leading, task.parentTaskId != nil ? 32 : 0)
-                    .listRowInsets(EdgeInsets(top: 0, leading: 32, bottom: 0, trailing: 32))
+                    .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
                     .listRowBackground(Color.clear)
-                    .alignmentGuide(.listRowSeparatorLeading) { d in d[.leading] - 12 }
-                    .alignmentGuide(.listRowSeparatorTrailing) { d in d[.trailing] + 12 }
+                    .listRowSeparator(task.parentTaskId != nil ? .visible : .hidden)
 
                 case .addSubtaskRow(let parentId):
                     InlineAddRow(
@@ -441,7 +467,7 @@ struct UnassignedView: View {
                         verticalPadding: 12
                     )
                     .padding(.leading, 32)
-                    .listRowInsets(EdgeInsets(top: 0, leading: 32, bottom: 0, trailing: 32))
+                    .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
                     .listRowBackground(Color.clear)
 
                 case .addTaskRow:
@@ -473,8 +499,10 @@ struct UnassignedView: View {
                         }
                         .buttonStyle(.plain)
                     }
-                    .padding(.vertical, 8)
-                    .listRowInsets(EdgeInsets(top: 0, leading: 32, bottom: 0, trailing: 32))
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 10)
+                    .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 12))
+                    .listRowInsets(EdgeInsets(top: 4, leading: 20, bottom: 4, trailing: 20))
                     .listRowSeparator(.hidden)
                     .listRowBackground(Color.clear)
                 }
@@ -485,14 +513,23 @@ struct UnassignedView: View {
                         viewModel: taskListVM,
                         isEditMode: false,
                         isSelected: false,
-                        onSelectToggle: nil
+                        onSelectToggle: nil,
+                        onToggleCompletion: { t in
+                            if pendingCompletions.contains(t.id) {
+                                // Uncomplete: remove from pending, task goes back to main list
+                                pendingCompletions.remove(t.id)
+                            } else {
+                                // Complete: add to pending completions
+                                pendingCompletions.insert(t.id)
+                            }
+                        },
+                        appearCompleted: pendingCompletions.contains(task.id) ? true : nil
                     )
                     .opacity(0.5)
                     .padding(.leading, task.parentTaskId != nil ? 32 : 0)
-                    .listRowInsets(EdgeInsets(top: 0, leading: 32, bottom: 0, trailing: 32))
+                    .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
                     .listRowBackground(Color.clear)
-                    .alignmentGuide(.listRowSeparatorLeading) { d in d[.leading] - 12 }
-                    .alignmentGuide(.listRowSeparatorTrailing) { d in d[.trailing] + 12 }
+                    .listRowSeparator(task.parentTaskId != nil ? .visible : .hidden)
                 }
             }
 

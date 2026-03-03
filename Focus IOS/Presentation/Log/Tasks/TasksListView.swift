@@ -535,14 +535,17 @@ struct FlatTaskRow: View {
     var isEditMode: Bool = false
     var isSelected: Bool = false
     var onSelectToggle: (() -> Void)? = nil
+    var onToggleCompletion: ((FocusTask) -> Void)? = nil
+    var appearCompleted: Bool? = nil
     @State private var showDeleteConfirmation = false
 
     private var isParent: Bool { task.parentTaskId == nil }
+    private var displayCompleted: Bool { appearCompleted ?? task.isCompleted }
 
     var body: some View {
         HStack(spacing: 12) {
             // Edit mode: selection circle (uncompleted parent tasks only)
-            if isEditMode && !task.isCompleted && isParent {
+            if isEditMode && !displayCompleted && isParent {
                 Image(systemName: isSelected ? "checkmark.circle.fill" : "circle.dashed")
                     .font(.inter(.title3))
                     .foregroundColor(isSelected ? .appRed : .secondary)
@@ -552,8 +555,8 @@ struct FlatTaskRow: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(task.title)
                     .font(isParent ? .inter(.body) : .inter(.subheadline))
-                    .strikethrough(task.isCompleted)
-                    .foregroundColor(task.isCompleted ? .secondary : .primary)
+                    .strikethrough(displayCompleted)
+                    .foregroundColor(displayCompleted ? .secondary : .primary)
 
                 // Parent: subtask count badge
                 if isParent, let subtasks = viewModel.subtasksMap[task.id], !subtasks.isEmpty {
@@ -568,17 +571,21 @@ struct FlatTaskRow: View {
             if !isEditMode {
                 Button {
                     UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                    _Concurrency.Task {
-                        if isParent {
-                            await viewModel.toggleCompletion(task)
-                        } else {
-                            await viewModel.toggleSubtaskCompletion(task, parentId: task.parentTaskId!)
+                    if let onToggleCompletion {
+                        onToggleCompletion(task)
+                    } else {
+                        _Concurrency.Task {
+                            if isParent {
+                                await viewModel.toggleCompletion(task)
+                            } else {
+                                await viewModel.toggleSubtaskCompletion(task, parentId: task.parentTaskId!)
+                            }
                         }
                     }
                 } label: {
-                    Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
+                    Image(systemName: displayCompleted ? "checkmark.circle.fill" : "circle")
                         .font(isParent ? .inter(.title3) : .inter(.subheadline))
-                        .foregroundColor(task.isCompleted ? Color.completedPurple.opacity(0.6) : .gray)
+                        .foregroundColor(displayCompleted ? Color.completedPurple.opacity(0.6) : .gray)
                 }
                 .buttonStyle(.plain)
             }
@@ -586,7 +593,7 @@ struct FlatTaskRow: View {
         .padding(.vertical, isParent ? 8 : 6)
         .contentShape(Rectangle())
         .onTapGesture {
-            if isEditMode && !task.isCompleted && isParent {
+            if isEditMode && !displayCompleted && isParent {
                 onSelectToggle?()
             } else if !isEditMode {
                 if isParent {
@@ -601,7 +608,7 @@ struct FlatTaskRow: View {
             }
         }
         .contextMenu {
-            if !isEditMode && !task.isCompleted {
+            if !isEditMode && !displayCompleted {
                 ContextMenuItems.editButton {
                     viewModel.selectedTaskForDetails = task
                 }
@@ -658,7 +665,7 @@ struct FlatTaskRow: View {
             Text("Are you sure you want to delete \"\(task.title)\"?")
         }
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-            if !isEditMode && !task.isCompleted {
+            if !isEditMode && !displayCompleted {
                 Button(role: .destructive) {
                     _Concurrency.Task {
                         if isParent {

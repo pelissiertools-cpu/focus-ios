@@ -19,6 +19,9 @@ struct ScheduledView: View {
     @State private var pendingCompletions: Set<UUID> = []
     @State private var isCompletedSectionCollapsed = false
 
+    // Commitment date entries: item UUID → set of committed dates
+    @State private var itemDateEntries: [UUID: Set<Date>] = [:]
+
     // Batch create alerts
     @State private var showCreateProjectAlert = false
     @State private var showCreateListAlert = false
@@ -50,37 +53,20 @@ struct ScheduledView: View {
         addTaskTitle.trimmingCharacters(in: .whitespaces).isEmpty
     }
 
-    // MARK: - Computed: Standalone committed tasks
+    // MARK: - Computed: All committed items (no type separation)
 
-    private var standaloneTasks: [FocusTask] {
-        taskListVM.uncompletedTasks.filter {
-            $0.projectId == nil && !pendingCompletions.contains($0.id)
-        }
+    private var allCommittedTasks: [FocusTask] {
+        taskListVM.uncompletedTasks.filter { !pendingCompletions.contains($0.id) }
     }
 
-    private var standaloneTaskDisplayItems: [FlatDisplayItem] {
-        let pendingIds = pendingCompletions
-        return taskListVM.flattenedDisplayItems.filter { item in
-            switch item {
-            case .task(let task): return task.projectId == nil && !pendingIds.contains(task.id)
-            case .addSubtaskRow(let parentId): return !pendingIds.contains(parentId)
-            default: return true
-            }
-        }
-    }
-
-    // MARK: - Computed: Scheduled lists
-
-    private var scheduledLists: [FocusTask] {
+    private var allCommittedLists: [FocusTask] {
         listsVM.lists
             .filter { !$0.isCompleted && !$0.isCleared }
             .filter { taskListVM.committedTaskIds.contains($0.id) }
             .filter { !pendingCompletions.contains($0.id) }
     }
 
-    // MARK: - Computed: Projects with scheduled tasks
-
-    private var scheduledProjects: [FocusTask] {
+    private var allCommittedProjects: [FocusTask] {
         projectsVM.projects
             .filter { !$0.isCompleted && !$0.isCleared }
             .filter { taskListVM.committedTaskIds.contains($0.id) }
@@ -92,7 +78,7 @@ struct ScheduledView: View {
     private var completedItems: [FocusTask] {
         var items: [FocusTask] = []
         for taskId in pendingCompletions {
-            if let task = taskListVM.uncompletedTasks.first(where: { $0.id == taskId && $0.projectId == nil }) {
+            if let task = taskListVM.uncompletedTasks.first(where: { $0.id == taskId }) {
                 items.append(task)
                 continue
             }
@@ -109,8 +95,142 @@ struct ScheduledView: View {
     }
 
     private var isEmpty: Bool {
-        standaloneTasks.isEmpty && scheduledLists.isEmpty
-        && scheduledProjects.isEmpty && completedItems.isEmpty
+        allCommittedTasks.isEmpty && allCommittedLists.isEmpty
+        && allCommittedProjects.isEmpty && completedItems.isEmpty
+    }
+
+    // MARK: - Date Sections
+
+    private var dateSections: [ScheduledSection] {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        guard let tomorrow = calendar.date(byAdding: .day, value: 1, to: today) else { return [] }
+
+        // Build items-by-date dictionary
+        var itemsByDate: [Date: [ScheduledItemEntry]] = [:]
+
+        for task in allCommittedTasks {
+            if let dates = itemDateEntries[task.id] {
+                for date in dates {
+                    itemsByDate[date, default: []].append(.task(task))
+                }
+            }
+        }
+        for list in allCommittedLists {
+            if let dates = itemDateEntries[list.id] {
+                for date in dates {
+                    itemsByDate[date, default: []].append(.list(list))
+                }
+            }
+        }
+        for project in allCommittedProjects {
+            if let dates = itemDateEntries[project.id] {
+                for date in dates {
+                    itemsByDate[date, default: []].append(.project(project))
+                }
+            }
+        }
+
+        var sections: [ScheduledSection] = []
+        let dayFormatter = DateFormatter()
+
+        // 1. Today (always shown)
+        sections.append(ScheduledSection(
+            id: "today", title: "Today", isRange: false, isSubDate: false,
+            items: itemsByDate[today] ?? [], date: today, alwaysVisible: true
+        ))
+
+        // 2. Tomorrow (always shown)
+        sections.append(ScheduledSection(
+            id: "tomorrow", title: "Tomorrow", isRange: false, isSubDate: false,
+            items: itemsByDate[tomorrow] ?? [], date: tomorrow, alwaysVisible: true
+        ))
+
+        // 3. Rest of current week (day after tomorrow through end of week, always shown)
+        let endOfWeekOffset = 7 - calendar.component(.weekday, from: today) // days until Saturday
+        if let endOfWeek = calendar.date(byAdding: .day, value: max(endOfWeekOffset, 2), to: today) {
+            var day = calendar.date(byAdding: .day, value: 2, to: today)!
+            while day <= endOfWeek {
+                dayFormatter.dateFormat = "EEE"
+                let dayName = dayFormatter.string(from: day)
+                dayFormatter.dateFormat = "MMM d"
+                let dateStr = dayFormatter.string(from: day)
+                sections.append(ScheduledSection(
+                    id: "week-\(day.timeIntervalSince1970)",
+                    title: "\(dayName) \(dateStr)",
+                    isRange: false, isSubDate: false,
+                    items: itemsByDate[day] ?? [], date: day, alwaysVisible: true
+                ))
+                day = calendar.date(byAdding: .day, value: 1, to: day)!
+            }
+
+            // 4. "Rest of [Month]" — dates after this week but still in current month
+            let dayAfterWeek = calendar.date(byAdding: .day, value: 1, to: endOfWeek)!
+            var startOfNextMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: today))!
+            startOfNextMonth = calendar.date(byAdding: .month, value: 1, to: startOfNextMonth)!
+
+            let restOfMonthDates = itemsByDate.keys
+                .filter { $0 >= dayAfterWeek && $0 < startOfNextMonth }
+                .sorted()
+
+            if !restOfMonthDates.isEmpty {
+                dayFormatter.dateFormat = "MMMM"
+                let monthName = dayFormatter.string(from: today)
+                sections.append(ScheduledSection(
+                    id: "rest-of-\(monthName)", title: "Rest of \(monthName)",
+                    isRange: true, isSubDate: false,
+                    items: [], date: nil, alwaysVisible: false
+                ))
+                for date in restOfMonthDates {
+                    dayFormatter.dateFormat = "EEE"
+                    let dn = dayFormatter.string(from: date)
+                    dayFormatter.dateFormat = "MMM d"
+                    let ds = dayFormatter.string(from: date)
+                    sections.append(ScheduledSection(
+                        id: "sub-\(date.timeIntervalSince1970)",
+                        title: "\(dn) \(ds)",
+                        isRange: false, isSubDate: true,
+                        items: itemsByDate[date] ?? [], date: date, alwaysVisible: false
+                    ))
+                }
+            }
+
+            // 5. Future months
+            let futureDates = itemsByDate.keys
+                .filter { $0 >= startOfNextMonth }
+                .sorted()
+
+            let groupedByMonth = Dictionary(grouping: futureDates) { date -> String in
+                dayFormatter.dateFormat = "yyyy-MM"
+                return dayFormatter.string(from: date)
+            }
+
+            for monthKey in groupedByMonth.keys.sorted() {
+                let datesInMonth = groupedByMonth[monthKey]!.sorted()
+                dayFormatter.dateFormat = "MMMM"
+                let monthTitle = dayFormatter.string(from: datesInMonth.first!)
+
+                sections.append(ScheduledSection(
+                    id: "month-\(monthKey)", title: monthTitle,
+                    isRange: true, isSubDate: false,
+                    items: [], date: nil, alwaysVisible: false
+                ))
+                for date in datesInMonth {
+                    dayFormatter.dateFormat = "EEE"
+                    let dn = dayFormatter.string(from: date)
+                    dayFormatter.dateFormat = "MMM d"
+                    let ds = dayFormatter.string(from: date)
+                    sections.append(ScheduledSection(
+                        id: "sub-\(date.timeIntervalSince1970)",
+                        title: "\(dn) \(ds)",
+                        isRange: false, isSubDate: true,
+                        items: itemsByDate[date] ?? [], date: date, alwaysVisible: false
+                    ))
+                }
+            }
+        }
+
+        return sections
     }
 
     // MARK: - Body
@@ -272,17 +392,14 @@ struct ScheduledView: View {
     @ViewBuilder
     private var headerView: some View {
         HStack(alignment: .center, spacing: 8) {
-            Image(systemName: "tray.full")
-                .font(.inter(size: 22, weight: .regular))
-                .foregroundColor(.primary)
             Text("Scheduled")
                 .font(.inter(size: 28, weight: .regular))
-                .foregroundColor(.primary)
+                .foregroundColor(.appRed)
             Spacer()
         }
         .padding(.horizontal, 20)
         .padding(.top, 16)
-        .padding(.bottom, 12)
+        .padding(.bottom, 4)
     }
 
     @ViewBuilder
@@ -373,9 +490,21 @@ struct ScheduledView: View {
 
     private var itemList: some View {
         List {
-            tasksSection
-            listsSection
-            projectsSection
+            ForEach(dateSections) { section in
+                if section.alwaysVisible || !section.items.isEmpty || section.isRange {
+                    dateSectionHeader(for: section)
+
+                    ForEach(section.items) { entry in
+                        scheduledItemRow(entry)
+                    }
+
+                    // Per-day add button (dashed circle)
+                    if let date = section.date, !section.isRange {
+                        addButtonForDay(date: date)
+                    }
+                }
+            }
+
             completedSection
 
             Color.clear
@@ -398,37 +527,71 @@ struct ScheduledView: View {
         }
     }
 
-    // MARK: - Tasks Section
+    // MARK: - Date Section Headers
 
     @ViewBuilder
-    private var tasksSection: some View {
-        if !standaloneTasks.isEmpty || taskListVM.sortOption == .priority {
-            sectionHeader(title: "Tasks", icon: "checkmark.circle", count: standaloneTasks.count)
+    private func dateSectionHeader(for section: ScheduledSection) -> some View {
+        if section.isRange {
+            // Major range header: "Rest of March", "April"
+            VStack(spacing: 0) {
+                HStack {
+                    Text(section.title)
+                        .font(.inter(size: 22, weight: .semiBold))
+                        .foregroundColor(.primary)
+                    Spacer()
+                }
+                .padding(.vertical, 6)
+                .padding(.horizontal, 4)
 
-            ForEach(standaloneTaskDisplayItems) { item in
-                taskDisplayItemRow(item)
+                Rectangle()
+                    .fill(Color.secondary.opacity(0.3))
+                    .frame(height: 1)
             }
+            .padding(.top, 16)
+            .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+            .listRowSeparator(.hidden)
+            .listRowBackground(Color.clear)
+        } else if section.isSubDate {
+            // Sub-date header within a range: "Sun Mar 29"
+            HStack {
+                Text(section.title)
+                    .font(.inter(.subheadline, weight: .medium))
+                    .foregroundColor(.secondary)
+                Spacer()
+            }
+            .padding(.top, 10)
+            .padding(.bottom, 2)
+            .listRowInsets(EdgeInsets(top: 0, leading: 28, bottom: 0, trailing: 20))
+            .listRowSeparator(.hidden)
+            .listRowBackground(Color.clear)
+        } else {
+            // Day header: "Today", "Tomorrow", "Thu Mar 5"
+            VStack(spacing: 0) {
+                HStack {
+                    Text(section.title)
+                        .font(.inter(size: 22, weight: .semiBold))
+                        .foregroundColor(.primary)
+                    Spacer()
+                }
+                .padding(.vertical, 6)
+                .padding(.horizontal, 4)
+
+                Rectangle()
+                    .fill(Color.secondary.opacity(0.3))
+                    .frame(height: 1)
+            }
+            .padding(.top, section.id == "today" ? 0 : 8)
+            .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+            .listRowSeparator(.hidden)
+            .listRowBackground(Color.clear)
         }
     }
 
-    @ViewBuilder
-    private func taskDisplayItemRow(_ item: FlatDisplayItem) -> some View {
-        switch item {
-        case .priorityHeader(let priority):
-            PrioritySectionHeader(
-                priority: priority,
-                count: standaloneTasks.filter { $0.priority == priority }.count,
-                isCollapsed: taskListVM.isPriorityCollapsed(priority),
-                onToggle: {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        taskListVM.togglePriorityCollapsed(priority)
-                    }
-                }
-            )
-            .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
-            .listRowSeparator(.hidden)
-            .listRowBackground(Color.clear)
+    // MARK: - Unified Item Row
 
+    @ViewBuilder
+    private func scheduledItemRow(_ entry: ScheduledItemEntry) -> some View {
+        switch entry {
         case .task(let task):
             FlatTaskRow(
                 task: task,
@@ -438,86 +601,69 @@ struct ScheduledView: View {
                 onSelectToggle: { taskListVM.toggleTaskSelection(task.id) },
                 onToggleCompletion: { t in pendingCompletions.insert(t.id) }
             )
-            .padding(.leading, task.parentTaskId != nil ? 32 : 0)
             .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
             .listRowBackground(Color.clear)
-            .listRowSeparator(task.parentTaskId != nil ? .visible : .hidden)
+            .listRowSeparator(.hidden)
 
-        case .addSubtaskRow(let parentId):
-            InlineAddRow(
-                placeholder: "Subtask title",
-                buttonLabel: "Add subtask",
-                onSubmit: { title in await taskListVM.createSubtask(title: title, parentId: parentId) },
-                isAnyAddFieldActive: $isInlineAddFocused,
-                verticalPadding: 12
+        case .project(let project):
+            ScheduledProjectRow(
+                project: project,
+                isEditMode: taskListVM.isEditMode,
+                isSelected: taskListVM.selectedTaskIds.contains(project.id),
+                onSelectToggle: { taskListVM.toggleTaskSelection(project.id) },
+                onTap: { selectedProjectForNavigation = project },
+                onToggleCompletion: { pendingCompletions.insert(project.id) },
+                onEdit: { projectsVM.selectedProjectForDetails = project },
+                onSchedule: { projectsVM.selectedTaskForSchedule = project },
+                onDelete: {
+                    await projectsVM.deleteProject(project)
+                    await refreshAllData()
+                }
             )
-            .padding(.leading, 32)
             .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
             .listRowBackground(Color.clear)
+            .listRowSeparator(.hidden)
 
-        case .addTaskRow:
-            EmptyView()
-                .listRowSeparator(.hidden)
-                .listRowBackground(Color.clear)
+        case .list(let list):
+            ScheduledListRow(
+                list: list,
+                isEditMode: taskListVM.isEditMode,
+                isSelected: taskListVM.selectedTaskIds.contains(list.id),
+                onSelectToggle: { taskListVM.toggleTaskSelection(list.id) },
+                onTap: { selectedListForNavigation = list },
+                onToggleCompletion: { pendingCompletions.insert(list.id) },
+                onEdit: { listsVM.selectedListForDetails = list },
+                onSchedule: { listsVM.selectedItemForSchedule = list },
+                onDelete: {
+                    await listsVM.deleteList(list)
+                    await refreshAllData()
+                }
+            )
+            .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+            .listRowBackground(Color.clear)
+            .listRowSeparator(.hidden)
         }
     }
 
-    // MARK: - Lists Section
+    // MARK: - Per-Day Add Button
 
-    @ViewBuilder
-    private var listsSection: some View {
-        if !scheduledLists.isEmpty {
-            sectionHeader(title: "Lists", icon: "list.bullet", count: scheduledLists.count)
-
-            ForEach(scheduledLists) { list in
-                AssignedListRow(
-                    list: list,
-                    isEditMode: taskListVM.isEditMode,
-                    isSelected: taskListVM.selectedTaskIds.contains(list.id),
-                    onSelectToggle: { taskListVM.toggleTaskSelection(list.id) },
-                    onTap: { selectedListForNavigation = list },
-                    onToggleCompletion: { pendingCompletions.insert(list.id) },
-                    onEdit: { listsVM.selectedListForDetails = list },
-                    onSchedule: { listsVM.selectedItemForSchedule = list },
-                    onDelete: {
-                        await listsVM.deleteList(list)
-                        await refreshAllData()
-                    }
-                )
-                .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
-                .listRowBackground(Color.clear)
-                .listRowSeparator(.hidden)
+    private func addButtonForDay(date: Date) -> some View {
+        Button {
+            addTaskDates = [date]
+            addTaskTimeframe = .daily
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                showingAddBar = true
             }
+        } label: {
+            Image(systemName: "circle.dashed")
+                .font(.inter(.title3))
+                .foregroundColor(.secondary.opacity(0.4))
         }
-    }
-
-    // MARK: - Projects Section
-
-    @ViewBuilder
-    private var projectsSection: some View {
-        if !scheduledProjects.isEmpty {
-            sectionHeader(title: "Projects", icon: "folder", count: scheduledProjects.count)
-
-            ForEach(scheduledProjects) { project in
-                AssignedProjectRow(
-                    project: project,
-                    isEditMode: taskListVM.isEditMode,
-                    isSelected: taskListVM.selectedTaskIds.contains(project.id),
-                    onSelectToggle: { taskListVM.toggleTaskSelection(project.id) },
-                    onTap: { selectedProjectForNavigation = project },
-                    onToggleCompletion: { pendingCompletions.insert(project.id) },
-                    onEdit: { projectsVM.selectedProjectForDetails = project },
-                    onSchedule: { projectsVM.selectedTaskForSchedule = project },
-                    onDelete: {
-                        await projectsVM.deleteProject(project)
-                        await refreshAllData()
-                    }
-                )
-                .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
-                .listRowBackground(Color.clear)
-                .listRowSeparator(.hidden)
-            }
-        }
+        .buttonStyle(.plain)
+        .padding(.vertical, 4)
+        .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+        .listRowSeparator(.hidden)
+        .listRowBackground(Color.clear)
     }
 
     // MARK: - Completed Section
@@ -545,28 +691,6 @@ struct ScheduledView: View {
                 }
             }
         }
-    }
-
-    // MARK: - Section Headers
-
-    private func sectionHeader(title: String, icon: String, count: Int) -> some View {
-        HStack(spacing: 8) {
-            Image(systemName: icon)
-                .font(.inter(.subheadline, weight: .semiBold))
-                .foregroundColor(.appRed)
-            Text(title)
-                .font(.inter(.headline, weight: .bold))
-                .foregroundColor(.appRed)
-            Text("\(count)")
-                .font(.inter(.caption))
-                .foregroundColor(.secondary)
-            Spacer()
-        }
-        .padding(.top, 16)
-        .padding(.bottom, 4)
-        .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
-        .listRowSeparator(.hidden)
-        .listRowBackground(Color.clear)
     }
 
     private var completedSectionHeader: some View {
@@ -610,7 +734,22 @@ struct ScheduledView: View {
         async let t: () = taskListVM.fetchTasks()
         async let p: () = projectsVM.fetchProjects()
         async let l: () = listsVM.fetchLists()
-        _ = await (t, p, l)
+        async let s: () = fetchScheduledDates()
+        _ = await (t, p, l, s)
+    }
+
+    private func fetchScheduledDates() async {
+        do {
+            let repo = CommitmentRepository()
+            let summaries = try await repo.fetchCommitmentSummaries()
+            let calendar = Calendar.current
+            var datesByTask: [UUID: Set<Date>] = [:]
+            for s in summaries {
+                let date = calendar.startOfDay(for: s.commitmentDate)
+                datesByTask[s.taskId, default: []].insert(date)
+            }
+            itemDateEntries = datesByTask
+        } catch { }
     }
 
     private func refreshAllData() async {
@@ -1012,28 +1151,6 @@ private extension ScheduledView {
 
     var trailingMenu: some View {
         Menu {
-            Menu {
-                ForEach(SortOption.allCases, id: \.self) { option in
-                    Button {
-                        withAnimation(.easeInOut(duration: 0.2)) { taskListVM.sortOption = option }
-                    } label: {
-                        if taskListVM.sortOption == option { Label(option.displayName, systemImage: "checkmark") }
-                        else { Text(option.displayName) }
-                    }
-                }
-                Divider()
-                ForEach(taskListVM.sortOption.directionOrder, id: \.self) { direction in
-                    Button {
-                        withAnimation(.easeInOut(duration: 0.2)) { taskListVM.sortDirection = direction }
-                    } label: {
-                        if taskListVM.sortDirection == direction { Label(direction.displayName(for: taskListVM.sortOption), systemImage: "checkmark") }
-                        else { Text(direction.displayName(for: taskListVM.sortOption)) }
-                    }
-                }
-            } label: {
-                Label("Sort By", systemImage: "arrow.up.arrow.down")
-            }
-            Divider()
             Button { taskListVM.enterEditMode() } label: {
                 Label("Select", systemImage: "checkmark.circle")
             }
@@ -1047,9 +1164,35 @@ private extension ScheduledView {
     }
 }
 
-// MARK: - Assigned Project Row
+// MARK: - Data Models
 
-private struct AssignedProjectRow: View {
+private enum ScheduledItemEntry: Identifiable {
+    case task(FocusTask)
+    case project(FocusTask)
+    case list(FocusTask)
+
+    var id: UUID {
+        switch self {
+        case .task(let t): return t.id
+        case .project(let p): return p.id
+        case .list(let l): return l.id
+        }
+    }
+}
+
+private struct ScheduledSection: Identifiable {
+    let id: String
+    let title: String
+    let isRange: Bool
+    let isSubDate: Bool
+    let items: [ScheduledItemEntry]
+    let date: Date?
+    let alwaysVisible: Bool
+}
+
+// MARK: - Scheduled Project Row
+
+private struct ScheduledProjectRow: View {
     let project: FocusTask
     var isEditMode: Bool
     var isSelected: Bool
@@ -1115,9 +1258,9 @@ private struct AssignedProjectRow: View {
     }
 }
 
-// MARK: - Assigned List Row
+// MARK: - Scheduled List Row
 
-private struct AssignedListRow: View {
+private struct ScheduledListRow: View {
     let list: FocusTask
     var isEditMode: Bool
     var isSelected: Bool

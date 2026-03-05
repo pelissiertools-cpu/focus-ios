@@ -1274,7 +1274,7 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
                 type: .project,
                 isCompleted: false,
                 sortOrder: 0,
-                isInLog: true
+                isInLibrary: true
             )
             let createdProject = try await repository.createTask(projectTask)
 
@@ -1311,7 +1311,7 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
                 type: .list,
                 isCompleted: false,
                 sortOrder: 0,
-                isInLog: true
+                isInLibrary: true
             )
             let createdList = try await repository.createTask(listTask)
 

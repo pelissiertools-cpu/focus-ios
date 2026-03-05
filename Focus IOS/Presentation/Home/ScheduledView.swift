@@ -7,9 +7,9 @@ import SwiftUI
 import Auth
 
 struct ScheduledView: View {
-    @StateObject private var taskListVM = TaskListViewModel(authService: AuthService())
-    @StateObject private var projectsVM = ProjectsViewModel(authService: AuthService())
-    @StateObject private var listsVM = ListsViewModel(authService: AuthService())
+    @StateObject private var taskListVM: TaskListViewModel
+    @StateObject private var projectsVM: ProjectsViewModel
+    @StateObject private var listsVM: ListsViewModel
     @EnvironmentObject var focusViewModel: FocusTabViewModel
     @Environment(\.dismiss) private var dismiss
     @State private var isInlineAddFocused = false
@@ -59,6 +59,12 @@ struct ScheduledView: View {
     @State private var isSearchActive = false
     @State private var searchText = ""
     @FocusState private var searchFieldFocused: Bool
+
+    init(authService: AuthService) {
+        _taskListVM = StateObject(wrappedValue: TaskListViewModel(authService: authService))
+        _projectsVM = StateObject(wrappedValue: ProjectsViewModel(authService: authService))
+        _listsVM = StateObject(wrappedValue: ListsViewModel(authService: authService))
+    }
 
     private var isAddTaskTitleEmpty: Bool {
         addTaskTitle.trimmingCharacters(in: .whitespaces).isEmpty

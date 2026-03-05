@@ -15,8 +15,8 @@ struct PendingScheduleInfo {
 }
 
 struct BraindumpView: View {
-    @StateObject private var taskListVM = TaskListViewModel(authService: AuthService())
-    @StateObject private var projectsVM = ProjectsViewModel(authService: AuthService())
+    @StateObject private var taskListVM: TaskListViewModel
+    @StateObject private var projectsVM: ProjectsViewModel
     @EnvironmentObject var focusViewModel: FocusTabViewModel
     @Environment(\.dismiss) private var dismiss
     @State private var isInlineAddFocused = false
@@ -49,6 +49,11 @@ struct BraindumpView: View {
     @State private var hasGeneratedBreakdown = false
     @FocusState private var focusedSubtaskId: UUID?
     @FocusState private var addBarTitleFocused: Bool
+
+    init(authService: AuthService) {
+        _taskListVM = StateObject(wrappedValue: TaskListViewModel(authService: authService))
+        _projectsVM = StateObject(wrappedValue: ProjectsViewModel(authService: authService))
+    }
 
     private var isAddTaskTitleEmpty: Bool {
         addTaskTitle.trimmingCharacters(in: .whitespaces).isEmpty

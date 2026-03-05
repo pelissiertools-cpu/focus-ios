@@ -427,11 +427,10 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
         }
     }
 
-    /// Delete a task - only hard-deletes if task originated in Focus (not Log)
+    /// Delete a task - only hard-deletes non-library items (e.g. sections).
+    /// Library tasks should be uncommitted via removeCommitment() instead.
     func deleteTask(_ task: FocusTask) async {
-        // For Log-origin tasks, use removeCommitment() instead
-        // This method should only hard-delete Focus-origin tasks
-        guard !task.isInLog else {
+        guard !task.isInLibrary else {
             return
         }
 
@@ -1655,7 +1654,7 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
                 title: title,
                 type: .task,
                 isCompleted: false,
-                isInLog: true,
+                isInLibrary: true,
                 priority: priority
             )
             let createdTask = try await taskRepository.createTask(newTask)
@@ -1708,7 +1707,7 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
                 title: title,
                 type: .task,
                 isCompleted: false,
-                isInLog: true,
+                isInLibrary: true,
                 priority: priority,
                 categoryId: categoryId
             )
@@ -1777,7 +1776,7 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
                 title: title,
                 type: .list,
                 isCompleted: false,
-                isInLog: true,
+                isInLibrary: true,
                 priority: priority,
                 categoryId: categoryId
             )
@@ -1846,7 +1845,7 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
                 title: title,
                 type: .project,
                 isCompleted: false,
-                isInLog: true,
+                isInLibrary: true,
                 priority: priority,
                 categoryId: categoryId
             )

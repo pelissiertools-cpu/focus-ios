@@ -21,7 +21,9 @@ struct HomeView: View {
     @State private var listToDelete: FocusTask?
 
     // Task list VM for add bar task creation
-    @StateObject private var taskListVM = TaskListViewModel(authService: AuthService())
+    @StateObject private var taskListVM: TaskListViewModel
+
+    private let authService: AuthService
 
     // Unified add bar state
     @State private var showingAddBar = false
@@ -84,10 +86,12 @@ struct HomeView: View {
         addProjectTitle.trimmingCharacters(in: .whitespaces).isEmpty
     }
 
-    init(viewModel: HomeViewModel) {
+    init(viewModel: HomeViewModel, authService: AuthService) {
         self.viewModel = viewModel
-        _projectsViewModel = StateObject(wrappedValue: ProjectsViewModel(authService: AuthService()))
-        _listsViewModel = StateObject(wrappedValue: ListsViewModel(authService: AuthService()))
+        self.authService = authService
+        _projectsViewModel = StateObject(wrappedValue: ProjectsViewModel(authService: authService))
+        _listsViewModel = StateObject(wrappedValue: ListsViewModel(authService: authService))
+        _taskListVM = StateObject(wrappedValue: TaskListViewModel(authService: authService))
     }
 
     var body: some View {
@@ -278,11 +282,11 @@ struct HomeView: View {
                 if menuItem == .archive {
                     ArchiveView()
                 } else if menuItem == .braindump {
-                    BraindumpView()
+                    BraindumpView(authService: authService)
                 } else if menuItem == .assign {
-                    ScheduledView()
+                    ScheduledView(authService: authService)
                 } else if menuItem == .backlog {
-                    BacklogView()
+                    BacklogView(authService: authService)
                 } else if menuItem == .today {
                     TodayView(taskListVM: taskListVM, projectsVM: projectsViewModel, listsVM: listsViewModel)
                 } else {
@@ -299,7 +303,7 @@ struct HomeView: View {
                 SettingsView()
             }
             .navigationDestination(isPresented: $showSearch) {
-                BacklogView(startWithSearch: true)
+                BacklogView(authService: authService, startWithSearch: true)
             }
             .navigationBarHidden(true)
             // Project edit drawer

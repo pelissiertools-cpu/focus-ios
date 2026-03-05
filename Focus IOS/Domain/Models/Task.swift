@@ -22,7 +22,7 @@ struct FocusTask: Codable, Identifiable, Hashable {
     let createdDate: Date
     var modifiedDate: Date
     var sortOrder: Int
-    var isInLog: Bool
+    var isInLibrary: Bool
     var previousCompletionState: [Bool]?
     var priority: Priority
     var isSection: Bool
@@ -45,7 +45,7 @@ struct FocusTask: Codable, Identifiable, Hashable {
         case createdDate = "created_date"
         case modifiedDate = "modified_date"
         case sortOrder = "sort_order"
-        case isInLog = "is_in_library"
+        case isInLibrary = "is_in_library"
         case previousCompletionState = "previous_completion_state"
         case priority
         case isSection = "is_section"
@@ -67,7 +67,7 @@ struct FocusTask: Codable, Identifiable, Hashable {
         createdDate: Date = Date(),
         modifiedDate: Date = Date(),
         sortOrder: Int = 0,
-        isInLog: Bool = true,
+        isInLibrary: Bool = true,
         previousCompletionState: [Bool]? = nil,
         priority: Priority = .low,
         isSection: Bool = false,
@@ -86,7 +86,7 @@ struct FocusTask: Codable, Identifiable, Hashable {
         self.createdDate = createdDate
         self.modifiedDate = modifiedDate
         self.sortOrder = sortOrder
-        self.isInLog = isInLog
+        self.isInLibrary = isInLibrary
         self.previousCompletionState = previousCompletionState
         self.priority = priority
         self.isSection = isSection
@@ -108,7 +108,7 @@ struct FocusTask: Codable, Identifiable, Hashable {
         createdDate = try container.decode(Date.self, forKey: .createdDate)
         modifiedDate = try container.decode(Date.self, forKey: .modifiedDate)
         sortOrder = try container.decode(Int.self, forKey: .sortOrder)
-        isInLog = try container.decode(Bool.self, forKey: .isInLog)
+        isInLibrary = try container.decode(Bool.self, forKey: .isInLibrary)
         previousCompletionState = try container.decodeIfPresent([Bool].self, forKey: .previousCompletionState)
         priority = try container.decode(Priority.self, forKey: .priority)
         isSection = try container.decode(Bool.self, forKey: .isSection)

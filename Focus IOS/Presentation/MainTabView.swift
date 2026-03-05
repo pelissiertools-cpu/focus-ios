@@ -10,17 +10,17 @@ import SwiftUI
 struct MainTabView: View {
     @EnvironmentObject var authService: AuthService
     @EnvironmentObject var focusViewModel: FocusTabViewModel
-    @StateObject private var homeViewModel = HomeViewModel(authService: AuthService())
+    @StateObject private var homeViewModel = HomeViewModel()
 
     var body: some View {
-        HomeView(viewModel: homeViewModel)
+        HomeView(viewModel: homeViewModel, authService: authService)
             .environmentObject(focusViewModel)
     }
 }
 
 #Preview {
-    let authService = AuthService()
+    let auth = AuthService()
     MainTabView()
-        .environmentObject(authService)
-        .environmentObject(FocusTabViewModel(authService: authService))
+        .environmentObject(auth)
+        .environmentObject(FocusTabViewModel(authService: auth))
 }

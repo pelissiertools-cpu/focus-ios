@@ -396,7 +396,7 @@ class TaskRepository {
             title: title,
             type: .task,
             sortOrder: order,
-            isInLog: false,
+            isInLibrary: false,
             isSection: true,
             projectId: projectId
         )

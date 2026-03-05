@@ -40,10 +40,9 @@ class HomeViewModel: ObservableObject {
     @Published var selectedList: FocusTask?
 
     private let repository: TaskRepository
-    private let commitmentRepository = CommitmentRepository()
     private var cancellables = Set<AnyCancellable>()
 
-    init(authService: AuthService) {
+    init() {
         self.repository = TaskRepository()
         setupNotificationObserver()
     }

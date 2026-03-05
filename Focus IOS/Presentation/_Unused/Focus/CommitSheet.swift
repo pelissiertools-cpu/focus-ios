@@ -406,7 +406,7 @@ struct SubtaskCommitCalendarPicker: View {
             createdDate: Date(),
             modifiedDate: Date(),
             sortOrder: 0,
-            isInLog: true
+            isInLibrary: true
         ),
         viewModel: FocusTabViewModel(authService: AuthService())
     )

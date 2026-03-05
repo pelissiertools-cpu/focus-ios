@@ -15,6 +15,11 @@ struct BacklogView: View {
     @State private var isInlineAddFocused = false
     @State private var isLoading = false
 
+    // Search
+    @State private var isSearchActive = false
+    @State private var searchText = ""
+    @FocusState private var searchFieldFocused: Bool
+
     // Section collapse states
     @State private var isTasksSectionCollapsed = false
     @State private var isProjectsSectionCollapsed = false
@@ -82,6 +87,46 @@ struct BacklogView: View {
         standaloneTasks.isEmpty && allProjects.isEmpty && allLists.isEmpty
     }
 
+    private var isSearching: Bool {
+        isSearchActive && !searchText.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+
+    private var filteredTasks: [FocusTask] {
+        guard isSearching else { return standaloneTasks }
+        let query = searchText.lowercased()
+        return standaloneTasks.filter { $0.title.lowercased().contains(query) }
+    }
+
+    private var filteredTaskDisplayItems: [FlatDisplayItem] {
+        guard isSearching else { return standaloneTaskDisplayItems }
+        let filteredTaskIds = Set(filteredTasks.map { $0.id })
+        return standaloneTaskDisplayItems.filter { item in
+            switch item {
+            case .task(let task): return filteredTaskIds.contains(task.id)
+            case .priorityHeader(let priority):
+                return filteredTasks.contains { $0.priority == priority }
+            case .addSubtaskRow(let parentId): return filteredTaskIds.contains(parentId)
+            case .addTaskRow: return false
+            }
+        }
+    }
+
+    private var filteredProjects: [FocusTask] {
+        guard isSearching else { return allProjects }
+        let query = searchText.lowercased()
+        return allProjects.filter { $0.title.lowercased().contains(query) }
+    }
+
+    private var filteredLists: [FocusTask] {
+        guard isSearching else { return allLists }
+        let query = searchText.lowercased()
+        return allLists.filter { $0.title.lowercased().contains(query) }
+    }
+
+    private var searchIsEmpty: Bool {
+        isSearching && filteredTasks.isEmpty && filteredProjects.isEmpty && filteredLists.isEmpty
+    }
+
     // MARK: - Body
 
     var body: some View {
@@ -98,14 +143,76 @@ struct BacklogView: View {
                         .foregroundColor(.primary)
 
                     Spacer()
+
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.25)) {
+                            isSearchActive.toggle()
+                            if !isSearchActive {
+                                searchText = ""
+                                searchFieldFocused = false
+                            } else {
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                    searchFieldFocused = true
+                                }
+                            }
+                        }
+                    } label: {
+                        Image(systemName: "magnifyingglass")
+                            .font(.inter(.body, weight: .semiBold))
+                            .foregroundColor(.primary)
+                            .frame(width: 30, height: 30)
+                            .background(Color.pillBackground, in: Circle())
+                    }
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 16)
-                .padding(.bottom, 12)
+                .padding(.bottom, 8)
+
+                if isSearchActive {
+                    HStack(spacing: 8) {
+                        Image(systemName: "magnifyingglass")
+                            .font(.inter(.subheadline))
+                            .foregroundColor(.secondary)
+
+                        TextField("Search tasks, projects, lists...", text: $searchText)
+                            .font(.inter(.body))
+                            .textFieldStyle(.plain)
+                            .focused($searchFieldFocused)
+                            .submitLabel(.search)
+
+                        if !searchText.isEmpty {
+                            Button {
+                                searchText = ""
+                            } label: {
+                                Image(systemName: "xmark.circle.fill")
+                                    .font(.inter(.subheadline))
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(Color.pillBackground, in: Capsule())
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 8)
+                    .transition(.opacity)
+                }
 
                 if isLoading && isEmpty {
                     ProgressView()
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if searchIsEmpty {
+                    VStack(spacing: 4) {
+                        Text("No results")
+                            .font(.inter(.headline))
+                            .bold()
+                        Text("No items match \"\(searchText)\"")
+                            .font(.inter(.subheadline))
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .padding(.horizontal, 20)
                 } else if isEmpty {
                     VStack(spacing: 4) {
                         Text("No items yet")
@@ -131,7 +238,7 @@ struct BacklogView: View {
                     showCreateListAlert: $showCreateListAlert
                 )
                 .transition(.scale.combined(with: .opacity))
-            } else if !showingAddBar {
+            } else if !showingAddBar && !isSearchActive {
                 // FAB
                 VStack {
                     Spacer()
@@ -179,6 +286,13 @@ struct BacklogView: View {
                 }
                 .transition(.move(edge: .bottom).combined(with: .opacity))
                 .zIndex(100)
+            }
+        }
+        .onChange(of: searchFieldFocused) { _, focused in
+            if !focused && searchText.trimmingCharacters(in: .whitespaces).isEmpty {
+                withAnimation(.easeInOut(duration: 0.25)) {
+                    isSearchActive = false
+                }
             }
         }
         .onChange(of: showingAddBar) { _, isShowing in
@@ -415,15 +529,17 @@ struct BacklogView: View {
     private var itemList: some View {
         List {
             // MARK: Tasks Section
-            tasksSectionHeader
+            if !filteredTasks.isEmpty || !isSearching {
+                tasksSectionHeader
+            }
 
-            if !isTasksSectionCollapsed {
-                ForEach(standaloneTaskDisplayItems) { item in
+            if !isTasksSectionCollapsed && (!filteredTasks.isEmpty || !isSearching) {
+                ForEach(filteredTaskDisplayItems) { item in
                     switch item {
                     case .priorityHeader(let priority):
                         PrioritySectionHeader(
                             priority: priority,
-                            count: standaloneTasks.filter { $0.priority == priority }.count,
+                            count: filteredTasks.filter { $0.priority == priority }.count,
                             isCollapsed: taskListVM.isPriorityCollapsed(priority),
                             onToggle: {
                                 withAnimation(.easeInOut(duration: 0.2)) {
@@ -472,11 +588,11 @@ struct BacklogView: View {
             }
 
             // MARK: Projects Section
-            if !allProjects.isEmpty {
+            if !filteredProjects.isEmpty {
                 projectsSectionHeader
 
                 if !isProjectsSectionCollapsed {
-                    ForEach(allProjects) { project in
+                    ForEach(filteredProjects) { project in
                         BacklogProjectRow(
                             project: project,
                             onTap: { selectedProjectForNavigation = project },
@@ -495,11 +611,11 @@ struct BacklogView: View {
             }
 
             // MARK: Quick Lists Section
-            if !allLists.isEmpty {
+            if !filteredLists.isEmpty {
                 listsSectionHeader
 
                 if !isListsSectionCollapsed {
-                    ForEach(allLists) { list in
+                    ForEach(filteredLists) { list in
                         BacklogListRow(
                             list: list,
                             onTap: { selectedListForNavigation = list },
@@ -526,7 +642,12 @@ struct BacklogView: View {
         }
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
-        .scrollDismissesKeyboard(.interactively)
+        .scrollDismissesKeyboard(.immediately)
+        .simultaneousGesture(
+            TapGesture().onEnded {
+                searchFieldFocused = false
+            }
+        )
         .keyboardDismissOverlay(isActive: $isInlineAddFocused)
         .refreshable {
             await withCheckedContinuation { continuation in
@@ -553,7 +674,7 @@ struct BacklogView: View {
                 Text("Tasks")
                     .font(.inter(.headline, weight: .bold))
                     .foregroundColor(.primary)
-                Text("\(standaloneTasks.count)")
+                Text("\(filteredTasks.count)")
                     .font(.inter(.caption))
                     .foregroundColor(.secondary)
                 Image(systemName: "chevron.right")
@@ -584,7 +705,7 @@ struct BacklogView: View {
                 Text("Projects")
                     .font(.inter(.headline, weight: .bold))
                     .foregroundColor(.primary)
-                Text("\(allProjects.count)")
+                Text("\(filteredProjects.count)")
                     .font(.inter(.caption))
                     .foregroundColor(.secondary)
                 Image(systemName: "chevron.right")
@@ -615,7 +736,7 @@ struct BacklogView: View {
                 Text("Quick Lists")
                     .font(.inter(.headline, weight: .bold))
                     .foregroundColor(.primary)
-                Text("\(allLists.count)")
+                Text("\(filteredLists.count)")
                     .font(.inter(.caption))
                     .foregroundColor(.secondary)
                 Image(systemName: "chevron.right")

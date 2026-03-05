@@ -956,6 +956,39 @@ struct ScheduledView: View {
 
                     ForEach(section.items) { entry in
                         scheduledItemRow(entry)
+
+                        // Expanded subtasks for task entries
+                        if case .task(let task, _) = entry,
+                           taskListVM.expandedTasks.contains(task.id) {
+                            let subtasks = taskListVM.getUncompletedSubtasks(for: task.id)
+                                + taskListVM.getCompletedSubtasks(for: task.id)
+                            ForEach(subtasks) { subtask in
+                                FlatTaskRow(
+                                    task: subtask,
+                                    viewModel: taskListVM,
+                                    isEditMode: false,
+                                    isSelected: false,
+                                    onSelectToggle: nil,
+                                    onToggleCompletion: nil
+                                )
+                                .padding(.leading, 32)
+                                .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+                                .listRowBackground(Color.clear)
+                                .listRowSeparator(.visible)
+                            }
+
+                            InlineAddRow(
+                                placeholder: "Subtask title",
+                                buttonLabel: "Add subtask",
+                                onSubmit: { title in await taskListVM.createSubtask(title: title, parentId: task.id) },
+                                isAnyAddFieldActive: $isInlineAddFocused,
+                                verticalPadding: 12
+                            )
+                            .padding(.leading, 32)
+                            .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+                            .listRowBackground(Color.clear)
+                            .listRowSeparator(.hidden)
+                        }
                     }
 
                     // Per-section add button (dashed circle)

@@ -48,8 +48,8 @@ struct HomeView: View {
                     .padding(.top, 8)
                     .padding(.bottom, 24)
 
-                    // MARK: - Menu Items (Today, Upcoming, Unassign, Assign)
-                    ForEach([HomeMenuItem.today, .upcoming, .unassign, .assign], id: \.self) { item in
+                    // MARK: - Menu Items (Today, Scheduled)
+                    ForEach([HomeMenuItem.today, .assign], id: \.self) { item in
                         homeMenuButton(item)
                     }
 
@@ -60,8 +60,20 @@ struct HomeView: View {
                         .padding(.horizontal, 20)
                         .padding(.top, 12)
 
-                    // MARK: - Menu Items (Braindump, Archive)
-                    ForEach([HomeMenuItem.braindump, .archive], id: \.self) { item in
+                    // MARK: - Menu Items (Backlog, Braindump)
+                    ForEach([HomeMenuItem.unassign, .braindump], id: \.self) { item in
+                        homeMenuButton(item)
+                    }
+
+                    // MARK: - Divider
+                    Rectangle()
+                        .fill(Color.appRed.opacity(0.4))
+                        .frame(height: 1)
+                        .padding(.horizontal, 20)
+                        .padding(.top, 12)
+
+                    // MARK: - Menu Items (Archive)
+                    ForEach([HomeMenuItem.archive], id: \.self) { item in
                         homeMenuButton(item)
                     }
 
@@ -113,8 +125,8 @@ struct HomeView: View {
                         .frame(minHeight: CGFloat(viewModel.projects.count) * 56)
                     }
 
-                    // MARK: - Lists Header
-                    Text("Lists")
+                    // MARK: - Quick Lists Header
+                    Text("Quick Lists")
                         .font(.inter(.headline, weight: .bold))
                         .foregroundColor(.appRed)
                         .padding(.horizontal, 20)

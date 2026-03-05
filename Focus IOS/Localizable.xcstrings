@@ -1820,6 +1820,7 @@
       }
     },
     "Lists" : {
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -2594,6 +2595,9 @@
           }
         }
       }
+    },
+    "Quick Lists" : {
+
     },
     "Regenerate" : {
       "extractionState" : "stale",

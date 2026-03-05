@@ -1,34 +1,37 @@
 //
-//  BacklogView.swift
+//  BraindumpView.swift
 //  Focus IOS
 //
 
 import SwiftUI
 import Auth
 
-struct BacklogView: View {
+struct PendingScheduleInfo {
+    let taskId: UUID
+    let userId: UUID
+    var timeframe: Timeframe
+    var section: Section
+    var dates: Set<Date>
+}
+
+struct BraindumpView: View {
     @StateObject private var taskListVM = TaskListViewModel(authService: AuthService())
     @StateObject private var projectsVM = ProjectsViewModel(authService: AuthService())
-    @StateObject private var listsVM = ListsViewModel(authService: AuthService())
     @EnvironmentObject var focusViewModel: FocusTabViewModel
     @Environment(\.dismiss) private var dismiss
     @State private var isInlineAddFocused = false
     @State private var isLoading = false
 
-    // Section collapse states
-    @State private var isTasksSectionCollapsed = false
-    @State private var isProjectsSectionCollapsed = false
-    @State private var isListsSectionCollapsed = false
+    // Pending schedule state
+    @State private var pendingSchedules: [UUID: PendingScheduleInfo] = [:]
+    @State private var pendingCompletions: Set<UUID> = []
+    @State private var dismissedPendingBanner = false
 
     // Batch create alerts
     @State private var showCreateProjectAlert = false
     @State private var showCreateListAlert = false
     @State private var newProjectTitle = ""
     @State private var newListTitle = ""
-
-    // Navigation
-    @State private var selectedProjectForNavigation: FocusTask?
-    @State private var selectedListForNavigation: FocusTask?
 
     // Add task bar state
     @State private var showingAddBar = false
@@ -51,49 +54,34 @@ struct BacklogView: View {
         addTaskTitle.trimmingCharacters(in: .whitespaces).isEmpty
     }
 
-    // MARK: - Computed Properties
-
-    /// All uncompleted standalone tasks (not inside a project)
-    private var standaloneTasks: [FocusTask] {
-        taskListVM.uncompletedTasks.filter { $0.projectId == nil }
-    }
-
-    /// Flattened task display items excluding project-contained tasks
-    private var standaloneTaskDisplayItems: [FlatDisplayItem] {
-        let projectTaskIds = Set(taskListVM.uncompletedTasks.filter { $0.projectId != nil }.map { $0.id })
-        return taskListVM.flattenedDisplayItems.filter { item in
-            switch item {
-            case .task(let task): return task.projectId == nil
-            case .addSubtaskRow(let parentId): return !projectTaskIds.contains(parentId)
-            default: return true
-            }
+    /// Tasks not in a project (excluding pending scheduled/completed)
+    private var standaloneUncompletedTasks: [FocusTask] {
+        taskListVM.uncompletedTasks.filter {
+            $0.projectId == nil && !pendingSchedules.keys.contains($0.id) && !pendingCompletions.contains($0.id)
         }
     }
 
-    private var allProjects: [FocusTask] {
-        projectsVM.projects.filter { !$0.isCompleted && !$0.isCleared }
-    }
-
-    private var allLists: [FocusTask] {
-        listsVM.lists.filter { !$0.isCompleted && !$0.isCleared }
+    /// Tasks that have been scheduled or completed but not yet committed
+    private var pendingTasks: [FocusTask] {
+        taskListVM.uncompletedTasks.filter {
+            $0.projectId == nil && (pendingSchedules.keys.contains($0.id) || pendingCompletions.contains($0.id))
+        }
     }
 
     private var isEmpty: Bool {
-        standaloneTasks.isEmpty && allProjects.isEmpty && allLists.isEmpty
+        standaloneUncompletedTasks.isEmpty && pendingTasks.isEmpty
     }
-
-    // MARK: - Body
 
     var body: some View {
         ZStack {
             VStack(spacing: 0) {
                 // Header
                 HStack(alignment: .center, spacing: 8) {
-                    Image(systemName: "tray")
+                    Image(systemName: "brain.head.profile")
                         .font(.inter(size: 22, weight: .regular))
                         .foregroundColor(.primary)
 
-                    Text("Backlog")
+                    Text("Braindump")
                         .font(.inter(size: 28, weight: .regular))
                         .foregroundColor(.primary)
 
@@ -108,10 +96,10 @@ struct BacklogView: View {
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else if isEmpty {
                     VStack(spacing: 4) {
-                        Text("No items yet")
+                        Text("No braindump items")
                             .font(.inter(.headline))
                             .bold()
-                        Text("All your tasks, projects, and lists will appear here")
+                        Text("Tasks without a schedule will appear here")
                             .font(.inter(.subheadline))
                             .foregroundColor(.secondary)
                             .multilineTextAlignment(.center)
@@ -181,6 +169,9 @@ struct BacklogView: View {
                 .zIndex(100)
             }
         }
+        .onDisappear {
+            commitPendingSchedules()
+        }
         .onChange(of: showingAddBar) { _, isShowing in
             if isShowing {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
@@ -190,77 +181,81 @@ struct BacklogView: View {
         }
         // Task sheets
         .sheet(item: $taskListVM.selectedTaskForDetails) { task in
-            TaskDetailsDrawer(task: task, viewModel: taskListVM, categories: taskListVM.categories)
-                .drawerStyle()
+            TaskDetailsDrawer(
+                task: task,
+                viewModel: taskListVM,
+                categories: taskListVM.categories,
+                pendingSchedule: pendingSchedules[task.id],
+                onSchedule: { timeframe, section, dates in
+                    guard !dates.isEmpty else { return }
+                    pendingSchedules[task.id] = PendingScheduleInfo(
+                        taskId: task.id, userId: task.userId,
+                        timeframe: timeframe, section: section, dates: dates
+                    )
+                    dismissedPendingBanner = false
+                },
+                onClearSchedule: {
+                    pendingSchedules.removeValue(forKey: task.id)
+                }
+            )
+            .drawerStyle()
         }
         .sheet(item: $taskListVM.selectedTaskForSchedule) { task in
-            CommitmentSelectionSheet(task: task, focusViewModel: focusViewModel)
-                .drawerStyle()
+            CommitmentSelectionSheet(
+                task: task,
+                focusViewModel: focusViewModel,
+                onSchedule: { timeframe, section, dates in
+                    guard !dates.isEmpty else { return }
+                    pendingSchedules[task.id] = PendingScheduleInfo(
+                        taskId: task.id, userId: task.userId,
+                        timeframe: timeframe, section: section, dates: dates
+                    )
+                    dismissedPendingBanner = false
+                },
+                pendingSchedule: pendingSchedules[task.id],
+                onClearSchedule: {
+                    pendingSchedules.removeValue(forKey: task.id)
+                }
+            )
+            .drawerStyle()
         }
-        // List sheets
-        .sheet(item: $listsVM.selectedListForDetails) { list in
-            ListDetailsDrawer(list: list, viewModel: listsVM)
-                .drawerStyle()
+        // Batch delete confirmation
+        .alert("Delete \(taskListVM.selectedCount) task\(taskListVM.selectedCount == 1 ? "" : "s")?", isPresented: $taskListVM.showBatchDeleteConfirmation) {
+            Button("Cancel", role: .cancel) { }
+            Button("Delete", role: .destructive) {
+                _Concurrency.Task { await taskListVM.batchDeleteTasks() }
+            }
+        } message: {
+            Text("This will permanently delete the selected tasks and their commitments.")
         }
-        .sheet(item: $listsVM.selectedItemForSchedule) { item in
-            CommitmentSelectionSheet(task: item, focusViewModel: focusViewModel)
-                .drawerStyle()
-        }
-        // Project sheets
-        .sheet(item: $projectsVM.selectedProjectForDetails) { project in
-            ProjectDetailsDrawer(project: project, viewModel: projectsVM)
-                .drawerStyle()
-        }
-        .sheet(item: $projectsVM.selectedTaskForSchedule) { task in
-            CommitmentSelectionSheet(task: task, focusViewModel: focusViewModel)
-                .drawerStyle()
-        }
-        // Batch operations
+        // Batch move category sheet
         .sheet(isPresented: $taskListVM.showBatchMovePicker) {
             BatchMoveCategorySheet(
                 viewModel: taskListVM,
                 onMoveToProject: { projectId in
                     await taskListVM.batchMoveToProject(projectId)
-                    await refreshAllData()
                 }
             )
             .drawerStyle()
         }
+        // Batch commit sheet
         .sheet(isPresented: $taskListVM.showBatchCommitSheet) {
             BatchCommitSheet(
                 viewModel: taskListVM,
                 onBatchSchedule: { tasks, timeframe, section, dates in
                     guard !dates.isEmpty else { return }
-                    let repo = CommitmentRepository()
                     for task in tasks {
-                        for date in dates {
-                            let c = Commitment(
-                                userId: task.userId, taskId: task.id,
-                                timeframe: timeframe, section: section,
-                                commitmentDate: Calendar.current.startOfDay(for: date),
-                                sortOrder: 0
-                            )
-                            _Concurrency.Task { _ = try? await repo.createCommitment(c) }
-                        }
+                        pendingSchedules[task.id] = PendingScheduleInfo(
+                            taskId: task.id, userId: task.userId,
+                            timeframe: timeframe, section: section, dates: dates
+                        )
                     }
-                    _Concurrency.Task { @MainActor in await refreshAllData() }
+                    dismissedPendingBanner = false
                 }
             )
             .drawerStyle()
         }
-        // Alerts
-        .alert("Delete \(taskListVM.selectedCount) item\(taskListVM.selectedCount == 1 ? "" : "s")?",
-               isPresented: $taskListVM.showBatchDeleteConfirmation) {
-            Button("Cancel", role: .cancel) { }
-            Button("Delete", role: .destructive) {
-                _Concurrency.Task {
-                    await taskListVM.batchDeleteTasks()
-                    await refreshAllData()
-                }
-            }
-        } message: {
-            Text("This will permanently delete the selected items and their commitments.")
-        }
+        // Create project alert
         .alert("Create Project", isPresented: $showCreateProjectAlert) {
             TextField("Project title", text: $newProjectTitle)
             Button("Cancel", role: .cancel) { newProjectTitle = "" }
@@ -269,12 +264,12 @@ struct BacklogView: View {
                 newProjectTitle = ""
                 _Concurrency.Task { @MainActor in
                     await taskListVM.createProjectFromSelected(title: title)
-                    await refreshAllData()
                 }
             }
         } message: {
             Text("Enter a name for the new project")
         }
+        // Create list alert
         .alert("Create List", isPresented: $showCreateListAlert) {
             TextField("List title", text: $newListTitle)
             Button("Cancel", role: .cancel) { newListTitle = "" }
@@ -283,18 +278,10 @@ struct BacklogView: View {
                 newListTitle = ""
                 _Concurrency.Task { @MainActor in
                     await taskListVM.createListFromSelected(title: title)
-                    await refreshAllData()
                 }
             }
         } message: {
             Text("Enter a name for the new list")
-        }
-        // Navigation
-        .navigationDestination(item: $selectedListForNavigation) { list in
-            ListContentView(list: list, viewModel: listsVM)
-        }
-        .navigationDestination(item: $selectedProjectForNavigation) { project in
-            ProjectContentView(project: project, viewModel: projectsVM)
         }
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(true)
@@ -334,6 +321,7 @@ struct BacklogView: View {
                     }
                 } else {
                     Menu {
+                        // Sort By submenu
                         Menu {
                             ForEach(SortOption.allCases, id: \.self) { option in
                                 Button {
@@ -385,135 +373,210 @@ struct BacklogView: View {
                 }
             }
         }
+        .onChange(of: taskListVM.tasks) { _, _ in
+            // Clean up pending entries for tasks that were deleted
+            let currentIds = Set(taskListVM.uncompletedTasks.map { $0.id })
+            for taskId in pendingSchedules.keys {
+                if !currentIds.contains(taskId) {
+                    pendingSchedules.removeValue(forKey: taskId)
+                }
+            }
+            for taskId in pendingCompletions {
+                if !currentIds.contains(taskId) {
+                    pendingCompletions.remove(taskId)
+                }
+            }
+        }
         .task {
-            // No commitment filter — show ALL tasks
+            taskListVM.commitmentFilter = .uncommitted
+
             isLoading = true
-            await loadAllData()
+            async let t: () = fetchTasks()
+            async let p: () = fetchProjects()
+            _ = await (t, p)
             isLoading = false
         }
     }
 
-    // MARK: - Data Loading
-
-    private func loadAllData() async {
+    private func fetchTasks() async {
+        // Fetch committed IDs first so the uncommitted filter works
+        // immediately when tasks arrive — prevents flash of committed items.
+        async let c: () = taskListVM.fetchCommittedTaskIds()
         async let cats: () = taskListVM.fetchCategories()
-        async let cids: () = taskListVM.fetchCommittedTaskIds()
-        _ = await (cats, cids)
-
-        async let t: () = taskListVM.fetchTasks()
-        async let p: () = projectsVM.fetchProjects()
-        async let l: () = listsVM.fetchLists()
-        _ = await (t, p, l)
+        _ = await (c, cats)
+        await taskListVM.fetchTasks()
     }
 
-    private func refreshAllData() async {
-        await loadAllData()
+    private func fetchProjects() async {
+        await projectsVM.fetchProjects()
+    }
+
+    private func commitPendingSchedules() {
+        let schedulesToCommit = pendingSchedules
+        let completionsToCommit = pendingCompletions
+        guard !schedulesToCommit.isEmpty || !completionsToCommit.isEmpty else { return }
+
+        _Concurrency.Task { @MainActor in
+            // Commit pending schedules
+            if !schedulesToCommit.isEmpty {
+                let commitmentRepository = CommitmentRepository()
+                for (_, schedule) in schedulesToCommit {
+                    for date in schedule.dates {
+                        let commitment = Commitment(
+                            userId: schedule.userId,
+                            taskId: schedule.taskId,
+                            timeframe: schedule.timeframe,
+                            section: schedule.section,
+                            commitmentDate: Calendar.current.startOfDay(for: date),
+                            sortOrder: 0
+                        )
+                        _ = try? await commitmentRepository.createCommitment(commitment)
+                    }
+                }
+            }
+
+            // Commit pending completions
+            if !completionsToCommit.isEmpty {
+                for taskId in completionsToCommit {
+                    if let task = taskListVM.uncompletedTasks.first(where: { $0.id == taskId }) {
+                        await taskListVM.toggleCompletion(task)
+                    }
+                }
+            }
+
+            await taskListVM.fetchCommittedTaskIds()
+            // Clear pending after committed IDs are refreshed so tasks
+            // go straight from pending section to hidden — no flash.
+            pendingSchedules.removeAll()
+            pendingCompletions.removeAll()
+            await focusViewModel.fetchCommitments()
+        }
     }
 
     // MARK: - Item List
 
+    /// Flattened task display items excluding project-contained and pending tasks
+    private var standaloneTaskDisplayItems: [FlatDisplayItem] {
+        let projectTaskIds = Set(taskListVM.uncompletedTasks.filter { $0.projectId != nil }.map { $0.id })
+        let pendingTaskIds = Set(pendingSchedules.keys).union(pendingCompletions)
+        return taskListVM.flattenedDisplayItems.filter { item in
+            switch item {
+            case .task(let task): return task.projectId == nil && !pendingTaskIds.contains(task.id)
+            case .addSubtaskRow(let parentId): return !projectTaskIds.contains(parentId) && !pendingTaskIds.contains(parentId)
+            default: return true
+            }
+        }
+    }
+
     private var itemList: some View {
         List {
-            // MARK: Tasks Section
-            tasksSectionHeader
-
-            if !isTasksSectionCollapsed {
-                ForEach(standaloneTaskDisplayItems) { item in
-                    switch item {
-                    case .priorityHeader(let priority):
-                        PrioritySectionHeader(
-                            priority: priority,
-                            count: standaloneTasks.filter { $0.priority == priority }.count,
-                            isCollapsed: taskListVM.isPriorityCollapsed(priority),
-                            onToggle: {
-                                withAnimation(.easeInOut(duration: 0.2)) {
-                                    taskListVM.togglePriorityCollapsed(priority)
-                                }
+            // Tasks (excluding project-contained)
+            ForEach(standaloneTaskDisplayItems) { item in
+                switch item {
+                case .priorityHeader(let priority):
+                    PrioritySectionHeader(
+                        priority: priority,
+                        count: standaloneUncompletedTasks.filter { $0.priority == priority }.count,
+                        isCollapsed: taskListVM.isPriorityCollapsed(priority),
+                        onToggle: {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                taskListVM.togglePriorityCollapsed(priority)
                             }
-                        )
-                        .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+                        }
+                    )
+                    .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear)
+
+                case .task(let task):
+                    FlatTaskRow(
+                        task: task,
+                        viewModel: taskListVM,
+                        isEditMode: taskListVM.isEditMode,
+                        isSelected: taskListVM.selectedTaskIds.contains(task.id),
+                        onSelectToggle: { taskListVM.toggleTaskSelection(task.id) },
+                        onToggleCompletion: { t in
+                            pendingCompletions.insert(t.id)
+                            dismissedPendingBanner = false
+                        }
+                    )
+                    .padding(.leading, task.parentTaskId != nil ? 32 : 0)
+                    .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(task.parentTaskId != nil ? .visible : .hidden)
+
+                case .addSubtaskRow(let parentId):
+                    InlineAddRow(
+                        placeholder: "Subtask title",
+                        buttonLabel: "Add subtask",
+                        onSubmit: { title in await taskListVM.createSubtask(title: title, parentId: parentId) },
+                        isAnyAddFieldActive: $isInlineAddFocused,
+                        verticalPadding: 12
+                    )
+                    .padding(.leading, 32)
+                    .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+                    .listRowBackground(Color.clear)
+
+                case .addTaskRow:
+                    EmptyView()
                         .listRowSeparator(.hidden)
                         .listRowBackground(Color.clear)
-
-                    case .task(let task):
-                        FlatTaskRow(
-                            task: task,
-                            viewModel: taskListVM,
-                            isEditMode: taskListVM.isEditMode,
-                            isSelected: taskListVM.selectedTaskIds.contains(task.id),
-                            onSelectToggle: { taskListVM.toggleTaskSelection(task.id) },
-                            onToggleCompletion: { t in
-                                _Concurrency.Task { await taskListVM.toggleCompletion(t) }
-                            }
-                        )
-                        .padding(.leading, task.parentTaskId != nil ? 32 : 0)
-                        .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
-                        .listRowBackground(Color.clear)
-                        .listRowSeparator(task.parentTaskId != nil ? .visible : .hidden)
-
-                    case .addSubtaskRow(let parentId):
-                        InlineAddRow(
-                            placeholder: "Subtask title",
-                            buttonLabel: "Add subtask",
-                            onSubmit: { title in await taskListVM.createSubtask(title: title, parentId: parentId) },
-                            isAnyAddFieldActive: $isInlineAddFocused,
-                            verticalPadding: 12
-                        )
-                        .padding(.leading, 32)
-                        .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
-                        .listRowBackground(Color.clear)
-
-                    case .addTaskRow:
-                        EmptyView()
-                            .listRowSeparator(.hidden)
-                            .listRowBackground(Color.clear)
-                    }
                 }
             }
 
-            // MARK: Projects Section
-            if !allProjects.isEmpty {
-                projectsSectionHeader
+            // Pending scheduled section
+            if !pendingTasks.isEmpty {
+                if !dismissedPendingBanner {
+                    HStack {
+                        Text("\(pendingTasks.count) to-do\(pendingTasks.count == 1 ? "" : "s") moved out of the Inbox")
+                            .font(.inter(.subheadline))
+                            .foregroundColor(.secondary)
 
-                if !isProjectsSectionCollapsed {
-                    ForEach(allProjects) { project in
-                        BacklogProjectRow(
-                            project: project,
-                            onTap: { selectedProjectForNavigation = project },
-                            onEdit: { projectsVM.selectedProjectForDetails = project },
-                            onSchedule: { projectsVM.selectedTaskForSchedule = project },
-                            onDelete: {
-                                await projectsVM.deleteProject(project)
-                                await refreshAllData()
-                            }
-                        )
-                        .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
-                        .listRowBackground(Color.clear)
-                        .listRowSeparator(.hidden)
+                        Spacer()
+
+                        Button {
+                            commitPendingSchedules()
+                        } label: {
+                            Text("OK")
+                                .font(.inter(.subheadline, weight: .semiBold))
+                                .foregroundColor(.primary)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 4)
+                                .background(Color.pillBackground, in: Capsule())
+                        }
+                        .buttonStyle(.plain)
                     }
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 10)
+                    .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 12))
+                    .listRowInsets(EdgeInsets(top: 4, leading: 20, bottom: 4, trailing: 20))
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear)
                 }
-            }
 
-            // MARK: Quick Lists Section
-            if !allLists.isEmpty {
-                listsSectionHeader
-
-                if !isListsSectionCollapsed {
-                    ForEach(allLists) { list in
-                        BacklogListRow(
-                            list: list,
-                            onTap: { selectedListForNavigation = list },
-                            onEdit: { listsVM.selectedListForDetails = list },
-                            onSchedule: { listsVM.selectedItemForSchedule = list },
-                            onDelete: {
-                                await listsVM.deleteList(list)
-                                await refreshAllData()
+                ForEach(pendingTasks) { task in
+                    FlatTaskRow(
+                        task: task,
+                        viewModel: taskListVM,
+                        isEditMode: false,
+                        isSelected: false,
+                        onSelectToggle: nil,
+                        onToggleCompletion: { t in
+                            if pendingCompletions.contains(t.id) {
+                                // Uncomplete: remove from pending, task goes back to main list
+                                pendingCompletions.remove(t.id)
+                            } else {
+                                // Complete: add to pending completions
+                                pendingCompletions.insert(t.id)
                             }
-                        )
-                        .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
-                        .listRowBackground(Color.clear)
-                        .listRowSeparator(.hidden)
-                    }
+                        },
+                        appearCompleted: pendingCompletions.contains(task.id) ? true : nil
+                    )
+                    .opacity(0.5)
+                    .padding(.leading, task.parentTaskId != nil ? 32 : 0)
+                    .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(task.parentTaskId != nil ? .visible : .hidden)
                 }
             }
 
@@ -531,113 +594,16 @@ struct BacklogView: View {
         .refreshable {
             await withCheckedContinuation { continuation in
                 _Concurrency.Task { @MainActor in
-                    await refreshAllData()
+                    await fetchTasks()
                     continuation.resume()
                 }
             }
         }
     }
 
-    // MARK: - Section Headers
+    // MARK: - Add Task Bar
 
-    private var tasksSectionHeader: some View {
-        Button {
-            withAnimation(.easeInOut(duration: 0.2)) {
-                isTasksSectionCollapsed.toggle()
-            }
-        } label: {
-            HStack(spacing: 8) {
-                Image(systemName: "checkmark.circle")
-                    .font(.inter(.subheadline))
-                    .foregroundColor(.appRed)
-                Text("Tasks")
-                    .font(.inter(.headline, weight: .bold))
-                    .foregroundColor(.primary)
-                Text("\(standaloneTasks.count)")
-                    .font(.inter(.caption))
-                    .foregroundColor(.secondary)
-                Image(systemName: "chevron.right")
-                    .font(.inter(size: 10, weight: .semiBold))
-                    .foregroundColor(.secondary)
-                    .rotationEffect(.degrees(isTasksSectionCollapsed ? 0 : 90))
-                Spacer()
-            }
-        }
-        .buttonStyle(.plain)
-        .padding(.top, 4)
-        .padding(.bottom, 4)
-        .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
-        .listRowSeparator(.hidden)
-        .listRowBackground(Color.clear)
-    }
-
-    private var projectsSectionHeader: some View {
-        Button {
-            withAnimation(.easeInOut(duration: 0.2)) {
-                isProjectsSectionCollapsed.toggle()
-            }
-        } label: {
-            HStack(spacing: 8) {
-                ProjectIconShape()
-                    .frame(width: 16, height: 16)
-                    .foregroundColor(.appRed)
-                Text("Projects")
-                    .font(.inter(.headline, weight: .bold))
-                    .foregroundColor(.primary)
-                Text("\(allProjects.count)")
-                    .font(.inter(.caption))
-                    .foregroundColor(.secondary)
-                Image(systemName: "chevron.right")
-                    .font(.inter(size: 10, weight: .semiBold))
-                    .foregroundColor(.secondary)
-                    .rotationEffect(.degrees(isProjectsSectionCollapsed ? 0 : 90))
-                Spacer()
-            }
-        }
-        .buttonStyle(.plain)
-        .padding(.top, 16)
-        .padding(.bottom, 4)
-        .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
-        .listRowSeparator(.hidden)
-        .listRowBackground(Color.clear)
-    }
-
-    private var listsSectionHeader: some View {
-        Button {
-            withAnimation(.easeInOut(duration: 0.2)) {
-                isListsSectionCollapsed.toggle()
-            }
-        } label: {
-            HStack(spacing: 8) {
-                Image(systemName: "list.bullet")
-                    .font(.inter(.subheadline))
-                    .foregroundColor(.appRed)
-                Text("Quick Lists")
-                    .font(.inter(.headline, weight: .bold))
-                    .foregroundColor(.primary)
-                Text("\(allLists.count)")
-                    .font(.inter(.caption))
-                    .foregroundColor(.secondary)
-                Image(systemName: "chevron.right")
-                    .font(.inter(size: 10, weight: .semiBold))
-                    .foregroundColor(.secondary)
-                    .rotationEffect(.degrees(isListsSectionCollapsed ? 0 : 90))
-                Spacer()
-            }
-        }
-        .buttonStyle(.plain)
-        .padding(.top, 16)
-        .padding(.bottom, 4)
-        .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
-        .listRowSeparator(.hidden)
-        .listRowBackground(Color.clear)
-    }
-}
-
-// MARK: - Add Task Bar
-
-private extension BacklogView {
-    var categoryPillLabel: String {
+    private var categoryPillLabel: String {
         if let categoryId = addTaskCategoryId,
            let category = taskListVM.categories.first(where: { $0.id == categoryId }) {
             return category.name
@@ -645,7 +611,7 @@ private extension BacklogView {
         return "Category"
     }
 
-    var addTaskBar: some View {
+    private var addTaskBar: some View {
         VStack(spacing: 0) {
             TextField("Create a new task", text: $addTaskTitle)
                 .font(.inter(.title3))
@@ -899,7 +865,7 @@ private extension BacklogView {
 
     // MARK: - Add Task Helpers
 
-    func saveTask() {
+    private func saveTask() {
         let title = addTaskTitle.trimmingCharacters(in: .whitespaces)
         guard !title.isEmpty else { return }
 
@@ -946,7 +912,7 @@ private extension BacklogView {
         }
     }
 
-    func addNewSubtask() {
+    private func addNewSubtask() {
         addBarTitleFocused = true
         let newEntry = DraftSubtaskEntry()
         withAnimation(.easeInOut(duration: 0.15)) {
@@ -957,7 +923,7 @@ private extension BacklogView {
         }
     }
 
-    func generateBreakdown() {
+    private func generateBreakdown() {
         let title = addTaskTitle.trimmingCharacters(in: .whitespaces)
         guard !title.isEmpty else { return }
         isGeneratingBreakdown = true
@@ -974,7 +940,7 @@ private extension BacklogView {
         }
     }
 
-    func dismissAddBar() {
+    private func dismissAddBar() {
         addTaskTitle = ""
         addTaskSubtasks = []
         addTaskCategoryId = nil
@@ -987,105 +953,5 @@ private extension BacklogView {
         addBarTitleFocused = false
         showingAddBar = false
     }
-}
 
-// MARK: - Backlog Project Row
-
-private struct BacklogProjectRow: View {
-    let project: FocusTask
-    var onTap: () -> Void
-    var onEdit: () -> Void
-    var onSchedule: () -> Void
-    var onDelete: () async -> Void
-    @State private var showDeleteConfirmation = false
-
-    var body: some View {
-        HStack(spacing: 12) {
-            ProjectIconShape()
-                .frame(width: 24, height: 24)
-                .foregroundColor(.secondary)
-
-            Text(project.title)
-                .font(.inter(.body))
-                .foregroundColor(.primary)
-                .lineLimit(1)
-
-            Spacer()
-
-            Image(systemName: "chevron.right")
-                .font(.inter(size: 12, weight: .semiBold))
-                .foregroundColor(.secondary)
-        }
-        .padding(.vertical, 8)
-        .contentShape(Rectangle())
-        .onTapGesture { onTap() }
-        .contextMenu {
-            ContextMenuItems.editButton { onEdit() }
-            ContextMenuItems.scheduleButton { onSchedule() }
-            Divider()
-            ContextMenuItems.deleteButton { showDeleteConfirmation = true }
-        }
-        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-            Button(role: .destructive) { showDeleteConfirmation = true } label: {
-                Label("Delete", systemImage: "trash")
-            }
-        }
-        .alert("Delete Project", isPresented: $showDeleteConfirmation) {
-            Button("Delete", role: .destructive) { _Concurrency.Task { await onDelete() } }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("Are you sure you want to delete \"\(project.title)\"?")
-        }
-    }
-}
-
-// MARK: - Backlog List Row
-
-private struct BacklogListRow: View {
-    let list: FocusTask
-    var onTap: () -> Void
-    var onEdit: () -> Void
-    var onSchedule: () -> Void
-    var onDelete: () async -> Void
-    @State private var showDeleteConfirmation = false
-
-    var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: "list.bullet")
-                .font(.inter(.body, weight: .medium))
-                .foregroundColor(.secondary)
-                .frame(width: 24)
-
-            Text(list.title)
-                .font(.inter(.body))
-                .foregroundColor(.primary)
-                .lineLimit(1)
-
-            Spacer()
-
-            Image(systemName: "chevron.right")
-                .font(.inter(size: 12, weight: .semiBold))
-                .foregroundColor(.secondary)
-        }
-        .padding(.vertical, 8)
-        .contentShape(Rectangle())
-        .onTapGesture { onTap() }
-        .contextMenu {
-            ContextMenuItems.editButton { onEdit() }
-            ContextMenuItems.scheduleButton { onSchedule() }
-            Divider()
-            ContextMenuItems.deleteButton { showDeleteConfirmation = true }
-        }
-        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-            Button(role: .destructive) { showDeleteConfirmation = true } label: {
-                Label("Delete", systemImage: "trash")
-            }
-        }
-        .alert("Delete List", isPresented: $showDeleteConfirmation) {
-            Button("Delete", role: .destructive) { _Concurrency.Task { await onDelete() } }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("Are you sure you want to delete \"\(list.title)\"?")
-        }
-    }
 }

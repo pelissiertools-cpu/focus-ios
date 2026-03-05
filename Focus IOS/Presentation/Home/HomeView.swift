@@ -60,20 +60,8 @@ struct HomeView: View {
                         .padding(.horizontal, 20)
                         .padding(.top, 12)
 
-                    // MARK: - Menu Items (Backlog, Braindump)
-                    ForEach([HomeMenuItem.unassign, .braindump], id: \.self) { item in
-                        homeMenuButton(item)
-                    }
-
-                    // MARK: - Divider
-                    Rectangle()
-                        .fill(Color.appRed.opacity(0.4))
-                        .frame(height: 1)
-                        .padding(.horizontal, 20)
-                        .padding(.top, 12)
-
-                    // MARK: - Menu Items (Archive)
-                    ForEach([HomeMenuItem.archive], id: \.self) { item in
+                    // MARK: - Menu Items (Braindump, Backlog, Archive)
+                    ForEach([HomeMenuItem.braindump, .backlog, .archive], id: \.self) { item in
                         homeMenuButton(item)
                     }
 
@@ -174,10 +162,12 @@ struct HomeView: View {
             .navigationDestination(item: $viewModel.selectedMenuItem) { menuItem in
                 if menuItem == .archive {
                     ArchiveView()
-                } else if menuItem == .unassign {
-                    BacklogView()
+                } else if menuItem == .braindump {
+                    BraindumpView()
                 } else if menuItem == .assign {
                     ScheduledView()
+                } else if menuItem == .backlog {
+                    BacklogView()
                 } else {
                     HomePlaceholderPage(title: menuItem.rawValue)
                 }

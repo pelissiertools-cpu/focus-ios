@@ -14,6 +14,7 @@ struct ScheduledView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var isInlineAddFocused = false
     @State private var isLoading = false
+    @State private var viewMode: ScheduleViewMode = .day
 
     // Pending completions (committed to DB on disappear)
     @State private var pendingCompletions: Set<UUID> = []
@@ -106,30 +107,7 @@ struct ScheduledView: View {
         let today = calendar.startOfDay(for: Date())
         guard let tomorrow = calendar.date(byAdding: .day, value: 1, to: today) else { return [] }
 
-        // Build items-by-date dictionary
-        var itemsByDate: [Date: [ScheduledItemEntry]] = [:]
-
-        for task in allCommittedTasks {
-            if let dates = itemDateEntries[task.id] {
-                for date in dates {
-                    itemsByDate[date, default: []].append(.task(task))
-                }
-            }
-        }
-        for list in allCommittedLists {
-            if let dates = itemDateEntries[list.id] {
-                for date in dates {
-                    itemsByDate[date, default: []].append(.list(list))
-                }
-            }
-        }
-        for project in allCommittedProjects {
-            if let dates = itemDateEntries[project.id] {
-                for date in dates {
-                    itemsByDate[date, default: []].append(.project(project))
-                }
-            }
-        }
+        let itemsByDate = self.itemsByDate
 
         var sections: [ScheduledSection] = []
         let dayFormatter = DateFormatter()
@@ -231,6 +209,223 @@ struct ScheduledView: View {
         }
 
         return sections
+    }
+
+    // MARK: - Items By Date (shared helper)
+
+    private var itemsByDate: [Date: [ScheduledItemEntry]] {
+        var result: [Date: [ScheduledItemEntry]] = [:]
+        for task in allCommittedTasks {
+            if let dates = itemDateEntries[task.id] {
+                for date in dates { result[date, default: []].append(.task(task)) }
+            }
+        }
+        for list in allCommittedLists {
+            if let dates = itemDateEntries[list.id] {
+                for date in dates { result[date, default: []].append(.list(list)) }
+            }
+        }
+        for project in allCommittedProjects {
+            if let dates = itemDateEntries[project.id] {
+                for date in dates { result[date, default: []].append(.project(project)) }
+            }
+        }
+        // Sort each date's items: tasks first, projects second, lists third
+        for key in result.keys {
+            result[key]?.sort { $0.typeSortOrder < $1.typeSortOrder }
+        }
+        return result
+    }
+
+    // MARK: - Week Sections
+
+    private var weekSections: [ScheduledSection] {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let byDate = itemsByDate
+
+        // Find start of current week (Sunday or Monday depending on locale)
+        let thisWeekStart = calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: today))!
+        let nextWeekStart = calendar.date(byAdding: .weekOfYear, value: 1, to: thisWeekStart)!
+        let weekAfterNext = calendar.date(byAdding: .weekOfYear, value: 2, to: thisWeekStart)!
+
+        var sections: [ScheduledSection] = []
+        let formatter = DateFormatter()
+
+        // Collect items for a date range, sorted by type (tasks → projects → lists)
+        func items(from start: Date, to end: Date) -> [ScheduledItemEntry] {
+            byDate.filter { $0.key >= start && $0.key < end }
+                .sorted { $0.key < $1.key }
+                .flatMap { $0.value }
+                .sorted { $0.typeSortOrder < $1.typeSortOrder }
+        }
+
+        // 1. This Week
+        sections.append(ScheduledSection(
+            id: "this-week", title: "This Week",
+            isRange: false, isSubDate: false,
+            items: items(from: thisWeekStart, to: nextWeekStart),
+            date: today, alwaysVisible: true
+        ))
+
+        // 2. Next Week
+        sections.append(ScheduledSection(
+            id: "next-week", title: "Next Week",
+            isRange: false, isSubDate: false,
+            items: items(from: nextWeekStart, to: weekAfterNext),
+            date: nextWeekStart, alwaysVisible: true
+        ))
+
+        // 3. Future weeks
+        let futureDates = byDate.keys.filter { $0 >= weekAfterNext }.sorted()
+        let groupedByWeek = Dictionary(grouping: futureDates) { date -> Date in
+            calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: date))!
+        }
+
+        for weekStart in groupedByWeek.keys.sorted() {
+            let weekEnd = calendar.date(byAdding: .day, value: 6, to: weekStart)!
+            let weekNum = calendar.component(.weekOfYear, from: weekStart)
+
+            formatter.dateFormat = "MMM d"
+            let startStr = formatter.string(from: weekStart)
+            let endStr = formatter.string(from: weekEnd)
+
+            let weekItems = groupedByWeek[weekStart]!
+                .sorted()
+                .flatMap { byDate[$0] ?? [] }
+                .sorted { $0.typeSortOrder < $1.typeSortOrder }
+
+            sections.append(ScheduledSection(
+                id: "week-\(weekStart.timeIntervalSince1970)",
+                title: "Week \(weekNum): \(startStr) – \(endStr)",
+                isRange: false, isSubDate: false,
+                items: weekItems, date: weekStart, alwaysVisible: false
+            ))
+        }
+
+        return sections
+    }
+
+    // MARK: - Month Sections
+
+    private var monthSections: [ScheduledSection] {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let byDate = itemsByDate
+
+        let thisMonthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: today))!
+        let nextMonthStart = calendar.date(byAdding: .month, value: 1, to: thisMonthStart)!
+        let monthAfterNext = calendar.date(byAdding: .month, value: 2, to: thisMonthStart)!
+
+        var sections: [ScheduledSection] = []
+        let formatter = DateFormatter()
+
+        func items(from start: Date, to end: Date) -> [ScheduledItemEntry] {
+            byDate.filter { $0.key >= start && $0.key < end }
+                .sorted { $0.key < $1.key }
+                .flatMap { $0.value }
+                .sorted { $0.typeSortOrder < $1.typeSortOrder }
+        }
+
+        // 1. This Month
+        sections.append(ScheduledSection(
+            id: "this-month", title: "This Month",
+            isRange: false, isSubDate: false,
+            items: items(from: thisMonthStart, to: nextMonthStart),
+            date: today, alwaysVisible: true
+        ))
+
+        // 2. Next Month
+        formatter.dateFormat = "MMMM"
+        let nextMonthName = formatter.string(from: nextMonthStart)
+        sections.append(ScheduledSection(
+            id: "next-month", title: "Next Month – \(nextMonthName)",
+            isRange: false, isSubDate: false,
+            items: items(from: nextMonthStart, to: monthAfterNext),
+            date: nextMonthStart, alwaysVisible: true
+        ))
+
+        // 3. Future months
+        let futureDates = byDate.keys.filter { $0 >= monthAfterNext }.sorted()
+        let groupedByMonth = Dictionary(grouping: futureDates) { date -> Date in
+            calendar.date(from: calendar.dateComponents([.year, .month], from: date))!
+        }
+
+        for monthStart in groupedByMonth.keys.sorted() {
+            let year = calendar.component(.year, from: monthStart)
+            let currentYear = calendar.component(.year, from: today)
+
+            formatter.dateFormat = year == currentYear ? "MMMM" : "MMMM yyyy"
+            let title = formatter.string(from: monthStart)
+
+            let monthItems = groupedByMonth[monthStart]!
+                .sorted()
+                .flatMap { byDate[$0] ?? [] }
+                .sorted { $0.typeSortOrder < $1.typeSortOrder }
+
+            sections.append(ScheduledSection(
+                id: "month-\(monthStart.timeIntervalSince1970)",
+                title: title,
+                isRange: false, isSubDate: false,
+                items: monthItems, date: monthStart, alwaysVisible: false
+            ))
+        }
+
+        return sections
+    }
+
+    // MARK: - Year Sections
+
+    private var yearSections: [ScheduledSection] {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let byDate = itemsByDate
+
+        let currentYear = calendar.component(.year, from: today)
+        var sections: [ScheduledSection] = []
+
+        let groupedByYear = Dictionary(grouping: byDate.keys) { date -> Int in
+            calendar.component(.year, from: date)
+        }
+
+        // Current year (always visible)
+        let currentYearItems = (groupedByYear[currentYear] ?? [])
+            .sorted()
+            .flatMap { byDate[$0] ?? [] }
+            .sorted { $0.typeSortOrder < $1.typeSortOrder }
+
+        sections.append(ScheduledSection(
+            id: "year-\(currentYear)", title: "This Year",
+            isRange: false, isSubDate: false,
+            items: currentYearItems, date: today, alwaysVisible: true
+        ))
+
+        // Future years
+        for year in groupedByYear.keys.sorted() where year > currentYear {
+            let yearItems = groupedByYear[year]!
+                .sorted()
+                .flatMap { byDate[$0] ?? [] }
+                .sorted { $0.typeSortOrder < $1.typeSortOrder }
+
+            sections.append(ScheduledSection(
+                id: "year-\(year)", title: "\(year)",
+                isRange: false, isSubDate: false,
+                items: yearItems, date: nil, alwaysVisible: false
+            ))
+        }
+
+        return sections
+    }
+
+    // MARK: - Active Sections (switches on viewMode)
+
+    private var activeSections: [ScheduledSection] {
+        switch viewMode {
+        case .day: return dateSections
+        case .week: return weekSections
+        case .month: return monthSections
+        case .year: return yearSections
+        }
     }
 
     // MARK: - Body
@@ -391,11 +586,35 @@ struct ScheduledView: View {
 
     @ViewBuilder
     private var headerView: some View {
-        HStack(alignment: .center, spacing: 8) {
-            Text("Scheduled")
-                .font(.inter(size: 28, weight: .regular))
-                .foregroundColor(.appRed)
-            Spacer()
+        VStack(spacing: 10) {
+            HStack(alignment: .center, spacing: 8) {
+                Text("Scheduled")
+                    .font(.inter(size: 28, weight: .regular))
+                    .foregroundColor(.appRed)
+                Spacer()
+            }
+
+            HStack(spacing: 6) {
+                ForEach(ScheduleViewMode.allCases, id: \.self) { mode in
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            viewMode = mode
+                        }
+                    } label: {
+                        Text(mode.label)
+                            .font(.inter(size: 13, weight: .medium))
+                            .foregroundColor(viewMode == mode ? .white : .secondary)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 6)
+                            .background(
+                                Capsule()
+                                    .fill(viewMode == mode ? Color.appRed : Color.secondary.opacity(0.15))
+                            )
+                    }
+                    .buttonStyle(.plain)
+                }
+                Spacer()
+            }
         }
         .padding(.horizontal, 20)
         .padding(.top, 16)
@@ -490,7 +709,7 @@ struct ScheduledView: View {
 
     private var itemList: some View {
         List {
-            ForEach(dateSections) { section in
+            ForEach(activeSections) { section in
                 if section.alwaysVisible || !section.items.isEmpty || section.isRange {
                     dateSectionHeader(for: section)
 
@@ -498,8 +717,8 @@ struct ScheduledView: View {
                         scheduledItemRow(entry)
                     }
 
-                    // Per-day add button (dashed circle)
-                    if let date = section.date, !section.isRange {
+                    // Per-day add button (dashed circle) — only in day mode
+                    if viewMode == .day, let date = section.date, !section.isRange {
                         addButtonForDay(date: date)
                     }
                 }
@@ -1178,6 +1397,15 @@ private enum ScheduledItemEntry: Identifiable {
         case .list(let l): return l.id
         }
     }
+
+    /// Sort order: tasks first, projects second, lists third
+    var typeSortOrder: Int {
+        switch self {
+        case .task: return 0
+        case .project: return 1
+        case .list: return 2
+        }
+    }
 }
 
 private struct ScheduledSection: Identifiable {
@@ -1188,6 +1416,14 @@ private struct ScheduledSection: Identifiable {
     let items: [ScheduledItemEntry]
     let date: Date?
     let alwaysVisible: Bool
+}
+
+private enum ScheduleViewMode: String, CaseIterable {
+    case day, week, month, year
+
+    var label: String {
+        rawValue.capitalized
+    }
 }
 
 // MARK: - Scheduled Project Row

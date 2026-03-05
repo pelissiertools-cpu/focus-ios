@@ -63,8 +63,7 @@ class HomeViewModel: ObservableObject {
     func fetchProjects(showLoading: Bool = false) async {
         if showLoading { isLoading = true }
         do {
-            let allProjects = try await repository.fetchProjects()
-            projects = allProjects.filter { !$0.isCompleted }
+            projects = try await repository.fetchProjects(isCompleted: false)
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -73,8 +72,7 @@ class HomeViewModel: ObservableObject {
 
     func fetchLists() async {
         do {
-            let allLists = try await repository.fetchTasks(ofType: .list)
-            lists = allLists.filter { !$0.isCleared && !$0.isCompleted }
+            lists = try await repository.fetchTasks(ofType: .list, isCleared: false, isCompleted: false)
         } catch {
             errorMessage = error.localizedDescription
         }

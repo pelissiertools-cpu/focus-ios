@@ -111,13 +111,7 @@ class ArchiveViewModel: ObservableObject {
     func fetchCompletedItems() async {
         isLoading = true
         do {
-            let allTasks = try await repository.fetchTasks()
-            let completedItems = allTasks.filter { task in
-                task.isCompleted
-                && !task.isSection
-                && task.parentTaskId == nil
-                && task.completedDate != nil
-            }
+            let completedItems = try await repository.fetchCompletedTopLevelTasks()
             sections = groupIntoSections(completedItems)
         } catch {
             errorMessage = error.localizedDescription

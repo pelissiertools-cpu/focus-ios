@@ -613,7 +613,7 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
             if let commitment = commitment, commitment.scheduledTime != nil {
                 DrawerActionRow(icon: "calendar.badge.minus", text: "Unschedule") {
                     _Concurrency.Task { @MainActor in
-                        await focusViewModel.timelineVM.unscheduleCommitment(commitment.id)
+                        await focusViewModel.unscheduleCommitment(commitment.id)
                         dismiss()
                     }
                 }

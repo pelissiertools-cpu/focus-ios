@@ -90,6 +90,21 @@ class TaskRepository {
         return tasks
     }
 
+    /// Fetch completed top-level tasks for archive display
+    func fetchCompletedTopLevelTasks() async throws -> [FocusTask] {
+        let tasks: [FocusTask] = try await supabase
+            .from("tasks")
+            .select()
+            .eq("is_completed", value: true)
+            .eq("is_section", value: false)
+            .is("parent_task_id", value: nil)
+            .order("completed_date", ascending: false)
+            .execute()
+            .value
+
+        return tasks
+    }
+
     /// Fetch specific tasks by their IDs
     func fetchTasksByIds(_ ids: [UUID]) async throws -> [FocusTask] {
         guard !ids.isEmpty else { return [] }
@@ -104,12 +119,24 @@ class TaskRepository {
         return tasks
     }
 
-    /// Fetch tasks by type (task, project, list)
-    func fetchTasks(ofType type: TaskType) async throws -> [FocusTask] {
-        let tasks: [FocusTask] = try await supabase
+    /// Fetch tasks by type with optional server-side filters
+    func fetchTasks(ofType type: TaskType, isCleared: Bool? = nil, isCompleted: Bool? = nil, topLevelOnly: Bool = false) async throws -> [FocusTask] {
+        var query = supabase
             .from("tasks")
             .select()
             .eq("type", value: type.rawValue)
+
+        if let isCleared {
+            query = query.eq("is_cleared", value: isCleared)
+        }
+        if let isCompleted {
+            query = query.eq("is_completed", value: isCompleted)
+        }
+        if topLevelOnly {
+            query = query.is("parent_task_id", value: nil)
+        }
+
+        let tasks: [FocusTask] = try await query
             .order("sort_order", ascending: true)
             .order("created_date", ascending: false)
             .execute()
@@ -316,12 +343,21 @@ class TaskRepository {
 
     // MARK: - Project Operations
 
-    /// Fetch all projects for the current user
-    func fetchProjects() async throws -> [FocusTask] {
-        let projects: [FocusTask] = try await supabase
+    /// Fetch all projects for the current user with optional server-side filters
+    func fetchProjects(isCleared: Bool? = nil, isCompleted: Bool? = nil) async throws -> [FocusTask] {
+        var query = supabase
             .from("tasks")
             .select()
             .eq("type", value: TaskType.project.rawValue)
+
+        if let isCleared {
+            query = query.eq("is_cleared", value: isCleared)
+        }
+        if let isCompleted {
+            query = query.eq("is_completed", value: isCompleted)
+        }
+
+        let projects: [FocusTask] = try await query
             .order("sort_order", ascending: true)
             .order("created_date", ascending: false)
             .execute()

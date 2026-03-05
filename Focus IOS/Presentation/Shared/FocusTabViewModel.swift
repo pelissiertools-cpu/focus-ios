@@ -125,9 +125,6 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
     @Published var todoPrioritySortDirection: SortDirection = .highestFirst
     @Published var collapsedTodoPriorities: Set<Priority> = []
 
-    // Timeline ViewModel (owns all calendar timeline state and methods)
-    @Published var timelineVM: TimelineViewModel!
-
     private let commitmentRepository: CommitmentRepository
     private let taskRepository: TaskRepository
     private let authService: AuthService
@@ -139,18 +136,6 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
         self.commitmentRepository = commitmentRepository
         self.taskRepository = taskRepository
         self.authService = authService
-        self.timelineVM = TimelineViewModel(
-            parent: self,
-            commitmentRepository: commitmentRepository,
-            taskRepository: taskRepository,
-            authService: authService
-        )
-        // Forward timelineVM changes so FocusTabView re-renders on drag state updates
-        timelineVM.objectWillChange
-            .sink { [weak self] _ in
-                self?.objectWillChange.send()
-            }
-            .store(in: &cancellables)
         setupNotificationObserver()
     }
 
@@ -301,9 +286,6 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
 
             // Fetch child commitments for trickle-down display
             await fetchChildCommitments()
-
-            // Fetch timed commitments for calendar timeline
-            await timelineVM.fetchTimedCommitments()
 
             hasLoadedInitialData = true
             isLoading = false
@@ -651,7 +633,19 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
 
         // Remove from local state
         commitments.removeAll { $0.id == commitment.id }
-        timelineVM.timelineCreatedCommitmentIds.remove(commitment.id)
+    }
+
+    /// Clear scheduled time from a commitment (keep the commitment itself)
+    func unscheduleCommitment(_ commitmentId: UUID) async {
+        do {
+            try await commitmentRepository.updateCommitmentTime(id: commitmentId, scheduledTime: nil, durationMinutes: nil)
+            if let index = commitments.firstIndex(where: { $0.id == commitmentId }) {
+                commitments[index].scheduledTime = nil
+                commitments[index].durationMinutes = nil
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
     }
 
     /// Remove commitment (cascades down to children, NOT up to parents)

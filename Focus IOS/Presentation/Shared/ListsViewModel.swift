@@ -338,7 +338,7 @@ class ListsViewModel: ObservableObject, LogFilterable, TaskEditingViewModel {
         errorMessage = nil
 
         do {
-            self.lists = try await repository.fetchTasks(ofType: .list).filter { !$0.isCleared }
+            self.lists = try await repository.fetchTasks(ofType: .list, isCleared: false)
             self.categories = try await categoryRepository.fetchCategories()
             await fetchCommittedTaskIds()
 

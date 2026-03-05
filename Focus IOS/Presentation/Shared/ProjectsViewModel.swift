@@ -335,7 +335,7 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
         errorMessage = nil
 
         do {
-            self.projects = try await repository.fetchProjects().filter { !$0.isCleared }
+            self.projects = try await repository.fetchProjects(isCleared: false)
             self.categories = try await categoryRepository.fetchCategories()
             await fetchCommittedTaskIds()
 

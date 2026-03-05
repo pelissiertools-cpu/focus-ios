@@ -427,13 +427,13 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
         errorMessage = nil
 
         do {
-            let allTasks = try await repository.fetchTasks(ofType: .task)
-            // Filter to only top-level tasks (no parent), exclude cleared items
-            self.tasks = allTasks.filter { $0.parentTaskId == nil && !$0.isCleared }
+            let allTasks = try await repository.fetchTasks(ofType: .task, isCleared: false)
+            // Split into top-level tasks and subtasks
+            self.tasks = allTasks.filter { $0.parentTaskId == nil }
 
             // Pre-populate subtasksMap from already-fetched data
             var newSubtasksMap: [UUID: [FocusTask]] = [:]
-            for task in allTasks where task.parentTaskId != nil && !task.isCleared {
+            for task in allTasks where task.parentTaskId != nil {
                 newSubtasksMap[task.parentTaskId!, default: []].append(task)
             }
             for task in self.tasks {

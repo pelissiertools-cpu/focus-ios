@@ -150,30 +150,44 @@ struct ScheduledView: View {
 
     private var dateSections: [ScheduledSection] {
         let calendar = Calendar.current
-        let today = calendar.startOfDay(for: Date())
-        guard let tomorrow = calendar.date(byAdding: .day, value: 1, to: today) else { return [] }
+        let anchor = calendar.startOfDay(for: selectedDate)
+        let realToday = calendar.startOfDay(for: Date())
 
         let itemsByDate = self.itemsByDate
 
         var sections: [ScheduledSection] = []
         let dayFormatter = DateFormatter()
 
-        // 1. Today (always shown)
+        // Helper: label for a day relative to real today
+        func dayLabel(for date: Date) -> String {
+            if calendar.isDate(date, inSameDayAs: realToday) { return "Today" }
+            if let tomorrow = calendar.date(byAdding: .day, value: 1, to: realToday),
+               calendar.isDate(date, inSameDayAs: tomorrow) { return "Tomorrow" }
+            dayFormatter.dateFormat = "EEE MMM d"
+            return dayFormatter.string(from: date)
+        }
+
+        // 1. Selected day (always shown)
         sections.append(ScheduledSection(
-            id: "today", title: "Today", isRange: false, isSubDate: false,
-            items: itemsByDate[today] ?? [], date: today, alwaysVisible: true
+            id: "anchor-\(anchor.timeIntervalSince1970)",
+            title: dayLabel(for: anchor),
+            isRange: false, isSubDate: false,
+            items: itemsByDate[anchor] ?? [], date: anchor, alwaysVisible: true
         ))
 
-        // 2. Tomorrow (always shown)
+        // 2. Next day (always shown)
+        let nextDay = calendar.date(byAdding: .day, value: 1, to: anchor)!
         sections.append(ScheduledSection(
-            id: "tomorrow", title: "Tomorrow", isRange: false, isSubDate: false,
-            items: itemsByDate[tomorrow] ?? [], date: tomorrow, alwaysVisible: true
+            id: "next-\(nextDay.timeIntervalSince1970)",
+            title: dayLabel(for: nextDay),
+            isRange: false, isSubDate: false,
+            items: itemsByDate[nextDay] ?? [], date: nextDay, alwaysVisible: true
         ))
 
-        // 3. Rest of current week (day after tomorrow through end of week, always shown)
-        let endOfWeekOffset = 7 - calendar.component(.weekday, from: today) // days until Saturday
-        if let endOfWeek = calendar.date(byAdding: .day, value: max(endOfWeekOffset, 2), to: today) {
-            var day = calendar.date(byAdding: .day, value: 2, to: today)!
+        // 3. Rest of current week (day+2 through end of week, always shown)
+        let endOfWeekOffset = 7 - calendar.component(.weekday, from: anchor)
+        if let endOfWeek = calendar.date(byAdding: .day, value: max(endOfWeekOffset, 2), to: anchor) {
+            var day = calendar.date(byAdding: .day, value: 2, to: anchor)!
             while day <= endOfWeek {
                 dayFormatter.dateFormat = "EEE"
                 let dayName = dayFormatter.string(from: day)
@@ -188,9 +202,9 @@ struct ScheduledView: View {
                 day = calendar.date(byAdding: .day, value: 1, to: day)!
             }
 
-            // 4. "Rest of [Month]" — dates after this week but still in current month
+            // 4. "Rest of [Month]" — dates after this week but still in anchor's month
             let dayAfterWeek = calendar.date(byAdding: .day, value: 1, to: endOfWeek)!
-            var startOfNextMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: today))!
+            var startOfNextMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: anchor))!
             startOfNextMonth = calendar.date(byAdding: .month, value: 1, to: startOfNextMonth)!
 
             let restOfMonthDates = itemsByDate.keys
@@ -199,7 +213,7 @@ struct ScheduledView: View {
 
             if !restOfMonthDates.isEmpty {
                 dayFormatter.dateFormat = "MMMM"
-                let monthName = dayFormatter.string(from: today)
+                let monthName = dayFormatter.string(from: anchor)
                 sections.append(ScheduledSection(
                     id: "rest-of-\(monthName)", title: "Rest of \(monthName)",
                     isRange: true, isSubDate: false,
@@ -219,7 +233,7 @@ struct ScheduledView: View {
                 }
             }
 
-            // 5. Future months
+            // 5. Future months (relative to anchor's month)
             let futureDates = itemsByDate.keys
                 .filter { $0 >= startOfNextMonth }
                 .sorted()
@@ -287,18 +301,17 @@ struct ScheduledView: View {
 
     private var weekSections: [ScheduledSection] {
         let calendar = Calendar.current
-        let today = calendar.startOfDay(for: Date())
+        let anchor = calendar.startOfDay(for: selectedDate)
         let byDate = itemsByDate
 
-        // Find start of current week (Sunday or Monday depending on locale)
-        let thisWeekStart = calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: today))!
+        // Find start of selected week
+        let thisWeekStart = calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: anchor))!
         let nextWeekStart = calendar.date(byAdding: .weekOfYear, value: 1, to: thisWeekStart)!
         let weekAfterNext = calendar.date(byAdding: .weekOfYear, value: 2, to: thisWeekStart)!
 
         var sections: [ScheduledSection] = []
         let formatter = DateFormatter()
 
-        // Collect items for a date range, sorted by type (tasks → projects → lists)
         func items(from start: Date, to end: Date) -> [ScheduledItemEntry] {
             byDate.filter { $0.key >= start && $0.key < end }
                 .sorted { $0.key < $1.key }
@@ -306,17 +319,31 @@ struct ScheduledView: View {
                 .sorted { $0.typeSortOrder < $1.typeSortOrder }
         }
 
-        // 1. This Week
+        // Helper: title for a week start date
+        let realToday = calendar.startOfDay(for: Date())
+        let realWeekStart = calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: realToday))!
+        let realNextWeekStart = calendar.date(byAdding: .weekOfYear, value: 1, to: realWeekStart)!
+
+        func weekTitle(for start: Date) -> String {
+            if calendar.isDate(start, inSameDayAs: realWeekStart) { return "This Week" }
+            if calendar.isDate(start, inSameDayAs: realNextWeekStart) { return "Next Week" }
+            let weekNum = calendar.component(.weekOfYear, from: start)
+            let end = calendar.date(byAdding: .day, value: 6, to: start)!
+            formatter.dateFormat = "MMM d"
+            return "Week \(weekNum): \(formatter.string(from: start)) – \(formatter.string(from: end))"
+        }
+
+        // 1. Selected week
         sections.append(ScheduledSection(
-            id: "this-week", title: "This Week",
+            id: "this-week", title: weekTitle(for: thisWeekStart),
             isRange: false, isSubDate: false,
             items: items(from: thisWeekStart, to: nextWeekStart),
-            date: today, alwaysVisible: true
+            date: anchor, alwaysVisible: true
         ))
 
-        // 2. Next Week
+        // 2. Following week (relative to selected)
         sections.append(ScheduledSection(
-            id: "next-week", title: "Next Week",
+            id: "next-week", title: weekTitle(for: nextWeekStart),
             isRange: false, isSubDate: false,
             items: items(from: nextWeekStart, to: weekAfterNext),
             date: nextWeekStart, alwaysVisible: true
@@ -329,13 +356,6 @@ struct ScheduledView: View {
         }
 
         for weekStart in groupedByWeek.keys.sorted() {
-            let weekEnd = calendar.date(byAdding: .day, value: 6, to: weekStart)!
-            let weekNum = calendar.component(.weekOfYear, from: weekStart)
-
-            formatter.dateFormat = "MMM d"
-            let startStr = formatter.string(from: weekStart)
-            let endStr = formatter.string(from: weekEnd)
-
             let weekItems = groupedByWeek[weekStart]!
                 .sorted()
                 .flatMap { byDate[$0] ?? [] }
@@ -343,7 +363,7 @@ struct ScheduledView: View {
 
             sections.append(ScheduledSection(
                 id: "week-\(weekStart.timeIntervalSince1970)",
-                title: "Week \(weekNum): \(startStr) – \(endStr)",
+                title: weekTitle(for: weekStart),
                 isRange: false, isSubDate: false,
                 items: weekItems, date: weekStart, alwaysVisible: false
             ))
@@ -356,10 +376,10 @@ struct ScheduledView: View {
 
     private var monthSections: [ScheduledSection] {
         let calendar = Calendar.current
-        let today = calendar.startOfDay(for: Date())
+        let anchor = calendar.startOfDay(for: selectedDate)
         let byDate = itemsByDate
 
-        let thisMonthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: today))!
+        let thisMonthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: anchor))!
         let nextMonthStart = calendar.date(byAdding: .month, value: 1, to: thisMonthStart)!
         let monthAfterNext = calendar.date(byAdding: .month, value: 2, to: thisMonthStart)!
 
@@ -373,19 +393,30 @@ struct ScheduledView: View {
                 .sorted { $0.typeSortOrder < $1.typeSortOrder }
         }
 
-        // 1. This Month
+        // 1. Selected month
+        let realToday = calendar.startOfDay(for: Date())
+        let realMonthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: realToday))!
+        formatter.dateFormat = "MMMM"
+        let thisMonthTitle = calendar.isDate(thisMonthStart, inSameDayAs: realMonthStart)
+            ? "This Month"
+            : formatter.string(from: thisMonthStart)
+
         sections.append(ScheduledSection(
-            id: "this-month", title: "This Month",
+            id: "this-month", title: thisMonthTitle,
             isRange: false, isSubDate: false,
             items: items(from: thisMonthStart, to: nextMonthStart),
-            date: today, alwaysVisible: true
+            date: anchor, alwaysVisible: true
         ))
 
-        // 2. Next Month
-        formatter.dateFormat = "MMMM"
+        // 2. Next month (relative to selected)
+        let realNextMonthStart = calendar.date(byAdding: .month, value: 1, to: realMonthStart)!
         let nextMonthName = formatter.string(from: nextMonthStart)
+        let nextMonthTitle = calendar.isDate(nextMonthStart, inSameDayAs: realNextMonthStart)
+            ? "Next Month – \(nextMonthName)"
+            : nextMonthName
+
         sections.append(ScheduledSection(
-            id: "next-month", title: "Next Month – \(nextMonthName)",
+            id: "next-month", title: nextMonthTitle,
             isRange: false, isSubDate: false,
             items: items(from: nextMonthStart, to: monthAfterNext),
             date: nextMonthStart, alwaysVisible: true
@@ -399,7 +430,7 @@ struct ScheduledView: View {
 
         for monthStart in groupedByMonth.keys.sorted() {
             let year = calendar.component(.year, from: monthStart)
-            let currentYear = calendar.component(.year, from: today)
+            let currentYear = calendar.component(.year, from: anchor)
 
             formatter.dateFormat = year == currentYear ? "MMMM" : "MMMM yyyy"
             let title = formatter.string(from: monthStart)
@@ -424,30 +455,33 @@ struct ScheduledView: View {
 
     private var yearSections: [ScheduledSection] {
         let calendar = Calendar.current
-        let today = calendar.startOfDay(for: Date())
+        let anchor = calendar.startOfDay(for: selectedDate)
         let byDate = itemsByDate
 
-        let currentYear = calendar.component(.year, from: today)
+        let selectedYear = calendar.component(.year, from: anchor)
+        let realYear = calendar.component(.year, from: Date())
         var sections: [ScheduledSection] = []
 
         let groupedByYear = Dictionary(grouping: byDate.keys) { date -> Int in
             calendar.component(.year, from: date)
         }
 
-        // Current year (always visible)
-        let currentYearItems = (groupedByYear[currentYear] ?? [])
+        // Selected year (always visible)
+        let selectedYearItems = (groupedByYear[selectedYear] ?? [])
             .sorted()
             .flatMap { byDate[$0] ?? [] }
             .sorted { $0.typeSortOrder < $1.typeSortOrder }
 
+        let yearTitle = selectedYear == realYear ? "This Year" : "\(selectedYear)"
+
         sections.append(ScheduledSection(
-            id: "year-\(currentYear)", title: "This Year",
+            id: "year-\(selectedYear)", title: yearTitle,
             isRange: false, isSubDate: false,
-            items: currentYearItems, date: today, alwaysVisible: true
+            items: selectedYearItems, date: anchor, alwaysVisible: true
         ))
 
-        // Future years
-        for year in groupedByYear.keys.sorted() where year > currentYear {
+        // Future years (relative to selected)
+        for year in groupedByYear.keys.sorted() where year > selectedYear {
             let yearItems = groupedByYear[year]!
                 .sorted()
                 .flatMap { byDate[$0] ?? [] }
@@ -622,8 +656,6 @@ struct ScheduledView: View {
             if isLoading && isEmpty {
                 ProgressView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if isEmpty {
-                emptyStateView
             } else {
                 itemList
             }
@@ -785,8 +817,8 @@ struct ScheduledView: View {
                         scheduledItemRow(entry)
                     }
 
-                    // Per-day add button (dashed circle) — only in day mode
-                    if viewMode == .day, let date = section.date, !section.isRange {
+                    // Per-section add button (dashed circle)
+                    if let date = section.date, !section.isRange {
                         addButtonForDay(date: date)
                     }
                 }

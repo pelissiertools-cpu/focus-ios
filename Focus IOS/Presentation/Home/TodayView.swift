@@ -7,9 +7,9 @@ import SwiftUI
 import Auth
 
 struct TodayView: View {
-    @StateObject private var taskListVM = TaskListViewModel(authService: AuthService())
-    @StateObject private var projectsVM = ProjectsViewModel(authService: AuthService())
-    @StateObject private var listsVM = ListsViewModel(authService: AuthService())
+    @ObservedObject var taskListVM: TaskListViewModel
+    @ObservedObject var projectsVM: ProjectsViewModel
+    @ObservedObject var listsVM: ListsViewModel
     @EnvironmentObject var focusViewModel: FocusTabViewModel
     @Environment(\.dismiss) private var dismiss
     @State private var isLoading = false
@@ -20,6 +20,9 @@ struct TodayView: View {
 
     // Commitment entries: item UUID → list of (date, timeframe) pairs
     @State private var itemCommitments: [UUID: [(date: Date, timeframe: Timeframe)]] = [:]
+
+    // Drag-reorder state
+    @State private var orderedItems: [TodayItemEntry] = []
 
     // Navigation
     @State private var selectedListForNavigation: FocusTask?
@@ -139,9 +142,15 @@ struct TodayView: View {
         }
         .task {
             taskListVM.commitmentFilter = .committed
-            isLoading = true
-            await loadAllData()
+            // Only fetch commitments for today-filtering — tasks/projects/lists
+            // are already loaded by HomeView's shared ViewModels
+            isLoading = itemCommitments.isEmpty
+            await fetchAndApplyCommitments()
+            syncOrderedItems()
             isLoading = false
+        }
+        .onChange(of: pendingCompletions) { _, _ in
+            syncOrderedItems()
         }
         // Sheets
         .sheet(item: $taskListVM.selectedTaskForDetails) { task in
@@ -327,15 +336,18 @@ struct TodayView: View {
 
     private var itemList: some View {
         List {
-            // Today section header
-            todaySectionHeader
-
-            ForEach(todayItems) { entry in
+            ForEach(orderedItems) { entry in
                 todayItemRow(entry)
+            }
+            .onMove { from, to in
+                orderedItems.move(fromOffsets: from, toOffset: to)
             }
 
             // Add button for today
             addButtonForToday
+
+            // Todo section header
+            todaySectionHeader
 
             // Completed section
             completedSection
@@ -354,6 +366,7 @@ struct TodayView: View {
             await withCheckedContinuation { continuation in
                 _Concurrency.Task { @MainActor in
                     await loadAllData()
+                    syncOrderedItems()
                     continuation.resume()
                 }
             }
@@ -365,7 +378,7 @@ struct TodayView: View {
     private var todaySectionHeader: some View {
         VStack(spacing: 0) {
             HStack {
-                Text("Todo's")
+                Text("Goals")
                     .font(.inter(size: 22, weight: .semiBold))
                     .foregroundColor(.primary)
                 Spacer()
@@ -512,21 +525,38 @@ struct TodayView: View {
     // MARK: - Data Loading
 
     private func loadAllData() async {
-        async let c: () = taskListVM.fetchCommittedTaskIds()
+        // Fetch commitments once (populates both committedTaskIds and itemCommitments)
+        // and all other data in parallel — no sequential phases needed
+        async let commitments: () = fetchAndApplyCommitments()
         async let cats: () = taskListVM.fetchCategories()
-        _ = await (c, cats)
-
         async let t: () = taskListVM.fetchTasks()
         async let p: () = projectsVM.fetchProjects()
         async let l: () = listsVM.fetchLists()
-        async let s: () = fetchScheduledDates()
-        _ = await (t, p, l, s)
+        _ = await (commitments, cats, t, p, l)
     }
 
-    private func fetchScheduledDates() async {
+    private func fetchAndApplyCommitments() async {
         do {
             let repo = CommitmentRepository()
             let summaries = try await repo.fetchCommitmentSummaries()
+
+            // Populate committedTaskIds + taskDueDates on the view model
+            taskListVM.committedTaskIds = Set(summaries.map { $0.taskId })
+            var bestByTask: [UUID: (urgency: Int, endDate: Date)] = [:]
+            for s in summaries {
+                let endDate = CommitmentRepository.dateRange(for: s.timeframe, date: s.commitmentDate).end
+                let urgency = s.timeframe.urgencyIndex
+                if let existing = bestByTask[s.taskId] {
+                    if urgency < existing.urgency || (urgency == existing.urgency && endDate < existing.endDate) {
+                        bestByTask[s.taskId] = (urgency, endDate)
+                    }
+                } else {
+                    bestByTask[s.taskId] = (urgency, endDate)
+                }
+            }
+            taskListVM.taskDueDates = bestByTask.mapValues { $0.endDate }
+
+            // Populate itemCommitments for today filtering
             let calendar = Calendar.current
             var commitsByTask: [UUID: [(date: Date, timeframe: Timeframe)]] = [:]
             for s in summaries {
@@ -539,6 +569,25 @@ struct TodayView: View {
 
     private func refreshAllData() async {
         await loadAllData()
+        syncOrderedItems()
+    }
+
+    private func syncOrderedItems() {
+        let newItems = todayItems
+        if orderedItems.isEmpty {
+            orderedItems = newItems
+            return
+        }
+        // Keep existing order for items still present
+        var updated = orderedItems.filter { existing in
+            newItems.contains(where: { $0.id == existing.id })
+        }
+        // Add new items at the end
+        let existingIds = Set(updated.map { $0.id })
+        for item in newItems where !existingIds.contains(item.id) {
+            updated.append(item)
+        }
+        orderedItems = updated
     }
 
     private func cleanupPendingCompletions() {

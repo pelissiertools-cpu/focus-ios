@@ -283,6 +283,8 @@ struct HomeView: View {
                     ScheduledView()
                 } else if menuItem == .backlog {
                     BacklogView()
+                } else if menuItem == .today {
+                    TodayView()
                 } else {
                     HomePlaceholderPage(title: menuItem.rawValue)
                 }

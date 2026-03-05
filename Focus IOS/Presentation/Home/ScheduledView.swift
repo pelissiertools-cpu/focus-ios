@@ -22,6 +22,7 @@ struct ScheduledView: View {
 
     // Commitment date entries: item UUID → set of committed dates
     @State private var itemDateEntries: [UUID: Set<Date>] = [:]
+    @State private var itemTimeframes: [UUID: Set<Timeframe>] = [:]
 
     // Batch create alerts
     @State private var showCreateProjectAlert = false
@@ -53,6 +54,11 @@ struct ScheduledView: View {
     @State private var hasGeneratedBreakdown = false
     @FocusState private var focusedSubtaskId: UUID?
     @FocusState private var addBarTitleFocused: Bool
+
+    // Search
+    @State private var isSearchActive = false
+    @State private var searchText = ""
+    @FocusState private var searchFieldFocused: Bool
 
     private var isAddTaskTitleEmpty: Bool {
         addTaskTitle.trimmingCharacters(in: .whitespaces).isEmpty
@@ -102,6 +108,14 @@ struct ScheduledView: View {
     private var isEmpty: Bool {
         allCommittedTasks.isEmpty && allCommittedLists.isEmpty
         && allCommittedProjects.isEmpty && completedItems.isEmpty
+    }
+
+    private var isSearching: Bool {
+        isSearchActive && !searchText.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+
+    private var searchIsEmpty: Bool {
+        isSearching && searchSections.allSatisfy { $0.items.isEmpty }
     }
 
     // MARK: - Date Navigation Text
@@ -508,6 +522,37 @@ struct ScheduledView: View {
         }
     }
 
+    // MARK: - Search Sections (grouped by timeframe)
+
+    private var searchSections: [ScheduledSection] {
+        let query = searchText.lowercased()
+        let matchingTasks = allCommittedTasks.filter { $0.title.lowercased().contains(query) }
+        let matchingProjects = allCommittedProjects.filter { $0.title.lowercased().contains(query) }
+        let matchingLists = allCommittedLists.filter { $0.title.lowercased().contains(query) }
+
+        let timeframes: [(Timeframe, String)] = [
+            (.daily, "Day"), (.weekly, "Week"), (.monthly, "Month"), (.yearly, "Year")
+        ]
+
+        return timeframes.map { tf, title in
+            var items: [ScheduledItemEntry] = []
+            for task in matchingTasks where itemTimeframes[task.id]?.contains(tf) == true {
+                items.append(.task(task))
+            }
+            for project in matchingProjects where itemTimeframes[project.id]?.contains(tf) == true {
+                items.append(.project(project))
+            }
+            for list in matchingLists where itemTimeframes[list.id]?.contains(tf) == true {
+                items.append(.list(list))
+            }
+            return ScheduledSection(
+                id: "search-\(tf.rawValue)", title: title,
+                isRange: false, isSubDate: false,
+                items: items, date: nil, alwaysVisible: true
+            )
+        }
+    }
+
     // MARK: - Body
 
     var body: some View {
@@ -525,6 +570,13 @@ struct ScheduledView: View {
         }
         .onChange(of: taskListVM.tasks) { _, _ in
             cleanupPendingCompletions()
+        }
+        .onChange(of: searchFieldFocused) { _, focused in
+            if !focused && searchText.trimmingCharacters(in: .whitespaces).isEmpty {
+                withAnimation(.easeInOut(duration: 0.25)) {
+                    isSearchActive = false
+                }
+            }
         }
         .task {
             taskListVM.commitmentFilter = .committed
@@ -656,6 +708,18 @@ struct ScheduledView: View {
             if isLoading && isEmpty {
                 ProgressView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if searchIsEmpty {
+                VStack(spacing: 4) {
+                    Text("No results")
+                        .font(.inter(.headline))
+                        .bold()
+                    Text("No items match \"\(searchText)\"")
+                        .font(.inter(.subheadline))
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .padding(.horizontal, 20)
             } else {
                 itemList
             }
@@ -707,6 +771,54 @@ struct ScheduledView: View {
                     .buttonStyle(.plain)
                 }
                 Spacer()
+
+                Button {
+                    withAnimation(.easeInOut(duration: 0.25)) {
+                        isSearchActive.toggle()
+                        if !isSearchActive {
+                            searchText = ""
+                            searchFieldFocused = false
+                        } else {
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                searchFieldFocused = true
+                            }
+                        }
+                    }
+                } label: {
+                    Image(systemName: "magnifyingglass")
+                        .font(.inter(.body, weight: .semiBold))
+                        .foregroundColor(.primary)
+                        .frame(width: 30, height: 30)
+                        .background(Color.pillBackground, in: Circle())
+                }
+            }
+
+            if isSearchActive {
+                HStack(spacing: 8) {
+                    Image(systemName: "magnifyingglass")
+                        .font(.inter(.subheadline))
+                        .foregroundColor(.secondary)
+
+                    TextField("Search scheduled items...", text: $searchText)
+                        .font(.inter(.body))
+                        .textFieldStyle(.plain)
+                        .focused($searchFieldFocused)
+                        .submitLabel(.search)
+
+                    if !searchText.isEmpty {
+                        Button {
+                            searchText = ""
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.inter(.subheadline))
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(Color.pillBackground, in: Capsule())
+                .transition(.opacity)
             }
         }
         .padding(.horizontal, 20)
@@ -747,7 +859,7 @@ struct ScheduledView: View {
                 showCreateListAlert: $showCreateListAlert
             )
             .transition(.scale.combined(with: .opacity))
-        } else if !showingAddBar {
+        } else if !showingAddBar && !isSearchActive {
             fabButton
         }
 
@@ -809,7 +921,7 @@ struct ScheduledView: View {
 
     private var itemList: some View {
         List {
-            ForEach(activeSections) { section in
+            ForEach(isSearching ? searchSections : activeSections) { section in
                 if section.alwaysVisible || !section.items.isEmpty || section.isRange {
                     dateSectionHeader(for: section)
 
@@ -818,13 +930,15 @@ struct ScheduledView: View {
                     }
 
                     // Per-section add button (dashed circle)
-                    if let date = section.date, !section.isRange {
+                    if !isSearching, let date = section.date, !section.isRange {
                         addButtonForDay(date: date)
                     }
                 }
             }
 
-            completedSection
+            if !isSearching {
+                completedSection
+            }
 
             Color.clear
                 .frame(height: 100)
@@ -1063,11 +1177,14 @@ struct ScheduledView: View {
             let summaries = try await repo.fetchCommitmentSummaries()
             let calendar = Calendar.current
             var datesByTask: [UUID: Set<Date>] = [:]
+            var timeframesByTask: [UUID: Set<Timeframe>] = [:]
             for s in summaries {
                 let date = calendar.startOfDay(for: s.commitmentDate)
                 datesByTask[s.taskId, default: []].insert(date)
+                timeframesByTask[s.taskId, default: []].insert(s.timeframe)
             }
             itemDateEntries = datesByTask
+            itemTimeframes = timeframesByTask
         } catch { }
     }
 

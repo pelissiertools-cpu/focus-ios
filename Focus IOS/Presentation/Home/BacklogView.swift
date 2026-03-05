@@ -7,6 +7,8 @@ import SwiftUI
 import Auth
 
 struct BacklogView: View {
+    var startWithSearch: Bool = false
+
     @StateObject private var taskListVM = TaskListViewModel(authService: AuthService())
     @StateObject private var projectsVM = ProjectsViewModel(authService: AuthService())
     @StateObject private var listsVM = ListsViewModel(authService: AuthService())
@@ -16,9 +18,14 @@ struct BacklogView: View {
     @State private var isLoading = false
 
     // Search
-    @State private var isSearchActive = false
+    @State private var isSearchActive: Bool
     @State private var searchText = ""
     @FocusState private var searchFieldFocused: Bool
+
+    init(startWithSearch: Bool = false) {
+        self.startWithSearch = startWithSearch
+        _isSearchActive = State(initialValue: startWithSearch)
+    }
 
     // Section collapse states
     @State private var isTasksSectionCollapsed = false
@@ -504,6 +511,13 @@ struct BacklogView: View {
             isLoading = true
             await loadAllData()
             isLoading = false
+        }
+        .onAppear {
+            if startWithSearch {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    searchFieldFocused = true
+                }
+            }
         }
     }
 

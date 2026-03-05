@@ -11,6 +11,7 @@ struct HomeView: View {
     @StateObject private var projectsViewModel: ProjectsViewModel
     @StateObject private var listsViewModel: ListsViewModel
     @State private var showSettings = false
+    @State private var showSearch = false
     @State private var projectToDelete: FocusTask?
     @State private var listToDelete: FocusTask?
 
@@ -36,7 +37,7 @@ struct HomeView: View {
 
                         Spacer()
 
-                        Button(action: { /* search — placeholder */ }) {
+                        Button(action: { showSearch = true }) {
                             Image(systemName: "magnifyingglass")
                                 .font(.inter(.body, weight: .medium))
                                 .foregroundColor(.primary)
@@ -180,6 +181,9 @@ struct HomeView: View {
             }
             .navigationDestination(isPresented: $showSettings) {
                 SettingsView()
+            }
+            .navigationDestination(isPresented: $showSearch) {
+                BacklogView(startWithSearch: true)
             }
             .navigationBarHidden(true)
             // Project edit drawer

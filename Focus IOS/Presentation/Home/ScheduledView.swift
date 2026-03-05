@@ -20,8 +20,8 @@ struct ScheduledView: View {
     @State private var pendingCompletions: Set<UUID> = []
     @State private var isCompletedSectionCollapsed = false
 
-    // Commitment date entries: item UUID → set of committed dates
-    @State private var itemDateEntries: [UUID: Set<Date>] = [:]
+    // Commitment entries: item UUID → list of (date, timeframe) pairs
+    @State private var itemCommitments: [UUID: [(date: Date, timeframe: Timeframe)]] = [:]
     @State private var itemTimeframes: [UUID: Set<Timeframe>] = [:]
 
     // Batch create alerts
@@ -288,25 +288,34 @@ struct ScheduledView: View {
     // MARK: - Items By Date (shared helper)
 
     private var itemsByDate: [Date: [ScheduledItemEntry]] {
+        let allowed = viewMode.allowedTimeframes
+        let nativeTimeframe = viewMode.timeframe
+        let showNative = viewMode != .day
         var result: [Date: [ScheduledItemEntry]] = [:]
-        for task in allCommittedTasks {
-            if let dates = itemDateEntries[task.id] {
-                for date in dates { result[date, default: []].append(.task(task)) }
+
+        func addEntries(for item: FocusTask, as type: (FocusTask, Bool) -> ScheduledItemEntry) {
+            guard let commits = itemCommitments[item.id] else { return }
+            for commit in commits where allowed.contains(commit.timeframe) {
+                let isNative = showNative && commit.timeframe == nativeTimeframe
+                result[commit.date, default: []].append(type(item, isNative))
             }
         }
-        for list in allCommittedLists {
-            if let dates = itemDateEntries[list.id] {
-                for date in dates { result[date, default: []].append(.list(list)) }
-            }
-        }
-        for project in allCommittedProjects {
-            if let dates = itemDateEntries[project.id] {
-                for date in dates { result[date, default: []].append(.project(project)) }
-            }
-        }
-        // Sort each date's items: tasks first, projects second, lists third
+
+        for task in allCommittedTasks { addEntries(for: task) { .task($0, isNative: $1) } }
+        for list in allCommittedLists { addEntries(for: list) { .list($0, isNative: $1) } }
+        for project in allCommittedProjects { addEntries(for: project) { .project($0, isNative: $1) } }
+
+        // Deduplicate per date (same item, multiple timeframes) — prefer native
         for key in result.keys {
-            result[key]?.sort { $0.typeSortOrder < $1.typeSortOrder }
+            var best: [UUID: ScheduledItemEntry] = [:]
+            for entry in result[key]! {
+                if let existing = best[entry.id] {
+                    if entry.isNative && !existing.isNative { best[entry.id] = entry }
+                } else {
+                    best[entry.id] = entry
+                }
+            }
+            result[key] = Array(best.values).sorted(by: ScheduledItemEntry.stableSort)
         }
         return result
     }
@@ -327,10 +336,18 @@ struct ScheduledView: View {
         let formatter = DateFormatter()
 
         func items(from start: Date, to end: Date) -> [ScheduledItemEntry] {
-            byDate.filter { $0.key >= start && $0.key < end }
+            let flat = byDate.filter { $0.key >= start && $0.key < end }
                 .sorted { $0.key < $1.key }
                 .flatMap { $0.value }
-                .sorted { $0.typeSortOrder < $1.typeSortOrder }
+            var best: [UUID: ScheduledItemEntry] = [:]
+            for entry in flat {
+                if let existing = best[entry.id] {
+                    if entry.isNative && !existing.isNative { best[entry.id] = entry }
+                } else {
+                    best[entry.id] = entry
+                }
+            }
+            return Array(best.values).sorted(by: ScheduledItemEntry.stableSort)
         }
 
         // Helper: title for a week start date
@@ -370,10 +387,7 @@ struct ScheduledView: View {
         }
 
         for weekStart in groupedByWeek.keys.sorted() {
-            let weekItems = groupedByWeek[weekStart]!
-                .sorted()
-                .flatMap { byDate[$0] ?? [] }
-                .sorted { $0.typeSortOrder < $1.typeSortOrder }
+            let weekItems = items(from: weekStart, to: calendar.date(byAdding: .weekOfYear, value: 1, to: weekStart)!)
 
             sections.append(ScheduledSection(
                 id: "week-\(weekStart.timeIntervalSince1970)",
@@ -401,10 +415,18 @@ struct ScheduledView: View {
         let formatter = DateFormatter()
 
         func items(from start: Date, to end: Date) -> [ScheduledItemEntry] {
-            byDate.filter { $0.key >= start && $0.key < end }
+            let flat = byDate.filter { $0.key >= start && $0.key < end }
                 .sorted { $0.key < $1.key }
                 .flatMap { $0.value }
-                .sorted { $0.typeSortOrder < $1.typeSortOrder }
+            var best: [UUID: ScheduledItemEntry] = [:]
+            for entry in flat {
+                if let existing = best[entry.id] {
+                    if entry.isNative && !existing.isNative { best[entry.id] = entry }
+                } else {
+                    best[entry.id] = entry
+                }
+            }
+            return Array(best.values).sorted(by: ScheduledItemEntry.stableSort)
         }
 
         // 1. Selected month
@@ -449,10 +471,8 @@ struct ScheduledView: View {
             formatter.dateFormat = year == currentYear ? "MMMM" : "MMMM yyyy"
             let title = formatter.string(from: monthStart)
 
-            let monthItems = groupedByMonth[monthStart]!
-                .sorted()
-                .flatMap { byDate[$0] ?? [] }
-                .sorted { $0.typeSortOrder < $1.typeSortOrder }
+            let nextMonth = calendar.date(byAdding: .month, value: 1, to: monthStart)!
+            let monthItems = items(from: monthStart, to: nextMonth)
 
             sections.append(ScheduledSection(
                 id: "month-\(monthStart.timeIntervalSince1970)",
@@ -480,31 +500,34 @@ struct ScheduledView: View {
             calendar.component(.year, from: date)
         }
 
-        // Selected year (always visible)
-        let selectedYearItems = (groupedByYear[selectedYear] ?? [])
-            .sorted()
-            .flatMap { byDate[$0] ?? [] }
-            .sorted { $0.typeSortOrder < $1.typeSortOrder }
+        func deduped(_ dates: [Date]) -> [ScheduledItemEntry] {
+            let flat = dates.sorted().flatMap { byDate[$0] ?? [] }
+            var best: [UUID: ScheduledItemEntry] = [:]
+            for entry in flat {
+                if let existing = best[entry.id] {
+                    if entry.isNative && !existing.isNative { best[entry.id] = entry }
+                } else {
+                    best[entry.id] = entry
+                }
+            }
+            return Array(best.values).sorted(by: ScheduledItemEntry.stableSort)
+        }
 
+        // Selected year (always visible)
         let yearTitle = selectedYear == realYear ? "This Year" : "\(selectedYear)"
 
         sections.append(ScheduledSection(
             id: "year-\(selectedYear)", title: yearTitle,
             isRange: false, isSubDate: false,
-            items: selectedYearItems, date: anchor, alwaysVisible: true
+            items: deduped(groupedByYear[selectedYear] ?? []), date: anchor, alwaysVisible: true
         ))
 
         // Future years (relative to selected)
         for year in groupedByYear.keys.sorted() where year > selectedYear {
-            let yearItems = groupedByYear[year]!
-                .sorted()
-                .flatMap { byDate[$0] ?? [] }
-                .sorted { $0.typeSortOrder < $1.typeSortOrder }
-
             sections.append(ScheduledSection(
                 id: "year-\(year)", title: "\(year)",
                 isRange: false, isSubDate: false,
-                items: yearItems, date: nil, alwaysVisible: false
+                items: deduped(groupedByYear[year]!), date: nil, alwaysVisible: false
             ))
         }
 
@@ -537,13 +560,13 @@ struct ScheduledView: View {
         return timeframes.map { tf, title in
             var items: [ScheduledItemEntry] = []
             for task in matchingTasks where itemTimeframes[task.id]?.contains(tf) == true {
-                items.append(.task(task))
+                items.append(.task(task, isNative: false))
             }
             for project in matchingProjects where itemTimeframes[project.id]?.contains(tf) == true {
-                items.append(.project(project))
+                items.append(.project(project, isNative: false))
             }
             for list in matchingLists where itemTimeframes[list.id]?.contains(tf) == true {
-                items.append(.list(list))
+                items.append(.list(list, isNative: false))
             }
             return ScheduledSection(
                 id: "search-\(tf.rawValue)", title: title,
@@ -1024,58 +1047,65 @@ struct ScheduledView: View {
 
     @ViewBuilder
     private func scheduledItemRow(_ entry: ScheduledItemEntry) -> some View {
-        switch entry {
-        case .task(let task):
-            FlatTaskRow(
-                task: task,
-                viewModel: taskListVM,
-                isEditMode: taskListVM.isEditMode,
-                isSelected: taskListVM.selectedTaskIds.contains(task.id),
-                onSelectToggle: { taskListVM.toggleTaskSelection(task.id) },
-                onToggleCompletion: { t in pendingCompletions.insert(t.id) }
-            )
-            .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
-            .listRowBackground(Color.clear)
-            .listRowSeparator(.hidden)
+        HStack(spacing: 0) {
+            if entry.isNative {
+                RoundedRectangle(cornerRadius: 1.5)
+                    .fill(Color.appRed)
+                    .frame(width: 3)
+                    .padding(.vertical, 6)
+                    .padding(.trailing, 8)
+            }
 
-        case .project(let project):
-            ScheduledProjectRow(
-                project: project,
-                isEditMode: taskListVM.isEditMode,
-                isSelected: taskListVM.selectedTaskIds.contains(project.id),
-                onSelectToggle: { taskListVM.toggleTaskSelection(project.id) },
-                onTap: { selectedProjectForNavigation = project },
-                onToggleCompletion: { pendingCompletions.insert(project.id) },
-                onEdit: { projectsVM.selectedProjectForDetails = project },
-                onSchedule: { projectsVM.selectedTaskForSchedule = project },
-                onDelete: {
-                    await projectsVM.deleteProject(project)
-                    await refreshAllData()
-                }
-            )
-            .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
-            .listRowBackground(Color.clear)
-            .listRowSeparator(.hidden)
+            Group {
+                switch entry {
+                case .task(let task, _):
+                    FlatTaskRow(
+                        task: task,
+                        viewModel: taskListVM,
+                        isEditMode: taskListVM.isEditMode,
+                        isSelected: taskListVM.selectedTaskIds.contains(task.id),
+                        onSelectToggle: { taskListVM.toggleTaskSelection(task.id) },
+                        onToggleCompletion: { t in pendingCompletions.insert(t.id) }
+                    )
 
-        case .list(let list):
-            ScheduledListRow(
-                list: list,
-                isEditMode: taskListVM.isEditMode,
-                isSelected: taskListVM.selectedTaskIds.contains(list.id),
-                onSelectToggle: { taskListVM.toggleTaskSelection(list.id) },
-                onTap: { selectedListForNavigation = list },
-                onToggleCompletion: { pendingCompletions.insert(list.id) },
-                onEdit: { listsVM.selectedListForDetails = list },
-                onSchedule: { listsVM.selectedItemForSchedule = list },
-                onDelete: {
-                    await listsVM.deleteList(list)
-                    await refreshAllData()
+                case .project(let project, _):
+                    ScheduledProjectRow(
+                        project: project,
+                        isEditMode: taskListVM.isEditMode,
+                        isSelected: taskListVM.selectedTaskIds.contains(project.id),
+                        onSelectToggle: { taskListVM.toggleTaskSelection(project.id) },
+                        onTap: { selectedProjectForNavigation = project },
+                        onToggleCompletion: { pendingCompletions.insert(project.id) },
+                        onEdit: { projectsVM.selectedProjectForDetails = project },
+                        onSchedule: { projectsVM.selectedTaskForSchedule = project },
+                        onDelete: {
+                            await projectsVM.deleteProject(project)
+                            await refreshAllData()
+                        }
+                    )
+
+                case .list(let list, _):
+                    ScheduledListRow(
+                        list: list,
+                        isEditMode: taskListVM.isEditMode,
+                        isSelected: taskListVM.selectedTaskIds.contains(list.id),
+                        onSelectToggle: { taskListVM.toggleTaskSelection(list.id) },
+                        onTap: { selectedListForNavigation = list },
+                        onToggleCompletion: { pendingCompletions.insert(list.id) },
+                        onEdit: { listsVM.selectedListForDetails = list },
+                        onSchedule: { listsVM.selectedItemForSchedule = list },
+                        onDelete: {
+                            await listsVM.deleteList(list)
+                            await refreshAllData()
+                        }
+                    )
                 }
-            )
-            .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
-            .listRowBackground(Color.clear)
-            .listRowSeparator(.hidden)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
+        .listRowInsets(EdgeInsets(top: 0, leading: entry.isNative ? 12 : 20, bottom: 0, trailing: 20))
+        .listRowBackground(Color.clear)
+        .listRowSeparator(.hidden)
     }
 
     // MARK: - Per-Day Add Button
@@ -1176,14 +1206,14 @@ struct ScheduledView: View {
             let repo = CommitmentRepository()
             let summaries = try await repo.fetchCommitmentSummaries()
             let calendar = Calendar.current
-            var datesByTask: [UUID: Set<Date>] = [:]
+            var commitsByTask: [UUID: [(date: Date, timeframe: Timeframe)]] = [:]
             var timeframesByTask: [UUID: Set<Timeframe>] = [:]
             for s in summaries {
                 let date = calendar.startOfDay(for: s.commitmentDate)
-                datesByTask[s.taskId, default: []].insert(date)
+                commitsByTask[s.taskId, default: []].append((date: date, timeframe: s.timeframe))
                 timeframesByTask[s.taskId, default: []].insert(s.timeframe)
             }
-            itemDateEntries = datesByTask
+            itemCommitments = commitsByTask
             itemTimeframes = timeframesByTask
         } catch { }
     }
@@ -1603,15 +1633,29 @@ private extension ScheduledView {
 // MARK: - Data Models
 
 private enum ScheduledItemEntry: Identifiable {
-    case task(FocusTask)
-    case project(FocusTask)
-    case list(FocusTask)
+    case task(FocusTask, isNative: Bool)
+    case project(FocusTask, isNative: Bool)
+    case list(FocusTask, isNative: Bool)
 
     var id: UUID {
         switch self {
-        case .task(let t): return t.id
-        case .project(let p): return p.id
-        case .list(let l): return l.id
+        case .task(let t, _): return t.id
+        case .project(let p, _): return p.id
+        case .list(let l, _): return l.id
+        }
+    }
+
+    var isNative: Bool {
+        switch self {
+        case .task(_, let n), .project(_, let n), .list(_, let n): return n
+        }
+    }
+
+    var createdDate: Date {
+        switch self {
+        case .task(let t, _): return t.createdDate
+        case .project(let p, _): return p.createdDate
+        case .list(let l, _): return l.createdDate
         }
     }
 
@@ -1622,6 +1666,13 @@ private enum ScheduledItemEntry: Identifiable {
         case .project: return 1
         case .list: return 2
         }
+    }
+
+    /// Stable sort: by type, then native-first, then by creation date (oldest first)
+    static func stableSort(_ a: ScheduledItemEntry, _ b: ScheduledItemEntry) -> Bool {
+        if a.typeSortOrder != b.typeSortOrder { return a.typeSortOrder < b.typeSortOrder }
+        if a.isNative != b.isNative { return a.isNative && !b.isNative }
+        return a.createdDate < b.createdDate
     }
 }
 
@@ -1648,6 +1699,16 @@ private enum ScheduleViewMode: String, CaseIterable {
         case .week: return .weekly
         case .month: return .monthly
         case .year: return .yearly
+        }
+    }
+
+    /// Timeframes that should be visible at this view level
+    var allowedTimeframes: Set<Timeframe> {
+        switch self {
+        case .day: return [.daily]
+        case .week: return [.daily, .weekly]
+        case .month: return [.daily, .weekly, .monthly]
+        case .year: return [.daily, .weekly, .monthly, .yearly]
         }
     }
 }

@@ -288,7 +288,7 @@ struct HomeView: View {
                 } else if menuItem == .backlog {
                     BacklogView(authService: authService)
                 } else if menuItem == .today {
-                    TodayView(taskListVM: taskListVM, projectsVM: projectsViewModel, listsVM: listsViewModel)
+                    TodayView(authService: authService)
                 } else {
                     HomePlaceholderPage(title: menuItem.rawValue)
                 }

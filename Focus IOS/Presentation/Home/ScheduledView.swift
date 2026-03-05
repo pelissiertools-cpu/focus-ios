@@ -29,6 +29,10 @@ struct ScheduledView: View {
     @State private var newProjectTitle = ""
     @State private var newListTitle = ""
 
+    // Date navigation
+    @State private var selectedDate = Date()
+    @State private var showCalendarPicker = false
+
     // Navigation
     @State private var selectedListForNavigation: FocusTask?
     @State private var selectedProjectForNavigation: FocusTask?
@@ -98,6 +102,48 @@ struct ScheduledView: View {
     private var isEmpty: Bool {
         allCommittedTasks.isEmpty && allCommittedLists.isEmpty
         && allCommittedProjects.isEmpty && completedItems.isEmpty
+    }
+
+    // MARK: - Date Navigation Text
+
+    private var scheduleCalendar: Calendar {
+        var cal = Calendar.current
+        cal.firstWeekday = 1
+        return cal
+    }
+
+    private var scheduleDateText: String? {
+        switch viewMode {
+        case .day:
+            let day = scheduleCalendar.component(.day, from: selectedDate)
+            let suffix: String
+            switch day {
+            case 1, 21, 31: suffix = "st"
+            case 2, 22: suffix = "nd"
+            case 3, 23: suffix = "rd"
+            default: suffix = "th"
+            }
+            let formatter = DateFormatter()
+            formatter.dateFormat = "MMMM"
+            let month = formatter.string(from: selectedDate)
+            formatter.dateFormat = "yyyy"
+            let year = formatter.string(from: selectedDate)
+            return "\(month) \(day)\(suffix), \(year)"
+        case .week:
+            guard let weekStart = scheduleCalendar.date(from: scheduleCalendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: selectedDate)),
+                  let weekEnd = scheduleCalendar.date(byAdding: .day, value: 6, to: weekStart) else { return nil }
+            let startFmt = DateFormatter()
+            startFmt.dateFormat = "MMM d"
+            let endFmt = DateFormatter()
+            endFmt.dateFormat = "MMM d, yyyy"
+            return "\(startFmt.string(from: weekStart)) - \(endFmt.string(from: weekEnd))"
+        case .month:
+            let formatter = DateFormatter()
+            formatter.dateFormat = "MMMM"
+            return formatter.string(from: selectedDate)
+        case .year:
+            return String(scheduleCalendar.component(.year, from: selectedDate))
+        }
     }
 
     // MARK: - Date Sections
@@ -592,6 +638,21 @@ struct ScheduledView: View {
                     .font(.inter(size: 28, weight: .regular))
                     .foregroundColor(.appRed)
                 Spacer()
+                if let dateText = scheduleDateText {
+                    Button {
+                        showCalendarPicker = true
+                    } label: {
+                        HStack(spacing: 4) {
+                            Text(dateText)
+                                .font(.montserratHeader(.subheadline, weight: .medium))
+                                .foregroundColor(.primary)
+                            Image(systemName: "chevron.right")
+                                .font(.inter(size: 8, weight: .semiBold))
+                                .foregroundColor(.primary)
+                        }
+                    }
+                    .buttonStyle(.plain)
+                }
             }
 
             HStack(spacing: 6) {
@@ -619,6 +680,13 @@ struct ScheduledView: View {
         .padding(.horizontal, 20)
         .padding(.top, 16)
         .padding(.bottom, 4)
+        .sheet(isPresented: $showCalendarPicker) {
+            SingleSelectCalendarPicker(
+                selectedDate: $selectedDate,
+                timeframe: viewMode.timeframe
+            )
+            .drawerStyle()
+        }
     }
 
     @ViewBuilder
@@ -1423,6 +1491,15 @@ private enum ScheduleViewMode: String, CaseIterable {
 
     var label: String {
         rawValue.capitalized
+    }
+
+    var timeframe: Timeframe {
+        switch self {
+        case .day: return .daily
+        case .week: return .weekly
+        case .month: return .monthly
+        case .year: return .yearly
+        }
     }
 }
 

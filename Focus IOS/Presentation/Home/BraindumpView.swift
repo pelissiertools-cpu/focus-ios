@@ -411,6 +411,32 @@ struct BraindumpView: View {
         await projectsVM.fetchProjects()
     }
 
+    private func handleBraindumpMove(from source: IndexSet, to destination: Int) {
+        let braindumpItems = standaloneTaskDisplayItems
+        let fullItems = taskListVM.flattenedDisplayItems
+
+        guard let fromIdx = source.first else { return }
+        let movedItem = braindumpItems[fromIdx]
+
+        // Map source index to full list
+        guard let fullFromIdx = fullItems.firstIndex(where: { $0.id == movedItem.id }) else { return }
+
+        // Map destination index to full list
+        let fullDestIdx: Int
+        if destination < braindumpItems.count {
+            let destItem = braindumpItems[destination]
+            guard let idx = fullItems.firstIndex(where: { $0.id == destItem.id }) else { return }
+            fullDestIdx = idx
+        } else if let lastItem = braindumpItems.last,
+                  let lastFullIdx = fullItems.firstIndex(where: { $0.id == lastItem.id }) {
+            fullDestIdx = lastFullIdx + 1
+        } else {
+            return
+        }
+
+        taskListVM.handleFlatMove(from: IndexSet(integer: fullFromIdx), to: fullDestIdx)
+    }
+
     private func commitPendingSchedules() {
         let schedulesToCommit = pendingSchedules
         let completionsToCommit = pendingCompletions
@@ -487,6 +513,7 @@ struct BraindumpView: View {
                     .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
                     .listRowSeparator(.hidden)
                     .listRowBackground(Color.clear)
+                    .moveDisabled(true)
 
                 case .task(let task):
                     FlatTaskRow(
@@ -516,13 +543,16 @@ struct BraindumpView: View {
                     .padding(.leading, 32)
                     .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
                     .listRowBackground(Color.clear)
+                    .moveDisabled(true)
 
                 case .addTaskRow:
                     EmptyView()
                         .listRowSeparator(.hidden)
                         .listRowBackground(Color.clear)
+                        .moveDisabled(true)
                 }
             }
+            .onMove(perform: handleBraindumpMove)
 
             // Pending scheduled section
             if !pendingTasks.isEmpty {

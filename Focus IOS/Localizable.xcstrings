@@ -1442,6 +1442,9 @@
         }
       }
     },
+    "Drop here" : {
+
+    },
     "Drop to cancel" : {
       "extractionState" : "stale",
       "localizations" : {

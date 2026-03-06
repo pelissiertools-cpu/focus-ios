@@ -187,104 +187,79 @@ struct ScheduledView: View {
             return dayFormatter.string(from: date)
         }
 
-        // 1. Selected day (always shown)
-        sections.append(ScheduledSection(
-            id: "anchor-\(anchor.timeIntervalSince1970)",
-            title: dayLabel(for: anchor),
-            isRange: false, isSubDate: false,
-            items: itemsByDate[anchor] ?? [], date: anchor, alwaysVisible: true
-        ))
+        // 1. Today + next 6 days (7 day slots, always visible & droppable)
+        for offset in 0..<7 {
+            let day = calendar.date(byAdding: .day, value: offset, to: anchor)!
+            sections.append(ScheduledSection(
+                id: "day-\(offset)-\(day.timeIntervalSince1970)",
+                title: dayLabel(for: day),
+                isRange: false, isSubDate: false,
+                items: itemsByDate[day] ?? [], date: day, alwaysVisible: true
+            ))
+        }
 
-        // 2. Next day (always shown)
-        let nextDay = calendar.date(byAdding: .day, value: 1, to: anchor)!
-        sections.append(ScheduledSection(
-            id: "next-\(nextDay.timeIntervalSince1970)",
-            title: dayLabel(for: nextDay),
-            isRange: false, isSubDate: false,
-            items: itemsByDate[nextDay] ?? [], date: nextDay, alwaysVisible: true
-        ))
+        // 2. "Rest of [Month]" — dates after the 7-day window but still in anchor's month
+        let day7 = calendar.date(byAdding: .day, value: 7, to: anchor)!
+        var startOfNextMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: anchor))!
+        startOfNextMonth = calendar.date(byAdding: .month, value: 1, to: startOfNextMonth)!
 
-        // 3. Rest of current week (day+2 through end of week, always shown)
-        let endOfWeekOffset = 7 - calendar.component(.weekday, from: anchor)
-        if let endOfWeek = calendar.date(byAdding: .day, value: max(endOfWeekOffset, 2), to: anchor) {
-            var day = calendar.date(byAdding: .day, value: 2, to: anchor)!
-            while day <= endOfWeek {
+        let restOfMonthDates = itemsByDate.keys
+            .filter { $0 >= day7 && $0 < startOfNextMonth }
+            .sorted()
+
+        if !restOfMonthDates.isEmpty {
+            dayFormatter.dateFormat = "MMMM"
+            let monthName = dayFormatter.string(from: anchor)
+            sections.append(ScheduledSection(
+                id: "rest-of-\(monthName)", title: "Rest of \(monthName)",
+                isRange: true, isSubDate: false,
+                items: [], date: nil, alwaysVisible: false
+            ))
+            for date in restOfMonthDates {
                 dayFormatter.dateFormat = "EEE"
-                let dayName = dayFormatter.string(from: day)
+                let dn = dayFormatter.string(from: date)
                 dayFormatter.dateFormat = "MMM d"
-                let dateStr = dayFormatter.string(from: day)
+                let ds = dayFormatter.string(from: date)
                 sections.append(ScheduledSection(
-                    id: "week-\(day.timeIntervalSince1970)",
-                    title: "\(dayName) \(dateStr)",
-                    isRange: false, isSubDate: false,
-                    items: itemsByDate[day] ?? [], date: day, alwaysVisible: true
+                    id: "sub-\(date.timeIntervalSince1970)",
+                    title: "\(dn) \(ds)",
+                    isRange: false, isSubDate: true,
+                    items: itemsByDate[date] ?? [], date: date, alwaysVisible: false
                 ))
-                day = calendar.date(byAdding: .day, value: 1, to: day)!
             }
+        }
 
-            // 4. "Rest of [Month]" — dates after this week but still in anchor's month
-            let dayAfterWeek = calendar.date(byAdding: .day, value: 1, to: endOfWeek)!
-            var startOfNextMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: anchor))!
-            startOfNextMonth = calendar.date(byAdding: .month, value: 1, to: startOfNextMonth)!
+        // 3. Future months (relative to anchor's month)
+        let futureDates = itemsByDate.keys
+            .filter { $0 >= startOfNextMonth }
+            .sorted()
 
-            let restOfMonthDates = itemsByDate.keys
-                .filter { $0 >= dayAfterWeek && $0 < startOfNextMonth }
-                .sorted()
+        let groupedByMonth = Dictionary(grouping: futureDates) { date -> String in
+            dayFormatter.dateFormat = "yyyy-MM"
+            return dayFormatter.string(from: date)
+        }
 
-            if !restOfMonthDates.isEmpty {
-                dayFormatter.dateFormat = "MMMM"
-                let monthName = dayFormatter.string(from: anchor)
+        for monthKey in groupedByMonth.keys.sorted() {
+            let datesInMonth = groupedByMonth[monthKey]!.sorted()
+            dayFormatter.dateFormat = "MMMM"
+            let monthTitle = dayFormatter.string(from: datesInMonth.first!)
+
+            sections.append(ScheduledSection(
+                id: "month-\(monthKey)", title: monthTitle,
+                isRange: true, isSubDate: false,
+                items: [], date: nil, alwaysVisible: false
+            ))
+            for date in datesInMonth {
+                dayFormatter.dateFormat = "EEE"
+                let dn = dayFormatter.string(from: date)
+                dayFormatter.dateFormat = "MMM d"
+                let ds = dayFormatter.string(from: date)
                 sections.append(ScheduledSection(
-                    id: "rest-of-\(monthName)", title: "Rest of \(monthName)",
-                    isRange: true, isSubDate: false,
-                    items: [], date: nil, alwaysVisible: false
+                    id: "sub-\(date.timeIntervalSince1970)",
+                    title: "\(dn) \(ds)",
+                    isRange: false, isSubDate: true,
+                    items: itemsByDate[date] ?? [], date: date, alwaysVisible: false
                 ))
-                for date in restOfMonthDates {
-                    dayFormatter.dateFormat = "EEE"
-                    let dn = dayFormatter.string(from: date)
-                    dayFormatter.dateFormat = "MMM d"
-                    let ds = dayFormatter.string(from: date)
-                    sections.append(ScheduledSection(
-                        id: "sub-\(date.timeIntervalSince1970)",
-                        title: "\(dn) \(ds)",
-                        isRange: false, isSubDate: true,
-                        items: itemsByDate[date] ?? [], date: date, alwaysVisible: false
-                    ))
-                }
-            }
-
-            // 5. Future months (relative to anchor's month)
-            let futureDates = itemsByDate.keys
-                .filter { $0 >= startOfNextMonth }
-                .sorted()
-
-            let groupedByMonth = Dictionary(grouping: futureDates) { date -> String in
-                dayFormatter.dateFormat = "yyyy-MM"
-                return dayFormatter.string(from: date)
-            }
-
-            for monthKey in groupedByMonth.keys.sorted() {
-                let datesInMonth = groupedByMonth[monthKey]!.sorted()
-                dayFormatter.dateFormat = "MMMM"
-                let monthTitle = dayFormatter.string(from: datesInMonth.first!)
-
-                sections.append(ScheduledSection(
-                    id: "month-\(monthKey)", title: monthTitle,
-                    isRange: true, isSubDate: false,
-                    items: [], date: nil, alwaysVisible: false
-                ))
-                for date in datesInMonth {
-                    dayFormatter.dateFormat = "EEE"
-                    let dn = dayFormatter.string(from: date)
-                    dayFormatter.dateFormat = "MMM d"
-                    let ds = dayFormatter.string(from: date)
-                    sections.append(ScheduledSection(
-                        id: "sub-\(date.timeIntervalSince1970)",
-                        title: "\(dn) \(ds)",
-                        isRange: false, isSubDate: true,
-                        items: itemsByDate[date] ?? [], date: date, alwaysVisible: false
-                    ))
-                }
             }
         }
 
@@ -560,25 +535,30 @@ struct ScheduledView: View {
         for section in sections {
             guard section.alwaysVisible || !section.items.isEmpty || section.isRange else { continue }
 
-            result.append(.sectionHeader(section))
+            if section.items.isEmpty, section.alwaysVisible, section.date != nil {
+                // Empty day section: compact drop zone row replaces both header and add button
+                result.append(.dropZone(section))
+            } else {
+                result.append(.sectionHeader(section))
 
-            for entry in section.items {
-                result.append(.item(entry))
+                for entry in section.items {
+                    result.append(.item(entry))
 
-                // Expanded subtasks
-                if case .task(let task, _, _, _) = entry,
-                   taskListVM.expandedTasks.contains(task.id) {
-                    let subtasks = taskListVM.getUncompletedSubtasks(for: task.id)
-                        + taskListVM.getCompletedSubtasks(for: task.id)
-                    for subtask in subtasks {
-                        result.append(.subtask(subtask, parentId: task.id))
+                    // Expanded subtasks
+                    if case .task(let task, _, _, _) = entry,
+                       taskListVM.expandedTasks.contains(task.id) {
+                        let subtasks = taskListVM.getUncompletedSubtasks(for: task.id)
+                            + taskListVM.getCompletedSubtasks(for: task.id)
+                        for subtask in subtasks {
+                            result.append(.subtask(subtask, parentId: task.id))
+                        }
+                        result.append(.inlineAddSubtask(parentId: task.id))
                     }
-                    result.append(.inlineAddSubtask(parentId: task.id))
                 }
-            }
 
-            if !isSearching, let date = section.date, !section.isRange {
-                result.append(.addButton(date))
+                if !isSearching, let date = section.date, !section.isRange {
+                    result.append(.addButton(date))
+                }
             }
         }
 
@@ -1027,6 +1007,23 @@ struct ScheduledView: View {
                     addButtonForDay(date: date)
                         .moveDisabled(true)
 
+                case .dropZone(let section):
+                    HStack(spacing: 0) {
+                        Text(section.title)
+                            .font(.inter(size: 16, weight: .medium))
+                            .foregroundColor(.secondary.opacity(0.4))
+                        Spacer()
+                        Text("Drop here")
+                            .font(.inter(.caption, weight: .light))
+                            .foregroundColor(.secondary.opacity(0.25))
+                    }
+                    .padding(.vertical, 8)
+                    .contentShape(Rectangle())
+                    .listRowInsets(EdgeInsets(top: 0, leading: 24, bottom: 0, trailing: 20))
+                    .listRowSeparator(.visible, edges: .bottom)
+                    .listRowBackground(Color.clear)
+                    // No .moveDisabled — acts as a valid drop target for empty sections
+
                 case .bottomSpacer:
                     Color.clear
                         .frame(height: 100)
@@ -1111,7 +1108,8 @@ struct ScheduledView: View {
                     .fill(Color.secondary.opacity(0.3))
                     .frame(height: 1)
             }
-            .padding(.top, section.id == "today" ? 0 : 8)
+            .opacity(section.items.isEmpty && section.alwaysVisible ? 0.35 : 1.0)
+            .padding(.top, section.id.hasPrefix("day-0-") ? 0 : 8)
             .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
             .listRowSeparator(.hidden)
             .listRowBackground(Color.clear)
@@ -1200,7 +1198,7 @@ struct ScheduledView: View {
         .buttonStyle(.plain)
         .padding(.vertical, 4)
         .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
-        .listRowSeparator(.hidden)
+        .listRowSeparator(.visible)
         .listRowBackground(Color.clear)
     }
 
@@ -1314,10 +1312,10 @@ struct ScheduledView: View {
         // Only .item entries can be moved
         guard case .item(let movedEntry) = flat[fromIdx] else { return }
 
-        // Find source section by scanning backward for nearest section header
+        // Find source section by scanning backward for nearest section boundary
         var sourceSection: ScheduledSection?
         for i in stride(from: fromIdx, through: 0, by: -1) {
-            if case .sectionHeader(let section) = flat[i] {
+            if let section = flat[i].boundarySection {
                 sourceSection = section
                 break
             }
@@ -1327,10 +1325,17 @@ struct ScheduledView: View {
         var destSection: ScheduledSection?
         let destLookup = max(0, min(destination - 1, flat.count - 1))
         for i in stride(from: destLookup, through: 0, by: -1) {
-            if case .sectionHeader(let section) = flat[i] {
+            if let section = flat[i].boundarySection {
                 destSection = section
                 break
             }
+        }
+
+        // Fix for upward moves into empty sections: drop zones replace sectionHeaders,
+        // so destination points AT the drop zone but destination-1 misses it.
+        if destination < fromIdx, destination < flat.count,
+           case .dropZone(let s) = flat[destination] {
+            destSection = s
         }
 
         guard let sourceSection, let destSection else { return }
@@ -1350,7 +1355,7 @@ struct ScheduledView: View {
             guard case .item(let entry) = flatItem else { return nil }
             // Check if this item belongs to this section by scanning backward
             for j in stride(from: i, through: 0, by: -1) {
-                if case .sectionHeader(let s) = flat[j] {
+                if let s = flat[j].boundarySection {
                     return s.id == section.id ? (i, entry) : nil
                 }
             }
@@ -1427,7 +1432,7 @@ struct ScheduledView: View {
         let newDestItems = updatedFlat.enumerated().compactMap { (i, flatItem) -> ScheduledItemEntry? in
             guard case .item(let entry) = flatItem else { return nil }
             for j in stride(from: i, through: 0, by: -1) {
-                if case .sectionHeader(let s) = updatedFlat[j] {
+                if let s = updatedFlat[j].boundarySection {
                     return s.id == destSection.id ? entry : nil
                 }
             }
@@ -1445,7 +1450,7 @@ struct ScheduledView: View {
         let sourceItems = updatedFlat.enumerated().compactMap { (i, flatItem) -> ScheduledItemEntry? in
             guard case .item(let entry) = flatItem else { return nil }
             for j in stride(from: i, through: 0, by: -1) {
-                if case .sectionHeader(let s) = updatedFlat[j] {
+                if let s = updatedFlat[j].boundarySection {
                     return s.id == sourceSection.id ? entry : nil
                 }
             }
@@ -1969,6 +1974,7 @@ private enum ScheduledFlatItem: Identifiable {
     case subtask(FocusTask, parentId: UUID)
     case inlineAddSubtask(parentId: UUID)
     case addButton(Date)
+    case dropZone(ScheduledSection)
     case bottomSpacer
 
     var id: String {
@@ -1978,7 +1984,16 @@ private enum ScheduledFlatItem: Identifiable {
         case .subtask(let t, _): return "subtask-\(t.id.uuidString)"
         case .inlineAddSubtask(let pid): return "add-subtask-\(pid.uuidString)"
         case .addButton(let d): return "add-\(Int(d.timeIntervalSince1970))"
+        case .dropZone(let s): return "dropzone-\(s.id)"
         case .bottomSpacer: return "bottom-spacer"
+        }
+    }
+
+    /// Returns the section if this is a section boundary (header or drop zone)
+    var boundarySection: ScheduledSection? {
+        switch self {
+        case .sectionHeader(let s), .dropZone(let s): return s
+        default: return nil
         }
     }
 }

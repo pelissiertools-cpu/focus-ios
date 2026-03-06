@@ -98,6 +98,56 @@ class HomeViewModel: ObservableObject {
         }
     }
 
+    // MARK: - Sections
+
+    func createSection(type: TaskType, userId: UUID) async -> FocusTask? {
+        do {
+            let section = try await repository.createTopLevelSection(title: "", type: type, userId: userId)
+            if type == .project {
+                projects.append(section)
+            } else {
+                lists.append(section)
+            }
+            return section
+        } catch {
+            errorMessage = error.localizedDescription
+            return nil
+        }
+    }
+
+    func renameSection(_ section: FocusTask, newTitle: String) async {
+        var updated = section
+        updated.title = newTitle
+        updated.modifiedDate = Date()
+        do {
+            try await repository.updateTask(updated)
+            if section.type == .project {
+                if let index = projects.firstIndex(where: { $0.id == section.id }) {
+                    projects[index] = updated
+                }
+            } else {
+                if let index = lists.firstIndex(where: { $0.id == section.id }) {
+                    lists[index] = updated
+                }
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func deleteSection(_ section: FocusTask) async {
+        do {
+            try await repository.deleteTask(id: section.id)
+            if section.type == .project {
+                projects.removeAll { $0.id == section.id }
+            } else {
+                lists.removeAll { $0.id == section.id }
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
     // MARK: - Reorder
 
     func reorderProjects(from source: IndexSet, to destination: Int) {

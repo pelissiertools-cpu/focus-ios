@@ -440,6 +440,28 @@ class TaskRepository {
         return try await createTask(section)
     }
 
+    /// Create a top-level section header for projects or lists pages
+    func createTopLevelSection(title: String, type: TaskType, userId: UUID) async throws -> FocusTask {
+        let existingItems: [FocusTask]
+        if type == .project {
+            existingItems = try await fetchProjects()
+        } else {
+            existingItems = try await fetchTasks(ofType: type)
+        }
+        let nextOrder = (existingItems.map { $0.sortOrder }.max() ?? -1) + 1
+
+        let section = FocusTask(
+            userId: userId,
+            title: title,
+            type: type,
+            sortOrder: nextOrder,
+            isInLibrary: false,
+            isSection: true
+        )
+
+        return try await createTask(section)
+    }
+
     /// Nullify category_id for all tasks in a given category
     func nullifyCategoryId(categoryId: UUID) async throws {
         struct CategoryNullUpdate: Encodable {

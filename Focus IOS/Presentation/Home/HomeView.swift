@@ -343,14 +343,14 @@ struct HomeView: View {
                             .foregroundColor(.secondary)
                     }
                 } else if item == .projects {
-                    let count = viewModel.projects.count
+                    let count = viewModel.projects.filter({ !$0.isSection }).count
                     if count > 0 {
                         Text("\(count)")
                             .font(.inter(.footnote, weight: .medium))
                             .foregroundColor(.secondary)
                     }
                 } else if item == .quickLists {
-                    let count = viewModel.lists.count
+                    let count = viewModel.lists.filter({ !$0.isSection }).count
                     if count > 0 {
                         Text("\(count)")
                             .font(.inter(.footnote, weight: .medium))

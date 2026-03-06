@@ -4,6 +4,7 @@
 //
 
 import SwiftUI
+import Auth
 
 struct QuickListsPage: View {
     @ObservedObject var viewModel: HomeViewModel
@@ -12,6 +13,7 @@ struct QuickListsPage: View {
     @Environment(\.dismiss) private var dismiss
     @State private var listToDelete: FocusTask?
     @State private var selectedList: FocusTask?
+    @State private var editingSectionId: UUID?
 
     private let authService: AuthService
 
@@ -23,28 +25,81 @@ struct QuickListsPage: View {
 
     var body: some View {
         ZStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 0) {
-                    Text("Quick Lists")
-                        .font(.inter(.title2, weight: .bold))
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal, 20)
-                        .padding(.top, 16)
-                        .padding(.bottom, 16)
+            List {
+                Text("Quick Lists")
+                    .font(.inter(.title2, weight: .bold))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .listRowInsets(EdgeInsets(top: 16, leading: 20, bottom: 16, trailing: 20))
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+                    .moveDisabled(true)
 
-                    if viewModel.lists.isEmpty {
-                        Text("No lists yet")
-                            .font(.inter(.subheadline))
-                            .foregroundColor(.secondary)
-                            .padding(.horizontal, 20)
-                            .padding(.top, 12)
-                    } else {
-                        ForEach(viewModel.lists) { list in
-                            listRow(list)
+                if viewModel.lists.isEmpty {
+                    Text("No lists yet")
+                        .font(.inter(.subheadline))
+                        .foregroundColor(.secondary)
+                        .listRowInsets(EdgeInsets(top: 12, leading: 20, bottom: 0, trailing: 20))
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                        .moveDisabled(true)
+                } else {
+                    ForEach(viewModel.lists) { item in
+                        if item.isSection {
+                            SectionDividerRow(
+                                section: item,
+                                editingSectionId: $editingSectionId,
+                                onRename: { section, newTitle in
+                                    await viewModel.renameSection(section, newTitle: newTitle)
+                                },
+                                onDelete: { section in
+                                    await viewModel.deleteSection(section)
+                                }
+                            )
+                            .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+                            .listRowBackground(Color.clear)
+                            .listRowSeparator(.hidden)
+                            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                Button(role: .destructive) {
+                                    _Concurrency.Task {
+                                        await viewModel.deleteSection(item)
+                                    }
+                                } label: {
+                                    Label("Delete", systemImage: "trash")
+                                }
+                            }
+                        } else {
+                            listRow(item)
+                                .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+                                .listRowBackground(Color.clear)
+                                .listRowSeparator(.hidden)
+                                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                    if !listsViewModel.isEditMode {
+                                        Button(role: .destructive) {
+                                            listToDelete = item
+                                        } label: {
+                                            Label("Delete", systemImage: "trash")
+                                        }
+                                    }
+                                }
                         }
                     }
+                    .onMove { from, to in
+                        viewModel.reorderLists(from: from, to: to)
+                    }
                 }
-                .padding(.bottom, listsViewModel.isEditMode ? 100 : 20)
+
+                Color.clear
+                    .frame(height: listsViewModel.isEditMode ? 100 : 20)
+                    .listRowInsets(EdgeInsets())
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear)
+                    .moveDisabled(true)
+            }
+            .listStyle(.plain)
+            .scrollContentBackground(.hidden)
+            .scrollDismissesKeyboard(.immediately)
+            .onTapGesture {
+                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
             }
 
             if listsViewModel.isEditMode {
@@ -144,6 +199,17 @@ struct QuickListsPage: View {
                         } label: {
                             Label("Select", systemImage: "checkmark.circle")
                         }
+
+                        Button {
+                            _Concurrency.Task {
+                                guard let userId = authService.currentUser?.id else { return }
+                                if let section = await viewModel.createSection(type: .list, userId: userId) {
+                                    editingSectionId = section.id
+                                }
+                            }
+                        } label: {
+                            Label("Add section", systemImage: "plus")
+                        }
                     } label: {
                         Image(systemName: "ellipsis")
                             .font(.inter(.body, weight: .semiBold))
@@ -185,7 +251,6 @@ struct QuickListsPage: View {
                     .foregroundColor(.secondary)
             }
         }
-        .padding(.horizontal, 20)
         .padding(.vertical, 10)
         .contentShape(Rectangle())
         .onTapGesture {

@@ -50,7 +50,7 @@ struct BacklogView: View {
     @State private var addTaskTitle = ""
     @State private var addTaskSubtasks: [DraftSubtaskEntry] = []
     @State private var addTaskCategoryId: UUID? = nil
-    @State private var addTaskCommitExpanded = false
+    @State private var addTaskScheduleExpanded = false
     @State private var addTaskTimeframe: Timeframe = .daily
     @State private var addTaskSection: Section = .todo
     @State private var addTaskDates: Set<Date> = []
@@ -318,7 +318,7 @@ struct BacklogView: View {
                 .drawerStyle()
         }
         .sheet(item: $taskListVM.selectedTaskForSchedule) { task in
-            CommitmentSelectionSheet(task: task, focusViewModel: focusViewModel)
+            ScheduleSelectionSheet(task: task, focusViewModel: focusViewModel)
                 .drawerStyle()
         }
         // List sheets
@@ -327,7 +327,7 @@ struct BacklogView: View {
                 .drawerStyle()
         }
         .sheet(item: $listsVM.selectedItemForSchedule) { item in
-            CommitmentSelectionSheet(task: item, focusViewModel: focusViewModel)
+            ScheduleSelectionSheet(task: item, focusViewModel: focusViewModel)
                 .drawerStyle()
         }
         // Project sheets
@@ -336,7 +336,7 @@ struct BacklogView: View {
                 .drawerStyle()
         }
         .sheet(item: $projectsVM.selectedTaskForSchedule) { task in
-            CommitmentSelectionSheet(task: task, focusViewModel: focusViewModel)
+            ScheduleSelectionSheet(task: task, focusViewModel: focusViewModel)
                 .drawerStyle()
         }
         // Batch operations
@@ -350,21 +350,21 @@ struct BacklogView: View {
             )
             .drawerStyle()
         }
-        .sheet(isPresented: $taskListVM.showBatchCommitSheet) {
-            BatchCommitSheet(
+        .sheet(isPresented: $taskListVM.showBatchScheduleSheet) {
+            BatchScheduleSheet(
                 viewModel: taskListVM,
                 onBatchSchedule: { tasks, timeframe, section, dates in
                     guard !dates.isEmpty else { return }
-                    let repo = CommitmentRepository()
+                    let repo = ScheduleRepository()
                     for task in tasks {
                         for date in dates {
-                            let c = Commitment(
+                            let c = Schedule(
                                 userId: task.userId, taskId: task.id,
                                 timeframe: timeframe, section: section,
-                                commitmentDate: Calendar.current.startOfDay(for: date),
+                                scheduleDate: Calendar.current.startOfDay(for: date),
                                 sortOrder: 0
                             )
-                            _Concurrency.Task { _ = try? await repo.createCommitment(c) }
+                            _Concurrency.Task { _ = try? await repo.createSchedule(c) }
                         }
                     }
                     _Concurrency.Task { @MainActor in await refreshAllData() }
@@ -383,7 +383,7 @@ struct BacklogView: View {
                 }
             }
         } message: {
-            Text("This will permanently delete the selected items and their commitments.")
+            Text("This will permanently delete the selected items and their schedules.")
         }
         .alert("Create Project", isPresented: $showCreateProjectAlert) {
             TextField("Project title", text: $newProjectTitle)
@@ -511,7 +511,7 @@ struct BacklogView: View {
             }
         }
         .task {
-            // No commitment filter — show ALL tasks
+            // No schedule filter — show ALL tasks
             isLoading = true
             await loadAllData()
             isLoading = false
@@ -529,7 +529,7 @@ struct BacklogView: View {
 
     private func loadAllData() async {
         async let cats: () = taskListVM.fetchCategories()
-        async let cids: () = taskListVM.fetchCommittedTaskIds()
+        async let cids: () = taskListVM.fetchScheduledTaskIds()
         _ = await (cats, cids)
 
         async let t: () = taskListVM.fetchTasks()
@@ -802,7 +802,7 @@ private extension BacklogView {
                 onAddNew: { addNewSubtask() }
             )
 
-            if addTaskCommitExpanded {
+            if addTaskScheduleExpanded {
                 Divider()
                     .padding(.horizontal, 14)
 
@@ -826,7 +826,7 @@ private extension BacklogView {
                     Button {
                         withAnimation(.easeInOut(duration: 0.2)) {
                             addTaskDates.removeAll()
-                            addTaskCommitExpanded = false
+                            addTaskScheduleExpanded = false
                         }
                     } label: {
                         Image(systemName: "xmark")
@@ -843,7 +843,7 @@ private extension BacklogView {
                     Button {
                         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                         withAnimation(.easeInOut(duration: 0.2)) {
-                            addTaskCommitExpanded = false
+                            addTaskScheduleExpanded = false
                         }
                     } label: {
                         Image(systemName: "checkmark")
@@ -861,7 +861,7 @@ private extension BacklogView {
                 .padding(.bottom, 4)
             }
 
-            if !addTaskCommitExpanded {
+            if !addTaskScheduleExpanded {
                 HStack(spacing: 8) {
                     Button {
                         addNewSubtask()
@@ -941,7 +941,7 @@ private extension BacklogView {
                 .padding(.bottom, 4)
             }
 
-            if addTaskOptionsExpanded && !addTaskCommitExpanded {
+            if addTaskOptionsExpanded && !addTaskScheduleExpanded {
                 HStack(spacing: 8) {
                     Menu {
                         Button {
@@ -978,11 +978,11 @@ private extension BacklogView {
                     }
 
                     Button {
-                        if !addTaskCommitExpanded {
+                        if !addTaskScheduleExpanded {
                             addTaskDatesSnapshot = addTaskDates
                         }
                         withAnimation(.easeInOut(duration: 0.2)) {
-                            addTaskCommitExpanded.toggle()
+                            addTaskScheduleExpanded.toggle()
                         }
                     } label: {
                         HStack(spacing: 4) {
@@ -1047,7 +1047,7 @@ private extension BacklogView {
             .filter { !$0.isEmpty }
         let categoryId = addTaskCategoryId
         let priority = addTaskPriority
-        let commitEnabled = !addTaskDates.isEmpty
+        let scheduleEnabled = !addTaskDates.isEmpty
         let timeframe = addTaskTimeframe
         let section = addTaskSection
         let dates = addTaskDates
@@ -1061,17 +1061,17 @@ private extension BacklogView {
         addTaskSubtasks = []
         addTaskDates = []
         addTaskOptionsExpanded = false
-        addTaskCommitExpanded = false
+        addTaskScheduleExpanded = false
         addTaskPriority = .low
         hasGeneratedBreakdown = false
 
         _Concurrency.Task { @MainActor in
-            await taskListVM.createTaskWithCommitments(
+            await taskListVM.createTaskWithSchedules(
                 title: title,
                 categoryId: categoryId,
                 priority: priority,
                 subtaskTitles: subtasksToCreate,
-                commitAfterCreate: commitEnabled,
+                scheduleAfterCreate: scheduleEnabled,
                 selectedTimeframe: timeframe,
                 selectedSection: section,
                 selectedDates: dates,
@@ -1079,8 +1079,8 @@ private extension BacklogView {
                 scheduledTime: nil
             )
 
-            if commitEnabled && !dates.isEmpty {
-                await focusViewModel.fetchCommitments()
+            if scheduleEnabled && !dates.isEmpty {
+                await focusViewModel.fetchSchedules()
             }
         }
     }
@@ -1119,7 +1119,7 @@ private extension BacklogView {
         addTaskCategoryId = nil
         addTaskPriority = .low
         addTaskOptionsExpanded = false
-        addTaskCommitExpanded = false
+        addTaskScheduleExpanded = false
         addTaskDates = []
         hasGeneratedBreakdown = false
         focusedSubtaskId = nil

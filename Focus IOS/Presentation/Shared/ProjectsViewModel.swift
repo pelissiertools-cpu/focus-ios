@@ -53,9 +53,9 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
     @Published var categories: [Category] = []
     @Published var selectedCategoryId: UUID? = nil
 
-    // Commitment filter
-    @Published var commitmentFilter: CommitmentFilter? = nil
-    @Published var committedTaskIds: Set<UUID> = []
+    // Schedule filter
+    @Published var scheduleFilter: ScheduleFilter? = nil
+    @Published var scheduledTaskIds: Set<UUID> = []
     @Published var taskDueDates: [UUID: Date] = [:]
 
     // Edit mode (project cards)
@@ -65,7 +65,7 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
     // Batch operation triggers (project cards)
     @Published var showBatchDeleteConfirmation: Bool = false
     @Published var showBatchMovePicker: Bool = false
-    @Published var showBatchCommitSheet: Bool = false
+    @Published var showBatchScheduleSheet: Bool = false
 
     // Content-level edit mode (tasks within a project)
     @Published var contentEditMode: Bool = false
@@ -86,17 +86,17 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
     @Published var isContentDoneCollapsed: Bool = true
 
     private let repository: TaskRepository
-    let commitmentRepository: CommitmentRepository
+    let scheduleRepository: ScheduleRepository
     private let categoryRepository: CategoryRepository
     let authService: AuthService
     private var cancellables = Set<AnyCancellable>()
 
     init(repository: TaskRepository = TaskRepository(),
-         commitmentRepository: CommitmentRepository = CommitmentRepository(),
+         scheduleRepository: ScheduleRepository = ScheduleRepository(),
          categoryRepository: CategoryRepository = CategoryRepository(),
          authService: AuthService) {
         self.repository = repository
-        self.commitmentRepository = commitmentRepository
+        self.scheduleRepository = scheduleRepository
         self.categoryRepository = categoryRepository
         self.authService = authService
         setupNotificationObserver()
@@ -193,12 +193,12 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
         if let categoryId = selectedCategoryId {
             filtered = filtered.filter { $0.categoryId == categoryId }
         }
-        if let commitmentFilter = commitmentFilter {
-            switch commitmentFilter {
-            case .committed:
-                filtered = filtered.filter { committedTaskIds.contains($0.id) }
-            case .uncommitted:
-                filtered = filtered.filter { !committedTaskIds.contains($0.id) }
+        if let scheduleFilter = scheduleFilter {
+            switch scheduleFilter {
+            case .scheduled:
+                filtered = filtered.filter { scheduledTaskIds.contains($0.id) }
+            case .unscheduled:
+                filtered = filtered.filter { !scheduledTaskIds.contains($0.id) }
             }
         }
         if !searchText.isEmpty {
@@ -337,7 +337,7 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
         do {
             self.projects = try await repository.fetchProjects(isCleared: false)
             self.categories = try await categoryRepository.fetchCategories()
-            await fetchCommittedTaskIds()
+            await fetchScheduledTaskIds()
 
             // Pre-fetch task counts for all projects
             for project in projects {
@@ -484,7 +484,7 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
     /// Delete project and all its tasks
     func deleteProject(_ project: FocusTask) async {
         do {
-            try await commitmentRepository.deleteCommitments(forTask: project.id)
+            try await scheduleRepository.deleteSchedules(forTask: project.id)
             try await repository.deleteTask(id: project.id)
             projects.removeAll { $0.id == project.id }
             projectTasksMap.removeValue(forKey: project.id)
@@ -498,7 +498,7 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
     func deleteProjectKeepTasks(_ project: FocusTask) async {
         do {
             try await repository.unlinkProjectTasks(projectId: project.id)
-            try await commitmentRepository.deleteCommitments(forTask: project.id)
+            try await scheduleRepository.deleteSchedules(forTask: project.id)
             try await repository.deleteTask(id: project.id)
             projects.removeAll { $0.id == project.id }
             projectTasksMap.removeValue(forKey: project.id)
@@ -877,9 +877,9 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
         let idsToDelete = selectedProjectIds
 
         do {
-            async let deleteCommitments: Void = commitmentRepository.deleteCommitments(forTasks: idsToDelete)
+            async let deleteSchedules: Void = scheduleRepository.deleteSchedules(forTasks: idsToDelete)
             async let deleteProjects: Void = repository.deleteTasks(ids: idsToDelete)
-            _ = try await (deleteCommitments, deleteProjects)
+            _ = try await (deleteSchedules, deleteProjects)
 
             projects.removeAll { idsToDelete.contains($0.id) }
             for projectId in idsToDelete {
@@ -900,10 +900,10 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
             for projectId in idsToDelete {
                 try await repository.unlinkProjectTasks(projectId: projectId)
             }
-            // Then delete commitments and projects concurrently
-            async let deleteCommitments: Void = commitmentRepository.deleteCommitments(forTasks: idsToDelete)
+            // Then delete schedules and projects concurrently
+            async let deleteSchedules: Void = scheduleRepository.deleteSchedules(forTasks: idsToDelete)
             async let deleteProjects: Void = repository.deleteTasks(ids: idsToDelete)
-            _ = try await (deleteCommitments, deleteProjects)
+            _ = try await (deleteSchedules, deleteProjects)
 
             projects.removeAll { idsToDelete.contains($0.id) }
             for projectId in idsToDelete {

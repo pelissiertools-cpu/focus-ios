@@ -16,12 +16,12 @@ struct ScheduledView: View {
     @State private var isLoading = false
     @State private var viewMode: ScheduleViewMode = .day
 
-    // Pending completions (committed to DB on disappear)
+    // Pending completions (scheduled to DB on disappear)
     @State private var pendingCompletions: Set<UUID> = []
     @State private var isCompletedSectionCollapsed = false
 
-    // Commitment entries: item UUID → list of (date, timeframe) pairs
-    @State private var itemCommitments: [UUID: [(date: Date, timeframe: Timeframe)]] = [:]
+    // Schedule entries: item UUID → list of (date, timeframe) pairs
+    @State private var itemSchedules: [UUID: [(date: Date, timeframe: Timeframe)]] = [:]
     @State private var itemTimeframes: [UUID: Set<Timeframe>] = [:]
 
     // Batch create alerts
@@ -43,7 +43,7 @@ struct ScheduledView: View {
     @State private var addTaskTitle = ""
     @State private var addTaskSubtasks: [DraftSubtaskEntry] = []
     @State private var addTaskCategoryId: UUID? = nil
-    @State private var addTaskCommitExpanded = false
+    @State private var addTaskScheduleExpanded = false
     @State private var addTaskTimeframe: Timeframe = .daily
     @State private var addTaskSection: Section = .todo
     @State private var addTaskDates: Set<Date> = []
@@ -70,23 +70,23 @@ struct ScheduledView: View {
         addTaskTitle.trimmingCharacters(in: .whitespaces).isEmpty
     }
 
-    // MARK: - Computed: All committed items (no type separation)
+    // MARK: - Computed: All scheduled items (no type separation)
 
-    private var allCommittedTasks: [FocusTask] {
+    private var allScheduledTasks: [FocusTask] {
         taskListVM.uncompletedTasks.filter { !pendingCompletions.contains($0.id) }
     }
 
-    private var allCommittedLists: [FocusTask] {
+    private var allScheduledLists: [FocusTask] {
         listsVM.lists
             .filter { !$0.isCompleted && !$0.isCleared }
-            .filter { taskListVM.committedTaskIds.contains($0.id) }
+            .filter { taskListVM.scheduledTaskIds.contains($0.id) }
             .filter { !pendingCompletions.contains($0.id) }
     }
 
-    private var allCommittedProjects: [FocusTask] {
+    private var allScheduledProjects: [FocusTask] {
         projectsVM.projects
             .filter { !$0.isCompleted && !$0.isCleared }
-            .filter { taskListVM.committedTaskIds.contains($0.id) }
+            .filter { taskListVM.scheduledTaskIds.contains($0.id) }
             .filter { !pendingCompletions.contains($0.id) }
     }
 
@@ -112,8 +112,8 @@ struct ScheduledView: View {
     }
 
     private var isEmpty: Bool {
-        allCommittedTasks.isEmpty && allCommittedLists.isEmpty
-        && allCommittedProjects.isEmpty && completedItems.isEmpty
+        allScheduledTasks.isEmpty && allScheduledLists.isEmpty
+        && allScheduledProjects.isEmpty && completedItems.isEmpty
     }
 
     private var isSearching: Bool {
@@ -300,16 +300,16 @@ struct ScheduledView: View {
         var result: [Date: [ScheduledItemEntry]] = [:]
 
         func addEntries(for item: FocusTask, as type: (FocusTask, Bool) -> ScheduledItemEntry) {
-            guard let commits = itemCommitments[item.id] else { return }
-            for commit in commits where allowed.contains(commit.timeframe) {
-                let isNative = showNative && commit.timeframe == nativeTimeframe
-                result[commit.date, default: []].append(type(item, isNative))
+            guard let itemEntries = itemSchedules[item.id] else { return }
+            for entry in itemEntries where allowed.contains(entry.timeframe) {
+                let isNative = showNative && entry.timeframe == nativeTimeframe
+                result[entry.date, default: []].append(type(item, isNative))
             }
         }
 
-        for task in allCommittedTasks { addEntries(for: task) { .task($0, isNative: $1) } }
-        for list in allCommittedLists { addEntries(for: list) { .list($0, isNative: $1) } }
-        for project in allCommittedProjects { addEntries(for: project) { .project($0, isNative: $1) } }
+        for task in allScheduledTasks { addEntries(for: task) { .task($0, isNative: $1) } }
+        for list in allScheduledLists { addEntries(for: list) { .list($0, isNative: $1) } }
+        for project in allScheduledProjects { addEntries(for: project) { .project($0, isNative: $1) } }
 
         // Deduplicate per date (same item, multiple timeframes) — prefer native
         for key in result.keys {
@@ -555,9 +555,9 @@ struct ScheduledView: View {
 
     private var searchSections: [ScheduledSection] {
         let query = searchText.lowercased()
-        let matchingTasks = allCommittedTasks.filter { $0.title.lowercased().contains(query) }
-        let matchingProjects = allCommittedProjects.filter { $0.title.lowercased().contains(query) }
-        let matchingLists = allCommittedLists.filter { $0.title.lowercased().contains(query) }
+        let matchingTasks = allScheduledTasks.filter { $0.title.lowercased().contains(query) }
+        let matchingProjects = allScheduledProjects.filter { $0.title.lowercased().contains(query) }
+        let matchingLists = allScheduledLists.filter { $0.title.lowercased().contains(query) }
 
         let timeframes: [(Timeframe, String)] = [
             (.daily, "Day"), (.weekly, "Week"), (.monthly, "Month"), (.yearly, "Year")
@@ -589,7 +589,7 @@ struct ScheduledView: View {
             mainContent
             overlayContent
         }
-        .onDisappear { commitPendingCompletions() }
+        .onDisappear { savePendingCompletions() }
         .onChange(of: showingAddBar) { _, isShowing in
             if isShowing {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
@@ -608,7 +608,7 @@ struct ScheduledView: View {
             }
         }
         .task {
-            taskListVM.commitmentFilter = .committed
+            taskListVM.scheduleFilter = .scheduled
             isLoading = true
             await loadAllData()
             isLoading = false
@@ -619,7 +619,7 @@ struct ScheduledView: View {
                 .drawerStyle()
         }
         .sheet(item: $taskListVM.selectedTaskForSchedule) { task in
-            CommitmentSelectionSheet(task: task, focusViewModel: focusViewModel)
+            ScheduleSelectionSheet(task: task, focusViewModel: focusViewModel)
                 .drawerStyle()
         }
         .sheet(item: $listsVM.selectedListForDetails) { list in
@@ -627,7 +627,7 @@ struct ScheduledView: View {
                 .drawerStyle()
         }
         .sheet(item: $listsVM.selectedItemForSchedule) { item in
-            CommitmentSelectionSheet(task: item, focusViewModel: focusViewModel)
+            ScheduleSelectionSheet(task: item, focusViewModel: focusViewModel)
                 .drawerStyle()
         }
         .sheet(isPresented: $taskListVM.showBatchMovePicker) {
@@ -640,21 +640,21 @@ struct ScheduledView: View {
             )
             .drawerStyle()
         }
-        .sheet(isPresented: $taskListVM.showBatchCommitSheet) {
-            BatchCommitSheet(
+        .sheet(isPresented: $taskListVM.showBatchScheduleSheet) {
+            BatchScheduleSheet(
                 viewModel: taskListVM,
                 onBatchSchedule: { tasks, timeframe, section, dates in
                     guard !dates.isEmpty else { return }
-                    let repo = CommitmentRepository()
+                    let repo = ScheduleRepository()
                     for task in tasks {
                         for date in dates {
-                            let c = Commitment(
+                            let c = Schedule(
                                 userId: task.userId, taskId: task.id,
                                 timeframe: timeframe, section: section,
-                                commitmentDate: Calendar.current.startOfDay(for: date),
+                                scheduleDate: Calendar.current.startOfDay(for: date),
                                 sortOrder: 0
                             )
-                            _Concurrency.Task { _ = try? await repo.createCommitment(c) }
+                            _Concurrency.Task { _ = try? await repo.createSchedule(c) }
                         }
                     }
                     _Concurrency.Task { @MainActor in await refreshAllData() }
@@ -673,7 +673,7 @@ struct ScheduledView: View {
                 }
             }
         } message: {
-            Text("This will permanently delete the selected items and their commitments.")
+            Text("This will permanently delete the selected items and their schedules.")
         }
         .alert("Create Project", isPresented: $showCreateProjectAlert) {
             TextField("Project title", text: $newProjectTitle)
@@ -709,7 +709,7 @@ struct ScheduledView: View {
                 .drawerStyle()
         }
         .sheet(item: $projectsVM.selectedTaskForSchedule) { task in
-            CommitmentSelectionSheet(task: task, focusViewModel: focusViewModel)
+            ScheduleSelectionSheet(task: task, focusViewModel: focusViewModel)
                 .drawerStyle()
         }
         // Navigation
@@ -1229,7 +1229,7 @@ struct ScheduledView: View {
     // MARK: - Data Loading
 
     private func loadAllData() async {
-        async let c: () = taskListVM.fetchCommittedTaskIds()
+        async let c: () = taskListVM.fetchScheduledTaskIds()
         async let cats: () = taskListVM.fetchCategories()
         _ = await (c, cats)
 
@@ -1242,17 +1242,17 @@ struct ScheduledView: View {
 
     private func fetchScheduledDates() async {
         do {
-            let repo = CommitmentRepository()
-            let summaries = try await repo.fetchCommitmentSummaries()
+            let repo = ScheduleRepository()
+            let summaries = try await repo.fetchScheduleSummaries()
             let calendar = Calendar.current
-            var commitsByTask: [UUID: [(date: Date, timeframe: Timeframe)]] = [:]
+            var schedulesByTask: [UUID: [(date: Date, timeframe: Timeframe)]] = [:]
             var timeframesByTask: [UUID: Set<Timeframe>] = [:]
             for s in summaries {
-                let date = calendar.startOfDay(for: s.commitmentDate)
-                commitsByTask[s.taskId, default: []].append((date: date, timeframe: s.timeframe))
+                let date = calendar.startOfDay(for: s.scheduleDate)
+                schedulesByTask[s.taskId, default: []].append((date: date, timeframe: s.timeframe))
                 timeframesByTask[s.taskId, default: []].insert(s.timeframe)
             }
-            itemCommitments = commitsByTask
+            itemSchedules = schedulesByTask
             itemTimeframes = timeframesByTask
         } catch { }
     }
@@ -1272,13 +1272,13 @@ struct ScheduledView: View {
         }
     }
 
-    private func commitPendingCompletions() {
-        let completionsToCommit = pendingCompletions
-        guard !completionsToCommit.isEmpty else { return }
+    private func savePendingCompletions() {
+        let completionsToSave = pendingCompletions
+        guard !completionsToSave.isEmpty else { return }
 
         _Concurrency.Task { @MainActor in
             let repository = TaskRepository()
-            for taskId in completionsToCommit {
+            for taskId in completionsToSave {
                 if let task = taskListVM.uncompletedTasks.first(where: { $0.id == taskId }) {
                     await taskListVM.toggleCompletion(task)
                     continue
@@ -1293,7 +1293,7 @@ struct ScheduledView: View {
                 }
             }
             pendingCompletions.removeAll()
-            await focusViewModel.fetchCommitments()
+            await focusViewModel.fetchSchedules()
         }
     }
 
@@ -1316,7 +1316,7 @@ struct ScheduledView: View {
             .filter { !$0.isEmpty }
         let categoryId = addTaskCategoryId
         let priority = addTaskPriority
-        let commitEnabled = !addTaskDates.isEmpty
+        let scheduleEnabled = !addTaskDates.isEmpty
         let timeframe = addTaskTimeframe
         let section = addTaskSection
         let dates = addTaskDates
@@ -1328,19 +1328,19 @@ struct ScheduledView: View {
         addTaskSubtasks = []
         addTaskDates = []
         addTaskOptionsExpanded = false
-        addTaskCommitExpanded = false
+        addTaskScheduleExpanded = false
         addTaskPriority = .low
         hasGeneratedBreakdown = false
 
         _Concurrency.Task { @MainActor in
-            await taskListVM.createTaskWithCommitments(
+            await taskListVM.createTaskWithSchedules(
                 title: title, categoryId: categoryId, priority: priority,
-                subtaskTitles: subtasksToCreate, commitAfterCreate: commitEnabled,
+                subtaskTitles: subtasksToCreate, scheduleAfterCreate: scheduleEnabled,
                 selectedTimeframe: timeframe, selectedSection: section,
                 selectedDates: dates, hasScheduledTime: false, scheduledTime: nil
             )
-            if commitEnabled && !dates.isEmpty {
-                await focusViewModel.fetchCommitments()
+            if scheduleEnabled && !dates.isEmpty {
+                await focusViewModel.fetchSchedules()
                 await refreshAllData()
             }
         }
@@ -1380,7 +1380,7 @@ struct ScheduledView: View {
         addTaskCategoryId = nil
         addTaskPriority = .low
         addTaskOptionsExpanded = false
-        addTaskCommitExpanded = false
+        addTaskScheduleExpanded = false
         addTaskDates = []
         hasGeneratedBreakdown = false
         focusedSubtaskId = nil
@@ -1400,13 +1400,13 @@ private extension ScheduledView {
                 focusedSubtaskId: $focusedSubtaskId,
                 onAddNew: { addNewSubtask() }
             )
-            if addTaskCommitExpanded {
-                addBarCommitSection
+            if addTaskScheduleExpanded {
+                addBarScheduleSection
             }
-            if !addTaskCommitExpanded {
+            if !addTaskScheduleExpanded {
                 addBarButtonRow
             }
-            if addTaskOptionsExpanded && !addTaskCommitExpanded {
+            if addTaskOptionsExpanded && !addTaskScheduleExpanded {
                 addBarOptionsRow
             }
             Spacer().frame(height: 20)
@@ -1427,7 +1427,7 @@ private extension ScheduledView {
             .padding(.bottom, 10)
     }
 
-    var addBarCommitSection: some View {
+    var addBarScheduleSection: some View {
         VStack(spacing: 0) {
             Divider().padding(.horizontal, 14)
 
@@ -1447,16 +1447,16 @@ private extension ScheduledView {
             .padding(.top, 6)
             .padding(.bottom, 14)
 
-            addBarCommitButtons
+            addBarScheduleButtons
         }
     }
 
-    var addBarCommitButtons: some View {
+    var addBarScheduleButtons: some View {
         HStack {
             Button {
                 withAnimation(.easeInOut(duration: 0.2)) {
                     addTaskDates.removeAll()
-                    addTaskCommitExpanded = false
+                    addTaskScheduleExpanded = false
                 }
             } label: {
                 Image(systemName: "xmark")
@@ -1472,7 +1472,7 @@ private extension ScheduledView {
             Button {
                 UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                 withAnimation(.easeInOut(duration: 0.2)) {
-                    addTaskCommitExpanded = false
+                    addTaskScheduleExpanded = false
                 }
             } label: {
                 let hasDateChanges = addTaskDates != addTaskDatesSnapshot
@@ -1578,8 +1578,8 @@ private extension ScheduledView {
             }
 
             Button {
-                if !addTaskCommitExpanded { addTaskDatesSnapshot = addTaskDates }
-                withAnimation(.easeInOut(duration: 0.2)) { addTaskCommitExpanded.toggle() }
+                if !addTaskScheduleExpanded { addTaskDatesSnapshot = addTaskDates }
+                withAnimation(.easeInOut(duration: 0.2)) { addTaskScheduleExpanded.toggle() }
             } label: {
                 HStack(spacing: 4) {
                     Image(systemName: "arrow.right.circle").font(.inter(.caption))

@@ -14,14 +14,14 @@ struct TodayView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var isInlineAddFocused = false
     @State private var isLoading = false
-    @State private var todayCommittedIds: Set<UUID> = []
+    @State private var todayScheduledIds: Set<UUID> = []
 
     // Navigation
     @State private var selectedListForNavigation: FocusTask?
     @State private var selectedProjectForNavigation: FocusTask?
 
     private let authService: AuthService
-    private let commitmentRepository = CommitmentRepository()
+    private let scheduleRepository = ScheduleRepository()
 
     init(authService: AuthService) {
         self.authService = authService
@@ -42,22 +42,22 @@ struct TodayView: View {
         }
     }
 
-    private var committedLists: [FocusTask] {
+    private var scheduledLists: [FocusTask] {
         listsVM.lists
             .filter { !$0.isCompleted && !$0.isCleared }
-            .filter { todayCommittedIds.contains($0.id) }
+            .filter { todayScheduledIds.contains($0.id) }
     }
 
-    private var committedProjects: [FocusTask] {
+    private var scheduledProjects: [FocusTask] {
         projectsVM.projects
             .filter { !$0.isCompleted && !$0.isCleared }
-            .filter { todayCommittedIds.contains($0.id) }
+            .filter { todayScheduledIds.contains($0.id) }
     }
 
     private var isEmpty: Bool {
         taskListVM.uncompletedTasks.filter { $0.projectId == nil }.isEmpty
-            && committedLists.isEmpty
-            && committedProjects.isEmpty
+            && scheduledLists.isEmpty
+            && scheduledProjects.isEmpty
     }
 
     var body: some View {
@@ -86,7 +86,7 @@ struct TodayView: View {
                     Text("No tasks scheduled")
                         .font(.inter(.headline))
                         .bold()
-                    Text("Tasks committed to today will appear here")
+                    Text("Tasks scheduled for today will appear here")
                         .font(.inter(.subheadline))
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
@@ -110,7 +110,7 @@ struct TodayView: View {
                 .drawerStyle()
         }
         .sheet(item: $listsVM.selectedItemForSchedule) { item in
-            CommitmentSelectionSheet(task: item, focusViewModel: focusViewModel)
+            ScheduleSelectionSheet(task: item, focusViewModel: focusViewModel)
                 .drawerStyle()
         }
         .sheet(item: $projectsVM.selectedProjectForDetails) { project in
@@ -118,7 +118,7 @@ struct TodayView: View {
                 .drawerStyle()
         }
         .sheet(item: $projectsVM.selectedTaskForSchedule) { task in
-            CommitmentSelectionSheet(task: task, focusViewModel: focusViewModel)
+            ScheduleSelectionSheet(task: task, focusViewModel: focusViewModel)
                 .drawerStyle()
         }
         .navigationDestination(item: $selectedListForNavigation) { list in
@@ -153,28 +153,28 @@ struct TodayView: View {
 
     private func fetchTodayData() async {
         do {
-            // Fetch daily commitments for today (both focus and todo sections)
-            let focusCommitments = try await commitmentRepository.fetchCommitments(
+            // Fetch daily schedules for today (both focus and todo sections)
+            let focusSchedules = try await scheduleRepository.fetchSchedules(
                 timeframe: .daily,
                 date: Date(),
                 section: .focus
             )
-            let todoCommitments = try await commitmentRepository.fetchCommitments(
+            let todoSchedules = try await scheduleRepository.fetchSchedules(
                 timeframe: .daily,
                 date: Date(),
                 section: .todo
             )
 
-            let allCommitments = focusCommitments + todoCommitments
-            todayCommittedIds = Set(allCommitments.map { $0.taskId })
+            let allSchedules = focusSchedules + todoSchedules
+            todayScheduledIds = Set(allSchedules.map { $0.taskId })
 
-            // Set only today's task IDs as the committed filter
-            taskListVM.committedTaskIds = todayCommittedIds
-            taskListVM.commitmentFilter = .committed
+            // Set only today's task IDs as the scheduled filter
+            taskListVM.scheduledTaskIds = todayScheduledIds
+            taskListVM.scheduleFilter = .scheduled
         } catch {
-            todayCommittedIds = []
-            taskListVM.committedTaskIds = []
-            taskListVM.commitmentFilter = .committed
+            todayScheduledIds = []
+            taskListVM.scheduledTaskIds = []
+            taskListVM.scheduleFilter = .scheduled
         }
 
         await taskListVM.fetchCategories()
@@ -244,8 +244,8 @@ struct TodayView: View {
                 }
             }
 
-            // Lists committed to today
-            ForEach(committedLists) { list in
+            // Lists scheduled to today
+            ForEach(scheduledLists) { list in
                 TodayListRow(
                     list: list,
                     onTap: { selectedListForNavigation = list },
@@ -257,8 +257,8 @@ struct TodayView: View {
                 .listRowSeparator(.hidden)
             }
 
-            // Projects committed to today
-            ForEach(committedProjects) { project in
+            // Projects scheduled to today
+            ForEach(scheduledProjects) { project in
                 TodayProjectRow(
                     project: project,
                     onTap: { selectedProjectForNavigation = project },

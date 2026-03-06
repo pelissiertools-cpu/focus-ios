@@ -7,7 +7,7 @@
 
 import Foundation
 
-/// Represents the section where a task is committed (Focus or To-Do)
+/// Represents the section where a task is scheduled (Focus or To-Do)
 enum Section: String, Codable, CaseIterable {
     case focus = "target"
     case todo = "todo"

@@ -32,7 +32,7 @@ struct EditModeActionBar<VM: LogFilterable>: View {
                 viewModel.showBatchMovePicker = true
             },
             ActionItem(icon: "calendar", label: "Schedule", isDestructive: false) {
-                viewModel.showBatchCommitSheet = true
+                viewModel.showBatchScheduleSheet = true
             },
         ]
 

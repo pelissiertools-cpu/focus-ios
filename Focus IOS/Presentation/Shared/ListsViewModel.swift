@@ -53,9 +53,9 @@ class ListsViewModel: ObservableObject, LogFilterable, TaskEditingViewModel {
     @Published var categories: [Category] = []
     @Published var selectedCategoryId: UUID? = nil
 
-    // Commitment filter & due dates
-    @Published var commitmentFilter: CommitmentFilter? = nil
-    @Published var committedTaskIds: Set<UUID> = []
+    // Schedule filter & due dates
+    @Published var scheduleFilter: ScheduleFilter? = nil
+    @Published var scheduledTaskIds: Set<UUID> = []
     @Published var taskDueDates: [UUID: Date] = [:]
 
     // Edit mode
@@ -65,7 +65,7 @@ class ListsViewModel: ObservableObject, LogFilterable, TaskEditingViewModel {
     // Batch operation triggers
     @Published var showBatchDeleteConfirmation: Bool = false
     @Published var showBatchMovePicker: Bool = false
-    @Published var showBatchCommitSheet: Bool = false
+    @Published var showBatchScheduleSheet: Bool = false
 
     // Add list
     @Published var showingAddList: Bool = false
@@ -79,17 +79,17 @@ class ListsViewModel: ObservableObject, LogFilterable, TaskEditingViewModel {
 
     private let repository: TaskRepository
     private let categoryRepository: CategoryRepository
-    let commitmentRepository: CommitmentRepository
+    let scheduleRepository: ScheduleRepository
     private let authService: AuthService
     private var cancellables = Set<AnyCancellable>()
 
     init(repository: TaskRepository = TaskRepository(),
          categoryRepository: CategoryRepository = CategoryRepository(),
-         commitmentRepository: CommitmentRepository = CommitmentRepository(),
+         scheduleRepository: ScheduleRepository = ScheduleRepository(),
          authService: AuthService) {
         self.repository = repository
         self.categoryRepository = categoryRepository
-        self.commitmentRepository = commitmentRepository
+        self.scheduleRepository = scheduleRepository
         self.authService = authService
         setupNotificationObserver()
     }
@@ -265,12 +265,12 @@ class ListsViewModel: ObservableObject, LogFilterable, TaskEditingViewModel {
         if let categoryId = selectedCategoryId {
             filtered = filtered.filter { $0.categoryId == categoryId }
         }
-        if let commitmentFilter = commitmentFilter {
-            switch commitmentFilter {
-            case .committed:
-                filtered = filtered.filter { committedTaskIds.contains($0.id) }
-            case .uncommitted:
-                filtered = filtered.filter { !committedTaskIds.contains($0.id) }
+        if let scheduleFilter = scheduleFilter {
+            switch scheduleFilter {
+            case .scheduled:
+                filtered = filtered.filter { scheduledTaskIds.contains($0.id) }
+            case .unscheduled:
+                filtered = filtered.filter { !scheduledTaskIds.contains($0.id) }
             }
         }
         if !searchText.isEmpty {
@@ -340,7 +340,7 @@ class ListsViewModel: ObservableObject, LogFilterable, TaskEditingViewModel {
         do {
             self.lists = try await repository.fetchTasks(ofType: .list, isCleared: false)
             self.categories = try await categoryRepository.fetchCategories()
-            await fetchCommittedTaskIds()
+            await fetchScheduledTaskIds()
 
             // Pre-fetch items for all lists
             for list in lists {
@@ -498,11 +498,11 @@ class ListsViewModel: ObservableObject, LogFilterable, TaskEditingViewModel {
             // Delete all items under this list first
             let items = itemsMap[list.id] ?? []
             for item in items {
-                try await commitmentRepository.deleteCommitments(forTask: item.id)
+                try await scheduleRepository.deleteSchedules(forTask: item.id)
                 try await repository.deleteTask(id: item.id)
             }
-            // Delete commitments and the list itself
-            try await commitmentRepository.deleteCommitments(forTask: list.id)
+            // Delete schedules and the list itself
+            try await scheduleRepository.deleteSchedules(forTask: list.id)
             try await repository.deleteTask(id: list.id)
 
             lists.removeAll { $0.id == list.id }
@@ -543,7 +543,7 @@ class ListsViewModel: ObservableObject, LogFilterable, TaskEditingViewModel {
 
     func deleteItem(_ item: FocusTask, listId: UUID) async {
         do {
-            try await commitmentRepository.deleteCommitments(forTask: item.id)
+            try await scheduleRepository.deleteSchedules(forTask: item.id)
             try await repository.deleteTask(id: item.id)
 
             if var items = itemsMap[listId] {
@@ -754,10 +754,10 @@ class ListsViewModel: ObservableObject, LogFilterable, TaskEditingViewModel {
             // All task IDs to delete (items + lists themselves)
             let allTaskIds = allItemIds.union(idsToDelete)
 
-            // Delete all commitments and tasks concurrently
-            async let deleteCommitments: Void = commitmentRepository.deleteCommitments(forTasks: allTaskIds)
+            // Delete all schedules and tasks concurrently
+            async let deleteSchedules: Void = scheduleRepository.deleteSchedules(forTasks: allTaskIds)
             async let deleteTasks: Void = repository.deleteTasks(ids: allTaskIds)
-            _ = try await (deleteCommitments, deleteTasks)
+            _ = try await (deleteSchedules, deleteTasks)
 
             lists.removeAll { idsToDelete.contains($0.id) }
             for listId in idsToDelete {

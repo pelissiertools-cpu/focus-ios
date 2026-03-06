@@ -14,7 +14,7 @@ struct ListDetailsDrawer: View {
     @State private var showingNewCategoryAlert = false
     @State private var newCategoryName = ""
     @State private var noteText: String
-    @State private var showingCommitmentSheet = false
+    @State private var showingScheduleSheet = false
     @State private var showingDeleteConfirmation = false
     @EnvironmentObject var focusViewModel: FocusTabViewModel
     @FocusState private var isTitleFocused: Bool
@@ -78,10 +78,10 @@ struct ListDetailsDrawer: View {
             } message: {
                 Text("Enter a name for the new category.")
             }
-            .sheet(isPresented: $showingCommitmentSheet, onDismiss: {
-                _Concurrency.Task { await viewModel.fetchCommittedTaskIds() }
+            .sheet(isPresented: $showingScheduleSheet, onDismiss: {
+                _Concurrency.Task { await viewModel.fetchScheduledTaskIds() }
             }) {
-                CommitmentSelectionSheet(task: list, focusViewModel: focusViewModel)
+                ScheduleSelectionSheet(task: list, focusViewModel: focusViewModel)
             }
             .alert("Delete list?", isPresented: $showingDeleteConfirmation) {
                 Button("Cancel", role: .cancel) { }
@@ -196,9 +196,9 @@ struct ListDetailsDrawer: View {
                 .glassEffect(.regular.interactive(), in: .capsule)
             }
 
-            // Commit pill
+            // Schedule pill
             Button {
-                showingCommitmentSheet = true
+                showingScheduleSheet = true
             } label: {
                 HStack(spacing: 6) {
                     Image(systemName: "arrow.right.circle")

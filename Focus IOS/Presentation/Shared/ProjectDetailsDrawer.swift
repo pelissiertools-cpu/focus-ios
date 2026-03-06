@@ -66,8 +66,8 @@ struct ProjectDetailsDrawer: View {
                 saveCategory()
                 savePriority()
                 addTask()
-                commitDraftSuggestions()
-                commitPendingDeletions()
+                saveDraftSuggestions()
+                savePendingDeletions()
                 dismiss()
             }, highlighted: hasChanges)
         ) {
@@ -486,7 +486,7 @@ struct ProjectDetailsDrawer: View {
         }
     }
 
-    private func commitDraftSuggestions() {
+    private func saveDraftSuggestions() {
         for draft in draftSuggestions {
             let title = draft.title.trimmingCharacters(in: .whitespaces)
             guard !title.isEmpty else { continue }
@@ -496,7 +496,7 @@ struct ProjectDetailsDrawer: View {
         }
     }
 
-    private func commitPendingDeletions() {
+    private func savePendingDeletions() {
         let allTasks = viewModel.projectTasksMap[project.id] ?? []
         for taskId in pendingDeletions {
             if let task = allTasks.first(where: { $0.id == taskId }) {

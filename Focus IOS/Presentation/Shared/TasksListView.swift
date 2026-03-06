@@ -117,7 +117,7 @@ struct TasksListView: View {
                                 _Concurrency.Task { @MainActor in
                                     await viewModel.fetchTasks()
                                     await viewModel.fetchCategories()
-                                    await viewModel.fetchCommittedTaskIds()
+                                    await viewModel.fetchScheduledTaskIds()
                                     continuation.resume()
                                 }
                             }
@@ -135,7 +135,7 @@ struct TasksListView: View {
                 .drawerStyle()
         }
         .sheet(item: $viewModel.selectedTaskForSchedule) { task in
-            CommitmentSelectionSheet(task: task, focusViewModel: focusViewModel)
+            ScheduleSelectionSheet(task: task, focusViewModel: focusViewModel)
                 .drawerStyle()
         }
         .sheet(isPresented: $showCategoryEditDrawer) {
@@ -158,7 +158,7 @@ struct TasksListView: View {
                 _Concurrency.Task { await viewModel.batchDeleteTasks() }
             }
         } message: {
-            Text("This will permanently delete the selected tasks and their commitments.")
+            Text("This will permanently delete the selected tasks and their schedules.")
         }
         // Batch move category sheet
         .sheet(isPresented: $viewModel.showBatchMovePicker) {
@@ -170,9 +170,9 @@ struct TasksListView: View {
             )
             .drawerStyle()
         }
-        // Batch commit sheet
-        .sheet(isPresented: $viewModel.showBatchCommitSheet) {
-            BatchCommitSheet(viewModel: viewModel)
+        // Batch schedule sheet
+        .sheet(isPresented: $viewModel.showBatchScheduleSheet) {
+            BatchScheduleSheet(viewModel: viewModel)
                 .drawerStyle()
         }
         .task {
@@ -180,15 +180,15 @@ struct TasksListView: View {
             if viewModel.tasks.isEmpty && !viewModel.isLoading {
                 await viewModel.fetchTasks()
                 await viewModel.fetchCategories()
-                await viewModel.fetchCommittedTaskIds()
+                await viewModel.fetchScheduledTaskIds()
             }
             initialLoadComplete = true
         }
         .onAppear {
             viewModel.searchText = searchText
-            // Refresh committed task IDs (lightweight, handles changes from Focus tab)
+            // Refresh scheduled task IDs (lightweight, handles changes from Focus tab)
             Task {
-                await viewModel.fetchCommittedTaskIds()
+                await viewModel.fetchScheduledTaskIds()
             }
         }
         .onChange(of: searchText) { _, newValue in
@@ -298,7 +298,7 @@ struct TasksListView: View {
                 _Concurrency.Task { @MainActor in
                     await viewModel.fetchTasks()
                     await viewModel.fetchCategories()
-                    await viewModel.fetchCommittedTaskIds()
+                    await viewModel.fetchScheduledTaskIds()
                     continuation.resume()
                 }
             }
@@ -860,21 +860,21 @@ struct SortMenuButton<VM: LogFilterable>: View {
                     }
                 }
 
-                // Commitment filter
+                // Schedule filter
                 Toggle("Scheduled", isOn: Binding(
-                    get: { viewModel.commitmentFilter == .committed },
+                    get: { viewModel.scheduleFilter == .scheduled },
                     set: { newValue in
                         withAnimation(.easeInOut(duration: 0.2)) {
-                            viewModel.commitmentFilter = newValue ? .committed : nil
+                            viewModel.scheduleFilter = newValue ? .scheduled : nil
                         }
                     }
                 ))
 
                 Toggle("Unscheduled", isOn: Binding(
-                    get: { viewModel.commitmentFilter == .uncommitted },
+                    get: { viewModel.scheduleFilter == .unscheduled },
                     set: { newValue in
                         withAnimation(.easeInOut(duration: 0.2)) {
-                            viewModel.commitmentFilter = newValue ? .uncommitted : nil
+                            viewModel.scheduleFilter = newValue ? .unscheduled : nil
                         }
                     }
                 ))

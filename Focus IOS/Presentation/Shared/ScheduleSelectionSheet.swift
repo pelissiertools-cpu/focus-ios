@@ -1,5 +1,5 @@
 //
-//  CommitmentSelectionSheet.swift
+//  ScheduleSelectionSheet.swift
 //  Focus IOS
 //
 //  Created by Claude Code on 2026-02-06.
@@ -7,7 +7,7 @@
 
 import SwiftUI
 
-struct CommitmentSelectionSheet: View {
+struct ScheduleSelectionSheet: View {
     let task: FocusTask
     @ObservedObject var focusViewModel: FocusTabViewModel
     var onSchedule: ((Timeframe, Section, Set<Date>) -> Void)? = nil
@@ -24,8 +24,8 @@ struct CommitmentSelectionSheet: View {
 
     // Track selected dates (toggled by tapping)
     @State private var selectedDates: Set<Date> = []
-    // Track original commitments to know what to add/remove
-    @State private var originalCommitments: [Commitment] = []
+    // Track original schedules to know what to add/remove
+    @State private var originalSchedules: [Schedule] = []
     // Track original pending dates to detect changes
     @State private var originalPendingDates: Set<Date> = []
 
@@ -42,7 +42,7 @@ struct CommitmentSelectionSheet: View {
             let currentDates = Set(selectedDates.map { normalizeDate($0) })
             return originalPendingDates != currentDates
         }
-        let originalDates = Set(originalCommitments.map { normalizeDate($0.commitmentDate) })
+        let originalDates = Set(originalSchedules.map { normalizeDate($0.scheduleDate) })
         let currentDates = Set(selectedDates.map { normalizeDate($0) })
         return originalDates != currentDates
     }
@@ -137,14 +137,14 @@ struct CommitmentSelectionSheet: View {
                     selectedDates = pending.dates
                     originalPendingDates = Set(pending.dates.map { normalizeDate($0) })
                 } else {
-                    fetchTaskCommitments()
+                    fetchTaskSchedules()
                 }
             }
             .onChange(of: selectedTimeframe) {
-                if !isPendingMode { fetchTaskCommitments() }
+                if !isPendingMode { fetchTaskSchedules() }
             }
             .onChange(of: selectedSection) {
-                if !isPendingMode { fetchTaskCommitments() }
+                if !isPendingMode { fetchTaskSchedules() }
             }
         }
     }
@@ -169,13 +169,13 @@ struct CommitmentSelectionSheet: View {
         }
 
         do {
-            let commitmentRepository = CommitmentRepository()
+            let scheduleRepository = ScheduleRepository()
 
-            // Fetch ALL commitments for this task (both sections) to check for conflicts
-            let allCommitments = try await commitmentRepository.fetchCommitments(forTask: task.id)
+            // Fetch ALL schedules for this task (both sections) to check for conflicts
+            let allSchedules = try await scheduleRepository.fetchSchedules(forTask: task.id)
             let otherSection: Section = selectedSection == .focus ? .todo : .focus
 
-            let originalDates = Set(originalCommitments.map { normalizeDate($0.commitmentDate) })
+            let originalDates = Set(originalSchedules.map { normalizeDate($0.scheduleDate) })
             let currentDates = Set(selectedDates.map { normalizeDate($0) })
 
             // Find dates to add (in current but not in original)
@@ -184,38 +184,38 @@ struct CommitmentSelectionSheet: View {
             // Find dates to remove (in original but not in current)
             let datesToRemove = originalDates.subtracting(currentDates)
 
-            // Delete removed commitments from current section
+            // Delete removed schedules from current section
             for date in datesToRemove {
-                if let commitment = originalCommitments.first(where: { normalizeDate($0.commitmentDate) == date }) {
-                    try await commitmentRepository.deleteCommitment(id: commitment.id)
+                if let schedule = originalSchedules.first(where: { normalizeDate($0.scheduleDate) == date }) {
+                    try await scheduleRepository.deleteSchedule(id: schedule.id)
                 }
             }
 
             // For new dates, check if there's a conflict in the other section and remove it
             for date in datesToAdd {
-                // Find and delete any conflicting commitment in the other section
-                if let conflicting = allCommitments.first(where: {
+                // Find and delete any conflicting schedule in the other section
+                if let conflicting = allSchedules.first(where: {
                     $0.section == otherSection &&
                     $0.timeframe == selectedTimeframe &&
-                    normalizeDate($0.commitmentDate) == normalizeDate(date)
+                    normalizeDate($0.scheduleDate) == normalizeDate(date)
                 }) {
-                    try await commitmentRepository.deleteCommitment(id: conflicting.id)
+                    try await scheduleRepository.deleteSchedule(id: conflicting.id)
                 }
 
-                // Create the new commitment in selected section
-                let commitment = Commitment(
+                // Create the new schedule in selected section
+                let schedule = Schedule(
                     userId: task.userId,
                     taskId: task.id,
                     timeframe: selectedTimeframe,
                     section: selectedSection,
-                    commitmentDate: date,
+                    scheduleDate: date,
                     sortOrder: 0
                 )
-                _ = try await commitmentRepository.createCommitment(commitment)
+                _ = try await scheduleRepository.createSchedule(schedule)
             }
 
             // Refresh focus view
-            await focusViewModel.fetchCommitments()
+            await focusViewModel.fetchSchedules()
 
             dismiss()
         } catch {
@@ -239,20 +239,20 @@ struct CommitmentSelectionSheet: View {
         }
     }
 
-    private func fetchTaskCommitments() {
+    private func fetchTaskSchedules() {
         Task {
             do {
-                let commitmentRepository = CommitmentRepository()
-                let commitments = try await commitmentRepository.fetchCommitments(forTask: task.id)
+                let scheduleRepository = ScheduleRepository()
+                let schedules = try await scheduleRepository.fetchSchedules(forTask: task.id)
 
                 // Filter by current timeframe AND section
-                let filtered = commitments.filter {
+                let filtered = schedules.filter {
                     $0.timeframe == selectedTimeframe && $0.section == selectedSection
                 }
 
                 await MainActor.run {
-                    originalCommitments = filtered
-                    selectedDates = Set(filtered.map { $0.commitmentDate })
+                    originalSchedules = filtered
+                    selectedDates = Set(filtered.map { $0.scheduleDate })
                 }
             } catch {
                 // Silently fail

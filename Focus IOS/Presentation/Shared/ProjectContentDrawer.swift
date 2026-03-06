@@ -191,7 +191,7 @@ struct ProjectContentView: View {
             }
         }
         .sheet(isPresented: $viewModel.showContentBatchScheduleSheet) {
-            BatchCommitSheet(
+            BatchScheduleSheet(
                 viewModel: viewModel,
                 tasks: viewModel.selectedContentTasks,
                 onComplete: { viewModel.exitContentEditMode() }
@@ -210,7 +210,7 @@ struct ProjectContentView: View {
         }
         // Task schedule sheet
         .sheet(item: $viewModel.selectedTaskForSchedule) { task in
-            CommitmentSelectionSheet(task: task, focusViewModel: focusViewModel)
+            ScheduleSelectionSheet(task: task, focusViewModel: focusViewModel)
                 .drawerStyle()
         }
     }

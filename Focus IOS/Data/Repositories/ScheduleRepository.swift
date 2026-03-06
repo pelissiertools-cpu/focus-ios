@@ -1,5 +1,5 @@
 //
-//  CommitmentRepository.swift
+//  ScheduleRepository.swift
 //  Focus IOS
 //
 //  Created by Claude Code on 2026-02-05.
@@ -8,11 +8,11 @@
 import Foundation
 import Supabase
 
-/// Repository for managing task commitments in Supabase
-class CommitmentRepository {
+/// Repository for managing task schedules in Supabase
+class ScheduleRepository {
     private let supabase: SupabaseClient
 
-    private struct CommitmentSortOrderUpdate: Encodable {
+    private struct ScheduleSortOrderUpdate: Encodable {
         let sortOrder: Int
 
         enum CodingKeys: String, CodingKey {
@@ -20,7 +20,7 @@ class CommitmentRepository {
         }
     }
 
-    private struct CommitmentSectionSortUpdate: Encodable {
+    private struct ScheduleSectionSortUpdate: Encodable {
         let section: String
         let sortOrder: Int
 
@@ -30,7 +30,7 @@ class CommitmentRepository {
         }
     }
 
-    private struct CommitmentTimeUpdate: Encodable {
+    private struct ScheduleTimeUpdate: Encodable {
         let scheduledTime: Date?
         let durationMinutes: Int?
 
@@ -51,12 +51,12 @@ class CommitmentRepository {
         self.supabase = supabase
     }
 
-    /// Fetch commitments for a specific timeframe, date, and section
-    func fetchCommitments(
+    /// Fetch schedules for a specific timeframe, date, and section
+    func fetchSchedules(
         timeframe: Timeframe,
         date: Date,
         section: Section
-    ) async throws -> [Commitment] {
+    ) async throws -> [Schedule] {
         let (startDate, endDate) = Self.dateRange(for: timeframe, date: date)
 
         let formatter = ISO8601DateFormatter()
@@ -64,18 +64,18 @@ class CommitmentRepository {
         let startStr = formatter.string(from: startDate)
         let endStr = formatter.string(from: endDate)
 
-        let commitments: [Commitment] = try await supabase
-            .from("commitments")
+        let schedules: [Schedule] = try await supabase
+            .from("schedules")
             .select()
             .eq("timeframe", value: timeframe.rawValue)
             .eq("section", value: section.rawValue)
-            .gte("commitment_date", value: startStr)
-            .lt("commitment_date", value: endStr)
+            .gte("schedule_date", value: startStr)
+            .lt("schedule_date", value: endStr)
             .order("sort_order", ascending: true)
             .execute()
             .value
 
-        return commitments
+        return schedules
     }
 
     /// Compute the start (inclusive) and end (exclusive) dates for a timeframe period
@@ -106,11 +106,11 @@ class CommitmentRepository {
         }
     }
 
-    /// Fetch all descendant-timeframe commitments within a parent timeframe's date range (rollup view).
+    /// Fetch all descendant-timeframe schedules within a parent timeframe's date range (rollup view).
     /// e.g. weekly parent → daily items for that week
     ///      monthly parent → weekly + daily items for that month (grouped by week in the ViewModel)
     ///      yearly parent  → monthly + weekly + daily items for that year
-    func fetchRollupCommitments(parentTimeframe: Timeframe, date: Date) async throws -> [Commitment] {
+    func fetchRollupSchedules(parentTimeframe: Timeframe, date: Date) async throws -> [Schedule] {
         let descendantTimeframes = parentTimeframe.availableBreakdownTimeframes
         guard !descendantTimeframes.isEmpty else { return [] }
 
@@ -121,145 +121,145 @@ class CommitmentRepository {
         let startStr = formatter.string(from: startDate)
         let endStr = formatter.string(from: endDate)
 
-        let commitments: [Commitment] = try await supabase
-            .from("commitments")
+        let schedules: [Schedule] = try await supabase
+            .from("schedules")
             .select()
             .in("timeframe", values: descendantTimeframes.map { $0.rawValue })
-            .gte("commitment_date", value: startStr)
-            .lt("commitment_date", value: endStr)
-            .order("commitment_date", ascending: true)
+            .gte("schedule_date", value: startStr)
+            .lt("schedule_date", value: endStr)
+            .order("schedule_date", ascending: true)
             .order("sort_order", ascending: true)
             .execute()
             .value
 
-        return commitments
+        return schedules
     }
 
-    /// Fetch all commitments for a specific task
-    func fetchCommitments(forTask taskId: UUID) async throws -> [Commitment] {
-        let commitments: [Commitment] = try await supabase
-            .from("commitments")
+    /// Fetch all schedules for a specific task
+    func fetchSchedules(forTask taskId: UUID) async throws -> [Schedule] {
+        let schedules: [Schedule] = try await supabase
+            .from("schedules")
             .select()
             .eq("task_id", value: taskId.uuidString)
             .execute()
             .value
 
-        return commitments
+        return schedules
     }
 
-    /// Create a new commitment
-    func createCommitment(_ commitment: Commitment) async throws -> Commitment {
-        let createdCommitment: Commitment = try await supabase
-            .from("commitments")
-            .insert(commitment)
+    /// Create a new schedule
+    func createSchedule(_ schedule: Schedule) async throws -> Schedule {
+        let createdSchedule: Schedule = try await supabase
+            .from("schedules")
+            .insert(schedule)
             .select()
             .single()
             .execute()
             .value
 
-        return createdCommitment
+        return createdSchedule
     }
 
-    /// Update an existing commitment
-    func updateCommitment(_ commitment: Commitment) async throws {
+    /// Update an existing schedule
+    func updateSchedule(_ schedule: Schedule) async throws {
         try await supabase
-            .from("commitments")
-            .update(commitment)
-            .eq("id", value: commitment.id.uuidString)
+            .from("schedules")
+            .update(schedule)
+            .eq("id", value: schedule.id.uuidString)
             .execute()
     }
 
-    /// Delete a commitment
-    func deleteCommitment(id: UUID) async throws {
+    /// Delete a schedule
+    func deleteSchedule(id: UUID) async throws {
         try await supabase
-            .from("commitments")
+            .from("schedules")
             .delete()
             .eq("id", value: id.uuidString)
             .execute()
     }
 
-    /// Delete all commitments for a specific task
-    func deleteCommitments(forTask taskId: UUID) async throws {
+    /// Delete all schedules for a specific task
+    func deleteSchedules(forTask taskId: UUID) async throws {
         try await supabase
-            .from("commitments")
+            .from("schedules")
             .delete()
             .eq("task_id", value: taskId.uuidString)
             .execute()
     }
 
-    /// Delete all commitments for multiple tasks in a single query
-    func deleteCommitments(forTasks taskIds: Set<UUID>) async throws {
+    /// Delete all schedules for multiple tasks in a single query
+    func deleteSchedules(forTasks taskIds: Set<UUID>) async throws {
         guard !taskIds.isEmpty else { return }
         try await supabase
-            .from("commitments")
+            .from("schedules")
             .delete()
             .in("task_id", values: taskIds.map { $0.uuidString })
             .execute()
     }
 
-    // MARK: - Committed Task IDs & Due Dates
+    // MARK: - Scheduled Task IDs & Due Dates
 
-    struct CommitmentSummary: Decodable {
+    struct ScheduleSummary: Decodable {
         let taskId: UUID
         let timeframe: Timeframe
-        let commitmentDate: Date
+        let scheduleDate: Date
 
         enum CodingKeys: String, CodingKey {
             case taskId = "task_id"
             case timeframe
-            case commitmentDate = "commitment_date"
+            case scheduleDate = "schedule_date"
         }
     }
 
-    /// Fetch lightweight summaries of all commitments (task_id, timeframe, commitment_date)
-    func fetchCommitmentSummaries() async throws -> [CommitmentSummary] {
-        let rows: [CommitmentSummary] = try await supabase
-            .from("commitments")
-            .select("task_id, timeframe, commitment_date")
+    /// Fetch lightweight summaries of all schedules (task_id, timeframe, schedule_date)
+    func fetchScheduleSummaries() async throws -> [ScheduleSummary] {
+        let rows: [ScheduleSummary] = try await supabase
+            .from("schedules")
+            .select("task_id, timeframe, schedule_date")
             .execute()
             .value
         return rows
     }
 
-    // MARK: - Trickle-Down (Child Commitment) Methods
+    // MARK: - Trickle-Down (Child Schedule) Methods
 
-    /// Fetch child commitments for a parent commitment
-    func fetchChildCommitments(parentId: UUID) async throws -> [Commitment] {
-        let commitments: [Commitment] = try await supabase
-            .from("commitments")
+    /// Fetch child schedules for a parent schedule
+    func fetchChildSchedules(parentId: UUID) async throws -> [Schedule] {
+        let schedules: [Schedule] = try await supabase
+            .from("schedules")
             .select()
-            .eq("parent_commitment_id", value: parentId.uuidString)
-            .order("commitment_date", ascending: true)
+            .eq("parent_schedule_id", value: parentId.uuidString)
+            .order("schedule_date", ascending: true)
             .execute()
             .value
 
-        return commitments
+        return schedules
     }
 
-    /// Create a child commitment (trickle-down from parent)
-    func createChildCommitment(
-        parentCommitment: Commitment,
+    /// Create a child schedule (trickle-down from parent)
+    func createChildSchedule(
+        parentSchedule: Schedule,
         childDate: Date,
         targetTimeframe: Timeframe
-    ) async throws -> Commitment {
+    ) async throws -> Schedule {
         // Verify target timeframe is valid for breakdown
-        guard parentCommitment.timeframe.availableBreakdownTimeframes.contains(targetTimeframe) else {
-            throw CommitmentError.cannotBreakdown
+        guard parentSchedule.timeframe.availableBreakdownTimeframes.contains(targetTimeframe) else {
+            throw ScheduleError.cannotBreakdown
         }
 
-        let childCommitment = Commitment(
-            userId: parentCommitment.userId,
-            taskId: parentCommitment.taskId,
+        let childSchedule = Schedule(
+            userId: parentSchedule.userId,
+            taskId: parentSchedule.taskId,
             timeframe: targetTimeframe,
-            section: parentCommitment.section,
-            commitmentDate: childDate,
+            section: parentSchedule.section,
+            scheduleDate: childDate,
             sortOrder: 0,
-            parentCommitmentId: parentCommitment.id
+            parentScheduleId: parentSchedule.id
         )
 
-        let created: Commitment = try await supabase
-            .from("commitments")
-            .insert(childCommitment)
+        let created: Schedule = try await supabase
+            .from("schedules")
+            .insert(childSchedule)
             .select()
             .single()
             .execute()
@@ -268,24 +268,24 @@ class CommitmentRepository {
         return created
     }
 
-    /// Update sort orders for multiple commitments
-    func updateCommitmentSortOrders(_ updates: [(id: UUID, sortOrder: Int)]) async throws {
+    /// Update sort orders for multiple schedules
+    func updateScheduleSortOrders(_ updates: [(id: UUID, sortOrder: Int)]) async throws {
         for update in updates {
-            let sortUpdate = CommitmentSortOrderUpdate(sortOrder: update.sortOrder)
+            let sortUpdate = ScheduleSortOrderUpdate(sortOrder: update.sortOrder)
             try await supabase
-                .from("commitments")
+                .from("schedules")
                 .update(sortUpdate)
                 .eq("id", value: update.id.uuidString)
                 .execute()
         }
     }
 
-    /// Update sort orders and sections for multiple commitments
-    func updateCommitmentSortOrdersAndSections(_ updates: [(id: UUID, sortOrder: Int, section: Section)]) async throws {
+    /// Update sort orders and sections for multiple schedules
+    func updateScheduleSortOrdersAndSections(_ updates: [(id: UUID, sortOrder: Int, section: Section)]) async throws {
         for update in updates {
-            let sortUpdate = CommitmentSectionSortUpdate(section: update.section.rawValue, sortOrder: update.sortOrder)
+            let sortUpdate = ScheduleSectionSortUpdate(section: update.section.rawValue, sortOrder: update.sortOrder)
             try await supabase
-                .from("commitments")
+                .from("schedules")
                 .update(sortUpdate)
                 .eq("id", value: update.id.uuidString)
                 .execute()
@@ -294,46 +294,46 @@ class CommitmentRepository {
 
     // MARK: - Scheduled Time Methods
 
-    /// Update only the scheduled time and duration for a commitment
-    func updateCommitmentTime(id: UUID, scheduledTime: Date?, durationMinutes: Int?) async throws {
-        let update = CommitmentTimeUpdate(scheduledTime: scheduledTime, durationMinutes: durationMinutes)
+    /// Update only the scheduled time and duration for a schedule
+    func updateScheduleTime(id: UUID, scheduledTime: Date?, durationMinutes: Int?) async throws {
+        let update = ScheduleTimeUpdate(scheduledTime: scheduledTime, durationMinutes: durationMinutes)
         try await supabase
-            .from("commitments")
+            .from("schedules")
             .update(update)
             .eq("id", value: id.uuidString)
             .execute()
     }
 
-    /// Fetch commitments that have a scheduled time for a given day
-    func fetchTimedCommitments(for date: Date) async throws -> [Commitment] {
+    /// Fetch schedules that have a scheduled time for a given day
+    func fetchTimedSchedules(for date: Date) async throws -> [Schedule] {
         let (startDate, endDate) = Self.dateRange(for: .daily, date: date)
 
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
 
-        let commitments: [Commitment] = try await supabase
-            .from("commitments")
+        let schedules: [Schedule] = try await supabase
+            .from("schedules")
             .select()
             .not("scheduled_time", operator: .is, value: "null")
-            .gte("commitment_date", value: formatter.string(from: startDate))
-            .lt("commitment_date", value: formatter.string(from: endDate))
+            .gte("schedule_date", value: formatter.string(from: startDate))
+            .lt("schedule_date", value: formatter.string(from: endDate))
             .order("scheduled_time", ascending: true)
             .execute()
             .value
 
-        return commitments
+        return schedules
     }
 
 }
 
-/// Errors for commitment operations
-enum CommitmentError: LocalizedError {
+/// Errors for schedule operations
+enum ScheduleError: LocalizedError {
     case cannotBreakdown
 
     var errorDescription: String? {
         switch self {
         case .cannotBreakdown:
-            return "This commitment cannot be broken down further."
+            return "This schedule cannot be broken down further."
         }
     }
 }

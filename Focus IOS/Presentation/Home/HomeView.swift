@@ -33,7 +33,7 @@ struct HomeView: View {
     @State private var addTaskTitle = ""
     @State private var addTaskSubtasks: [DraftSubtaskEntry] = []
     @State private var addTaskCategoryId: UUID? = nil
-    @State private var addTaskCommitExpanded = false
+    @State private var addTaskScheduleExpanded = false
     @State private var addTaskTimeframe: Timeframe = .daily
     @State private var addTaskSection: Section = .todo
     @State private var addTaskDates: Set<Date> = []
@@ -48,7 +48,7 @@ struct HomeView: View {
     @State private var addListTitle = ""
     @State private var addListItems: [DraftSubtaskEntry] = []
     @State private var addListCategoryId: UUID? = nil
-    @State private var addListCommitExpanded = false
+    @State private var addListScheduleExpanded = false
     @State private var addListTimeframe: Timeframe = .daily
     @State private var addListSection: Section = .todo
     @State private var addListDates: Set<Date> = []
@@ -61,7 +61,7 @@ struct HomeView: View {
     @State private var addProjectTitle = ""
     @State private var addProjectDraftTasks: [DraftTask] = []
     @State private var addProjectCategoryId: UUID? = nil
-    @State private var addProjectCommitExpanded = false
+    @State private var addProjectScheduleExpanded = false
     @State private var addProjectTimeframe: Timeframe = .daily
     @State private var addProjectSection: Section = .todo
     @State private var addProjectDates: Set<Date> = []
@@ -84,6 +84,13 @@ struct HomeView: View {
 
     private var isAddProjectTitleEmpty: Bool {
         addProjectTitle.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+
+    private var braindumpCount: Int {
+        taskListVM.tasks.filter {
+            !$0.isCompleted && $0.projectId == nil && $0.parentTaskId == nil
+            && !taskListVM.scheduledTaskIds.contains($0.id)
+        }.count
     }
 
     init(viewModel: HomeViewModel, authService: AuthService) {
@@ -313,7 +320,7 @@ struct HomeView: View {
             }
             // Project schedule sheet
             .sheet(item: $projectsViewModel.selectedTaskForSchedule) { task in
-                CommitmentSelectionSheet(task: task, focusViewModel: focusViewModel)
+                ScheduleSelectionSheet(task: task, focusViewModel: focusViewModel)
                     .drawerStyle()
             }
             // List edit drawer
@@ -323,7 +330,7 @@ struct HomeView: View {
             }
             // List schedule sheet
             .sheet(item: $listsViewModel.selectedItemForSchedule) { item in
-                CommitmentSelectionSheet(task: item, focusViewModel: focusViewModel)
+                ScheduleSelectionSheet(task: item, focusViewModel: focusViewModel)
                     .drawerStyle()
             }
             .task {
@@ -336,6 +343,7 @@ struct HomeView: View {
                 // Pre-load categories for edit drawers
                 await projectsViewModel.fetchProjects()
                 await listsViewModel.fetchLists()
+                await taskListVM.fetchScheduledTaskIds()
                 await taskListVM.fetchTasks()
             }
             // Silently refresh after edit drawer dismissals (user may have renamed/modified)
@@ -373,52 +381,52 @@ struct HomeView: View {
                 case .project: addBarTitleFocus = .project
                 }
             }
-            // Task commit expansion focus management
-            .onChange(of: addTaskCommitExpanded) { _, isExpanded in
+            // Task schedule expansion focus management
+            .onChange(of: addTaskScheduleExpanded) { _, isExpanded in
                 if isExpanded {
                     addBarTitleFocus = nil
                     focusedSubtaskId = nil
                 }
             }
             .onChange(of: addBarTitleFocus) { _, focus in
-                if focus == .task && addTaskCommitExpanded {
+                if focus == .task && addTaskScheduleExpanded {
                     withAnimation(.easeInOut(duration: 0.2)) {
-                        addTaskCommitExpanded = false
+                        addTaskScheduleExpanded = false
                     }
                 }
             }
             .onChange(of: focusedSubtaskId) { _, subtaskId in
-                if subtaskId != nil && addTaskCommitExpanded {
+                if subtaskId != nil && addTaskScheduleExpanded {
                     withAnimation(.easeInOut(duration: 0.2)) {
-                        addTaskCommitExpanded = false
+                        addTaskScheduleExpanded = false
                     }
                 }
             }
-            // List commit expansion focus management
-            .onChange(of: addListCommitExpanded) { _, isExpanded in
+            // List schedule expansion focus management
+            .onChange(of: addListScheduleExpanded) { _, isExpanded in
                 if isExpanded {
                     addBarTitleFocus = nil
                     focusedListItemId = nil
                 }
             }
             .onChange(of: focusedListItemId) { _, itemId in
-                if itemId != nil && addListCommitExpanded {
+                if itemId != nil && addListScheduleExpanded {
                     withAnimation(.easeInOut(duration: 0.2)) {
-                        addListCommitExpanded = false
+                        addListScheduleExpanded = false
                     }
                 }
             }
-            // Project commit expansion focus management
-            .onChange(of: addProjectCommitExpanded) { _, isExpanded in
+            // Project schedule expansion focus management
+            .onChange(of: addProjectScheduleExpanded) { _, isExpanded in
                 if isExpanded {
                     addBarTitleFocus = nil
                     focusedProjectTaskId = nil
                 }
             }
             .onChange(of: focusedProjectTaskId) { _, taskId in
-                if taskId != nil && addProjectCommitExpanded {
+                if taskId != nil && addProjectScheduleExpanded {
                     withAnimation(.easeInOut(duration: 0.2)) {
-                        addProjectCommitExpanded = false
+                        addProjectScheduleExpanded = false
                     }
                 }
             }
@@ -468,6 +476,15 @@ struct HomeView: View {
                     .foregroundColor(.primary)
 
                 Spacer()
+
+                if item == .braindump {
+                    let count = braindumpCount
+                    if count > 0 {
+                        Text("\(count)")
+                            .font(.inter(.footnote, weight: .medium))
+                            .foregroundColor(.secondary)
+                    }
+                }
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 12)
@@ -567,8 +584,8 @@ struct HomeView: View {
                 onAddNew: { addNewSubtask() }
             )
 
-            // Commit expansion (calendar section)
-            if addTaskCommitExpanded {
+            // Schedule expansion (calendar section)
+            if addTaskScheduleExpanded {
                 Divider()
                     .padding(.horizontal, 14)
 
@@ -588,12 +605,12 @@ struct HomeView: View {
                 .padding(.top, 6)
                 .padding(.bottom, 14)
 
-                // Commit mode action row
+                // Schedule mode action row
                 HStack {
                     Button {
                         withAnimation(.easeInOut(duration: 0.2)) {
                             addTaskDates.removeAll()
-                            addTaskCommitExpanded = false
+                            addTaskScheduleExpanded = false
                         }
                     } label: {
                         Image(systemName: "xmark")
@@ -611,7 +628,7 @@ struct HomeView: View {
                         let generator = UIImpactFeedbackGenerator(style: .medium)
                         generator.impactOccurred()
                         withAnimation(.easeInOut(duration: 0.2)) {
-                            addTaskCommitExpanded = false
+                            addTaskScheduleExpanded = false
                         }
                     } label: {
                         Image(systemName: "checkmark")
@@ -630,7 +647,7 @@ struct HomeView: View {
             }
 
             // Sub-task row: [Sub-task] ... [AI Breakdown] [Checkmark]
-            if !addTaskCommitExpanded {
+            if !addTaskScheduleExpanded {
             HStack(spacing: 8) {
                 Button {
                     addNewSubtask()
@@ -714,7 +731,7 @@ struct HomeView: View {
             }
 
             // Bottom row: [Category] [Schedule] [Priority]
-            if addTaskOptionsExpanded && !addTaskCommitExpanded {
+            if addTaskOptionsExpanded && !addTaskScheduleExpanded {
             HStack(spacing: 8) {
                 Menu {
                     Button {
@@ -751,11 +768,11 @@ struct HomeView: View {
                 }
 
                 Button {
-                    if !addTaskCommitExpanded {
+                    if !addTaskScheduleExpanded {
                         addTaskDatesSnapshot = addTaskDates
                     }
                     withAnimation(.easeInOut(duration: 0.2)) {
-                        addTaskCommitExpanded.toggle()
+                        addTaskScheduleExpanded.toggle()
                     }
                 } label: {
                     HStack(spacing: 4) {
@@ -832,8 +849,8 @@ struct HomeView: View {
                 placeholder: "Item"
             )
 
-            // Commit expansion
-            if addListCommitExpanded {
+            // Schedule expansion
+            if addListScheduleExpanded {
                 Divider()
                     .padding(.horizontal, 14)
 
@@ -857,7 +874,7 @@ struct HomeView: View {
                     Button {
                         withAnimation(.easeInOut(duration: 0.2)) {
                             addListDates.removeAll()
-                            addListCommitExpanded = false
+                            addListScheduleExpanded = false
                         }
                     } label: {
                         Image(systemName: "xmark")
@@ -875,7 +892,7 @@ struct HomeView: View {
                         let generator = UIImpactFeedbackGenerator(style: .medium)
                         generator.impactOccurred()
                         withAnimation(.easeInOut(duration: 0.2)) {
-                            addListCommitExpanded = false
+                            addListScheduleExpanded = false
                         }
                     } label: {
                         Image(systemName: "checkmark")
@@ -894,7 +911,7 @@ struct HomeView: View {
             }
 
             // Row 1: [Item] [...] Spacer [Checkmark]
-            if !addListCommitExpanded {
+            if !addListScheduleExpanded {
             HStack(spacing: 8) {
                 Button {
                     addNewListItem()
@@ -949,7 +966,7 @@ struct HomeView: View {
             }
 
             // Row 2: [Category] [Schedule] [Priority]
-            if addListOptionsExpanded && !addListCommitExpanded {
+            if addListOptionsExpanded && !addListScheduleExpanded {
             HStack(spacing: 8) {
                 Menu {
                     Button {
@@ -988,7 +1005,7 @@ struct HomeView: View {
                 Button {
                     addListDatesSnapshot = addListDates
                     withAnimation(.easeInOut(duration: 0.2)) {
-                        addListCommitExpanded.toggle()
+                        addListScheduleExpanded.toggle()
                     }
                 } label: {
                     HStack(spacing: 4) {
@@ -1073,8 +1090,8 @@ struct HomeView: View {
                 .padding(.bottom, 6)
             }
 
-            // Commit expansion
-            if addProjectCommitExpanded {
+            // Schedule expansion
+            if addProjectScheduleExpanded {
                 Divider()
                     .padding(.horizontal, 14)
 
@@ -1098,7 +1115,7 @@ struct HomeView: View {
                     Button {
                         withAnimation(.easeInOut(duration: 0.2)) {
                             addProjectDates.removeAll()
-                            addProjectCommitExpanded = false
+                            addProjectScheduleExpanded = false
                         }
                     } label: {
                         Image(systemName: "xmark")
@@ -1116,7 +1133,7 @@ struct HomeView: View {
                         let generator = UIImpactFeedbackGenerator(style: .medium)
                         generator.impactOccurred()
                         withAnimation(.easeInOut(duration: 0.2)) {
-                            addProjectCommitExpanded = false
+                            addProjectScheduleExpanded = false
                         }
                     } label: {
                         Image(systemName: "checkmark")
@@ -1135,7 +1152,7 @@ struct HomeView: View {
             }
 
             // Row 1: [Task] [...] Spacer [Checkmark]
-            if !addProjectCommitExpanded {
+            if !addProjectScheduleExpanded {
             HStack(spacing: 8) {
                 Button {
                     addNewProjectTask()
@@ -1190,7 +1207,7 @@ struct HomeView: View {
             }
 
             // Row 2: [Category] [Schedule] [Priority]
-            if addProjectOptionsExpanded && !addProjectCommitExpanded {
+            if addProjectOptionsExpanded && !addProjectScheduleExpanded {
             HStack(spacing: 8) {
                 Menu {
                     Button {
@@ -1229,7 +1246,7 @@ struct HomeView: View {
                 Button {
                     addProjectDatesSnapshot = addProjectDates
                     withAnimation(.easeInOut(duration: 0.2)) {
-                        addProjectCommitExpanded.toggle()
+                        addProjectScheduleExpanded.toggle()
                     }
                 } label: {
                     HStack(spacing: 4) {
@@ -1410,7 +1427,7 @@ struct HomeView: View {
             .filter { !$0.isEmpty }
         let categoryId = addTaskCategoryId
         let priority = addTaskPriority
-        let commitEnabled = !addTaskDates.isEmpty
+        let scheduleEnabled = !addTaskDates.isEmpty
         let timeframe = addTaskTimeframe
         let section = addTaskSection
         let dates = addTaskDates
@@ -1424,17 +1441,17 @@ struct HomeView: View {
         addTaskSubtasks = []
         addTaskDates = []
         addTaskOptionsExpanded = false
-        addTaskCommitExpanded = false
+        addTaskScheduleExpanded = false
         addTaskPriority = .low
         hasGeneratedBreakdown = false
 
         _Concurrency.Task { @MainActor in
-            await taskListVM.createTaskWithCommitments(
+            await taskListVM.createTaskWithSchedules(
                 title: title,
                 categoryId: categoryId,
                 priority: priority,
                 subtaskTitles: subtasksToCreate,
-                commitAfterCreate: commitEnabled,
+                scheduleAfterCreate: scheduleEnabled,
                 selectedTimeframe: timeframe,
                 selectedSection: section,
                 selectedDates: dates,
@@ -1442,8 +1459,8 @@ struct HomeView: View {
                 scheduledTime: nil
             )
 
-            if commitEnabled && !dates.isEmpty {
-                await focusViewModel.fetchCommitments()
+            if scheduleEnabled && !dates.isEmpty {
+                await focusViewModel.fetchSchedules()
             }
         }
     }
@@ -1465,7 +1482,7 @@ struct HomeView: View {
         addTaskCategoryId = nil
         addTaskPriority = .low
         addTaskOptionsExpanded = false
-        addTaskCommitExpanded = false
+        addTaskScheduleExpanded = false
         addTaskDates = []
         hasGeneratedBreakdown = false
         addBarTitleFocus = nil
@@ -1491,7 +1508,7 @@ struct HomeView: View {
             .filter { !$0.isEmpty }
         let categoryId = addListCategoryId
         let priority = addListPriority
-        let commitEnabled = !addListDates.isEmpty
+        let scheduleEnabled = !addListDates.isEmpty
         let timeframe = addListTimeframe
         let section = addListSection
         let dates = addListDates
@@ -1504,7 +1521,7 @@ struct HomeView: View {
         addListTitle = ""
         addListItems = []
         addListDates = []
-        addListCommitExpanded = false
+        addListScheduleExpanded = false
         addListOptionsExpanded = false
         addListPriority = .low
 
@@ -1519,22 +1536,22 @@ struct HomeView: View {
                     listsViewModel.expandedLists.insert(createdList.id)
                 }
 
-                if commitEnabled && !dates.isEmpty {
+                if scheduleEnabled && !dates.isEmpty {
                     for date in dates {
-                        let commitment = Commitment(
+                        let schedule = Schedule(
                             userId: createdList.userId,
                             taskId: createdList.id,
                             timeframe: timeframe,
                             section: section,
-                            commitmentDate: date,
+                            scheduleDate: date,
                             sortOrder: 0,
                             scheduledTime: nil,
                             durationMinutes: nil
                         )
-                        _ = try? await listsViewModel.commitmentRepository.createCommitment(commitment)
+                        _ = try? await listsViewModel.scheduleRepository.createSchedule(schedule)
                     }
-                    await focusViewModel.fetchCommitments()
-                    await listsViewModel.fetchCommittedTaskIds()
+                    await focusViewModel.fetchSchedules()
+                    await listsViewModel.fetchScheduledTaskIds()
                 }
             }
 
@@ -1558,7 +1575,7 @@ struct HomeView: View {
         addListTitle = ""
         addListItems = []
         addListCategoryId = nil
-        addListCommitExpanded = false
+        addListScheduleExpanded = false
         addListOptionsExpanded = false
         addListPriority = .low
         addListDates = []
@@ -1585,7 +1602,7 @@ struct HomeView: View {
         }
         let categoryId = addProjectCategoryId
         let priority = addProjectPriority
-        let commitEnabled = !addProjectDates.isEmpty
+        let scheduleEnabled = !addProjectDates.isEmpty
         let timeframe = addProjectTimeframe
         let section = addProjectSection
         let dates = addProjectDates
@@ -1598,7 +1615,7 @@ struct HomeView: View {
         addProjectTitle = ""
         addProjectDraftTasks = []
         addProjectDates = []
-        addProjectCommitExpanded = false
+        addProjectScheduleExpanded = false
         addProjectOptionsExpanded = false
         addProjectPriority = .low
 
@@ -1610,23 +1627,23 @@ struct HomeView: View {
                 draftTasks: draftTasks
             ) else { return }
 
-            if commitEnabled && !dates.isEmpty {
+            if scheduleEnabled && !dates.isEmpty {
                 guard let userId = projectsViewModel.authService.currentUser?.id else { return }
                 for date in dates {
-                    let commitment = Commitment(
+                    let schedule = Schedule(
                         userId: userId,
                         taskId: projectId,
                         timeframe: timeframe,
                         section: section,
-                        commitmentDate: date,
+                        scheduleDate: date,
                         sortOrder: 0,
                         scheduledTime: nil,
                         durationMinutes: nil
                     )
-                    _ = try? await projectsViewModel.commitmentRepository.createCommitment(commitment)
+                    _ = try? await projectsViewModel.scheduleRepository.createSchedule(schedule)
                 }
-                await focusViewModel.fetchCommitments()
-                await projectsViewModel.fetchCommittedTaskIds()
+                await focusViewModel.fetchSchedules()
+                await projectsViewModel.fetchScheduledTaskIds()
             }
 
             // Refresh Home's project display
@@ -1700,7 +1717,7 @@ struct HomeView: View {
         addProjectTitle = ""
         addProjectDraftTasks = []
         addProjectCategoryId = nil
-        addProjectCommitExpanded = false
+        addProjectScheduleExpanded = false
         addProjectOptionsExpanded = false
         addProjectPriority = .low
         addProjectDates = []

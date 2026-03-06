@@ -9,7 +9,7 @@ import SwiftUI
 
 struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
     let task: FocusTask
-    let commitment: Commitment?
+    let schedule: Schedule?
     let categories: [Category]
     @ObservedObject var viewModel: VM
 
@@ -21,13 +21,13 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
     @EnvironmentObject var focusViewModel: FocusTabViewModel
     @EnvironmentObject var languageManager: LanguageManager
     @State private var taskTitle: String
-    @State private var commitExpanded = false
-    @State private var commitTimeframe: Timeframe = .daily
-    @State private var commitSection: Section = .focus
-    @State private var commitDates: Set<Date> = []
-    @State private var originalCommitDates: Set<Date> = []
-    @State private var originalCommitments: [Commitment] = []
-    @State private var hasExistingCommitments = false
+    @State private var scheduleExpanded = false
+    @State private var scheduleTimeframe: Timeframe = .daily
+    @State private var scheduleSection: Section = .focus
+    @State private var scheduleDates: Set<Date> = []
+    @State private var originalScheduleDates: Set<Date> = []
+    @State private var originalSchedules: [Schedule] = []
+    @State private var hasExistingSchedules = false
     @State private var showingRescheduleSheet = false
     @State private var showingNewCategoryAlert = false
     @State private var newCategoryName = ""
@@ -60,13 +60,13 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
             .filter { !pendingDeletions.contains($0.id) }
     }
 
-    init(task: FocusTask, viewModel: VM, commitment: Commitment? = nil, categories: [Category] = [],
+    init(task: FocusTask, viewModel: VM, schedule: Schedule? = nil, categories: [Category] = [],
          pendingSchedule: PendingScheduleInfo? = nil,
          onSchedule: ((Timeframe, Section, Set<Date>) -> Void)? = nil,
          onClearSchedule: (() -> Void)? = nil) {
         self.task = task
         self.viewModel = viewModel
-        self.commitment = commitment
+        self.schedule = schedule
         self.categories = categories
         self.pendingSchedule = pendingSchedule
         self.onScheduleCallback = onSchedule
@@ -77,13 +77,13 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
         _selectedPriority = State(initialValue: task.priority)
     }
 
-    private var commitPillIsActive: Bool {
-        !commitDates.isEmpty || hasExistingCommitments || pendingSchedule != nil
+    private var schedulePillIsActive: Bool {
+        !scheduleDates.isEmpty || hasExistingSchedules || pendingSchedule != nil
     }
 
-    private var hasCommitChanges: Bool {
-        let currentDates = Set(commitDates.map { Calendar.current.startOfDay(for: $0) })
-        return originalCommitDates != currentDates
+    private var hasScheduleChanges: Bool {
+        let currentDates = Set(scheduleDates.map { Calendar.current.startOfDay(for: $0) })
+        return originalScheduleDates != currentDates
     }
 
     private var hasNoteChanges: Bool {
@@ -91,7 +91,7 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
     }
 
     private var hasChanges: Bool {
-        taskTitle != task.title || selectedCategoryId != task.categoryId || selectedPriority != task.priority || !pendingDeletions.isEmpty || !newSubtaskTitle.trimmingCharacters(in: .whitespaces).isEmpty || !draftSuggestions.isEmpty || hasCommitChanges || hasNoteChanges
+        taskTitle != task.title || selectedCategoryId != task.categoryId || selectedPriority != task.priority || !pendingDeletions.isEmpty || !newSubtaskTitle.trimmingCharacters(in: .whitespaces).isEmpty || !draftSuggestions.isEmpty || hasScheduleChanges || hasNoteChanges
     }
 
     var body: some View {
@@ -104,9 +104,9 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                 saveCategory()
                 savePriority()
                 addSubtask()
-                commitDraftSuggestions()
-                commitPendingDeletions()
-                saveCommitChanges()
+                saveDraftSuggestions()
+                savePendingDeletions()
+                saveScheduleChanges()
                 dismiss()
             }, highlighted: hasChanges)
         ) {
@@ -125,9 +125,9 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                         actionPillsRow
 
                         // ─── INLINE COMMIT ───
-                        if commitExpanded {
-                            inlineCommitCard
-                                .id("commitCard")
+                        if scheduleExpanded {
+                            inlineScheduleCard
+                                .id("scheduleCard")
                         }
 
                         // ─── CONTEXTUAL ACTIONS ───
@@ -140,11 +140,11 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                     }
                     .padding(.bottom, 20)
                 }
-                .onChange(of: commitExpanded) { _, expanded in
+                .onChange(of: scheduleExpanded) { _, expanded in
                     if expanded {
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
                             withAnimation(.easeInOut(duration: 0.2)) {
-                                proxy.scrollTo("commitCard", anchor: .bottom)
+                                proxy.scrollTo("scheduleCard", anchor: .bottom)
                             }
                         }
                     }
@@ -152,23 +152,23 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
             }
             .background(.clear)
             .onChange(of: isTitleFocused) { _, isFocused in
-                if isFocused && commitExpanded {
+                if isFocused && scheduleExpanded {
                     withAnimation(.easeInOut(duration: 0.2)) {
-                        commitExpanded = false
+                        scheduleExpanded = false
                     }
                 }
             }
             .onChange(of: isNewSubtaskFocused) { _, isFocused in
-                if isFocused && commitExpanded {
+                if isFocused && scheduleExpanded {
                     withAnimation(.easeInOut(duration: 0.2)) {
-                        commitExpanded = false
+                        scheduleExpanded = false
                     }
                 }
             }
             .onChange(of: focusedSubtaskId) { _, subtaskId in
-                if subtaskId != nil && commitExpanded {
+                if subtaskId != nil && scheduleExpanded {
                     withAnimation(.easeInOut(duration: 0.2)) {
-                        commitExpanded = false
+                        scheduleExpanded = false
                     }
                 }
             }
@@ -180,8 +180,8 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                 Text("Enter a name for the new category.")
             }
             .sheet(isPresented: $showingRescheduleSheet) {
-                if let commitment = commitment {
-                    RescheduleSheet(commitment: commitment, focusViewModel: focusViewModel)
+                if let schedule = schedule {
+                    RescheduleSheet(schedule: schedule, focusViewModel: focusViewModel)
                         .drawerStyle()
                 }
             }
@@ -191,7 +191,7 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                     _Concurrency.Task { @MainActor in
                         if isSubtask, let parentId = task.parentTaskId {
                             await viewModel.deleteSubtask(task, parentId: parentId)
-                        } else if commitment != nil {
+                        } else if schedule != nil {
                             await focusViewModel.permanentlyDeleteTask(task)
                         } else {
                             await viewModel.deleteTask(task)
@@ -200,7 +200,7 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                     }
                 }
             } message: {
-                Text(isSubtask ? "This will permanently delete this subtask." : "This will permanently delete this task and all its commitments.")
+                Text(isSubtask ? "This will permanently delete this subtask." : "This will permanently delete this task and all its schedules.")
             }
         }
     }
@@ -235,7 +235,7 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                 isTitleFocused = true
             }
-            checkExistingCommitments()
+            checkExistingSchedules()
         }
     }
 
@@ -381,7 +381,7 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
             // Editable title
             SubtaskTextField(subtask: subtask, viewModel: viewModel, focusedId: $focusedSubtaskId)
 
-            // Delete X button (staged — committed on save)
+            // Delete X button (staged — scheduled on save)
             if !subtask.isCompleted {
                 Button {
                     pendingDeletions.insert(subtask.id)
@@ -439,7 +439,7 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
             }
 
             // Category pill (only in Log view, parent tasks)
-            if !isSubtask && commitment == nil {
+            if !isSubtask && schedule == nil {
                 Menu {
                     Button {
                         selectedCategoryId = nil
@@ -482,13 +482,13 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                 }
             }
 
-            // Commit pill (only when not committed)
-            if commitment == nil {
+            // Schedule pill (only when not scheduled)
+            if schedule == nil {
                 Button {
                     withAnimation(.easeInOut(duration: 0.2)) {
-                        commitExpanded.toggle()
+                        scheduleExpanded.toggle()
                     }
-                    if commitExpanded {
+                    if scheduleExpanded {
                         isTitleFocused = false
                         focusedSubtaskId = nil
                         isNewSubtaskFocused = false
@@ -501,11 +501,11 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                             .font(.inter(.subheadline, weight: .medium))
                             .lineLimit(1)
                     }
-                    .foregroundColor(commitPillIsActive ? .white : .primary)
+                    .foregroundColor(schedulePillIsActive ? .white : .primary)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 10)
                     .glassEffect(
-                        commitPillIsActive
+                        schedulePillIsActive
                             ? .regular.tint(.appRed).interactive()
                             : .regular.interactive(),
                         in: .capsule
@@ -555,75 +555,75 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
     // MARK: - Contextual Actions Card
 
     private var contextualActionsVisible: Bool {
-        commitment != nil
+        schedule != nil
     }
 
     @ViewBuilder
     private var contextualActionsCard: some View {
         VStack(spacing: 0) {
             // Unschedule from Focus (when scheduled)
-            if let commitment = commitment {
+            if let schedule = schedule {
                 DrawerActionRow(
                     icon: "minus.circle",
-                    text: commitment.timeframe.unscheduleLabel
+                    text: schedule.timeframe.unscheduleLabel
                 ) {
                     _Concurrency.Task {
-                        await focusViewModel.removeCommitment(commitment)
+                        await focusViewModel.removeSchedule(schedule)
                         dismiss()
                     }
                 }
             }
 
-            // Schedule to lower timeframe (non-daily commitments)
-            if let commitment = commitment,
-               commitment.canBreakdown,
-               let childTimeframe = commitment.childTimeframe {
+            // Schedule to lower timeframe (non-daily schedules)
+            if let schedule = schedule,
+               schedule.canBreakdown,
+               let childTimeframe = schedule.childTimeframe {
                 DrawerActionRow(icon: "arrow.down.forward.circle", text: "Schedule to \(childTimeframe.displayName)") {
-                    focusViewModel.selectedCommitmentForCommit = commitment
-                    focusViewModel.showCommitSheet = true
+                    focusViewModel.selectedScheduleForSchedule = schedule
+                    focusViewModel.showScheduleSheet = true
                     dismiss()
                 }
             }
 
             // Schedule Subtask to lower timeframe
-            if isSubtask && commitment == nil {
+            if isSubtask && schedule == nil {
                 if let parentId = task.parentTaskId,
-                   let parentCommitment = focusViewModel.commitments.first(where: {
+                   let parentSchedule = focusViewModel.schedules.first(where: {
                        $0.taskId == parentId &&
-                       focusViewModel.isSameTimeframe($0.commitmentDate, timeframe: focusViewModel.selectedTimeframe, selectedDate: focusViewModel.selectedDate)
+                       focusViewModel.isSameTimeframe($0.scheduleDate, timeframe: focusViewModel.selectedTimeframe, selectedDate: focusViewModel.selectedDate)
                    }),
-                   parentCommitment.timeframe != .daily {
-                    DrawerActionRow(icon: "arrow.down.forward.circle", text: "Schedule to \(parentCommitment.childTimeframe?.displayName ?? "...")") {
-                        focusViewModel.selectedSubtaskForCommit = task
-                        focusViewModel.selectedParentCommitmentForSubtaskCommit = parentCommitment
-                        focusViewModel.showSubtaskCommitSheet = true
+                   parentSchedule.timeframe != .daily {
+                    DrawerActionRow(icon: "arrow.down.forward.circle", text: "Schedule to \(parentSchedule.childTimeframe?.displayName ?? "...")") {
+                        focusViewModel.selectedSubtaskForSchedule = task
+                        focusViewModel.selectedParentScheduleForSubtaskSchedule = parentSchedule
+                        focusViewModel.showSubtaskScheduleSheet = true
                         dismiss()
                     }
                 }
             }
 
-            // Reschedule (committed, non-completed parent task)
-            if commitment != nil, !isSubtask, !task.isCompleted {
+            // Reschedule (scheduled, non-completed parent task)
+            if schedule != nil, !isSubtask, !task.isCompleted {
                 DrawerActionRow(icon: "calendar", text: "Reschedule") {
                     showingRescheduleSheet = true
                 }
             }
 
-            // Unschedule (remove from timeline, keep commitment)
-            if let commitment = commitment, commitment.scheduledTime != nil {
+            // Unschedule (remove from timeline, keep schedule)
+            if let schedule = schedule, schedule.scheduledTime != nil {
                 DrawerActionRow(icon: "calendar.badge.minus", text: "Unschedule") {
                     _Concurrency.Task { @MainActor in
-                        await focusViewModel.unscheduleCommitment(commitment.id)
+                        await focusViewModel.unscheduleSchedule(schedule.id)
                         dismiss()
                     }
                 }
             }
 
-            // Push to Next (committed, non-completed parent task)
-            if let commitment = commitment, !isSubtask, !task.isCompleted {
-                DrawerActionRow(icon: "arrow.right", text: "Push to \(commitment.timeframe.nextTimeframeLabel)") {
+            // Push to Next (scheduled, non-completed parent task)
+            if let schedule = schedule, !isSubtask, !task.isCompleted {
+                DrawerActionRow(icon: "arrow.right", text: "Push to \(schedule.timeframe.nextTimeframeLabel)") {
                     _Concurrency.Task {
-                        let success = await focusViewModel.pushCommitmentToNext(commitment)
+                        let success = await focusViewModel.pushScheduleToNext(schedule)
                         if success { dismiss() }
                     }
                 }
@@ -669,13 +669,13 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
         .padding(.horizontal, 16)
     }
 
-    // MARK: - Inline Commit Card
+    // MARK: - Inline Schedule Card
 
     @ViewBuilder
-    private var inlineCommitCard: some View {
+    private var inlineScheduleCard: some View {
         VStack(alignment: .leading, spacing: 0) {
             // Section picker (Focus/To-Do)
-            Picker("Section", selection: $commitSection) {
+            Picker("Section", selection: $scheduleSection) {
                 Text("Focus").tag(Section.focus)
                 Text("To-Do").tag(Section.todo)
             }
@@ -690,8 +690,8 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
             // Calendar picker
             ScrollView {
                 UnifiedCalendarPicker(
-                    selectedDates: $commitDates,
-                    selectedTimeframe: $commitTimeframe
+                    selectedDates: $scheduleDates,
+                    selectedTimeframe: $scheduleTimeframe
                 )
                 .padding(.horizontal, 14)
                 .padding(.vertical, 10)
@@ -703,30 +703,30 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
         .padding(.horizontal, 16)
         .onAppear {
             if let pending = pendingSchedule {
-                commitTimeframe = pending.timeframe
-                commitSection = pending.section
-                commitDates = pending.dates
-                originalCommitDates = pending.dates
+                scheduleTimeframe = pending.timeframe
+                scheduleSection = pending.section
+                scheduleDates = pending.dates
+                originalScheduleDates = pending.dates
             } else if onScheduleCallback == nil {
-                fetchTaskCommitments()
+                fetchTaskSchedules()
             }
         }
-        .onChange(of: commitTimeframe) {
-            if onScheduleCallback == nil { fetchTaskCommitments() }
+        .onChange(of: scheduleTimeframe) {
+            if onScheduleCallback == nil { fetchTaskSchedules() }
         }
-        .onChange(of: commitSection) {
-            if onScheduleCallback == nil { fetchTaskCommitments() }
+        .onChange(of: scheduleSection) {
+            if onScheduleCallback == nil { fetchTaskSchedules() }
         }
     }
 
-    // MARK: - Commit Data
+    // MARK: - Schedule Data
 
-    private func checkExistingCommitments() {
+    private func checkExistingSchedules() {
         _Concurrency.Task {
             do {
-                let commitments = try await CommitmentRepository().fetchCommitments(forTask: task.id)
+                let schedules = try await ScheduleRepository().fetchSchedules(forTask: task.id)
                 await MainActor.run {
-                    hasExistingCommitments = !commitments.isEmpty
+                    hasExistingSchedules = !schedules.isEmpty
                 }
             } catch {
                 // Silently fail
@@ -734,20 +734,20 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
         }
     }
 
-    private func fetchTaskCommitments() {
+    private func fetchTaskSchedules() {
         _Concurrency.Task {
             do {
-                let commitmentRepository = CommitmentRepository()
-                let commitments = try await commitmentRepository.fetchCommitments(forTask: task.id)
+                let scheduleRepository = ScheduleRepository()
+                let schedules = try await scheduleRepository.fetchSchedules(forTask: task.id)
 
-                let filtered = commitments.filter {
-                    $0.timeframe == commitTimeframe && $0.section == commitSection
+                let filtered = schedules.filter {
+                    $0.timeframe == scheduleTimeframe && $0.section == scheduleSection
                 }
 
                 await MainActor.run {
-                    originalCommitments = filtered
-                    originalCommitDates = Set(filtered.map { Calendar.current.startOfDay(for: $0.commitmentDate) })
-                    commitDates = Set(filtered.map { $0.commitmentDate })
+                    originalSchedules = filtered
+                    originalScheduleDates = Set(filtered.map { Calendar.current.startOfDay(for: $0.scheduleDate) })
+                    scheduleDates = Set(filtered.map { $0.scheduleDate })
                 }
             } catch {
                 // Silently fail
@@ -755,60 +755,60 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
         }
     }
 
-    private func saveCommitChanges() {
-        let currentDates = Set(commitDates.map { Calendar.current.startOfDay(for: $0) })
+    private func saveScheduleChanges() {
+        let currentDates = Set(scheduleDates.map { Calendar.current.startOfDay(for: $0) })
 
         if let onScheduleCallback {
             if !currentDates.isEmpty {
-                onScheduleCallback(commitTimeframe, commitSection, currentDates)
+                onScheduleCallback(scheduleTimeframe, scheduleSection, currentDates)
             }
             return
         }
 
-        guard originalCommitDates != currentDates else { return }
+        guard originalScheduleDates != currentDates else { return }
 
-        let capturedOriginalCommitments = originalCommitments
-        let capturedSection = commitSection
-        let capturedTimeframe = commitTimeframe
+        let capturedOriginalSchedules = originalSchedules
+        let capturedSection = scheduleSection
+        let capturedTimeframe = scheduleTimeframe
 
         _Concurrency.Task {
             do {
-                let commitmentRepository = CommitmentRepository()
-                let allCommitments = try await commitmentRepository.fetchCommitments(forTask: task.id)
+                let scheduleRepository = ScheduleRepository()
+                let allSchedules = try await scheduleRepository.fetchSchedules(forTask: task.id)
                 let otherSection: Section = capturedSection == .focus ? .todo : .focus
 
-                let datesToAdd = currentDates.subtracting(originalCommitDates)
-                let datesToRemove = originalCommitDates.subtracting(currentDates)
+                let datesToAdd = currentDates.subtracting(originalScheduleDates)
+                let datesToRemove = originalScheduleDates.subtracting(currentDates)
 
                 for date in datesToRemove {
-                    if let commitment = capturedOriginalCommitments.first(where: {
-                        Calendar.current.startOfDay(for: $0.commitmentDate) == date
+                    if let schedule = capturedOriginalSchedules.first(where: {
+                        Calendar.current.startOfDay(for: $0.scheduleDate) == date
                     }) {
-                        try await commitmentRepository.deleteCommitment(id: commitment.id)
+                        try await scheduleRepository.deleteSchedule(id: schedule.id)
                     }
                 }
 
                 for date in datesToAdd {
-                    if let conflicting = allCommitments.first(where: {
+                    if let conflicting = allSchedules.first(where: {
                         $0.section == otherSection &&
                         $0.timeframe == capturedTimeframe &&
-                        Calendar.current.startOfDay(for: $0.commitmentDate) == Calendar.current.startOfDay(for: date)
+                        Calendar.current.startOfDay(for: $0.scheduleDate) == Calendar.current.startOfDay(for: date)
                     }) {
-                        try await commitmentRepository.deleteCommitment(id: conflicting.id)
+                        try await scheduleRepository.deleteSchedule(id: conflicting.id)
                     }
 
-                    let newCommitment = Commitment(
+                    let newSchedule = Schedule(
                         userId: task.userId,
                         taskId: task.id,
                         timeframe: capturedTimeframe,
                         section: capturedSection,
-                        commitmentDate: date,
+                        scheduleDate: date,
                         sortOrder: 0
                     )
-                    _ = try await commitmentRepository.createCommitment(newCommitment)
+                    _ = try await scheduleRepository.createSchedule(newSchedule)
                 }
 
-                await focusViewModel.fetchCommitments()
+                await focusViewModel.fetchSchedules()
             } catch {
                 // Silently fail
             }
@@ -846,7 +846,7 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
         }
     }
 
-    private func commitPendingDeletions() {
+    private func savePendingDeletions() {
         let allSubtasks = viewModel.getSubtasks(for: task.id)
         for subtaskId in pendingDeletions {
             if let subtask = allSubtasks.first(where: { $0.id == subtaskId }) {
@@ -863,8 +863,8 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
         newSubtaskTitle = ""
         isNewSubtaskFocused = true
         _Concurrency.Task {
-            if let commitment = commitment {
-                await focusViewModel.createSubtask(title: title, parentId: task.id, parentCommitment: commitment)
+            if let schedule = schedule {
+                await focusViewModel.createSubtask(title: title, parentId: task.id, parentSchedule: schedule)
             } else {
                 await viewModel.createSubtask(title: title, parentId: task.id)
             }
@@ -897,13 +897,13 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
         }
     }
 
-    private func commitDraftSuggestions() {
+    private func saveDraftSuggestions() {
         for draft in draftSuggestions {
             let title = draft.title.trimmingCharacters(in: .whitespaces)
             guard !title.isEmpty else { continue }
             _Concurrency.Task {
-                if let commitment = commitment {
-                    await focusViewModel.createSubtask(title: title, parentId: task.id, parentCommitment: commitment)
+                if let schedule = schedule {
+                    await focusViewModel.createSubtask(title: title, parentId: task.id, parentSchedule: schedule)
                 } else {
                     await viewModel.createSubtask(title: title, parentId: task.id)
                 }

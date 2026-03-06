@@ -7,7 +7,7 @@
 
 import Foundation
 
-/// Represents the different timeframes for task commitments
+/// Represents the different timeframes for task schedules
 enum Timeframe: String, Codable, CaseIterable {
     case daily = "daily"
     case weekly = "weekly"

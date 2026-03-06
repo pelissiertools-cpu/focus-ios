@@ -58,9 +58,9 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
     @Published var categories: [Category] = []
     @Published var selectedCategoryId: UUID? = nil
 
-    // Commitment filter & due dates
-    @Published var commitmentFilter: CommitmentFilter? = nil
-    @Published var committedTaskIds: Set<UUID> = []
+    // Schedule filter & due dates
+    @Published var scheduleFilter: ScheduleFilter? = nil
+    @Published var scheduledTaskIds: Set<UUID> = []
     @Published var taskDueDates: [UUID: Date] = [:]
 
     // Sort (persisted via UserDefaults)
@@ -88,20 +88,20 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
     // Batch operation triggers
     @Published var showBatchDeleteConfirmation: Bool = false
     @Published var showBatchMovePicker: Bool = false
-    @Published var showBatchCommitSheet: Bool = false
+    @Published var showBatchScheduleSheet: Bool = false
 
     private let repository: TaskRepository
-    let commitmentRepository: CommitmentRepository
+    let scheduleRepository: ScheduleRepository
     private let categoryRepository: CategoryRepository
     private let authService: AuthService
     private var cancellables = Set<AnyCancellable>()
 
     init(repository: TaskRepository = TaskRepository(),
-         commitmentRepository: CommitmentRepository = CommitmentRepository(),
+         scheduleRepository: ScheduleRepository = ScheduleRepository(),
          categoryRepository: CategoryRepository = CategoryRepository(),
          authService: AuthService) {
         self.repository = repository
-        self.commitmentRepository = commitmentRepository
+        self.scheduleRepository = scheduleRepository
         self.categoryRepository = categoryRepository
         self.authService = authService
 
@@ -207,18 +207,18 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
 
     // MARK: - Computed Properties
 
-    /// Uncompleted top-level tasks filtered by category, commitment status, search text, and sorted by current sort option
+    /// Uncompleted top-level tasks filtered by category, schedule status, search text, and sorted by current sort option
     var uncompletedTasks: [FocusTask] {
         var filtered = tasks.filter { !$0.isCompleted }
         if let categoryId = selectedCategoryId {
             filtered = filtered.filter { $0.categoryId == categoryId }
         }
-        if let commitmentFilter = commitmentFilter {
-            switch commitmentFilter {
-            case .committed:
-                filtered = filtered.filter { committedTaskIds.contains($0.id) }
-            case .uncommitted:
-                filtered = filtered.filter { !committedTaskIds.contains($0.id) }
+        if let scheduleFilter = scheduleFilter {
+            switch scheduleFilter {
+            case .scheduled:
+                filtered = filtered.filter { scheduledTaskIds.contains($0.id) }
+            case .unscheduled:
+                filtered = filtered.filter { !scheduledTaskIds.contains($0.id) }
             }
         }
         let searched = searchText.isEmpty ? filtered : filtered.filter {
@@ -247,7 +247,7 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
                 case (.some(let da), .some(let db)):
                     return ascending ? da < db : da > db
                 case (.some, .none):
-                    return true // committed tasks before uncommitted
+                    return true // scheduled tasks before unscheduled
                 case (.none, .some):
                     return false
                 case (.none, .none):
@@ -261,18 +261,18 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
         }
     }
 
-    /// Completed top-level tasks, filtered by category, commitment status, and search text
+    /// Completed top-level tasks, filtered by category, schedule status, and search text
     var completedTasks: [FocusTask] {
         var filtered = tasks.filter { $0.isCompleted }
         if let categoryId = selectedCategoryId {
             filtered = filtered.filter { $0.categoryId == categoryId }
         }
-        if let commitmentFilter = commitmentFilter {
-            switch commitmentFilter {
-            case .committed:
-                filtered = filtered.filter { committedTaskIds.contains($0.id) }
-            case .uncommitted:
-                filtered = filtered.filter { !committedTaskIds.contains($0.id) }
+        if let scheduleFilter = scheduleFilter {
+            switch scheduleFilter {
+            case .scheduled:
+                filtered = filtered.filter { scheduledTaskIds.contains($0.id) }
+            case .unscheduled:
+                filtered = filtered.filter { !scheduledTaskIds.contains($0.id) }
             }
         }
         return searchText.isEmpty ? filtered : filtered.filter {
@@ -630,11 +630,11 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
         }
     }
 
-    /// Delete a task (hard delete from Log - also cleans up all commitments)
+    /// Delete a task (hard delete from Log - also cleans up all schedules)
     func deleteTask(_ task: FocusTask) async {
         do {
-            // Clean up all commitments for this task first
-            try await commitmentRepository.deleteCommitments(forTask: task.id)
+            // Clean up all schedules for this task first
+            try await scheduleRepository.deleteSchedules(forTask: task.id)
 
             // Delete the task
             try await repository.deleteTask(id: task.id)
@@ -979,16 +979,16 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
         }
     }
 
-    // MARK: - Atomic Task Creation (with subtasks + commitments)
+    // MARK: - Atomic Task Creation (with subtasks + schedules)
 
-    /// Create a task with optional subtasks, category, and commitments atomically
+    /// Create a task with optional subtasks, category, and schedules atomically
     @discardableResult
-    func createTaskWithCommitments(
+    func createTaskWithSchedules(
         title: String,
         categoryId: UUID?,
         priority: Priority = .low,
         subtaskTitles: [String],
-        commitAfterCreate: Bool,
+        scheduleAfterCreate: Bool,
         selectedTimeframe: Timeframe,
         selectedSection: Section,
         selectedDates: Set<Date>,
@@ -1005,23 +1005,23 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
             await createSubtask(title: subtaskTitle, parentId: parentId)
         }
 
-        // 3. Create commitments if enabled
-        if commitAfterCreate && !selectedDates.isEmpty {
+        // 3. Create schedules if enabled
+        if scheduleAfterCreate && !selectedDates.isEmpty {
             guard let userId = authService.currentUser?.id else { return parentId }
             for date in selectedDates {
-                let commitment = Commitment(
+                let schedule = Schedule(
                     userId: userId,
                     taskId: parentId,
                     timeframe: selectedTimeframe,
                     section: selectedSection,
-                    commitmentDate: date,
+                    scheduleDate: date,
                     sortOrder: 0,
                     scheduledTime: hasScheduledTime ? scheduledTime : nil,
                     durationMinutes: hasScheduledTime ? 30 : nil
                 )
-                _ = try? await commitmentRepository.createCommitment(commitment)
+                _ = try? await scheduleRepository.createSchedule(schedule)
             }
-            await fetchCommittedTaskIds()
+            await fetchScheduledTaskIds()
         }
 
         return parentId
@@ -1160,7 +1160,7 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
             .first?.name ?? ""
     }
 
-    // MARK: - Commitment Filter
+    // MARK: - Schedule Filter
 
     func moveTaskToCategory(_ task: FocusTask, categoryId: UUID?) async {
         do {
@@ -1227,9 +1227,9 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
         let idsToDelete = selectedTaskIds
 
         do {
-            async let deleteCommitments: Void = commitmentRepository.deleteCommitments(forTasks: idsToDelete)
+            async let deleteSchedules: Void = scheduleRepository.deleteSchedules(forTasks: idsToDelete)
             async let deleteTasks: Void = repository.deleteTasks(ids: idsToDelete)
-            _ = try await (deleteCommitments, deleteTasks)
+            _ = try await (deleteSchedules, deleteTasks)
 
             tasks.removeAll { idsToDelete.contains($0.id) }
             for taskId in idsToDelete {

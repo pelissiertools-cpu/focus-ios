@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct RescheduleSheet: View {
-    let commitment: Commitment
+    let schedule: Schedule
     @ObservedObject var focusViewModel: FocusTabViewModel
     @Environment(\.dismiss) var dismiss
 
@@ -17,16 +17,16 @@ struct RescheduleSheet: View {
     @State private var isSaving = false
     @State private var errorMessage: String?
 
-    init(commitment: Commitment, focusViewModel: FocusTabViewModel) {
-        self.commitment = commitment
+    init(schedule: Schedule, focusViewModel: FocusTabViewModel) {
+        self.schedule = schedule
         self.focusViewModel = focusViewModel
-        _selectedTimeframe = State(initialValue: commitment.timeframe)
-        _selectedDate = State(initialValue: commitment.commitmentDate)
+        _selectedTimeframe = State(initialValue: schedule.timeframe)
+        _selectedDate = State(initialValue: schedule.scheduleDate)
     }
 
     private var hasChanges: Bool {
-        selectedTimeframe != commitment.timeframe ||
-        !Calendar.current.isDate(selectedDate, inSameDayAs: commitment.commitmentDate)
+        selectedTimeframe != schedule.timeframe ||
+        !Calendar.current.isDate(selectedDate, inSameDayAs: schedule.scheduleDate)
     }
 
     var body: some View {
@@ -54,7 +54,7 @@ struct RescheduleSheet: View {
                         HStack {
                             Text("Timeframe")
                             Spacer()
-                            Text(commitment.timeframe.displayName)
+                            Text(schedule.timeframe.displayName)
                                 .foregroundColor(.secondary)
                         }
                         .padding(.horizontal, 14)
@@ -65,7 +65,7 @@ struct RescheduleSheet: View {
                         HStack {
                             Text("Date")
                             Spacer()
-                            Text(formatDate(commitment.commitmentDate, for: commitment.timeframe))
+                            Text(formatDate(schedule.scheduleDate, for: schedule.timeframe))
                                 .foregroundColor(.secondary)
                         }
                         .padding(.horizontal, 14)
@@ -128,8 +128,8 @@ struct RescheduleSheet: View {
         isSaving = true
         errorMessage = nil
 
-        let success = await focusViewModel.rescheduleCommitment(
-            commitment,
+        let success = await focusViewModel.rescheduleSchedule(
+            schedule,
             to: selectedDate,
             newTimeframe: selectedTimeframe
         )
@@ -137,7 +137,7 @@ struct RescheduleSheet: View {
         if success {
             dismiss()
         } else {
-            // Error message is set by rescheduleCommitment
+            // Error message is set by rescheduleSchedule
             errorMessage = focusViewModel.errorMessage
             isSaving = false
         }

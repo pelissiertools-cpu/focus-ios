@@ -113,7 +113,7 @@ struct ListContentView: View {
         }
         // Item schedule sheet
         .sheet(item: $viewModel.selectedItemForSchedule) { item in
-            CommitmentSelectionSheet(task: item, focusViewModel: focusViewModel)
+            ScheduleSelectionSheet(task: item, focusViewModel: focusViewModel)
                 .drawerStyle()
         }
     }

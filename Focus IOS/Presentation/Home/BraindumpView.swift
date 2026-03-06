@@ -38,7 +38,7 @@ struct BraindumpView: View {
     @State private var addTaskTitle = ""
     @State private var addTaskSubtasks: [DraftSubtaskEntry] = []
     @State private var addTaskCategoryId: UUID? = nil
-    @State private var addTaskCommitExpanded = false
+    @State private var addTaskScheduleExpanded = false
     @State private var addTaskTimeframe: Timeframe = .daily
     @State private var addTaskSection: Section = .todo
     @State private var addTaskDates: Set<Date> = []
@@ -66,7 +66,7 @@ struct BraindumpView: View {
         }
     }
 
-    /// Tasks that have been scheduled or completed but not yet committed
+    /// Tasks that have been scheduled or completed but not yet scheduled
     private var pendingTasks: [FocusTask] {
         taskListVM.uncompletedTasks.filter {
             $0.projectId == nil && (pendingSchedules.keys.contains($0.id) || pendingCompletions.contains($0.id))
@@ -175,7 +175,7 @@ struct BraindumpView: View {
             }
         }
         .onDisappear {
-            commitPendingSchedules()
+            savePendingSchedules()
         }
         .onChange(of: showingAddBar) { _, isShowing in
             if isShowing {
@@ -206,7 +206,7 @@ struct BraindumpView: View {
             .drawerStyle()
         }
         .sheet(item: $taskListVM.selectedTaskForSchedule) { task in
-            CommitmentSelectionSheet(
+            ScheduleSelectionSheet(
                 task: task,
                 focusViewModel: focusViewModel,
                 onSchedule: { timeframe, section, dates in
@@ -231,7 +231,7 @@ struct BraindumpView: View {
                 _Concurrency.Task { await taskListVM.batchDeleteTasks() }
             }
         } message: {
-            Text("This will permanently delete the selected tasks and their commitments.")
+            Text("This will permanently delete the selected tasks and their schedules.")
         }
         // Batch move category sheet
         .sheet(isPresented: $taskListVM.showBatchMovePicker) {
@@ -243,9 +243,9 @@ struct BraindumpView: View {
             )
             .drawerStyle()
         }
-        // Batch commit sheet
-        .sheet(isPresented: $taskListVM.showBatchCommitSheet) {
-            BatchCommitSheet(
+        // Batch schedule sheet
+        .sheet(isPresented: $taskListVM.showBatchScheduleSheet) {
+            BatchScheduleSheet(
                 viewModel: taskListVM,
                 onBatchSchedule: { tasks, timeframe, section, dates in
                     guard !dates.isEmpty else { return }
@@ -394,7 +394,7 @@ struct BraindumpView: View {
             }
         }
         .task {
-            taskListVM.commitmentFilter = .uncommitted
+            taskListVM.scheduleFilter = .unscheduled
 
             isLoading = true
             async let t: () = fetchTasks()
@@ -405,9 +405,9 @@ struct BraindumpView: View {
     }
 
     private func fetchTasks() async {
-        // Fetch committed IDs first so the uncommitted filter works
-        // immediately when tasks arrive — prevents flash of committed items.
-        async let c: () = taskListVM.fetchCommittedTaskIds()
+        // Fetch scheduled IDs first so the unscheduled filter works
+        // immediately when tasks arrive — prevents flash of scheduled items.
+        async let c: () = taskListVM.fetchScheduledTaskIds()
         async let cats: () = taskListVM.fetchCategories()
         _ = await (c, cats)
         await taskListVM.fetchTasks()
@@ -443,45 +443,45 @@ struct BraindumpView: View {
         taskListVM.handleFlatMove(from: IndexSet(integer: fullFromIdx), to: fullDestIdx)
     }
 
-    private func commitPendingSchedules() {
-        let schedulesToCommit = pendingSchedules
-        let completionsToCommit = pendingCompletions
-        guard !schedulesToCommit.isEmpty || !completionsToCommit.isEmpty else { return }
+    private func savePendingSchedules() {
+        let schedulesToSave = pendingSchedules
+        let completionsToSave = pendingCompletions
+        guard !schedulesToSave.isEmpty || !completionsToSave.isEmpty else { return }
 
         _Concurrency.Task { @MainActor in
-            // Commit pending schedules
-            if !schedulesToCommit.isEmpty {
-                let commitmentRepository = CommitmentRepository()
-                for (_, schedule) in schedulesToCommit {
+            // Save pending schedules
+            if !schedulesToSave.isEmpty {
+                let scheduleRepository = ScheduleRepository()
+                for (_, schedule) in schedulesToSave {
                     for date in schedule.dates {
-                        let commitment = Commitment(
+                        let schedule = Schedule(
                             userId: schedule.userId,
                             taskId: schedule.taskId,
                             timeframe: schedule.timeframe,
                             section: schedule.section,
-                            commitmentDate: Calendar.current.startOfDay(for: date),
+                            scheduleDate: Calendar.current.startOfDay(for: date),
                             sortOrder: 0
                         )
-                        _ = try? await commitmentRepository.createCommitment(commitment)
+                        _ = try? await scheduleRepository.createSchedule(schedule)
                     }
                 }
             }
 
-            // Commit pending completions
-            if !completionsToCommit.isEmpty {
-                for taskId in completionsToCommit {
+            // Save pending completions
+            if !completionsToSave.isEmpty {
+                for taskId in completionsToSave {
                     if let task = taskListVM.uncompletedTasks.first(where: { $0.id == taskId }) {
                         await taskListVM.toggleCompletion(task)
                     }
                 }
             }
 
-            await taskListVM.fetchCommittedTaskIds()
-            // Clear pending after committed IDs are refreshed so tasks
+            await taskListVM.fetchScheduledTaskIds()
+            // Clear pending after scheduled IDs are refreshed so tasks
             // go straight from pending section to hidden — no flash.
             pendingSchedules.removeAll()
             pendingCompletions.removeAll()
-            await focusViewModel.fetchCommitments()
+            await focusViewModel.fetchSchedules()
         }
     }
 
@@ -571,7 +571,7 @@ struct BraindumpView: View {
                         Spacer()
 
                         Button {
-                            commitPendingSchedules()
+                            savePendingSchedules()
                         } label: {
                             Text("OK")
                                 .font(.inter(.subheadline, weight: .semiBold))
@@ -665,7 +665,7 @@ struct BraindumpView: View {
                 onAddNew: { addNewSubtask() }
             )
 
-            if addTaskCommitExpanded {
+            if addTaskScheduleExpanded {
                 Divider()
                     .padding(.horizontal, 14)
 
@@ -689,7 +689,7 @@ struct BraindumpView: View {
                     Button {
                         withAnimation(.easeInOut(duration: 0.2)) {
                             addTaskDates.removeAll()
-                            addTaskCommitExpanded = false
+                            addTaskScheduleExpanded = false
                         }
                     } label: {
                         Image(systemName: "xmark")
@@ -706,7 +706,7 @@ struct BraindumpView: View {
                     Button {
                         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                         withAnimation(.easeInOut(duration: 0.2)) {
-                            addTaskCommitExpanded = false
+                            addTaskScheduleExpanded = false
                         }
                     } label: {
                         Image(systemName: "checkmark")
@@ -724,7 +724,7 @@ struct BraindumpView: View {
                 .padding(.bottom, 4)
             }
 
-            if !addTaskCommitExpanded {
+            if !addTaskScheduleExpanded {
                 HStack(spacing: 8) {
                     Button {
                         addNewSubtask()
@@ -804,7 +804,7 @@ struct BraindumpView: View {
                 .padding(.bottom, 4)
             }
 
-            if addTaskOptionsExpanded && !addTaskCommitExpanded {
+            if addTaskOptionsExpanded && !addTaskScheduleExpanded {
                 HStack(spacing: 8) {
                     Menu {
                         Button {
@@ -841,11 +841,11 @@ struct BraindumpView: View {
                     }
 
                     Button {
-                        if !addTaskCommitExpanded {
+                        if !addTaskScheduleExpanded {
                             addTaskDatesSnapshot = addTaskDates
                         }
                         withAnimation(.easeInOut(duration: 0.2)) {
-                            addTaskCommitExpanded.toggle()
+                            addTaskScheduleExpanded.toggle()
                         }
                     } label: {
                         HStack(spacing: 4) {
@@ -910,7 +910,7 @@ struct BraindumpView: View {
             .filter { !$0.isEmpty }
         let categoryId = addTaskCategoryId
         let priority = addTaskPriority
-        let commitEnabled = !addTaskDates.isEmpty
+        let scheduleEnabled = !addTaskDates.isEmpty
         let timeframe = addTaskTimeframe
         let section = addTaskSection
         let dates = addTaskDates
@@ -924,17 +924,17 @@ struct BraindumpView: View {
         addTaskSubtasks = []
         addTaskDates = []
         addTaskOptionsExpanded = false
-        addTaskCommitExpanded = false
+        addTaskScheduleExpanded = false
         addTaskPriority = .low
         hasGeneratedBreakdown = false
 
         _Concurrency.Task { @MainActor in
-            await taskListVM.createTaskWithCommitments(
+            await taskListVM.createTaskWithSchedules(
                 title: title,
                 categoryId: categoryId,
                 priority: priority,
                 subtaskTitles: subtasksToCreate,
-                commitAfterCreate: commitEnabled,
+                scheduleAfterCreate: scheduleEnabled,
                 selectedTimeframe: timeframe,
                 selectedSection: section,
                 selectedDates: dates,
@@ -942,8 +942,8 @@ struct BraindumpView: View {
                 scheduledTime: nil
             )
 
-            if commitEnabled && !dates.isEmpty {
-                await focusViewModel.fetchCommitments()
+            if scheduleEnabled && !dates.isEmpty {
+                await focusViewModel.fetchSchedules()
             }
         }
     }
@@ -982,7 +982,7 @@ struct BraindumpView: View {
         addTaskCategoryId = nil
         addTaskPriority = .low
         addTaskOptionsExpanded = false
-        addTaskCommitExpanded = false
+        addTaskScheduleExpanded = false
         addTaskDates = []
         hasGeneratedBreakdown = false
         focusedSubtaskId = nil

@@ -27,7 +27,7 @@ Focus IOS/
 │   ├── Repositories/           # Data access layer
 │   │   ├── TaskRepository.swift
 │   │   ├── CategoryRepository.swift
-│   │   └── CommitmentRepository.swift
+│   │   └── ScheduleRepository.swift
 │   ├── Services/
 │   │   └── AuthService.swift   # Authentication state management
 │   └── Supabase/
@@ -38,7 +38,7 @@ Focus IOS/
 │   └── Models/
 │       ├── Task.swift          # FocusTask model (renamed to avoid Swift Task conflict)
 │       ├── Category.swift
-│       ├── Commitment.swift
+│       ├── Schedule.swift
 │       └── Enums/
 │           ├── Timeframe.swift # daily, weekly, monthly, yearly
 │           ├── Section.swift
@@ -48,10 +48,10 @@ Focus IOS/
     ├── Auth/
     │   ├── SignInView.swift
     │   └── SignUpView.swift
-    ├── Focus/                  # Commitment-based focus view
+    ├── Focus/                  # Schedule-based focus view
     │   ├── FocusTabView.swift
     │   ├── FocusTabViewModel.swift
-    │   ├── CommitmentSelectionSheet.swift
+    │   ├── ScheduleSelectionSheet.swift
     │   ├── TimeframePickers.swift
     │   └── UnifiedCalendarPicker.swift
     └── Log/                    # Task log management

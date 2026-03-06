@@ -21,9 +21,9 @@ extension Color {
     })
     /// Charcoal for FAB background
     static let charcoal = Color(red: 0x2C/255.0, green: 0x2C/255.0, blue: 0x2E/255.0)
-    /// Blue gradient colors for commit pills
-    static let commitGradientDark = Color(red: 0.0, green: 0.2, blue: 1.0)
-    static let commitGradientLight = Color(red: 0.15, green: 0.35, blue: 1.0)
+    /// Blue gradient colors for schedule pills
+    static let scheduleGradientDark = Color(red: 0.0, green: 0.2, blue: 1.0)
+    static let scheduleGradientLight = Color(red: 0.15, green: 0.35, blue: 1.0)
     /// Near-white background (adapts to dark mode)
     static let lightBackground = Color(UIColor { traits in
         traits.userInterfaceStyle == .dark

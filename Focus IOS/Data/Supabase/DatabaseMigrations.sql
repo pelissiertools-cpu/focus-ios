@@ -106,62 +106,62 @@ CREATE POLICY "Users can delete their own tasks"
   USING (auth.uid() = user_id);
 
 -- ==============================================
--- COMMITMENTS TABLE
--- Task commitments to timeframes (Daily/Weekly/Monthly/Yearly)
+-- SCHEDULES TABLE
+-- Task schedules to timeframes (Daily/Weekly/Monthly/Yearly)
 -- ==============================================
 
-CREATE TABLE IF NOT EXISTS commitments (
+CREATE TABLE IF NOT EXISTS schedules (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   task_id UUID REFERENCES tasks(id) ON DELETE CASCADE NOT NULL,
   timeframe TEXT NOT NULL CHECK (timeframe IN ('daily', 'weekly', 'monthly', 'yearly')),
   section TEXT NOT NULL CHECK (section IN ('target', 'todo')),
-  commitment_date TIMESTAMPTZ NOT NULL,
+  schedule_date TIMESTAMPTZ NOT NULL,
   sort_order INTEGER DEFAULT 0,
   created_date TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Indexes for commitments - optimized for frequent queries
-CREATE INDEX IF NOT EXISTS idx_commitments_user_id ON commitments(user_id);
-CREATE INDEX IF NOT EXISTS idx_commitments_task_id ON commitments(task_id);
-CREATE INDEX IF NOT EXISTS idx_commitments_lookup ON commitments(user_id, timeframe, commitment_date, section, sort_order);
+-- Indexes for schedules - optimized for frequent queries
+CREATE INDEX IF NOT EXISTS idx_schedules_user_id ON schedules(user_id);
+CREATE INDEX IF NOT EXISTS idx_schedules_task_id ON schedules(task_id);
+CREATE INDEX IF NOT EXISTS idx_schedules_lookup ON schedules(user_id, timeframe, schedule_date, section, sort_order);
 
 -- Enable Row Level Security
-ALTER TABLE commitments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE schedules ENABLE ROW LEVEL SECURITY;
 
--- RLS Policies for commitments
-DROP POLICY IF EXISTS "Users can view their own commitments" ON commitments;
-CREATE POLICY "Users can view their own commitments"
-  ON commitments FOR SELECT
+-- RLS Policies for schedules
+DROP POLICY IF EXISTS "Users can view their own schedules" ON schedules;
+CREATE POLICY "Users can view their own schedules"
+  ON schedules FOR SELECT
   USING (auth.uid() = user_id);
 
-DROP POLICY IF EXISTS "Users can insert their own commitments" ON commitments;
-CREATE POLICY "Users can insert their own commitments"
-  ON commitments FOR INSERT
+DROP POLICY IF EXISTS "Users can insert their own schedules" ON schedules;
+CREATE POLICY "Users can insert their own schedules"
+  ON schedules FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
-DROP POLICY IF EXISTS "Users can update their own commitments" ON commitments;
-CREATE POLICY "Users can update their own commitments"
-  ON commitments FOR UPDATE
+DROP POLICY IF EXISTS "Users can update their own schedules" ON schedules;
+CREATE POLICY "Users can update their own schedules"
+  ON schedules FOR UPDATE
   USING (auth.uid() = user_id);
 
-DROP POLICY IF EXISTS "Users can delete their own commitments" ON commitments;
-CREATE POLICY "Users can delete their own commitments"
-  ON commitments FOR DELETE
+DROP POLICY IF EXISTS "Users can delete their own schedules" ON schedules;
+CREATE POLICY "Users can delete their own schedules"
+  ON schedules FOR DELETE
   USING (auth.uid() = user_id);
 
 -- ==============================================
--- TRICKLE-DOWN COMMITMENT SUPPORT
--- Parent-child relationship for breaking down commitments
+-- TRICKLE-DOWN SCHEDULE SUPPORT
+-- Parent-child relationship for breaking down schedules
 -- ==============================================
 
--- Add parent_commitment_id column for hierarchical commitments
+-- Add parent_schedule_id column for hierarchical schedules
 -- This enables Year → Month → Week → Day breakdown
-ALTER TABLE commitments
-ADD COLUMN IF NOT EXISTS parent_commitment_id UUID REFERENCES commitments(id) ON DELETE CASCADE;
+ALTER TABLE schedules
+ADD COLUMN IF NOT EXISTS parent_schedule_id UUID REFERENCES schedules(id) ON DELETE CASCADE;
 
 -- Index for efficient parent-child lookups
-CREATE INDEX IF NOT EXISTS idx_commitments_parent_id ON commitments(parent_commitment_id);
+CREATE INDEX IF NOT EXISTS idx_schedules_parent_id ON schedules(parent_schedule_id);
 
 -- ==============================================
 -- CATEGORY TYPE COLUMN (VESTIGIAL)
@@ -183,12 +183,12 @@ CREATE INDEX IF NOT EXISTS idx_categories_type ON categories(type);
 -- ==============================================
 
 -- Add scheduled time and duration for timeline display
-ALTER TABLE commitments ADD COLUMN IF NOT EXISTS scheduled_time TIMESTAMPTZ;
-ALTER TABLE commitments ADD COLUMN IF NOT EXISTS duration_minutes INTEGER DEFAULT 30;
+ALTER TABLE schedules ADD COLUMN IF NOT EXISTS scheduled_time TIMESTAMPTZ;
+ALTER TABLE schedules ADD COLUMN IF NOT EXISTS duration_minutes INTEGER DEFAULT 30;
 
--- Index for efficient timeline queries (fetching timed commitments for a day)
-CREATE INDEX IF NOT EXISTS idx_commitments_scheduled_time
-ON commitments(user_id, scheduled_time)
+-- Index for efficient timeline queries (fetching timed schedules for a day)
+CREATE INDEX IF NOT EXISTS idx_schedules_scheduled_time
+ON schedules(user_id, scheduled_time)
 WHERE scheduled_time IS NOT NULL;
 
 -- ==============================================
@@ -215,16 +215,16 @@ END$$;
 -- ==============================================
 
 -- Check that all tables were created
--- SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name IN ('tasks', 'categories', 'commitments');
+-- SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name IN ('tasks', 'categories', 'schedules');
 
 -- Check that RLS is enabled
--- SELECT tablename, rowsecurity FROM pg_tables WHERE schemaname = 'public' AND tablename IN ('tasks', 'categories', 'commitments');
+-- SELECT tablename, rowsecurity FROM pg_tables WHERE schemaname = 'public' AND tablename IN ('tasks', 'categories', 'schedules');
 
 -- Check policies
--- SELECT tablename, policyname FROM pg_policies WHERE schemaname = 'public' AND tablename IN ('tasks', 'categories', 'commitments');
+-- SELECT tablename, policyname FROM pg_policies WHERE schemaname = 'public' AND tablename IN ('tasks', 'categories', 'schedules');
 
--- Check parent_commitment_id column exists
--- SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'commitments' AND column_name = 'parent_commitment_id';
+-- Check parent_schedule_id column exists
+-- SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'schedules' AND column_name = 'parent_schedule_id';
 
 -- ==============================================
 -- SECTION VALUE RENAME
@@ -233,12 +233,12 @@ END$$;
 -- ==============================================
 
 -- Update check constraint to allow new values (drop old, add new)
-ALTER TABLE commitments DROP CONSTRAINT IF EXISTS commitments_section_check;
-ALTER TABLE commitments ADD CONSTRAINT commitments_section_check CHECK (section IN ('target', 'todo'));
+ALTER TABLE schedules DROP CONSTRAINT IF EXISTS schedules_section_check;
+ALTER TABLE schedules ADD CONSTRAINT schedules_section_check CHECK (section IN ('target', 'todo'));
 
 -- Migrate existing data
-UPDATE commitments SET section = 'target' WHERE section = 'focus';
-UPDATE commitments SET section = 'todo'   WHERE section = 'extra';
+UPDATE schedules SET section = 'target' WHERE section = 'focus';
+UPDATE schedules SET section = 'todo'   WHERE section = 'extra';
 
 -- ==============================================
 -- PROJECT SECTIONS SUPPORT
@@ -256,3 +256,44 @@ ALTER TABLE tasks ADD COLUMN IF NOT EXISTS is_section BOOLEAN DEFAULT false;
 -- ==============================================
 
 ALTER TABLE tasks ADD COLUMN IF NOT EXISTS is_cleared BOOLEAN DEFAULT false;
+
+-- ==============================================
+-- RENAME COMMITMENTS → SCHEDULES (MIGRATION)
+-- Run this on existing databases to rename the table and columns.
+-- Safe to run multiple times (uses IF EXISTS checks).
+-- ==============================================
+
+-- 1. Rename columns first (before table rename)
+ALTER TABLE IF EXISTS commitments RENAME COLUMN commitment_date TO schedule_date;
+ALTER TABLE IF EXISTS commitments RENAME COLUMN parent_commitment_id TO parent_schedule_id;
+
+-- 2. Rename the table
+ALTER TABLE IF EXISTS commitments RENAME TO schedules;
+
+-- 3. Drop old indexes and recreate with new names
+DROP INDEX IF EXISTS idx_commitments_user_id;
+DROP INDEX IF EXISTS idx_commitments_task_id;
+DROP INDEX IF EXISTS idx_commitments_lookup;
+DROP INDEX IF EXISTS idx_commitments_parent_id;
+DROP INDEX IF EXISTS idx_commitments_scheduled_time;
+
+CREATE INDEX IF NOT EXISTS idx_schedules_user_id ON schedules(user_id);
+CREATE INDEX IF NOT EXISTS idx_schedules_task_id ON schedules(task_id);
+CREATE INDEX IF NOT EXISTS idx_schedules_lookup ON schedules(user_id, timeframe, schedule_date, section, sort_order);
+CREATE INDEX IF NOT EXISTS idx_schedules_parent_id ON schedules(parent_schedule_id);
+CREATE INDEX IF NOT EXISTS idx_schedules_scheduled_time ON schedules(user_id, scheduled_time) WHERE scheduled_time IS NOT NULL;
+
+-- 4. Drop old RLS policies and recreate with new names
+DROP POLICY IF EXISTS "Users can view their own commitments" ON schedules;
+DROP POLICY IF EXISTS "Users can insert their own commitments" ON schedules;
+DROP POLICY IF EXISTS "Users can update their own commitments" ON schedules;
+DROP POLICY IF EXISTS "Users can delete their own commitments" ON schedules;
+
+CREATE POLICY "Users can view their own schedules" ON schedules FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can insert their own schedules" ON schedules FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can update their own schedules" ON schedules FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Users can delete their own schedules" ON schedules FOR DELETE USING (auth.uid() = user_id);
+
+-- 5. Rename constraints
+ALTER TABLE schedules DROP CONSTRAINT IF EXISTS commitments_section_check;
+ALTER TABLE schedules ADD CONSTRAINT schedules_section_check CHECK (section IN ('target', 'todo'));

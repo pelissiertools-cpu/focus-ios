@@ -43,7 +43,7 @@ struct CategoryEditDrawer<VM: LogFilterable>: View {
             title: "Edit Categories",
             leadingButton: .close { dismiss() },
             trailingButton: .check(action: {
-                commitRenameIfNeeded()
+                saveRenameIfNeeded()
                 saveAllChanges()
             }, highlighted: hasChanges)
         ) {
@@ -61,7 +61,7 @@ struct CategoryEditDrawer<VM: LogFilterable>: View {
                                 .listRowBackground(Color(.secondarySystemGroupedBackground))
                         }
                         .onMove { from, to in
-                            commitRenameIfNeeded()
+                            saveRenameIfNeeded()
                             let displayedIds = displayedCategories.map(\.id)
                             var allIds = localCategories.map(\.id)
                             var reordered = displayedIds
@@ -141,7 +141,7 @@ struct CategoryEditDrawer<VM: LogFilterable>: View {
                 if selectedCategoryIds.contains(category.id) {
                     selectedCategoryIds.remove(category.id)
                 } else {
-                    commitRenameIfNeeded()
+                    saveRenameIfNeeded()
                     selectedCategoryIds.insert(category.id)
                 }
             } label: {
@@ -157,7 +157,7 @@ struct CategoryEditDrawer<VM: LogFilterable>: View {
                     .font(.inter(.body))
                     .focused($focusedRenameId, equals: category.id)
                     .onSubmit {
-                        commitRename(for: category.id)
+                        saveRename(for: category.id)
                     }
             } else {
                 let displayName = pendingRenames[category.id] ?? category.name
@@ -167,7 +167,7 @@ struct CategoryEditDrawer<VM: LogFilterable>: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .contentShape(Rectangle())
                     .onTapGesture {
-                        commitRenameIfNeeded()
+                        saveRenameIfNeeded()
                         editingCategoryId = category.id
                         editingCategoryName = pendingRenames[category.id] ?? category.name
                         focusedRenameId = category.id
@@ -227,7 +227,7 @@ struct CategoryEditDrawer<VM: LogFilterable>: View {
             HStack(spacing: 8) {
                 // + New Category pill
                 Button {
-                    commitRenameIfNeeded()
+                    saveRenameIfNeeded()
                     isAddingCategory = true
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                         isNewCategoryFocused = true
@@ -292,7 +292,7 @@ struct CategoryEditDrawer<VM: LogFilterable>: View {
 
     // MARK: - Helpers
 
-    private func commitRename(for categoryId: UUID) {
+    private func saveRename(for categoryId: UUID) {
         let trimmed = editingCategoryName.trimmingCharacters(in: .whitespaces)
         if !trimmed.isEmpty {
             let original = viewModel.categories.first(where: { $0.id == categoryId })
@@ -306,9 +306,9 @@ struct CategoryEditDrawer<VM: LogFilterable>: View {
         editingCategoryName = ""
     }
 
-    private func commitRenameIfNeeded() {
+    private func saveRenameIfNeeded() {
         if let id = editingCategoryId {
-            commitRename(for: id)
+            saveRename(for: id)
         }
     }
 

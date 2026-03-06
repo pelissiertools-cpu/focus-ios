@@ -22,13 +22,13 @@ protocol LogFilterable: ObservableObject {
     var sortOption: SortOption { get set }
     var sortDirection: SortDirection { get set }
 
-    // MARK: - Commitment filter & due dates
-    var commitmentFilter: CommitmentFilter? { get set }
-    var committedTaskIds: Set<UUID> { get set }
+    // MARK: - Schedule filter & due dates
+    var scheduleFilter: ScheduleFilter? { get set }
+    var scheduledTaskIds: Set<UUID> { get set }
     var taskDueDates: [UUID: Date] { get set }
-    var commitmentRepository: CommitmentRepository { get }
-    func toggleCommitmentFilter(_ filter: CommitmentFilter)
-    func fetchCommittedTaskIds() async
+    var scheduleRepository: ScheduleRepository { get }
+    func toggleScheduleFilter(_ filter: ScheduleFilter)
+    func fetchScheduledTaskIds() async
 
     // MARK: - Edit mode
     var isEditMode: Bool { get }
@@ -46,7 +46,7 @@ protocol LogFilterable: ObservableObject {
     // MARK: - Batch operations
     var showBatchDeleteConfirmation: Bool { get set }
     var showBatchMovePicker: Bool { get set }
-    var showBatchCommitSheet: Bool { get set }
+    var showBatchScheduleSheet: Bool { get set }
     var selectedItems: [FocusTask] { get }
     func batchMoveToCategory(_ categoryId: UUID?) async
 }
@@ -57,23 +57,23 @@ extension LogFilterable {
         selectedCategoryId = categoryId
     }
 
-    func toggleCommitmentFilter(_ filter: CommitmentFilter) {
-        if commitmentFilter == filter {
-            commitmentFilter = nil
+    func toggleScheduleFilter(_ filter: ScheduleFilter) {
+        if scheduleFilter == filter {
+            scheduleFilter = nil
         } else {
-            commitmentFilter = filter
+            scheduleFilter = filter
         }
     }
 
-    func fetchCommittedTaskIds() async {
+    func fetchScheduledTaskIds() async {
         do {
-            let summaries = try await commitmentRepository.fetchCommitmentSummaries()
-            committedTaskIds = Set(summaries.map { $0.taskId })
+            let summaries = try await scheduleRepository.fetchScheduleSummaries()
+            scheduledTaskIds = Set(summaries.map { $0.taskId })
 
-            // For each task, pick the smallest timeframe commitment → end of that period = due date
+            // For each task, pick the smallest timeframe schedule → end of that period = due date
             var bestByTask: [UUID: (urgency: Int, endDate: Date)] = [:]
             for s in summaries {
-                let endDate = CommitmentRepository.dateRange(for: s.timeframe, date: s.commitmentDate).end
+                let endDate = ScheduleRepository.dateRange(for: s.timeframe, date: s.scheduleDate).end
                 let urgency = s.timeframe.urgencyIndex
                 if let existing = bestByTask[s.taskId] {
                     // Smaller timeframe wins; among same timeframe, earlier end date wins

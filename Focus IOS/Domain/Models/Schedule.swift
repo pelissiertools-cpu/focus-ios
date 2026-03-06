@@ -1,5 +1,5 @@
 //
-//  Commitment.swift
+//  Schedule.swift
 //  Focus IOS
 //
 //  Created by Claude Code on 2026-02-05.
@@ -7,20 +7,20 @@
 
 import Foundation
 
-/// Represents a commitment of a task to a specific timeframe and section
-/// Maps to the commitments table in Supabase
-struct Commitment: Codable, Identifiable {
+/// Represents a schedule of a task to a specific timeframe and section
+/// Maps to the schedules table in Supabase
+struct Schedule: Codable, Identifiable {
     let id: UUID
     let userId: UUID
     let taskId: UUID
     var timeframe: Timeframe
     var section: Section
-    var commitmentDate: Date
+    var scheduleDate: Date
     var sortOrder: Int
     let createdDate: Date
 
-    /// Parent commitment ID for trickle-down hierarchy (Year → Month → Week → Day)
-    var parentCommitmentId: UUID?
+    /// Parent schedule ID for trickle-down hierarchy (Year → Month → Week → Day)
+    var parentScheduleId: UUID?
 
     /// Scheduled time for calendar timeline display (nil = unscheduled)
     var scheduledTime: Date?
@@ -35,25 +35,25 @@ struct Commitment: Codable, Identifiable {
         case taskId = "task_id"
         case timeframe
         case section
-        case commitmentDate = "commitment_date"
+        case scheduleDate = "schedule_date"
         case sortOrder = "sort_order"
         case createdDate = "created_date"
-        case parentCommitmentId = "parent_commitment_id"
+        case parentScheduleId = "parent_schedule_id"
         case scheduledTime = "scheduled_time"
         case durationMinutes = "duration_minutes"
     }
 
-    /// Initializer for creating new commitments
+    /// Initializer for creating new schedules
     init(
         id: UUID = UUID(),
         userId: UUID,
         taskId: UUID,
         timeframe: Timeframe,
         section: Section,
-        commitmentDate: Date,
+        scheduleDate: Date,
         sortOrder: Int = 0,
         createdDate: Date = Date(),
-        parentCommitmentId: UUID? = nil,
+        parentScheduleId: UUID? = nil,
         scheduledTime: Date? = nil,
         durationMinutes: Int? = nil
     ) {
@@ -62,20 +62,20 @@ struct Commitment: Codable, Identifiable {
         self.taskId = taskId
         self.timeframe = timeframe
         self.section = section
-        self.commitmentDate = commitmentDate
+        self.scheduleDate = scheduleDate
         self.sortOrder = sortOrder
         self.createdDate = createdDate
-        self.parentCommitmentId = parentCommitmentId
+        self.parentScheduleId = parentScheduleId
         self.scheduledTime = scheduledTime
         self.durationMinutes = durationMinutes
     }
 
-    /// Whether this commitment is a child (broken down from a parent)
-    var isChildCommitment: Bool {
-        parentCommitmentId != nil
+    /// Whether this schedule is a child (broken down from a parent)
+    var isChildSchedule: Bool {
+        parentScheduleId != nil
     }
 
-    /// Whether this commitment can be broken down further (daily cannot)
+    /// Whether this schedule can be broken down further (daily cannot)
     var canBreakdown: Bool {
         timeframe != .daily
     }

@@ -1,5 +1,5 @@
 //
-//  BatchCommitSheet.swift
+//  BatchScheduleSheet.swift
 //  Focus IOS
 //
 //  Created by Claude Code on 2026-02-09.
@@ -7,7 +7,7 @@
 
 import SwiftUI
 
-struct BatchCommitSheet<VM: LogFilterable>: View {
+struct BatchScheduleSheet<VM: LogFilterable>: View {
     @ObservedObject var viewModel: VM
     @EnvironmentObject var focusViewModel: FocusTabViewModel
     @Environment(\.dismiss) var dismiss
@@ -33,7 +33,7 @@ struct BatchCommitSheet<VM: LogFilterable>: View {
             title: "Schedule Items",
             leadingButton: .cancel { dismiss() },
             trailingButton: .save(
-                action: { _Concurrency.Task { await saveCommitments() } },
+                action: { _Concurrency.Task { await saveSchedules() } },
                 disabled: selectedDates.isEmpty || isSaving
             )
         ) {
@@ -66,7 +66,7 @@ struct BatchCommitSheet<VM: LogFilterable>: View {
         }
     }
 
-    private func saveCommitments() async {
+    private func saveSchedules() async {
         isSaving = true
         let items = tasks ?? viewModel.selectedItems
 
@@ -83,25 +83,25 @@ struct BatchCommitSheet<VM: LogFilterable>: View {
             return
         }
 
-        let commitmentRepository = CommitmentRepository()
+        let scheduleRepository = ScheduleRepository()
 
         do {
             for item in items {
                 for date in selectedDates {
-                    let commitment = Commitment(
+                    let schedule = Schedule(
                         userId: item.userId,
                         taskId: item.id,
                         timeframe: selectedTimeframe,
                         section: selectedSection,
-                        commitmentDate: Calendar.current.startOfDay(for: date),
+                        scheduleDate: Calendar.current.startOfDay(for: date),
                         sortOrder: 0
                     )
-                    _ = try await commitmentRepository.createCommitment(commitment)
+                    _ = try await scheduleRepository.createSchedule(schedule)
                 }
             }
 
-            await focusViewModel.fetchCommitments()
-            await viewModel.fetchCommittedTaskIds()
+            await focusViewModel.fetchSchedules()
+            await viewModel.fetchScheduledTaskIds()
 
             if let onComplete {
                 onComplete()

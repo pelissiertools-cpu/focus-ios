@@ -98,6 +98,7 @@ struct ArchiveView: View {
                         Image(systemName: "chevron.left")
                             .font(.inter(.body, weight: .semiBold))
                             .foregroundColor(.primary)
+                            .contentShape(Circle())
                     }
                 }
             }

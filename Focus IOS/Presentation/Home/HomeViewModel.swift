@@ -99,6 +99,38 @@ class HomeViewModel: ObservableObject {
         }
     }
 
+    func createCategory(name: String, userId: UUID) async {
+        let category = Category(userId: userId, name: name, sortOrder: categories.count)
+        do {
+            let created = try await categoryRepository.createCategory(category)
+            categories.append(created)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func renameCategory(_ category: Category, newName: String) async {
+        var updated = category
+        updated.name = newName
+        do {
+            try await categoryRepository.updateCategory(updated)
+            if let index = categories.firstIndex(where: { $0.id == category.id }) {
+                categories[index].name = newName
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func deleteCategory(id: UUID) async {
+        do {
+            try await categoryRepository.deleteCategory(id: id)
+            categories.removeAll { $0.id == id }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
     func fetchTodayTaskCount() async {
         do {
             let focus = try await scheduleRepository.fetchSchedules(timeframe: .daily, date: Date(), section: .focus)

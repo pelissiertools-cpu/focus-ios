@@ -18,6 +18,13 @@ struct HomeView: View {
     @State private var showSettings = false
     @State private var showSearch = false
 
+    // Category management
+    @State private var showCreateCategoryAlert = false
+    @State private var newCategoryName = ""
+    @State private var categoryToRename: Category?
+    @State private var renameCategoryName = ""
+    @State private var categoryToDelete: Category?
+
     // Task list VM for add bar task creation
     @StateObject private var taskListVM: TaskListViewModel
 
@@ -197,7 +204,7 @@ struct HomeView: View {
 
                         // MARK: - Categories Section
                         if !viewModel.categories.isEmpty {
-                            homeSectionDivider(title: "CATEGORIES")
+                            categoriesSectionHeader
 
                             LazyVGrid(columns: [
                                 GridItem(.flexible()),
@@ -303,6 +310,50 @@ struct HomeView: View {
             }
             .navigationDestination(isPresented: $showSearch) {
                 BacklogView(authService: authService, startWithSearch: true)
+            }
+            .alert("New Category", isPresented: $showCreateCategoryAlert) {
+                TextField("Category name", text: $newCategoryName)
+                Button("Cancel", role: .cancel) { newCategoryName = "" }
+                Button("Create") {
+                    let name = newCategoryName.trimmingCharacters(in: .whitespaces)
+                    newCategoryName = ""
+                    guard !name.isEmpty else { return }
+                    if let userId = authService.currentUser?.id {
+                        _Concurrency.Task { await viewModel.createCategory(name: name, userId: userId) }
+                    }
+                }
+            } message: {
+                Text("Enter a name for the new category")
+            }
+            .alert("Rename Category", isPresented: Binding(
+                get: { categoryToRename != nil },
+                set: { if !$0 { categoryToRename = nil } }
+            )) {
+                TextField("Category name", text: $renameCategoryName)
+                Button("Cancel", role: .cancel) { categoryToRename = nil }
+                Button("Save") {
+                    let name = renameCategoryName.trimmingCharacters(in: .whitespaces)
+                    guard !name.isEmpty, let category = categoryToRename else { return }
+                    categoryToRename = nil
+                    _Concurrency.Task { await viewModel.renameCategory(category, newName: name) }
+                }
+            } message: {
+                Text("Enter a new name")
+            }
+            .alert("Delete Category", isPresented: Binding(
+                get: { categoryToDelete != nil },
+                set: { if !$0 { categoryToDelete = nil } }
+            )) {
+                Button("Cancel", role: .cancel) { categoryToDelete = nil }
+                Button("Delete", role: .destructive) {
+                    guard let category = categoryToDelete else { return }
+                    categoryToDelete = nil
+                    _Concurrency.Task { await viewModel.deleteCategory(id: category.id) }
+                }
+            } message: {
+                if let category = categoryToDelete {
+                    Text("Are you sure you want to delete \"\(category.name)\"? Items in this category will become uncategorized.")
+                }
             }
             .navigationBarHidden(true)
             .task {
@@ -500,6 +551,56 @@ struct HomeView: View {
             Text(title)
                 .font(.inter(size: 17, weight: .medium))
                 .foregroundColor(.secondary)
+        }
+        .padding(.horizontal, 20)
+    }
+
+    // MARK: - Categories Section Header
+
+    private var categoriesSectionHeader: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Rectangle()
+                .fill(Color.secondary.opacity(0.3))
+                .frame(height: 1)
+            HStack {
+                Text("CATEGORIES")
+                    .font(.inter(size: 17, weight: .medium))
+                    .foregroundColor(.secondary)
+                Spacer()
+                Menu {
+                    Button {
+                        newCategoryName = ""
+                        showCreateCategoryAlert = true
+                    } label: {
+                        Label("New Category", systemImage: "plus")
+                    }
+
+                    if !viewModel.categories.isEmpty {
+                        Divider()
+                        ForEach(viewModel.categories) { category in
+                            Menu(category.name) {
+                                Button {
+                                    renameCategoryName = category.name
+                                    categoryToRename = category
+                                } label: {
+                                    Label("Rename", systemImage: "pencil")
+                                }
+                                Button(role: .destructive) {
+                                    categoryToDelete = category
+                                } label: {
+                                    Label("Delete", systemImage: "trash")
+                                }
+                            }
+                        }
+                    }
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .font(.inter(.subheadline, weight: .semiBold))
+                        .foregroundColor(.secondary)
+                        .frame(width: 30, height: 30)
+                        .contentShape(Circle())
+                }
+            }
         }
         .padding(.horizontal, 20)
     }

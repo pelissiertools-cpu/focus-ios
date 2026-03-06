@@ -16,6 +16,11 @@ struct CategoryDetailView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var isLoading = false
 
+    // Editable category name
+    @State private var categoryName: String
+    @FocusState private var isNameFocused: Bool
+    private let categoryRepository = CategoryRepository()
+
     // Section collapse states
     @State private var isTasksSectionCollapsed = false
     @State private var isProjectsSectionCollapsed = false
@@ -27,6 +32,7 @@ struct CategoryDetailView: View {
 
     init(category: Category, authService: AuthService) {
         self.category = category
+        _categoryName = State(initialValue: category.name)
         _taskListVM = StateObject(wrappedValue: TaskListViewModel(authService: authService))
         _projectsVM = StateObject(wrappedValue: ProjectsViewModel(authService: authService))
         _listsVM = StateObject(wrappedValue: ListsViewModel(authService: authService))
@@ -71,9 +77,13 @@ struct CategoryDetailView: View {
                     .font(.inter(size: 22, weight: .regular))
                     .foregroundColor(.primary)
 
-                Text(category.name)
+                TextField("Category name", text: $categoryName)
                     .font(.inter(size: 28, weight: .regular))
                     .foregroundColor(.primary)
+                    .textFieldStyle(.plain)
+                    .focused($isNameFocused)
+                    .submitLabel(.done)
+                    .onSubmit { saveName() }
 
                 Spacer()
             }
@@ -84,6 +94,8 @@ struct CategoryDetailView: View {
             if isLoading && isEmpty {
                 ProgressView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .contentShape(Rectangle())
+                    .onTapGesture { isNameFocused = false }
             } else if isEmpty {
                 VStack(spacing: 4) {
                     Text("No items yet")
@@ -96,6 +108,8 @@ struct CategoryDetailView: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .padding(.horizontal, 20)
+                .contentShape(Rectangle())
+                .onTapGesture { isNameFocused = false }
             } else {
                 itemList
             }
@@ -148,6 +162,9 @@ struct CategoryDetailView: View {
                         .contentShape(Circle())
                 }
             }
+        }
+        .onChange(of: isNameFocused) { _, focused in
+            if !focused { saveName() }
         }
         .task {
             taskListVM.selectedCategoryId = category.id
@@ -274,6 +291,8 @@ struct CategoryDetailView: View {
         }
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
+        .scrollDismissesKeyboard(.immediately)
+        .simultaneousGesture(TapGesture().onEnded { isNameFocused = false })
         .refreshable {
             await withCheckedContinuation { continuation in
                 _Concurrency.Task { @MainActor in
@@ -291,6 +310,22 @@ struct CategoryDetailView: View {
         async let p: () = projectsVM.fetchProjects()
         async let l: () = listsVM.fetchLists()
         _ = await (t, p, l)
+    }
+
+    private func saveName() {
+        let trimmed = categoryName.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty, trimmed != category.name else {
+            categoryName = category.name
+            return
+        }
+        var updated = category
+        updated.name = trimmed
+        _Concurrency.Task {
+            do {
+                try await categoryRepository.updateCategory(updated)
+                NotificationCenter.default.post(name: .projectListChanged, object: nil)
+            } catch {}
+        }
     }
 
     // MARK: - Section Headers

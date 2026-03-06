@@ -116,6 +116,17 @@ enum ContextMenuItems {
         }
     }
 
+    // MARK: - Unschedule
+
+    @ViewBuilder
+    static func unscheduleButton(action: @escaping () -> Void) -> some View {
+        Button {
+            action()
+        } label: {
+            Label("Unschedule", systemImage: "calendar.badge.minus")
+        }
+    }
+
     // MARK: - Delete
 
     @ViewBuilder

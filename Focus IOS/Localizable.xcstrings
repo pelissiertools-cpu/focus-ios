@@ -3723,7 +3723,6 @@
       }
     },
     "Unschedule" : {
-      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {

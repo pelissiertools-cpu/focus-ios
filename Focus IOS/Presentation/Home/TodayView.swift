@@ -328,6 +328,14 @@ struct TodayView: View {
                             }
                         }
                     },
+                    onUnschedule: {
+                        if let schedule = scheduleById[scheduleId] {
+                            _Concurrency.Task {
+                                await focusViewModel.removeSchedule(schedule)
+                                await fetchTodayData()
+                            }
+                        }
+                    },
                     overdueDate: overdueScheduleDates[task.id]
                 )
 
@@ -345,6 +353,14 @@ struct TodayView: View {
                                 await fetchTodayData()
                             }
                         }
+                    },
+                    onUnschedule: {
+                        if let schedule = scheduleById[scheduleId] {
+                            _Concurrency.Task {
+                                await focusViewModel.removeSchedule(schedule)
+                                await fetchTodayData()
+                            }
+                        }
                     }
                 )
 
@@ -359,6 +375,14 @@ struct TodayView: View {
                         if let schedule = scheduleById[scheduleId] {
                             _Concurrency.Task {
                                 let _ = await focusViewModel.pushScheduleToNext(schedule)
+                                await fetchTodayData()
+                            }
+                        }
+                    },
+                    onUnschedule: {
+                        if let schedule = scheduleById[scheduleId] {
+                            _Concurrency.Task {
+                                await focusViewModel.removeSchedule(schedule)
                                 await fetchTodayData()
                             }
                         }
@@ -430,6 +454,7 @@ private struct TodayProjectRow: View {
     var onEdit: () -> Void
     var onReschedule: () -> Void
     var onPushToTomorrow: () -> Void
+    var onUnschedule: () -> Void
 
     var body: some View {
         HStack(spacing: 12) {
@@ -459,6 +484,7 @@ private struct TodayProjectRow: View {
             ContextMenuItems.editButton { onEdit() }
             ContextMenuItems.rescheduleButton { onReschedule() }
             ContextMenuItems.pushToTomorrowButton { onPushToTomorrow() }
+            ContextMenuItems.unscheduleButton { onUnschedule() }
         }
     }
 }
@@ -472,6 +498,7 @@ private struct TodayListRow: View {
     var onEdit: () -> Void
     var onReschedule: () -> Void
     var onPushToTomorrow: () -> Void
+    var onUnschedule: () -> Void
 
     var body: some View {
         HStack(spacing: 12) {
@@ -502,6 +529,7 @@ private struct TodayListRow: View {
             ContextMenuItems.editButton { onEdit() }
             ContextMenuItems.rescheduleButton { onReschedule() }
             ContextMenuItems.pushToTomorrowButton { onPushToTomorrow() }
+            ContextMenuItems.unscheduleButton { onUnschedule() }
         }
     }
 }

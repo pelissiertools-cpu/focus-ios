@@ -135,15 +135,12 @@ struct HomeView: View {
                                 Text(currentDayName)
                                     .font(.inter(.title, weight: .light))
                                     .foregroundColor(.primary)
-                                Text(currentDateShort)
-                                    .font(.inter(.subheadline))
-                                    .foregroundColor(.primary)
                                 HStack {
-                                    Text(currentWeekString)
-                                        .font(.inter(.caption))
-                                        .foregroundColor(.secondary)
+                                    Text(currentDateShort)
+                                        .font(.inter(.subheadline))
+                                        .foregroundColor(.primary)
                                     Spacer()
-                                    Text(scheduledTaskSummary)
+                                    Text(currentWeekString)
                                         .font(.inter(.caption))
                                         .foregroundColor(.secondary)
                                 }
@@ -280,7 +277,6 @@ struct HomeView: View {
                 if viewModel.lists.isEmpty {
                     await viewModel.fetchLists()
                 }
-                await viewModel.fetchTodayTaskCount()
                 await taskListVM.fetchScheduledTaskIds()
                 await taskListVM.fetchTasks()
                 // Pre-load categories for add bar
@@ -428,10 +424,6 @@ struct HomeView: View {
         return String(format: "week__%02d", week)
     }
 
-    private var scheduledTaskSummary: String {
-        let count = viewModel.todayTaskCount
-        return "\(count) tasks planned"
-    }
 
     // MARK: - FAB Button
 

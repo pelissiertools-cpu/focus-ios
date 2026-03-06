@@ -395,6 +395,9 @@ private struct ContentTaskRow: View {
     @ObservedObject var viewModel: ProjectsViewModel
     @State private var showDeleteConfirmation = false
 
+    private var isPending: Bool { viewModel.isPendingCompletion(task.id) }
+    private var displayCompleted: Bool { task.isCompleted || isPending }
+
     private var subtaskCount: Int {
         (viewModel.subtasksMap[task.id] ?? []).count
     }
@@ -412,8 +415,8 @@ private struct ContentTaskRow: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(task.title)
                     .font(.inter(.body))
-                    .strikethrough(task.isCompleted)
-                    .foregroundColor(task.isCompleted ? .secondary : .primary)
+                    .strikethrough(displayCompleted)
+                    .foregroundColor(displayCompleted ? .secondary : .primary)
 
                 if subtaskCount > 0 {
                     Text("\(subtaskCount) subtask\(subtaskCount == 1 ? "" : "s")")
@@ -426,14 +429,13 @@ private struct ContentTaskRow: View {
             if !viewModel.contentEditMode {
                 // Completion button
                 Button {
-                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                    _Concurrency.Task {
-                        await viewModel.toggleTaskCompletion(task, projectId: projectId)
-                    }
+                    UIImpactFeedbackGenerator(style: isPending ? .light : .medium).impactOccurred()
+                    viewModel.requestToggleTaskCompletion(task, projectId: projectId)
                 } label: {
-                    Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
+                    Image(systemName: displayCompleted ? "checkmark.circle.fill" : "circle")
                         .font(.inter(.title3))
-                        .foregroundColor(task.isCompleted ? Color.completedPurple.opacity(0.6) : .gray)
+                        .foregroundColor(displayCompleted ? Color.completedPurple.opacity(0.6) : .gray)
+                        .symbolEffect(.pulse, isActive: isPending)
                 }
                 .buttonStyle(.plain)
             }

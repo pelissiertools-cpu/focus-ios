@@ -292,7 +292,7 @@ struct TodayView: View {
                     isSelected: false,
                     onSelectToggle: nil,
                     onToggleCompletion: { t in
-                        _Concurrency.Task { await taskListVM.toggleCompletion(t) }
+                        taskListVM.requestToggleCompletion(t)
                     }
                 )
 

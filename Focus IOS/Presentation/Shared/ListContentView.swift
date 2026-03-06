@@ -292,23 +292,25 @@ private struct ListContentItemRow: View {
     @ObservedObject var viewModel: ListsViewModel
     @State private var showDeleteConfirmation = false
 
+    private var isPending: Bool { viewModel.isPendingCompletion(item.id) }
+    private var displayCompleted: Bool { item.isCompleted || isPending }
+
     var body: some View {
         HStack(spacing: 12) {
             Text(item.title)
                 .font(.inter(.body))
-                .strikethrough(item.isCompleted)
-                .foregroundColor(item.isCompleted ? .secondary : .primary)
+                .strikethrough(displayCompleted)
+                .foregroundColor(displayCompleted ? .secondary : .primary)
                 .frame(maxWidth: .infinity, minHeight: 36, alignment: .leading)
 
             Button {
-                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                _Concurrency.Task {
-                    await viewModel.toggleItemCompletion(item, listId: listId)
-                }
+                UIImpactFeedbackGenerator(style: isPending ? .light : .medium).impactOccurred()
+                viewModel.requestToggleItemCompletion(item, listId: listId)
             } label: {
-                Image(systemName: item.isCompleted ? "checkmark.circle.fill" : "circle")
+                Image(systemName: displayCompleted ? "checkmark.circle.fill" : "circle")
                     .font(.inter(.title3))
-                    .foregroundColor(item.isCompleted ? Color.completedPurple.opacity(0.6) : .gray)
+                    .foregroundColor(displayCompleted ? Color.completedPurple.opacity(0.6) : .gray)
+                    .symbolEffect(.pulse, isActive: isPending)
             }
             .buttonStyle(.plain)
         }

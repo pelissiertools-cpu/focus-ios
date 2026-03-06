@@ -147,6 +147,9 @@ struct ProjectTaskRow: View {
     @ObservedObject var viewModel: ProjectsViewModel
     @State private var showDeleteConfirmation = false
 
+    private var isPending: Bool { viewModel.isPendingCompletion(task.id) }
+    private var displayCompleted: Bool { task.isCompleted || isPending }
+
     private var subtaskCount: Int {
         let subtasks = viewModel.subtasksMap[task.id] ?? []
         return subtasks.count
@@ -158,8 +161,8 @@ struct ProjectTaskRow: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(task.title)
                     .font(.inter(.body))
-                    .strikethrough(task.isCompleted)
-                    .foregroundColor(task.isCompleted ? .secondary : .primary)
+                    .strikethrough(displayCompleted)
+                    .foregroundColor(displayCompleted ? .secondary : .primary)
 
                 if subtaskCount > 0 {
                     Text("\(subtaskCount) subtask\(subtaskCount == 1 ? "" : "s")")
@@ -171,14 +174,13 @@ struct ProjectTaskRow: View {
 
             // Completion button
             Button {
-                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                _Concurrency.Task {
-                    await viewModel.toggleTaskCompletion(task, projectId: projectId)
-                }
+                UIImpactFeedbackGenerator(style: isPending ? .light : .medium).impactOccurred()
+                viewModel.requestToggleTaskCompletion(task, projectId: projectId)
             } label: {
-                Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
+                Image(systemName: displayCompleted ? "checkmark.circle.fill" : "circle")
                     .font(.inter(.title3))
-                    .foregroundColor(task.isCompleted ? Color.completedPurple.opacity(0.6) : .gray)
+                    .foregroundColor(displayCompleted ? Color.completedPurple.opacity(0.6) : .gray)
+                    .symbolEffect(.pulse, isActive: isPending)
             }
             .buttonStyle(.plain)
         }
@@ -226,24 +228,26 @@ struct ProjectSubtaskRow: View {
     let parentId: UUID
     @ObservedObject var viewModel: ProjectsViewModel
 
+    private var isPending: Bool { viewModel.isPendingCompletion(subtask.id) }
+    private var displayCompleted: Bool { subtask.isCompleted || isPending }
+
     var body: some View {
         HStack(spacing: 12) {
             Text(subtask.title)
                 .font(.inter(.subheadline))
-                .strikethrough(subtask.isCompleted)
-                .foregroundColor(subtask.isCompleted ? .secondary : .primary)
+                .strikethrough(displayCompleted)
+                .foregroundColor(displayCompleted ? .secondary : .primary)
 
             Spacer()
 
             Button {
-                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                _Concurrency.Task {
-                    await viewModel.toggleSubtaskCompletion(subtask, parentId: parentId)
-                }
+                UIImpactFeedbackGenerator(style: isPending ? .light : .medium).impactOccurred()
+                viewModel.requestToggleSubtaskCompletion(subtask, parentId: parentId)
             } label: {
-                Image(systemName: subtask.isCompleted ? "checkmark.circle.fill" : "circle")
+                Image(systemName: displayCompleted ? "checkmark.circle.fill" : "circle")
                     .font(.inter(.subheadline))
-                    .foregroundColor(subtask.isCompleted ? Color.completedPurple.opacity(0.6) : .gray)
+                    .foregroundColor(displayCompleted ? Color.completedPurple.opacity(0.6) : .gray)
+                    .symbolEffect(.pulse, isActive: isPending)
             }
             .buttonStyle(.plain)
         }

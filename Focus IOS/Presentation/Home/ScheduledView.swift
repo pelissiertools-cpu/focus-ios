@@ -16,10 +16,6 @@ struct ScheduledView: View {
     @State private var isLoading = false
     @State private var viewMode: ScheduleViewMode = .day
 
-    // Pending completions (scheduled to DB on disappear)
-    @State private var pendingCompletions: Set<UUID> = []
-    @State private var isCompletedSectionCollapsed = false
-
     // Schedule entries: item UUID → list of (scheduleId, date, timeframe, sortOrder) tuples
     @State private var itemSchedules: [UUID: [(scheduleId: UUID, date: Date, timeframe: Timeframe, sortOrder: Int)]] = [:]
     @State private var itemTimeframes: [UUID: Set<Timeframe>] = [:]
@@ -73,47 +69,24 @@ struct ScheduledView: View {
     // MARK: - Computed: All scheduled items (no type separation)
 
     private var allScheduledTasks: [FocusTask] {
-        taskListVM.uncompletedTasks.filter { !pendingCompletions.contains($0.id) }
+        taskListVM.uncompletedTasks
     }
 
     private var allScheduledLists: [FocusTask] {
         listsVM.lists
             .filter { !$0.isCompleted && !$0.isCleared }
             .filter { taskListVM.scheduledTaskIds.contains($0.id) }
-            .filter { !pendingCompletions.contains($0.id) }
     }
 
     private var allScheduledProjects: [FocusTask] {
         projectsVM.projects
             .filter { !$0.isCompleted && !$0.isCleared }
             .filter { taskListVM.scheduledTaskIds.contains($0.id) }
-            .filter { !pendingCompletions.contains($0.id) }
-    }
-
-    // MARK: - Computed: Completed items
-
-    private var completedItems: [FocusTask] {
-        var items: [FocusTask] = []
-        for taskId in pendingCompletions {
-            if let task = taskListVM.uncompletedTasks.first(where: { $0.id == taskId }) {
-                items.append(task)
-                continue
-            }
-            if let list = listsVM.lists.first(where: { $0.id == taskId }) {
-                items.append(list)
-                continue
-            }
-            if let project = projectsVM.projects.first(where: { $0.id == taskId }) {
-                items.append(project)
-                continue
-            }
-        }
-        return items
     }
 
     private var isEmpty: Bool {
         allScheduledTasks.isEmpty && allScheduledLists.isEmpty
-        && allScheduledProjects.isEmpty && completedItems.isEmpty
+        && allScheduledProjects.isEmpty
     }
 
     private var isSearching: Bool {
@@ -604,16 +577,12 @@ struct ScheduledView: View {
             mainContent
             overlayContent
         }
-        .onDisappear { savePendingCompletions() }
         .onChange(of: showingAddBar) { _, isShowing in
             if isShowing {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                     addBarTitleFocused = true
                 }
             }
-        }
-        .onChange(of: taskListVM.tasks) { _, _ in
-            cleanupPendingCompletions()
         }
         .onChange(of: searchFieldFocused) { _, focused in
             if !focused && searchText.trimmingCharacters(in: .whitespaces).isEmpty {
@@ -1037,9 +1006,6 @@ struct ScheduledView: View {
                 handleFlatMove(from: from, to: to)
             }
 
-            if !isSearching {
-                completedSection
-            }
         }
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
@@ -1138,17 +1104,23 @@ struct ScheduledView: View {
                         isEditMode: taskListVM.isEditMode,
                         isSelected: taskListVM.selectedTaskIds.contains(task.id),
                         onSelectToggle: { taskListVM.toggleTaskSelection(task.id) },
-                        onToggleCompletion: { t in pendingCompletions.insert(t.id) }
+                        onToggleCompletion: { t in taskListVM.requestToggleCompletion(t) }
                     )
 
                 case .project(let project, _, _, _):
                     ScheduledProjectRow(
                         project: project,
+                        isPending: taskListVM.isPendingCompletion(project.id),
                         isEditMode: taskListVM.isEditMode,
                         isSelected: taskListVM.selectedTaskIds.contains(project.id),
                         onSelectToggle: { taskListVM.toggleTaskSelection(project.id) },
                         onTap: { selectedProjectForNavigation = project },
-                        onToggleCompletion: { pendingCompletions.insert(project.id) },
+                        onToggleCompletion: {
+                            taskListVM.requestExternalCompletion(id: project.id) {
+                                try? await TaskRepository().completeTask(id: project.id)
+                                await projectsVM.fetchProjects()
+                            }
+                        },
                         onEdit: { projectsVM.selectedProjectForDetails = project },
                         onSchedule: { projectsVM.selectedTaskForSchedule = project },
                         onDelete: {
@@ -1160,11 +1132,17 @@ struct ScheduledView: View {
                 case .list(let list, _, _, _):
                     ScheduledListRow(
                         list: list,
+                        isPending: taskListVM.isPendingCompletion(list.id),
                         isEditMode: taskListVM.isEditMode,
                         isSelected: taskListVM.selectedTaskIds.contains(list.id),
                         onSelectToggle: { taskListVM.toggleTaskSelection(list.id) },
                         onTap: { selectedListForNavigation = list },
-                        onToggleCompletion: { pendingCompletions.insert(list.id) },
+                        onToggleCompletion: {
+                            taskListVM.requestExternalCompletion(id: list.id) {
+                                try? await TaskRepository().completeTask(id: list.id)
+                                await listsVM.fetchLists()
+                            }
+                        },
                         onEdit: { listsVM.selectedListForDetails = list },
                         onSchedule: { listsVM.selectedItemForSchedule = list },
                         onDelete: {
@@ -1199,64 +1177,6 @@ struct ScheduledView: View {
         .padding(.vertical, 4)
         .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
         .listRowSeparator(.visible)
-        .listRowBackground(Color.clear)
-    }
-
-    // MARK: - Completed Section
-
-    @ViewBuilder
-    private var completedSection: some View {
-        if !completedItems.isEmpty {
-            completedSectionHeader
-
-            if !isCompletedSectionCollapsed {
-                ForEach(completedItems) { item in
-                    FlatTaskRow(
-                        task: item,
-                        viewModel: taskListVM,
-                        isEditMode: false,
-                        isSelected: false,
-                        onSelectToggle: nil,
-                        onToggleCompletion: { t in pendingCompletions.remove(t.id) },
-                        appearCompleted: true
-                    )
-                    .opacity(0.5)
-                    .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
-                    .listRowBackground(Color.clear)
-                    .listRowSeparator(.hidden)
-                }
-            }
-        }
-    }
-
-    private var completedSectionHeader: some View {
-        Button {
-            withAnimation(.easeInOut(duration: 0.2)) {
-                isCompletedSectionCollapsed.toggle()
-            }
-        } label: {
-            HStack(spacing: 8) {
-                Image(systemName: "checkmark.circle.fill")
-                    .font(.inter(.subheadline))
-                    .foregroundColor(.completedPurple)
-                Text("Completed")
-                    .font(.inter(.headline, weight: .bold))
-                    .foregroundColor(.secondary)
-                Text("\(completedItems.count)")
-                    .font(.inter(.caption))
-                    .foregroundColor(.secondary)
-                Image(systemName: "chevron.right")
-                    .font(.inter(size: 10, weight: .semiBold))
-                    .foregroundColor(.secondary)
-                    .rotationEffect(.degrees(isCompletedSectionCollapsed ? 0 : 90))
-                Spacer()
-            }
-        }
-        .buttonStyle(.plain)
-        .padding(.top, 16)
-        .padding(.bottom, 4)
-        .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
-        .listRowSeparator(.hidden)
         .listRowBackground(Color.clear)
     }
 
@@ -1478,42 +1398,6 @@ struct ScheduledView: View {
                 entries[idx].sortOrder = sortOrder
                 itemSchedules[taskId] = entries
             }
-        }
-    }
-
-    private func cleanupPendingCompletions() {
-        let allKnownIds = Set(taskListVM.uncompletedTasks.map { $0.id })
-            .union(Set(listsVM.lists.map { $0.id }))
-            .union(Set(projectsVM.projectTasksMap.values.flatMap { $0 }.map { $0.id }))
-        for taskId in pendingCompletions {
-            if !allKnownIds.contains(taskId) {
-                pendingCompletions.remove(taskId)
-            }
-        }
-    }
-
-    private func savePendingCompletions() {
-        let completionsToSave = pendingCompletions
-        guard !completionsToSave.isEmpty else { return }
-
-        _Concurrency.Task { @MainActor in
-            let repository = TaskRepository()
-            for taskId in completionsToSave {
-                if let task = taskListVM.uncompletedTasks.first(where: { $0.id == taskId }) {
-                    await taskListVM.toggleCompletion(task)
-                    continue
-                }
-                if listsVM.lists.contains(where: { $0.id == taskId }) {
-                    try? await repository.completeTask(id: taskId)
-                    continue
-                }
-                if projectsVM.projects.contains(where: { $0.id == taskId }) {
-                    try? await repository.completeTask(id: taskId)
-                    continue
-                }
-            }
-            pendingCompletions.removeAll()
-            await focusViewModel.fetchSchedules()
         }
     }
 
@@ -2029,6 +1913,7 @@ private enum ScheduleViewMode: String, CaseIterable {
 
 private struct ScheduledProjectRow: View {
     let project: FocusTask
+    var isPending: Bool = false
     var isEditMode: Bool
     var isSelected: Bool
     var onSelectToggle: () -> Void
@@ -2051,17 +1936,19 @@ private struct ScheduledProjectRow: View {
                 .foregroundColor(.secondary)
             Text(project.title)
                 .font(.inter(.body))
-                .foregroundColor(.primary)
+                .strikethrough(isPending)
+                .foregroundColor(isPending ? .secondary : .primary)
                 .lineLimit(1)
             Spacer()
             if !isEditMode {
                 Button {
-                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                    UIImpactFeedbackGenerator(style: isPending ? .light : .medium).impactOccurred()
                     onToggleCompletion()
                 } label: {
-                    Image(systemName: "circle")
+                    Image(systemName: isPending ? "checkmark.circle.fill" : "circle")
                         .font(.inter(.title3))
-                        .foregroundColor(.gray)
+                        .foregroundColor(isPending ? Color.completedPurple.opacity(0.6) : .gray)
+                        .symbolEffect(.pulse, isActive: isPending)
                 }
                 .buttonStyle(.plain)
             }
@@ -2097,6 +1984,7 @@ private struct ScheduledProjectRow: View {
 
 private struct ScheduledListRow: View {
     let list: FocusTask
+    var isPending: Bool = false
     var isEditMode: Bool
     var isSelected: Bool
     var onSelectToggle: () -> Void
@@ -2120,17 +2008,19 @@ private struct ScheduledListRow: View {
                 .frame(width: 24)
             Text(list.title)
                 .font(.inter(.body))
-                .foregroundColor(.primary)
+                .strikethrough(isPending)
+                .foregroundColor(isPending ? .secondary : .primary)
                 .lineLimit(1)
             Spacer()
             if !isEditMode {
                 Button {
-                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                    UIImpactFeedbackGenerator(style: isPending ? .light : .medium).impactOccurred()
                     onToggleCompletion()
                 } label: {
-                    Image(systemName: "circle")
+                    Image(systemName: isPending ? "checkmark.circle.fill" : "circle")
                         .font(.inter(.title3))
-                        .foregroundColor(.gray)
+                        .foregroundColor(isPending ? Color.completedPurple.opacity(0.6) : .gray)
+                        .symbolEffect(.pulse, isActive: isPending)
                 }
                 .buttonStyle(.plain)
             }

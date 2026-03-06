@@ -540,7 +540,8 @@ struct FlatTaskRow: View {
     @State private var showDeleteConfirmation = false
 
     private var isParent: Bool { task.parentTaskId == nil }
-    private var displayCompleted: Bool { appearCompleted ?? task.isCompleted }
+    private var isPending: Bool { viewModel.isPendingCompletion(task.id) }
+    private var displayCompleted: Bool { appearCompleted ?? (task.isCompleted || isPending) }
 
     var body: some View {
         HStack(spacing: 12) {
@@ -570,22 +571,21 @@ struct FlatTaskRow: View {
             // Completion checkbox (hidden in edit mode)
             if !isEditMode {
                 Button {
-                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                    UIImpactFeedbackGenerator(style: isPending ? .light : .medium).impactOccurred()
                     if let onToggleCompletion {
                         onToggleCompletion(task)
                     } else {
-                        _Concurrency.Task {
-                            if isParent {
-                                await viewModel.toggleCompletion(task)
-                            } else {
-                                await viewModel.toggleSubtaskCompletion(task, parentId: task.parentTaskId!)
-                            }
+                        if isParent {
+                            viewModel.requestToggleCompletion(task)
+                        } else {
+                            viewModel.requestToggleSubtaskCompletion(task, parentId: task.parentTaskId!)
                         }
                     }
                 } label: {
                     Image(systemName: displayCompleted ? "checkmark.circle.fill" : "circle")
                         .font(isParent ? .inter(.title3) : .inter(.subheadline))
                         .foregroundColor(displayCompleted ? Color.completedPurple.opacity(0.6) : .gray)
+                        .symbolEffect(.pulse, isActive: isPending)
                 }
                 .buttonStyle(.plain)
             }
@@ -720,9 +720,7 @@ struct ExpandableTaskRow: View {
             if !isEditMode {
                 Button {
                     UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                    _Concurrency.Task {
-                        await viewModel.toggleCompletion(task)
-                    }
+                    viewModel.requestToggleCompletion(task)
                 } label: {
                     Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
                         .font(.inter(.title3))
@@ -806,25 +804,27 @@ struct SubtaskRow: View {
     let parentId: UUID
     @ObservedObject var viewModel: TaskListViewModel
 
+    private var isPending: Bool { viewModel.isPendingCompletion(subtask.id) }
+    private var displayCompleted: Bool { subtask.isCompleted || isPending }
+
     var body: some View {
         HStack(spacing: 12) {
             Text(subtask.title)
                 .font(.inter(.subheadline))
-                .strikethrough(subtask.isCompleted)
-                .foregroundColor(subtask.isCompleted ? .secondary : .primary)
+                .strikethrough(displayCompleted)
+                .foregroundColor(displayCompleted ? .secondary : .primary)
 
             Spacer()
 
             // Checkbox on right for thumb access
             Button {
-                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                Task {
-                    await viewModel.toggleSubtaskCompletion(subtask, parentId: parentId)
-                }
+                UIImpactFeedbackGenerator(style: isPending ? .light : .medium).impactOccurred()
+                viewModel.requestToggleSubtaskCompletion(subtask, parentId: parentId)
             } label: {
-                Image(systemName: subtask.isCompleted ? "checkmark.circle.fill" : "circle")
+                Image(systemName: displayCompleted ? "checkmark.circle.fill" : "circle")
                     .font(.inter(.subheadline))
-                    .foregroundColor(subtask.isCompleted ? Color.completedPurple.opacity(0.6) : .gray)
+                    .foregroundColor(displayCompleted ? Color.completedPurple.opacity(0.6) : .gray)
+                    .symbolEffect(.pulse, isActive: isPending)
             }
             .buttonStyle(.plain)
         }

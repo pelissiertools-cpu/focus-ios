@@ -577,7 +577,7 @@ struct BacklogView: View {
                             isSelected: taskListVM.selectedTaskIds.contains(task.id),
                             onSelectToggle: { taskListVM.toggleTaskSelection(task.id) },
                             onToggleCompletion: { t in
-                                _Concurrency.Task { await taskListVM.toggleCompletion(t) }
+                                taskListVM.requestToggleCompletion(t)
                             }
                         )
                         .padding(.leading, task.parentTaskId != nil ? 32 : 0)

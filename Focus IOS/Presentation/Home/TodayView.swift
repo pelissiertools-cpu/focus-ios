@@ -499,10 +499,16 @@ private enum TodayItemEntry: Identifiable {
         if allZero {
             return items.sorted {
                 if $0.typeSortOrder != $1.typeSortOrder { return $0.typeSortOrder < $1.typeSortOrder }
-                return $0.createdDate < $1.createdDate
+                if $0.createdDate != $1.createdDate { return $0.createdDate < $1.createdDate }
+                return $0.id.uuidString < $1.id.uuidString
             }
         } else {
-            return items.sorted { $0.sortOrder < $1.sortOrder }
+            return items.sorted { a, b in
+                if a.sortOrder != b.sortOrder { return a.sortOrder < b.sortOrder }
+                if a.typeSortOrder != b.typeSortOrder { return a.typeSortOrder < b.typeSortOrder }
+                if a.createdDate != b.createdDate { return a.createdDate < b.createdDate }
+                return a.id.uuidString < b.id.uuidString
+            }
         }
     }
 }

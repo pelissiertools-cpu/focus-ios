@@ -1824,11 +1824,12 @@ private enum ScheduledItemEntry: Identifiable {
         }
     }
 
-    /// Stable sort: by type, then native-first, then by creation date (oldest first)
+    /// Stable sort: by type, then native-first, then by creation date (oldest first), then UUID tiebreaker
     static func stableSort(_ a: ScheduledItemEntry, _ b: ScheduledItemEntry) -> Bool {
         if a.typeSortOrder != b.typeSortOrder { return a.typeSortOrder < b.typeSortOrder }
         if a.isNative != b.isNative { return a.isNative && !b.isNative }
-        return a.createdDate < b.createdDate
+        if a.createdDate != b.createdDate { return a.createdDate < b.createdDate }
+        return a.id.uuidString < b.id.uuidString
     }
 
     /// Sort for display: use sort order if any item has been manually reordered, otherwise type-based
@@ -1837,7 +1838,10 @@ private enum ScheduledItemEntry: Identifiable {
         if allZero {
             return items.sorted(by: stableSort)
         } else {
-            return items.sorted { $0.sortOrder < $1.sortOrder }
+            return items.sorted { a, b in
+                if a.sortOrder != b.sortOrder { return a.sortOrder < b.sortOrder }
+                return stableSort(a, b)
+            }
         }
     }
 }

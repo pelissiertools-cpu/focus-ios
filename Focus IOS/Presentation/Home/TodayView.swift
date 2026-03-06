@@ -14,7 +14,7 @@ struct TodayView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var isInlineAddFocused = false
     @State private var isLoading = false
-    @State private var todayScheduledIds: Set<UUID> = []
+    @State private var todaySchedules: [UUID: (scheduleId: UUID, sortOrder: Int)] = [:]
 
     // Navigation
     @State private var selectedListForNavigation: FocusTask?
@@ -30,16 +30,8 @@ struct TodayView: View {
         _projectsVM = StateObject(wrappedValue: ProjectsViewModel(authService: authService))
     }
 
-    private var displayItems: [FlatDisplayItem] {
-        taskListVM.flattenedDisplayItems.filter { item in
-            switch item {
-            case .task(let task): return task.projectId == nil
-            case .addSubtaskRow(let parentId):
-                let projectTaskIds = Set(taskListVM.uncompletedTasks.filter { $0.projectId != nil }.map { $0.id })
-                return !projectTaskIds.contains(parentId)
-            default: return true
-            }
-        }
+    private var todayScheduledIds: Set<UUID> {
+        Set(todaySchedules.keys)
     }
 
     private var scheduledLists: [FocusTask] {
@@ -54,10 +46,53 @@ struct TodayView: View {
             .filter { todayScheduledIds.contains($0.id) }
     }
 
+    private var allTodayEntries: [TodayItemEntry] {
+        var entries: [TodayItemEntry] = []
+
+        for task in taskListVM.uncompletedTasks where task.projectId == nil {
+            if let schedule = todaySchedules[task.id] {
+                entries.append(.task(task, scheduleId: schedule.scheduleId, sortOrder: schedule.sortOrder))
+            }
+        }
+
+        for list in scheduledLists {
+            if let schedule = todaySchedules[list.id] {
+                entries.append(.list(list, scheduleId: schedule.scheduleId, sortOrder: schedule.sortOrder))
+            }
+        }
+
+        for project in scheduledProjects {
+            if let schedule = todaySchedules[project.id] {
+                entries.append(.project(project, scheduleId: schedule.scheduleId, sortOrder: schedule.sortOrder))
+            }
+        }
+
+        return TodayItemEntry.sortForDisplay(entries)
+    }
+
+    private var flattenedTodayItems: [TodayFlatItem] {
+        var result: [TodayFlatItem] = []
+
+        for entry in allTodayEntries {
+            result.append(.item(entry))
+
+            if case .task(let task, _, _) = entry,
+               taskListVM.expandedTasks.contains(task.id) {
+                let subtasks = taskListVM.getUncompletedSubtasks(for: task.id)
+                    + taskListVM.getCompletedSubtasks(for: task.id)
+                for subtask in subtasks {
+                    result.append(.subtask(subtask, parentId: task.id))
+                }
+                result.append(.inlineAddSubtask(parentId: task.id))
+            }
+        }
+
+        result.append(.bottomSpacer)
+        return result
+    }
+
     private var isEmpty: Bool {
-        taskListVM.uncompletedTasks.filter { $0.projectId == nil }.isEmpty
-            && scheduledLists.isEmpty
-            && scheduledProjects.isEmpty
+        allTodayEntries.isEmpty
     }
 
     var body: some View {
@@ -153,7 +188,6 @@ struct TodayView: View {
 
     private func fetchTodayData() async {
         do {
-            // Fetch daily schedules for today (both focus and todo sections)
             let focusSchedules = try await scheduleRepository.fetchSchedules(
                 timeframe: .daily,
                 date: Date(),
@@ -166,13 +200,16 @@ struct TodayView: View {
             )
 
             let allSchedules = focusSchedules + todoSchedules
-            todayScheduledIds = Set(allSchedules.map { $0.taskId })
+            var schedules: [UUID: (scheduleId: UUID, sortOrder: Int)] = [:]
+            for s in allSchedules {
+                schedules[s.taskId] = (scheduleId: s.id, sortOrder: s.sortOrder)
+            }
+            todaySchedules = schedules
 
-            // Set only today's task IDs as the scheduled filter
-            taskListVM.scheduledTaskIds = todayScheduledIds
+            taskListVM.scheduledTaskIds = Set(schedules.keys)
             taskListVM.scheduleFilter = .scheduled
         } catch {
-            todayScheduledIds = []
+            todaySchedules = [:]
             taskListVM.scheduledTaskIds = []
             taskListVM.scheduleFilter = .scheduled
         }
@@ -188,42 +225,27 @@ struct TodayView: View {
 
     private var itemList: some View {
         List {
-            // Tasks with expandable subtasks
-            ForEach(displayItems) { item in
-                switch item {
-                case .priorityHeader(let priority):
-                    PrioritySectionHeader(
-                        priority: priority,
-                        count: taskListVM.uncompletedTasks.filter { $0.priority == priority && $0.projectId == nil }.count,
-                        isCollapsed: taskListVM.isPriorityCollapsed(priority),
-                        onToggle: {
-                            withAnimation(.easeInOut(duration: 0.2)) {
-                                taskListVM.togglePriorityCollapsed(priority)
-                            }
-                        }
-                    )
-                    .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
-                    .listRowSeparator(.hidden)
-                    .listRowBackground(Color.clear)
-                    .moveDisabled(true)
+            ForEach(flattenedTodayItems) { flatItem in
+                switch flatItem {
+                case .item(let entry):
+                    todayItemRow(entry)
 
-                case .task(let task):
+                case .subtask(let subtask, _):
                     FlatTaskRow(
-                        task: task,
+                        task: subtask,
                         viewModel: taskListVM,
                         isEditMode: false,
                         isSelected: false,
                         onSelectToggle: nil,
-                        onToggleCompletion: { t in
-                            _Concurrency.Task { await taskListVM.toggleCompletion(t) }
-                        }
+                        onToggleCompletion: nil
                     )
-                    .padding(.leading, task.parentTaskId != nil ? 32 : 0)
+                    .padding(.leading, 32)
                     .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
                     .listRowBackground(Color.clear)
-                    .listRowSeparator(task.parentTaskId != nil ? .visible : .hidden)
+                    .listRowSeparator(.visible)
+                    .moveDisabled(true)
 
-                case .addSubtaskRow(let parentId):
+                case .inlineAddSubtask(let parentId):
                     InlineAddRow(
                         placeholder: "Subtask title",
                         buttonLabel: "Add subtask",
@@ -234,53 +256,115 @@ struct TodayView: View {
                     .padding(.leading, 32)
                     .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
                     .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
                     .moveDisabled(true)
 
-                case .addTaskRow:
-                    EmptyView()
+                case .bottomSpacer:
+                    Color.clear
+                        .frame(height: 100)
+                        .listRowInsets(EdgeInsets())
                         .listRowSeparator(.hidden)
                         .listRowBackground(Color.clear)
                         .moveDisabled(true)
                 }
             }
-
-            // Lists scheduled to today
-            ForEach(scheduledLists) { list in
-                TodayListRow(
-                    list: list,
-                    onTap: { selectedListForNavigation = list },
-                    onEdit: { listsVM.selectedListForDetails = list },
-                    onSchedule: { listsVM.selectedItemForSchedule = list }
-                )
-                .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
-                .listRowBackground(Color.clear)
-                .listRowSeparator(.hidden)
+            .onMove { from, to in
+                handleMove(from: from, to: to)
             }
+        }
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        .scrollDismissesKeyboard(.interactively)
+        .keyboardDismissOverlay(isActive: $isInlineAddFocused)
+    }
 
-            // Projects scheduled to today
-            ForEach(scheduledProjects) { project in
+    // MARK: - Item Row
+
+    @ViewBuilder
+    private func todayItemRow(_ entry: TodayItemEntry) -> some View {
+        Group {
+            switch entry {
+            case .task(let task, _, _):
+                FlatTaskRow(
+                    task: task,
+                    viewModel: taskListVM,
+                    isEditMode: false,
+                    isSelected: false,
+                    onSelectToggle: nil,
+                    onToggleCompletion: { t in
+                        _Concurrency.Task { await taskListVM.toggleCompletion(t) }
+                    }
+                )
+
+            case .project(let project, _, _):
                 TodayProjectRow(
                     project: project,
                     onTap: { selectedProjectForNavigation = project },
                     onEdit: { projectsVM.selectedProjectForDetails = project },
                     onSchedule: { projectsVM.selectedTaskForSchedule = project }
                 )
-                .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
-                .listRowBackground(Color.clear)
-                .listRowSeparator(.hidden)
-            }
 
-            // Bottom spacer
-            Color.clear
-                .frame(height: 100)
-                .listRowInsets(EdgeInsets())
-                .listRowSeparator(.hidden)
-                .listRowBackground(Color.clear)
+            case .list(let list, _, _):
+                TodayListRow(
+                    list: list,
+                    onTap: { selectedListForNavigation = list },
+                    onEdit: { listsVM.selectedListForDetails = list },
+                    onSchedule: { listsVM.selectedItemForSchedule = list }
+                )
+            }
         }
-        .listStyle(.plain)
-        .scrollContentBackground(.hidden)
-        .scrollDismissesKeyboard(.interactively)
-        .keyboardDismissOverlay(isActive: $isInlineAddFocused)
+        .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+        .listRowBackground(Color.clear)
+        .listRowSeparator(.hidden)
+    }
+
+    // MARK: - Reorder
+
+    private func handleMove(from source: IndexSet, to destination: Int) {
+        var transaction = Transaction()
+        transaction.animation = nil
+        withTransaction(transaction) {
+            performMove(from: source, to: destination)
+        }
+    }
+
+    private func performMove(from source: IndexSet, to destination: Int) {
+        let flat = flattenedTodayItems
+        guard let fromIdx = source.first else { return }
+
+        guard case .item(let movedEntry) = flat[fromIdx] else { return }
+
+        let itemEntries = flat.enumerated().compactMap { (i, flatItem) -> (flatIdx: Int, entry: TodayItemEntry)? in
+            guard case .item(let entry) = flatItem else { return nil }
+            return (i, entry)
+        }
+
+        guard let itemFrom = itemEntries.firstIndex(where: { $0.entry.id == movedEntry.id }) else { return }
+
+        var itemTo = itemEntries.count
+        for (ci, entry) in itemEntries.enumerated() {
+            if destination <= entry.flatIdx {
+                itemTo = ci
+                break
+            }
+        }
+        if itemTo > itemFrom { itemTo = min(itemTo, itemEntries.count) }
+
+        guard itemFrom != itemTo && itemFrom + 1 != itemTo else { return }
+
+        var items = itemEntries.map { $0.entry }
+        items.move(fromOffsets: IndexSet(integer: itemFrom), toOffset: itemTo)
+
+        var updates: [(id: UUID, sortOrder: Int)] = []
+        for (index, entry) in items.enumerated() {
+            let newOrder = index + 1
+            updates.append((id: entry.scheduleId, sortOrder: newOrder))
+            todaySchedules[entry.id] = (scheduleId: entry.scheduleId, sortOrder: newOrder)
+        }
+
+        _Concurrency.Task {
+            try? await scheduleRepository.updateScheduleSortOrders(updates)
+        }
     }
 }
 
@@ -345,6 +429,80 @@ private struct TodayListRow: View {
         .contextMenu {
             ContextMenuItems.editButton { onEdit() }
             ContextMenuItems.scheduleButton { onSchedule() }
+        }
+    }
+}
+
+// MARK: - Today Flat Item
+
+private enum TodayFlatItem: Identifiable {
+    case item(TodayItemEntry)
+    case subtask(FocusTask, parentId: UUID)
+    case inlineAddSubtask(parentId: UUID)
+    case bottomSpacer
+
+    var id: String {
+        switch self {
+        case .item(let e): return "item-\(e.id.uuidString)"
+        case .subtask(let t, _): return "subtask-\(t.id.uuidString)"
+        case .inlineAddSubtask(let pid): return "add-subtask-\(pid.uuidString)"
+        case .bottomSpacer: return "bottom-spacer"
+        }
+    }
+}
+
+// MARK: - Today Item Entry
+
+private enum TodayItemEntry: Identifiable {
+    case task(FocusTask, scheduleId: UUID, sortOrder: Int)
+    case project(FocusTask, scheduleId: UUID, sortOrder: Int)
+    case list(FocusTask, scheduleId: UUID, sortOrder: Int)
+
+    var id: UUID {
+        switch self {
+        case .task(let t, _, _): return t.id
+        case .project(let p, _, _): return p.id
+        case .list(let l, _, _): return l.id
+        }
+    }
+
+    var scheduleId: UUID {
+        switch self {
+        case .task(_, let sid, _), .project(_, let sid, _), .list(_, let sid, _): return sid
+        }
+    }
+
+    var sortOrder: Int {
+        switch self {
+        case .task(_, _, let so), .project(_, _, let so), .list(_, _, let so): return so
+        }
+    }
+
+    var createdDate: Date {
+        switch self {
+        case .task(let t, _, _): return t.createdDate
+        case .project(let p, _, _): return p.createdDate
+        case .list(let l, _, _): return l.createdDate
+        }
+    }
+
+    private var typeSortOrder: Int {
+        switch self {
+        case .task: return 0
+        case .project: return 1
+        case .list: return 2
+        }
+    }
+
+    static func sortForDisplay(_ items: [TodayItemEntry]) -> [TodayItemEntry] {
+        let allZero = items.allSatisfy { $0.sortOrder == 0 }
+        if allZero {
+            return items.sorted {
+                if $0.typeSortOrder != $1.typeSortOrder { return $0.typeSortOrder < $1.typeSortOrder }
+                return $0.createdDate < $1.createdDate
+            }
+        } else {
+            return items.sorted { $0.sortOrder < $1.sortOrder }
         }
     }
 }

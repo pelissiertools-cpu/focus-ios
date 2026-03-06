@@ -457,7 +457,7 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
 
     /// Create a new task (inserted at the top with sortOrder 0)
     @discardableResult
-    func createTask(title: String, categoryId: UUID? = nil, priority: Priority = .low) async -> UUID? {
+    func createTask(title: String, categoryId: UUID? = nil, priority: Priority = .low, markScheduled: Bool = false) async -> UUID? {
         guard let userId = authService.currentUser?.id else {
             errorMessage = "No authenticated user"
             return nil
@@ -479,6 +479,9 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
             let createdTask = try await repository.createTask(newTask)
             tasks.insert(createdTask, at: 0)
             subtasksMap[createdTask.id] = []
+            if markScheduled {
+                scheduledTaskIds.insert(createdTask.id)
+            }
 
             // Reassign sort orders so the new task is at 0 and others shift up
             let uncompleted = tasks.filter { !$0.isCompleted }.sorted { $0.sortOrder < $1.sortOrder }
@@ -1088,8 +1091,9 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
         hasScheduledTime: Bool,
         scheduledTime: Date?
     ) async -> UUID? {
-        // 1. Create the task
-        guard let parentId = await createTask(title: title, categoryId: categoryId, priority: priority) else {
+        // 1. Create the task (mark as scheduled immediately to avoid Brain Dump flash)
+        let shouldSchedule = scheduleAfterCreate && !selectedDates.isEmpty
+        guard let parentId = await createTask(title: title, categoryId: categoryId, priority: priority, markScheduled: shouldSchedule) else {
             return nil
         }
 

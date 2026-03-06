@@ -37,11 +37,13 @@ class HomeViewModel: ObservableObject {
     @Published var lists: [FocusTask] = []
     @Published var isLoading = false
     @Published var errorMessage: String?
+    @Published var todayTaskCount: Int = 0
 
     // Navigation state
     @Published var selectedMenuItem: HomeMenuItem?
 
     private let repository: TaskRepository
+    private let scheduleRepository = ScheduleRepository()
     private var cancellables = Set<AnyCancellable>()
 
     init() {
@@ -75,6 +77,16 @@ class HomeViewModel: ObservableObject {
     func fetchLists() async {
         do {
             lists = try await repository.fetchTasks(ofType: .list, isCleared: false, isCompleted: false)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func fetchTodayTaskCount() async {
+        do {
+            let focus = try await scheduleRepository.fetchSchedules(timeframe: .daily, date: Date(), section: .focus)
+            let todo = try await scheduleRepository.fetchSchedules(timeframe: .daily, date: Date(), section: .todo)
+            todayTaskCount = focus.count + todo.count
         } catch {
             errorMessage = error.localizedDescription
         }

@@ -103,59 +103,102 @@ struct HomeView: View {
         NavigationStack {
             ZStack {
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 0) {
-                        // MARK: - Top Bar
+                    VStack(alignment: .leading, spacing: 16) {
+                        // MARK: - Search Button (top right)
                         HStack {
-                            Button(action: { showSettings = true }) {
-                                Image(systemName: "person")
-                                    .font(.inter(.body, weight: .medium))
-                                    .foregroundColor(.primary)
-                                    .frame(width: 36, height: 36)
-                                    .glassEffect(.regular.tint(.glassTint).interactive(), in: .circle)
-                            }
-
                             Spacer()
-
                             Button(action: { showSearch = true }) {
                                 Image(systemName: "magnifyingglass")
                                     .font(.inter(.body, weight: .medium))
-                                    .foregroundColor(.primary)
-                                    .frame(width: 36, height: 36)
-                                    .glassEffect(.regular.tint(.glassTint).interactive(), in: .circle)
+                                    .foregroundColor(.secondary)
                             }
+                            .buttonStyle(.plain)
                         }
                         .padding(.horizontal, 20)
                         .padding(.top, 8)
-                        .padding(.bottom, 24)
 
-                        // MARK: - Menu Items (Today, Scheduled)
-                        ForEach([HomeMenuItem.today, .assign], id: \.self) { item in
-                            homeMenuButton(item)
+                        // MARK: - Profile Header
+                        HStack(alignment: .center, spacing: 12) {
+                            Button(action: { showSettings = true }) {
+                                Circle()
+                                    .stroke(Color.secondary.opacity(0.3), lineWidth: 1)
+                                    .frame(width: 56, height: 56)
+                                    .overlay(
+                                        Image(systemName: "person")
+                                            .font(.inter(.title3, weight: .medium))
+                                            .foregroundColor(.primary)
+                                    )
+                            }
+                            .buttonStyle(.plain)
+
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(currentDayName)
+                                    .font(.inter(.title, weight: .light))
+                                    .foregroundColor(.primary)
+                                Text(currentDateShort)
+                                    .font(.inter(.subheadline))
+                                    .foregroundColor(.primary)
+                                HStack {
+                                    Text(currentWeekString)
+                                        .font(.inter(.caption))
+                                        .foregroundColor(.secondary)
+                                    Spacer()
+                                    Text(scheduledTaskSummary)
+                                        .font(.inter(.caption))
+                                        .foregroundColor(.secondary)
+                                }
+                            }
                         }
+                        .padding(.horizontal, 20)
 
-                        // MARK: - Divider
-                        Rectangle()
-                            .fill(Color.appRed.opacity(0.4))
-                            .frame(height: 1)
+                        // MARK: - Inbox (full width)
+                        homeCard(title: "Inbox", count: braindumpCount, centered: true) {
+                            viewModel.selectedMenuItem = .braindump
+                        }
+                        .padding(.horizontal, 20)
+
+                        // MARK: - Today / Schedule
+                        HStack(spacing: 12) {
+                            homeCard(title: "Today", icon: "sun.max") {
+                                viewModel.selectedMenuItem = .today
+                            }
+                            homeCard(title: "Schedule", icon: "calendar") {
+                                viewModel.selectedMenuItem = .assign
+                            }
+                        }
+                        .padding(.horizontal, 20)
+
+                        // MARK: - All / Completed
+                        HStack(spacing: 12) {
+                            homeCard(title: "All", icon: "tray") {
+                                viewModel.selectedMenuItem = .backlog
+                            }
+                            homeCard(title: "Completed", icon: "archivebox") {
+                                viewModel.selectedMenuItem = .archive
+                            }
+                        }
+                        .padding(.horizontal, 20)
+
+                        // MARK: - Library Divider
+                        homeSectionDivider(title: "LIBRARY")
+
+                        // MARK: - Projects / Quick Lists
+                        HStack(spacing: 12) {
+                            homeCard(title: "Projects", icon: "folder", count: viewModel.projects.filter({ !$0.isSection }).count) {
+                                viewModel.selectedMenuItem = .projects
+                            }
+                            homeCard(title: "Quick lists", icon: "list.bullet", count: viewModel.lists.filter({ !$0.isSection }).count) {
+                                viewModel.selectedMenuItem = .quickLists
+                            }
+                        }
+                        .padding(.horizontal, 20)
+
+                        // MARK: - Goals (full width placeholder)
+                        homeCard(title: "Goals", centered: true) { }
                             .padding(.horizontal, 20)
-                            .padding(.top, 12)
 
-                        // MARK: - Menu Items (Braindump, Backlog, Archive)
-                        ForEach([HomeMenuItem.braindump, .backlog, .archive], id: \.self) { item in
-                            homeMenuButton(item)
-                        }
-
-                        // MARK: - Divider before Projects/Lists
-                        Rectangle()
-                            .fill(Color.appRed.opacity(0.4))
-                            .frame(height: 1)
-                            .padding(.horizontal, 20)
-                            .padding(.top, 12)
-
-                        // MARK: - Projects & Quick Lists Menu Items
-                        ForEach([HomeMenuItem.projects, .quickLists], id: \.self) { item in
-                            homeMenuButton(item)
-                        }
+                        // MARK: - Pinned Divider
+                        homeSectionDivider(title: "PINNED")
                     }
                     .padding(.bottom, 120)
                 }
@@ -237,6 +280,7 @@ struct HomeView: View {
                 if viewModel.lists.isEmpty {
                     await viewModel.fetchLists()
                 }
+                await viewModel.fetchTodayTaskCount()
                 await taskListVM.fetchScheduledTaskIds()
                 await taskListVM.fetchTasks()
                 // Pre-load categories for add bar
@@ -319,52 +363,74 @@ struct HomeView: View {
         }
     }
 
-    // MARK: - Home Menu Button
+    // MARK: - Home Card
 
-    private func homeMenuButton(_ item: HomeMenuItem) -> some View {
-        Button {
-            viewModel.selectedMenuItem = item
-        } label: {
-            HStack(spacing: 12) {
-                Image(systemName: item.iconName)
-                    .font(.inter(.body, weight: .medium))
-                    .foregroundColor(.primary)
-                    .frame(width: 24)
-
-                Text(item.rawValue)
+    private func homeCard(title: String, icon: String? = nil, count: Int? = nil, centered: Bool = false, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack {
+                if centered { Spacer() }
+                Text(title)
                     .font(.inter(.body))
                     .foregroundColor(.primary)
-
-                if item == .braindump {
-                    let count = braindumpCount
-                    if count > 0 {
-                        Text("\(count)")
-                            .font(.inter(.footnote, weight: .medium))
-                            .foregroundColor(.secondary)
-                    }
-                } else if item == .projects {
-                    let count = viewModel.projects.filter({ !$0.isSection }).count
-                    if count > 0 {
-                        Text("\(count)")
-                            .font(.inter(.footnote, weight: .medium))
-                            .foregroundColor(.secondary)
-                    }
-                } else if item == .quickLists {
-                    let count = viewModel.lists.filter({ !$0.isSection }).count
-                    if count > 0 {
-                        Text("\(count)")
-                            .font(.inter(.footnote, weight: .medium))
-                            .foregroundColor(.secondary)
-                    }
+                if let count, count > 0 {
+                    Text("(\(count))")
+                        .font(.inter(.footnote, weight: .medium))
+                        .foregroundColor(.secondary)
                 }
-
                 Spacer()
+                if let icon {
+                    Image(systemName: icon)
+                        .font(.inter(.body, weight: .medium))
+                        .foregroundColor(.primary)
+                }
             }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 12)
+            .padding(16)
+            .frame(maxWidth: .infinity, minHeight: 56)
             .contentShape(Rectangle())
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(Color.secondary.opacity(0.3), lineWidth: 1)
+            )
         }
         .buttonStyle(.plain)
+    }
+
+    // MARK: - Section Divider
+
+    private func homeSectionDivider(title: String) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Rectangle()
+                .fill(Color.secondary.opacity(0.3))
+                .frame(height: 1)
+            Text(title)
+                .font(.inter(size: 17, weight: .medium))
+                .foregroundColor(.secondary)
+        }
+        .padding(.horizontal, 20)
+    }
+
+    // MARK: - Date Helpers
+
+    private var currentDayName: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "EEEE"
+        return formatter.string(from: Date())
+    }
+
+    private var currentDateShort: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMMM d, yyyy"
+        return formatter.string(from: Date())
+    }
+
+    private var currentWeekString: String {
+        let week = Calendar.current.component(.weekOfYear, from: Date())
+        return String(format: "week__%02d", week)
+    }
+
+    private var scheduledTaskSummary: String {
+        let count = viewModel.todayTaskCount
+        return "\(count) tasks planned"
     }
 
     // MARK: - FAB Button

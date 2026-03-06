@@ -366,6 +366,7 @@ struct HomeView: View {
                 }
                 await taskListVM.fetchScheduledTaskIds()
                 await taskListVM.fetchTasks()
+                await taskListVM.fetchCategories()
                 await viewModel.fetchCategories()
                 // Pre-load categories for add bar
                 await projectsViewModel.fetchProjects()

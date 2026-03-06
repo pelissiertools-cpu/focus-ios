@@ -61,6 +61,26 @@ class ScheduleRepository {
         self.supabase = supabase
     }
 
+    /// Fetch overdue daily schedules (schedule_date before today, task not yet completed)
+    func fetchOverdueSchedules() async throws -> [Schedule] {
+        let today = Calendar.current.startOfDay(for: Date())
+
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        let todayStr = formatter.string(from: today)
+
+        let schedules: [Schedule] = try await supabase
+            .from("schedules")
+            .select()
+            .eq("timeframe", value: Timeframe.daily.rawValue)
+            .lt("schedule_date", value: todayStr)
+            .order("schedule_date", ascending: false)
+            .execute()
+            .value
+
+        return schedules
+    }
+
     /// Fetch schedules for a specific timeframe, date, and section
     func fetchSchedules(
         timeframe: Timeframe,

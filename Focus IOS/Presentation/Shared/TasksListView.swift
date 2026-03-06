@@ -539,6 +539,7 @@ struct FlatTaskRow: View {
     var onReschedule: (() -> Void)? = nil
     var onPushToTomorrow: (() -> Void)? = nil
     var appearCompleted: Bool? = nil
+    var overdueDate: Date? = nil
     @State private var showDeleteConfirmation = false
 
     private var isParent: Bool { task.parentTaskId == nil }
@@ -561,11 +562,22 @@ struct FlatTaskRow: View {
                     .strikethrough(displayCompleted)
                     .foregroundColor(displayCompleted ? .secondary : .primary)
 
-                // Parent: subtask count badge
+                // Subtask count + overdue date (inline when both present)
                 if isParent, let subtasks = viewModel.subtasksMap[task.id], !subtasks.isEmpty {
-                    Text("\(subtasks.count) subtask\(subtasks.count == 1 ? "" : "s")")
+                    HStack(spacing: 6) {
+                        Text("\(subtasks.count) subtask\(subtasks.count == 1 ? "" : "s")")
+                            .font(.inter(.caption))
+                            .foregroundColor(.secondary)
+                        if let overdueDate {
+                            Text(OverdueDateFormatter.format(overdueDate))
+                                .font(.inter(.caption))
+                                .foregroundColor(.red)
+                        }
+                    }
+                } else if let overdueDate {
+                    Text(OverdueDateFormatter.format(overdueDate))
                         .font(.inter(.caption))
-                        .foregroundColor(.secondary)
+                        .foregroundColor(.red)
                 }
             }
             .frame(maxWidth: .infinity, minHeight: isParent ? 36 : nil, alignment: .leading)

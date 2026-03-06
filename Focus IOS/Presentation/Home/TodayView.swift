@@ -17,6 +17,7 @@ struct TodayView: View {
     @State private var todaySchedules: [UUID: (scheduleId: UUID, sortOrder: Int)] = [:]
     @State private var scheduleById: [UUID: Schedule] = [:]
     @State private var selectedScheduleForReschedule: Schedule?
+    @State private var overdueScheduleDates: [UUID: Date] = [:]
 
     // Navigation
     @State private var selectedListForNavigation: FocusTask?
@@ -212,6 +213,18 @@ struct TodayView: View {
                 schedules[s.taskId] = (scheduleId: s.id, sortOrder: s.sortOrder)
                 byId[s.id] = s
             }
+
+            // Fetch overdue schedules and merge (only tasks not already scheduled today)
+            var overdueDates: [UUID: Date] = [:]
+            let overdueSchedules = try await scheduleRepository.fetchOverdueSchedules()
+            for (index, s) in overdueSchedules.enumerated() {
+                guard schedules[s.taskId] == nil else { continue }
+                schedules[s.taskId] = (scheduleId: s.id, sortOrder: -1000 + index)
+                byId[s.id] = s
+                overdueDates[s.taskId] = s.scheduleDate
+            }
+            overdueScheduleDates = overdueDates
+
             todaySchedules = schedules
             scheduleById = byId
 
@@ -219,6 +232,7 @@ struct TodayView: View {
             taskListVM.scheduleFilter = .scheduled
         } catch {
             todaySchedules = [:]
+            overdueScheduleDates = [:]
             taskListVM.scheduledTaskIds = []
             taskListVM.scheduleFilter = .scheduled
         }
@@ -313,12 +327,14 @@ struct TodayView: View {
                                 await fetchTodayData()
                             }
                         }
-                    }
+                    },
+                    overdueDate: overdueScheduleDates[task.id]
                 )
 
             case .project(let project, let scheduleId, _):
                 TodayProjectRow(
                     project: project,
+                    overdueDate: overdueScheduleDates[project.id],
                     onTap: { selectedProjectForNavigation = project },
                     onEdit: { projectsVM.selectedProjectForDetails = project },
                     onReschedule: { selectedScheduleForReschedule = scheduleById[scheduleId] },
@@ -335,6 +351,7 @@ struct TodayView: View {
             case .list(let list, let scheduleId, _):
                 TodayListRow(
                     list: list,
+                    overdueDate: overdueScheduleDates[list.id],
                     onTap: { selectedListForNavigation = list },
                     onEdit: { listsVM.selectedListForDetails = list },
                     onReschedule: { selectedScheduleForReschedule = scheduleById[scheduleId] },
@@ -408,6 +425,7 @@ struct TodayView: View {
 
 private struct TodayProjectRow: View {
     let project: FocusTask
+    var overdueDate: Date? = nil
     var onTap: () -> Void
     var onEdit: () -> Void
     var onReschedule: () -> Void
@@ -418,10 +436,17 @@ private struct TodayProjectRow: View {
             ProjectIconShape()
                 .frame(width: 24, height: 24)
                 .foregroundColor(.secondary)
-            Text(project.title)
-                .font(.inter(.body))
-                .foregroundColor(.primary)
-                .lineLimit(1)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(project.title)
+                    .font(.inter(.body))
+                    .foregroundColor(.primary)
+                    .lineLimit(1)
+                if let overdueDate {
+                    Text(OverdueDateFormatter.format(overdueDate))
+                        .font(.inter(.caption))
+                        .foregroundColor(.red)
+                }
+            }
             Spacer()
             Image(systemName: "chevron.right")
                 .font(.inter(size: 12, weight: .semiBold))
@@ -442,6 +467,7 @@ private struct TodayProjectRow: View {
 
 private struct TodayListRow: View {
     let list: FocusTask
+    var overdueDate: Date? = nil
     var onTap: () -> Void
     var onEdit: () -> Void
     var onReschedule: () -> Void
@@ -453,10 +479,17 @@ private struct TodayListRow: View {
                 .font(.inter(.body, weight: .medium))
                 .foregroundColor(.secondary)
                 .frame(width: 24)
-            Text(list.title)
-                .font(.inter(.body))
-                .foregroundColor(.primary)
-                .lineLimit(1)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(list.title)
+                    .font(.inter(.body))
+                    .foregroundColor(.primary)
+                    .lineLimit(1)
+                if let overdueDate {
+                    Text(OverdueDateFormatter.format(overdueDate))
+                        .font(.inter(.caption))
+                        .foregroundColor(.red)
+                }
+            }
             Spacer()
             Image(systemName: "chevron.right")
                 .font(.inter(size: 12, weight: .semiBold))
@@ -549,6 +582,24 @@ private enum TodayItemEntry: Identifiable {
                 if a.createdDate != b.createdDate { return a.createdDate < b.createdDate }
                 return a.id.uuidString < b.id.uuidString
             }
+        }
+    }
+}
+
+// MARK: - Overdue Date Formatter
+
+enum OverdueDateFormatter {
+    static func format(_ date: Date) -> String {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let scheduleDay = calendar.startOfDay(for: date)
+
+        if calendar.isDate(scheduleDay, inSameDayAs: calendar.date(byAdding: .day, value: -1, to: today)!) {
+            return "Yesterday"
+        } else {
+            let formatter = DateFormatter()
+            formatter.dateFormat = "yyyy-MM-dd"
+            return formatter.string(from: date)
         }
     }
 }

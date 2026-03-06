@@ -280,6 +280,7 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
                 }
             }
         }
+        result.append(.addTaskRow)
         if !completed.isEmpty {
             result.append(.completedHeader(count: completed.count))
             if !isContentDoneCollapsed {
@@ -288,7 +289,6 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
                 }
             }
         }
-        result.append(.addTaskRow)
         return result
     }
 

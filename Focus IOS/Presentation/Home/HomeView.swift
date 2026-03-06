@@ -194,8 +194,17 @@ struct HomeView: View {
                         homeCard(title: "Goals", centered: true) { }
                             .padding(.horizontal, 20)
 
-                        // MARK: - Pinned Divider
-                        homeSectionDivider(title: "PINNED")
+                        // MARK: - Pinned Section
+                        if !viewModel.pinnedItems.isEmpty {
+                            homeSectionDivider(title: "PINNED")
+
+                            VStack(spacing: 0) {
+                                ForEach(viewModel.pinnedItems) { item in
+                                    pinnedItemRow(item)
+                                }
+                            }
+                            .padding(.horizontal, 20)
+                        }
                     }
                     .padding(.bottom, 120)
                 }
@@ -260,6 +269,13 @@ struct HomeView: View {
                     QuickListsPage(viewModel: viewModel, authService: authService)
                 } else {
                     HomePlaceholderPage(title: menuItem.rawValue)
+                }
+            }
+            .navigationDestination(item: $viewModel.selectedPinnedItem) { item in
+                if item.type == .project {
+                    ProjectContentView(project: item, viewModel: projectsViewModel)
+                } else {
+                    ListContentView(list: item, viewModel: listsViewModel)
                 }
             }
             .navigationDestination(isPresented: $showSettings) {
@@ -389,6 +405,47 @@ struct HomeView: View {
             )
         }
         .buttonStyle(.plain)
+    }
+
+    // MARK: - Pinned Item Row
+
+    @ViewBuilder
+    private func pinnedItemRow(_ item: FocusTask) -> some View {
+        Button {
+            viewModel.selectedPinnedItem = item
+        } label: {
+            HStack(spacing: 12) {
+                if item.type == .project {
+                    ProjectIconShape()
+                        .frame(width: 24, height: 24)
+                        .foregroundColor(.secondary)
+                } else {
+                    Image(systemName: "list.bullet")
+                        .font(.inter(.body, weight: .medium))
+                        .foregroundColor(.secondary)
+                        .frame(width: 24)
+                }
+
+                Text(item.title)
+                    .font(.inter(.body))
+                    .foregroundColor(.primary)
+                    .lineLimit(1)
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.inter(size: 12, weight: .semiBold))
+                    .foregroundColor(.secondary)
+            }
+            .padding(.vertical, 10)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .contextMenu {
+            ContextMenuItems.pinButton(isPinned: true) {
+                _Concurrency.Task { await viewModel.togglePin(item) }
+            }
+        }
     }
 
     // MARK: - Section Divider

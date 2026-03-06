@@ -127,6 +127,17 @@ enum ContextMenuItems {
         }
     }
 
+    // MARK: - Pin / Unpin
+
+    @ViewBuilder
+    static func pinButton(isPinned: Bool, action: @escaping () -> Void) -> some View {
+        Button {
+            action()
+        } label: {
+            Label(isPinned ? "Unpin from Home" : "Pin to Home", systemImage: isPinned ? "pin.slash" : "pin")
+        }
+    }
+
     // MARK: - Delete
 
     @ViewBuilder

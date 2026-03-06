@@ -297,3 +297,10 @@ CREATE POLICY "Users can delete their own schedules" ON schedules FOR DELETE USI
 -- 5. Rename constraints
 ALTER TABLE schedules DROP CONSTRAINT IF EXISTS commitments_section_check;
 ALTER TABLE schedules ADD CONSTRAINT schedules_section_check CHECK (section IN ('target', 'todo'));
+
+-- ==============================================
+-- PIN TO HOME SUPPORT
+-- Pinned projects/lists appear on the Home page.
+-- ==============================================
+
+ALTER TABLE tasks ADD COLUMN IF NOT EXISTS is_pinned BOOLEAN DEFAULT false;

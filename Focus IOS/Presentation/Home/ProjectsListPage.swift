@@ -270,6 +270,9 @@ struct ProjectsListPage: View {
             if !projectsViewModel.isEditMode {
                 ContextMenuItems.editButton { projectsViewModel.selectedProjectForDetails = project }
                 ContextMenuItems.scheduleButton { projectsViewModel.selectedTaskForSchedule = project }
+                ContextMenuItems.pinButton(isPinned: project.isPinned) {
+                    _Concurrency.Task { await viewModel.togglePin(project) }
+                }
                 Divider()
                 ContextMenuItems.deleteButton { projectToDelete = project }
             }

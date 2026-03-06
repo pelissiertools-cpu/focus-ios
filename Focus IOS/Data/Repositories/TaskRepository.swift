@@ -51,6 +51,17 @@ class TaskRepository {
         }
     }
 
+    /// Helper struct for pin/unpin updates
+    private struct PinUpdate: Encodable {
+        let isPinned: Bool
+        let modifiedDate: Date
+
+        enum CodingKeys: String, CodingKey {
+            case isPinned = "is_pinned"
+            case modifiedDate = "modified_date"
+        }
+    }
+
     /// Helper struct for assigning a task to a project/list
     private struct ProjectAssignmentUpdate: Encodable {
         let projectId: UUID
@@ -339,6 +350,18 @@ class TaskRepository {
                 .eq("id", value: update.id.uuidString)
                 .execute()
         }
+    }
+
+    // MARK: - Pin Operations
+
+    /// Toggle the pinned state of a task
+    func togglePin(id: UUID, isPinned: Bool) async throws {
+        let update = PinUpdate(isPinned: isPinned, modifiedDate: Date())
+        try await supabase
+            .from("tasks")
+            .update(update)
+            .eq("id", value: id.uuidString)
+            .execute()
     }
 
     // MARK: - Project Operations

@@ -41,6 +41,11 @@ class HomeViewModel: ObservableObject {
 
     // Navigation state
     @Published var selectedMenuItem: HomeMenuItem?
+    @Published var selectedPinnedItem: FocusTask?
+
+    var pinnedItems: [FocusTask] {
+        (projects + lists).filter { $0.isPinned && !$0.isSection }
+    }
 
     private let repository: TaskRepository
     private let scheduleRepository = ScheduleRepository()
@@ -105,6 +110,26 @@ class HomeViewModel: ObservableObject {
         do {
             try await repository.deleteTask(id: list.id)
             lists.removeAll { $0.id == list.id }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    // MARK: - Pin
+
+    func togglePin(_ task: FocusTask) async {
+        let newPinned = !task.isPinned
+        do {
+            try await repository.togglePin(id: task.id, isPinned: newPinned)
+            if task.type == .project {
+                if let index = projects.firstIndex(where: { $0.id == task.id }) {
+                    projects[index].isPinned = newPinned
+                }
+            } else {
+                if let index = lists.firstIndex(where: { $0.id == task.id }) {
+                    lists[index].isPinned = newPinned
+                }
+            }
         } catch {
             errorMessage = error.localizedDescription
         }

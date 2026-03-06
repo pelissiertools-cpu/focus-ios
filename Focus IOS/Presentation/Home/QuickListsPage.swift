@@ -264,6 +264,9 @@ struct QuickListsPage: View {
             if !listsViewModel.isEditMode {
                 ContextMenuItems.editButton { listsViewModel.selectedListForDetails = list }
                 ContextMenuItems.scheduleButton { listsViewModel.selectedItemForSchedule = list }
+                ContextMenuItems.pinButton(isPinned: list.isPinned) {
+                    _Concurrency.Task { await viewModel.togglePin(list) }
+                }
                 Divider()
                 ContextMenuItems.deleteButton { listToDelete = list }
             }

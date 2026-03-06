@@ -42,6 +42,8 @@ class HomeViewModel: ObservableObject {
     // Navigation state
     @Published var selectedMenuItem: HomeMenuItem?
     @Published var selectedPinnedItem: FocusTask?
+    @Published var categories: [Category] = []
+    @Published var selectedCategory: Category?
 
     var pinnedItems: [FocusTask] {
         (projects + lists).filter { $0.isPinned && !$0.isSection }
@@ -49,6 +51,7 @@ class HomeViewModel: ObservableObject {
 
     private let repository: TaskRepository
     private let scheduleRepository = ScheduleRepository()
+    private let categoryRepository = CategoryRepository()
     private var cancellables = Set<AnyCancellable>()
 
     init() {
@@ -64,6 +67,7 @@ class HomeViewModel: ObservableObject {
                 _Concurrency.Task { @MainActor in
                     await self.fetchProjects()
                     await self.fetchLists()
+                    await self.fetchCategories()
                 }
             }
             .store(in: &cancellables)
@@ -82,6 +86,14 @@ class HomeViewModel: ObservableObject {
     func fetchLists() async {
         do {
             lists = try await repository.fetchTasks(ofType: .list, isCleared: false, isCompleted: false)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func fetchCategories() async {
+        do {
+            categories = try await categoryRepository.fetchCategories()
         } catch {
             errorMessage = error.localizedDescription
         }

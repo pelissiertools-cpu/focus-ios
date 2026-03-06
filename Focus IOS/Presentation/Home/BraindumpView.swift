@@ -62,14 +62,16 @@ struct BraindumpView: View {
     /// Tasks not in a project (excluding pending scheduled/completed)
     private var standaloneUncompletedTasks: [FocusTask] {
         taskListVM.uncompletedTasks.filter {
-            $0.projectId == nil && !pendingSchedules.keys.contains($0.id) && !pendingCompletions.contains($0.id)
+            $0.projectId == nil && $0.categoryId == nil
+            && !pendingSchedules.keys.contains($0.id) && !pendingCompletions.contains($0.id)
         }
     }
 
     /// Tasks that have been scheduled or completed but not yet scheduled
     private var pendingTasks: [FocusTask] {
         taskListVM.uncompletedTasks.filter {
-            $0.projectId == nil && (pendingSchedules.keys.contains($0.id) || pendingCompletions.contains($0.id))
+            $0.projectId == nil && $0.categoryId == nil
+            && (pendingSchedules.keys.contains($0.id) || pendingCompletions.contains($0.id))
         }
     }
 
@@ -487,14 +489,14 @@ struct BraindumpView: View {
 
     // MARK: - Item List
 
-    /// Flattened task display items excluding project-contained and pending tasks
+    /// Flattened task display items excluding project-contained, categorized, and pending tasks
     private var standaloneTaskDisplayItems: [FlatDisplayItem] {
-        let projectTaskIds = Set(taskListVM.uncompletedTasks.filter { $0.projectId != nil }.map { $0.id })
+        let excludedTaskIds = Set(taskListVM.uncompletedTasks.filter { $0.projectId != nil || $0.categoryId != nil }.map { $0.id })
         let pendingTaskIds = Set(pendingSchedules.keys).union(pendingCompletions)
         return taskListVM.flattenedDisplayItems.filter { item in
             switch item {
-            case .task(let task): return task.projectId == nil && !pendingTaskIds.contains(task.id)
-            case .addSubtaskRow(let parentId): return !projectTaskIds.contains(parentId) && !pendingTaskIds.contains(parentId)
+            case .task(let task): return task.projectId == nil && task.categoryId == nil && !pendingTaskIds.contains(task.id)
+            case .addSubtaskRow(let parentId): return !excludedTaskIds.contains(parentId) && !pendingTaskIds.contains(parentId)
             default: return true
             }
         }

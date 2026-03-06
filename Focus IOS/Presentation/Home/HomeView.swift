@@ -87,6 +87,7 @@ struct HomeView: View {
     private var braindumpCount: Int {
         taskListVM.tasks.filter {
             !$0.isCompleted && $0.projectId == nil && $0.parentTaskId == nil
+            && $0.categoryId == nil
             && !taskListVM.scheduledTaskIds.contains($0.id)
         }.count
     }
@@ -194,6 +195,22 @@ struct HomeView: View {
                         homeCard(title: "Goals", centered: true) { }
                             .padding(.horizontal, 20)
 
+                        // MARK: - Categories Section
+                        if !viewModel.categories.isEmpty {
+                            homeSectionDivider(title: "CATEGORIES")
+
+                            LazyVGrid(columns: [
+                                GridItem(.flexible()),
+                                GridItem(.flexible()),
+                                GridItem(.flexible())
+                            ], spacing: 12) {
+                                ForEach(viewModel.categories) { category in
+                                    categoryCard(category)
+                                }
+                            }
+                            .padding(.horizontal, 20)
+                        }
+
                         // MARK: - Pinned Section
                         if !viewModel.pinnedItems.isEmpty {
                             homeSectionDivider(title: "PINNED")
@@ -278,6 +295,9 @@ struct HomeView: View {
                     ListContentView(list: item, viewModel: listsViewModel)
                 }
             }
+            .navigationDestination(item: $viewModel.selectedCategory) { category in
+                CategoryDetailView(category: category, authService: authService)
+            }
             .navigationDestination(isPresented: $showSettings) {
                 SettingsView()
             }
@@ -295,6 +315,7 @@ struct HomeView: View {
                 }
                 await taskListVM.fetchScheduledTaskIds()
                 await taskListVM.fetchTasks()
+                await viewModel.fetchCategories()
                 // Pre-load categories for add bar
                 await projectsViewModel.fetchProjects()
                 await listsViewModel.fetchLists()
@@ -403,6 +424,27 @@ struct HomeView: View {
                 RoundedRectangle(cornerRadius: 12)
                     .stroke(Color.secondary.opacity(0.3), lineWidth: 1)
             )
+        }
+        .buttonStyle(.plain)
+    }
+
+    // MARK: - Category Card
+
+    private func categoryCard(_ category: Category) -> some View {
+        Button {
+            viewModel.selectedCategory = category
+        } label: {
+            Text(category.name)
+                .font(.inter(.footnote))
+                .foregroundColor(.primary)
+                .lineLimit(1)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+                .padding(.horizontal, 8)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(Color.secondary.opacity(0.3), lineWidth: 1)
+                )
         }
         .buttonStyle(.plain)
     }

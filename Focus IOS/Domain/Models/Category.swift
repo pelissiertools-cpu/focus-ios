@@ -9,7 +9,7 @@ import Foundation
 
 /// Represents a user-defined category for organizing tasks
 /// Maps to the categories table in Supabase
-struct Category: Codable, Identifiable {
+struct Category: Codable, Identifiable, Hashable {
     let id: UUID
     let userId: UUID
     var name: String

@@ -17,8 +17,6 @@ struct HomeView: View {
     @StateObject private var listsViewModel: ListsViewModel
     @State private var showSettings = false
     @State private var showSearch = false
-    @State private var projectToDelete: FocusTask?
-    @State private var listToDelete: FocusTask?
 
     // Task list VM for add bar task creation
     @StateObject private var taskListVM: TaskListViewModel
@@ -147,96 +145,16 @@ struct HomeView: View {
                             homeMenuButton(item)
                         }
 
-                        // MARK: - Projects Header
-                        Text("Projects")
-                            .font(.inter(.headline, weight: .bold))
-                            .foregroundColor(.appRed)
-                            .padding(.horizontal, 20)
-                            .padding(.top, 24)
-                            .padding(.bottom, 6)
-
+                        // MARK: - Divider before Projects/Lists
                         Rectangle()
                             .fill(Color.appRed.opacity(0.4))
                             .frame(height: 1)
                             .padding(.horizontal, 20)
+                            .padding(.top, 12)
 
-                        // MARK: - Project Rows
-                        if viewModel.isLoading {
-                            ProgressView()
-                                .frame(maxWidth: .infinity)
-                                .padding(.top, 20)
-                        } else if viewModel.projects.isEmpty {
-                            Text("No projects yet")
-                                .font(.inter(.subheadline))
-                                .foregroundColor(.secondary)
-                                .padding(.horizontal, 20)
-                                .padding(.top, 12)
-                        } else {
-                            List {
-                                ForEach(viewModel.projects) { project in
-                                    HomeProjectRow(
-                                        project: project,
-                                        onTap: { viewModel.selectedProject = project },
-                                        onEdit: { projectsViewModel.selectedProjectForDetails = project },
-                                        onSchedule: { projectsViewModel.selectedTaskForSchedule = project },
-                                        onRequestDelete: { projectToDelete = project }
-                                    )
-                                    .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
-                                    .listRowBackground(Color.clear)
-                                    .listRowSeparator(.hidden)
-                                }
-                                .onMove { from, to in
-                                    viewModel.reorderProjects(from: from, to: to)
-                                }
-                            }
-                            .listStyle(.plain)
-                            .scrollDisabled(true)
-                            .scrollContentBackground(.hidden)
-                            .frame(minHeight: CGFloat(viewModel.projects.count) * 56)
-                        }
-
-                        // MARK: - Quick Lists Header
-                        Text("Quick Lists")
-                            .font(.inter(.headline, weight: .bold))
-                            .foregroundColor(.appRed)
-                            .padding(.horizontal, 20)
-                            .padding(.top, 14)
-                            .padding(.bottom, 6)
-
-                        Rectangle()
-                            .fill(Color.appRed.opacity(0.4))
-                            .frame(height: 1)
-                            .padding(.horizontal, 20)
-
-                        // MARK: - List Rows
-                        if viewModel.lists.isEmpty {
-                            Text("No lists yet")
-                                .font(.inter(.subheadline))
-                                .foregroundColor(.secondary)
-                                .padding(.horizontal, 20)
-                                .padding(.top, 12)
-                        } else {
-                            List {
-                                ForEach(viewModel.lists) { list in
-                                    HomeListRow(
-                                        list: list,
-                                        onTap: { viewModel.selectedList = list },
-                                        onEdit: { listsViewModel.selectedListForDetails = list },
-                                        onSchedule: { listsViewModel.selectedItemForSchedule = list },
-                                        onRequestDelete: { listToDelete = list }
-                                    )
-                                    .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
-                                    .listRowBackground(Color.clear)
-                                    .listRowSeparator(.hidden)
-                                }
-                                .onMove { from, to in
-                                    viewModel.reorderLists(from: from, to: to)
-                                }
-                            }
-                            .listStyle(.plain)
-                            .scrollDisabled(true)
-                            .scrollContentBackground(.hidden)
-                            .frame(minHeight: CGFloat(viewModel.lists.count) * 56)
+                        // MARK: - Projects & Quick Lists Menu Items
+                        ForEach([HomeMenuItem.projects, .quickLists], id: \.self) { item in
+                            homeMenuButton(item)
                         }
                     }
                     .padding(.bottom, 120)
@@ -296,15 +214,13 @@ struct HomeView: View {
                     BacklogView(authService: authService)
                 } else if menuItem == .today {
                     TodayView(authService: authService)
+                } else if menuItem == .projects {
+                    ProjectsListPage(viewModel: viewModel, authService: authService)
+                } else if menuItem == .quickLists {
+                    QuickListsPage(viewModel: viewModel, authService: authService)
                 } else {
                     HomePlaceholderPage(title: menuItem.rawValue)
                 }
-            }
-            .navigationDestination(item: $viewModel.selectedProject) { project in
-                ProjectContentView(project: project, viewModel: projectsViewModel)
-            }
-            .navigationDestination(item: $viewModel.selectedList) { list in
-                ListContentView(list: list, viewModel: listsViewModel)
             }
             .navigationDestination(isPresented: $showSettings) {
                 SettingsView()
@@ -313,49 +229,19 @@ struct HomeView: View {
                 BacklogView(authService: authService, startWithSearch: true)
             }
             .navigationBarHidden(true)
-            // Project edit drawer
-            .sheet(item: $projectsViewModel.selectedProjectForDetails) { project in
-                ProjectDetailsDrawer(project: project, viewModel: projectsViewModel)
-                    .drawerStyle()
-            }
-            // Project schedule sheet
-            .sheet(item: $projectsViewModel.selectedTaskForSchedule) { task in
-                ScheduleSelectionSheet(task: task, focusViewModel: focusViewModel)
-                    .drawerStyle()
-            }
-            // List edit drawer
-            .sheet(item: $listsViewModel.selectedListForDetails) { list in
-                ListDetailsDrawer(list: list, viewModel: listsViewModel)
-                    .drawerStyle()
-            }
-            // List schedule sheet
-            .sheet(item: $listsViewModel.selectedItemForSchedule) { item in
-                ScheduleSelectionSheet(task: item, focusViewModel: focusViewModel)
-                    .drawerStyle()
-            }
             .task {
-                if viewModel.projects.isEmpty && !viewModel.isLoading {
+                // Fetch projects/lists for count badges
+                if viewModel.projects.isEmpty {
                     await viewModel.fetchProjects(showLoading: true)
                 }
                 if viewModel.lists.isEmpty {
                     await viewModel.fetchLists()
                 }
-                // Pre-load categories for edit drawers
-                await projectsViewModel.fetchProjects()
-                await listsViewModel.fetchLists()
                 await taskListVM.fetchScheduledTaskIds()
                 await taskListVM.fetchTasks()
-            }
-            // Silently refresh after edit drawer dismissals (user may have renamed/modified)
-            .onChange(of: projectsViewModel.selectedProjectForDetails) { _, newValue in
-                if newValue == nil {
-                    _Concurrency.Task { await viewModel.fetchProjects() }
-                }
-            }
-            .onChange(of: listsViewModel.selectedListForDetails) { _, newValue in
-                if newValue == nil {
-                    _Concurrency.Task { await viewModel.fetchLists() }
-                }
+                // Pre-load categories for add bar
+                await projectsViewModel.fetchProjects()
+                await listsViewModel.fetchLists()
             }
             // Add bar: auto-focus on open
             .onChange(of: showingAddBar) { _, isShowing in
@@ -430,32 +316,6 @@ struct HomeView: View {
                     }
                 }
             }
-            .alert("Delete Project", isPresented: Binding(
-                get: { projectToDelete != nil },
-                set: { if !$0 { projectToDelete = nil } }
-            )) {
-                Button("Delete", role: .destructive) {
-                    if let project = projectToDelete {
-                        _Concurrency.Task { await viewModel.deleteProject(project) }
-                    }
-                }
-                Button("Cancel", role: .cancel) { projectToDelete = nil }
-            } message: {
-                Text("Are you sure you want to delete \"\(projectToDelete?.title ?? "")\"?")
-            }
-            .alert("Delete List", isPresented: Binding(
-                get: { listToDelete != nil },
-                set: { if !$0 { listToDelete = nil } }
-            )) {
-                Button("Delete", role: .destructive) {
-                    if let list = listToDelete {
-                        _Concurrency.Task { await viewModel.deleteList(list) }
-                    }
-                }
-                Button("Cancel", role: .cancel) { listToDelete = nil }
-            } message: {
-                Text("Are you sure you want to delete \"\(listToDelete?.title ?? "")\"?")
-            }
         }
     }
 
@@ -475,8 +335,6 @@ struct HomeView: View {
                     .font(.inter(.body))
                     .foregroundColor(.primary)
 
-                Spacer()
-
                 if item == .braindump {
                     let count = braindumpCount
                     if count > 0 {
@@ -484,7 +342,23 @@ struct HomeView: View {
                             .font(.inter(.footnote, weight: .medium))
                             .foregroundColor(.secondary)
                     }
+                } else if item == .projects {
+                    let count = viewModel.projects.count
+                    if count > 0 {
+                        Text("\(count)")
+                            .font(.inter(.footnote, weight: .medium))
+                            .foregroundColor(.secondary)
+                    }
+                } else if item == .quickLists {
+                    let count = viewModel.lists.count
+                    if count > 0 {
+                        Text("\(count)")
+                            .font(.inter(.footnote, weight: .medium))
+                            .foregroundColor(.secondary)
+                    }
                 }
+
+                Spacer()
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 12)
@@ -1738,7 +1612,7 @@ struct HomeView: View {
 
 // MARK: - Home Project Row
 
-private struct HomeProjectRow: View {
+struct HomeProjectRow: View {
     let project: FocusTask
     let onTap: () -> Void
     let onEdit: () -> Void
@@ -1783,7 +1657,7 @@ private struct HomeProjectRow: View {
 
 // MARK: - Home List Row
 
-private struct HomeListRow: View {
+struct HomeListRow: View {
     let list: FocusTask
     let onTap: () -> Void
     let onEdit: () -> Void

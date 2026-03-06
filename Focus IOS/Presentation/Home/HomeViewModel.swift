@@ -13,16 +13,20 @@ enum HomeMenuItem: String, CaseIterable, Identifiable, Hashable {
     case braindump = "Braindump"
     case backlog = "Backlog"
     case archive = "Archive"
+    case projects = "Projects"
+    case quickLists = "Quick Lists"
 
     var id: String { rawValue }
 
     var iconName: String {
         switch self {
-        case .today:     return "sun.max"
-        case .assign:    return "calendar"
-        case .braindump: return "brain.head.profile"
-        case .backlog:   return "tray"
-        case .archive:   return "archivebox"
+        case .today:      return "sun.max"
+        case .assign:     return "calendar"
+        case .braindump:  return "brain.head.profile"
+        case .backlog:    return "tray"
+        case .archive:    return "archivebox"
+        case .projects:   return "folder"
+        case .quickLists: return "list.bullet"
         }
     }
 }
@@ -36,8 +40,6 @@ class HomeViewModel: ObservableObject {
 
     // Navigation state
     @Published var selectedMenuItem: HomeMenuItem?
-    @Published var selectedProject: FocusTask?
-    @Published var selectedList: FocusTask?
 
     private let repository: TaskRepository
     private var cancellables = Set<AnyCancellable>()

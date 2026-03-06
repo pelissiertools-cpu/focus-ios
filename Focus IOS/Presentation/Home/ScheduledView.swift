@@ -20,8 +20,8 @@ struct ScheduledView: View {
     @State private var pendingCompletions: Set<UUID> = []
     @State private var isCompletedSectionCollapsed = false
 
-    // Schedule entries: item UUID → list of (date, timeframe) pairs
-    @State private var itemSchedules: [UUID: [(date: Date, timeframe: Timeframe)]] = [:]
+    // Schedule entries: item UUID → list of (scheduleId, date, timeframe, sortOrder) tuples
+    @State private var itemSchedules: [UUID: [(scheduleId: UUID, date: Date, timeframe: Timeframe, sortOrder: Int)]] = [:]
     @State private var itemTimeframes: [UUID: Set<Timeframe>] = [:]
 
     // Batch create alerts
@@ -299,17 +299,17 @@ struct ScheduledView: View {
         let showNative = viewMode != .day
         var result: [Date: [ScheduledItemEntry]] = [:]
 
-        func addEntries(for item: FocusTask, as type: (FocusTask, Bool) -> ScheduledItemEntry) {
+        func addEntries(for item: FocusTask, as type: (FocusTask, Bool, UUID, Int) -> ScheduledItemEntry) {
             guard let itemEntries = itemSchedules[item.id] else { return }
             for entry in itemEntries where allowed.contains(entry.timeframe) {
                 let isNative = showNative && entry.timeframe == nativeTimeframe
-                result[entry.date, default: []].append(type(item, isNative))
+                result[entry.date, default: []].append(type(item, isNative, entry.scheduleId, entry.sortOrder))
             }
         }
 
-        for task in allScheduledTasks { addEntries(for: task) { .task($0, isNative: $1) } }
-        for list in allScheduledLists { addEntries(for: list) { .list($0, isNative: $1) } }
-        for project in allScheduledProjects { addEntries(for: project) { .project($0, isNative: $1) } }
+        for task in allScheduledTasks { addEntries(for: task) { .task($0, isNative: $1, scheduleId: $2, sortOrder: $3) } }
+        for list in allScheduledLists { addEntries(for: list) { .list($0, isNative: $1, scheduleId: $2, sortOrder: $3) } }
+        for project in allScheduledProjects { addEntries(for: project) { .project($0, isNative: $1, scheduleId: $2, sortOrder: $3) } }
 
         // Deduplicate per date (same item, multiple timeframes) — prefer native
         for key in result.keys {
@@ -321,7 +321,7 @@ struct ScheduledView: View {
                     best[entry.id] = entry
                 }
             }
-            result[key] = Array(best.values).sorted(by: ScheduledItemEntry.stableSort)
+            result[key] = ScheduledItemEntry.sortForDisplay(Array(best.values))
         }
         return result
     }
@@ -353,7 +353,7 @@ struct ScheduledView: View {
                     best[entry.id] = entry
                 }
             }
-            return Array(best.values).sorted(by: ScheduledItemEntry.stableSort)
+            return ScheduledItemEntry.sortForDisplay(Array(best.values))
         }
 
         // Helper: title for a week start date
@@ -432,7 +432,7 @@ struct ScheduledView: View {
                     best[entry.id] = entry
                 }
             }
-            return Array(best.values).sorted(by: ScheduledItemEntry.stableSort)
+            return ScheduledItemEntry.sortForDisplay(Array(best.values))
         }
 
         // 1. Selected month
@@ -516,7 +516,7 @@ struct ScheduledView: View {
                     best[entry.id] = entry
                 }
             }
-            return Array(best.values).sorted(by: ScheduledItemEntry.stableSort)
+            return ScheduledItemEntry.sortForDisplay(Array(best.values))
         }
 
         // Selected year (always visible)
@@ -551,6 +551,41 @@ struct ScheduledView: View {
         }
     }
 
+    // MARK: - Flattened Items (for cross-section drag)
+
+    private var flattenedItems: [ScheduledFlatItem] {
+        let sections = isSearching ? searchSections : activeSections
+        var result: [ScheduledFlatItem] = []
+
+        for section in sections {
+            guard section.alwaysVisible || !section.items.isEmpty || section.isRange else { continue }
+
+            result.append(.sectionHeader(section))
+
+            for entry in section.items {
+                result.append(.item(entry))
+
+                // Expanded subtasks
+                if case .task(let task, _, _, _) = entry,
+                   taskListVM.expandedTasks.contains(task.id) {
+                    let subtasks = taskListVM.getUncompletedSubtasks(for: task.id)
+                        + taskListVM.getCompletedSubtasks(for: task.id)
+                    for subtask in subtasks {
+                        result.append(.subtask(subtask, parentId: task.id))
+                    }
+                    result.append(.inlineAddSubtask(parentId: task.id))
+                }
+            }
+
+            if !isSearching, let date = section.date, !section.isRange {
+                result.append(.addButton(date))
+            }
+        }
+
+        result.append(.bottomSpacer)
+        return result
+    }
+
     // MARK: - Search Sections (grouped by timeframe)
 
     private var searchSections: [ScheduledSection] {
@@ -566,13 +601,13 @@ struct ScheduledView: View {
         return timeframes.map { tf, title in
             var items: [ScheduledItemEntry] = []
             for task in matchingTasks where itemTimeframes[task.id]?.contains(tf) == true {
-                items.append(.task(task, isNative: false))
+                items.append(.task(task, isNative: false, scheduleId: UUID(), sortOrder: 0))
             }
             for project in matchingProjects where itemTimeframes[project.id]?.contains(tf) == true {
-                items.append(.project(project, isNative: false))
+                items.append(.project(project, isNative: false, scheduleId: UUID(), sortOrder: 0))
             }
             for list in matchingLists where itemTimeframes[list.id]?.contains(tf) == true {
-                items.append(.list(list, isNative: false))
+                items.append(.list(list, isNative: false, scheduleId: UUID(), sortOrder: 0))
             }
             return ScheduledSection(
                 id: "search-\(tf.rawValue)", title: title,
@@ -950,63 +985,64 @@ struct ScheduledView: View {
 
     private var itemList: some View {
         List {
-            ForEach(isSearching ? searchSections : activeSections) { section in
-                if section.alwaysVisible || !section.items.isEmpty || section.isRange {
+            ForEach(flattenedItems) { flatItem in
+                switch flatItem {
+                case .sectionHeader(let section):
                     dateSectionHeader(for: section)
+                        .moveDisabled(true)
 
-                    ForEach(section.items) { entry in
-                        scheduledItemRow(entry)
+                case .item(let entry):
+                    scheduledItemRow(entry)
 
-                        // Expanded subtasks for task entries
-                        if case .task(let task, _) = entry,
-                           taskListVM.expandedTasks.contains(task.id) {
-                            let subtasks = taskListVM.getUncompletedSubtasks(for: task.id)
-                                + taskListVM.getCompletedSubtasks(for: task.id)
-                            ForEach(subtasks) { subtask in
-                                FlatTaskRow(
-                                    task: subtask,
-                                    viewModel: taskListVM,
-                                    isEditMode: false,
-                                    isSelected: false,
-                                    onSelectToggle: nil,
-                                    onToggleCompletion: nil
-                                )
-                                .padding(.leading, 32)
-                                .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
-                                .listRowBackground(Color.clear)
-                                .listRowSeparator(.visible)
-                            }
+                case .subtask(let subtask, _):
+                    FlatTaskRow(
+                        task: subtask,
+                        viewModel: taskListVM,
+                        isEditMode: false,
+                        isSelected: false,
+                        onSelectToggle: nil,
+                        onToggleCompletion: nil
+                    )
+                    .padding(.leading, 32)
+                    .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.visible)
+                    .moveDisabled(true)
 
-                            InlineAddRow(
-                                placeholder: "Subtask title",
-                                buttonLabel: "Add subtask",
-                                onSubmit: { title in await taskListVM.createSubtask(title: title, parentId: task.id) },
-                                isAnyAddFieldActive: $isInlineAddFocused,
-                                verticalPadding: 12
-                            )
-                            .padding(.leading, 32)
-                            .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
-                            .listRowBackground(Color.clear)
-                            .listRowSeparator(.hidden)
-                        }
-                    }
+                case .inlineAddSubtask(let parentId):
+                    InlineAddRow(
+                        placeholder: "Subtask title",
+                        buttonLabel: "Add subtask",
+                        onSubmit: { title in await taskListVM.createSubtask(title: title, parentId: parentId) },
+                        isAnyAddFieldActive: $isInlineAddFocused,
+                        verticalPadding: 12
+                    )
+                    .padding(.leading, 32)
+                    .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+                    .moveDisabled(true)
 
-                    // Per-section add button (dashed circle)
-                    if !isSearching, let date = section.date, !section.isRange {
-                        addButtonForDay(date: date)
-                    }
+                case .addButton(let date):
+                    addButtonForDay(date: date)
+                        .moveDisabled(true)
+
+                case .bottomSpacer:
+                    Color.clear
+                        .frame(height: 100)
+                        .listRowInsets(EdgeInsets())
+                        .listRowSeparator(.hidden)
+                        .listRowBackground(Color.clear)
+                        .moveDisabled(true)
                 }
+            }
+            .onMove { from, to in
+                handleFlatMove(from: from, to: to)
             }
 
             if !isSearching {
                 completedSection
             }
-
-            Color.clear
-                .frame(height: 100)
-                .listRowInsets(EdgeInsets())
-                .listRowSeparator(.hidden)
-                .listRowBackground(Color.clear)
         }
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
@@ -1097,7 +1133,7 @@ struct ScheduledView: View {
 
             Group {
                 switch entry {
-                case .task(let task, _):
+                case .task(let task, _, _, _):
                     FlatTaskRow(
                         task: task,
                         viewModel: taskListVM,
@@ -1107,7 +1143,7 @@ struct ScheduledView: View {
                         onToggleCompletion: { t in pendingCompletions.insert(t.id) }
                     )
 
-                case .project(let project, _):
+                case .project(let project, _, _, _):
                     ScheduledProjectRow(
                         project: project,
                         isEditMode: taskListVM.isEditMode,
@@ -1123,7 +1159,7 @@ struct ScheduledView: View {
                         }
                     )
 
-                case .list(let list, _):
+                case .list(let list, _, _, _):
                     ScheduledListRow(
                         list: list,
                         isEditMode: taskListVM.isEditMode,
@@ -1245,11 +1281,11 @@ struct ScheduledView: View {
             let repo = ScheduleRepository()
             let summaries = try await repo.fetchScheduleSummaries()
             let calendar = Calendar.current
-            var schedulesByTask: [UUID: [(date: Date, timeframe: Timeframe)]] = [:]
+            var schedulesByTask: [UUID: [(scheduleId: UUID, date: Date, timeframe: Timeframe, sortOrder: Int)]] = [:]
             var timeframesByTask: [UUID: Set<Timeframe>] = [:]
             for s in summaries {
                 let date = calendar.startOfDay(for: s.scheduleDate)
-                schedulesByTask[s.taskId, default: []].append((date: date, timeframe: s.timeframe))
+                schedulesByTask[s.taskId, default: []].append((scheduleId: s.id, date: date, timeframe: s.timeframe, sortOrder: s.sortOrder))
                 timeframesByTask[s.taskId, default: []].insert(s.timeframe)
             }
             itemSchedules = schedulesByTask
@@ -1259,6 +1295,185 @@ struct ScheduledView: View {
 
     private func refreshAllData() async {
         await loadAllData()
+    }
+
+    // MARK: - Reorder
+
+    private func handleFlatMove(from source: IndexSet, to destination: Int) {
+        var transaction = Transaction()
+        transaction.animation = nil
+        withTransaction(transaction) {
+            performFlatMove(from: source, to: destination)
+        }
+    }
+
+    private func performFlatMove(from source: IndexSet, to destination: Int) {
+        let flat = flattenedItems
+        guard let fromIdx = source.first else { return }
+
+        // Only .item entries can be moved
+        guard case .item(let movedEntry) = flat[fromIdx] else { return }
+
+        // Find source section by scanning backward for nearest section header
+        var sourceSection: ScheduledSection?
+        for i in stride(from: fromIdx, through: 0, by: -1) {
+            if case .sectionHeader(let section) = flat[i] {
+                sourceSection = section
+                break
+            }
+        }
+
+        // Find destination section by scanning backward from destination
+        var destSection: ScheduledSection?
+        let destLookup = max(0, min(destination - 1, flat.count - 1))
+        for i in stride(from: destLookup, through: 0, by: -1) {
+            if case .sectionHeader(let section) = flat[i] {
+                destSection = section
+                break
+            }
+        }
+
+        guard let sourceSection, let destSection else { return }
+
+        if sourceSection.id == destSection.id {
+            // Same section — reorder within
+            handleWithinSectionMove(movedEntry: movedEntry, section: sourceSection, flat: flat, fromIdx: fromIdx, destination: destination)
+        } else {
+            // Cross-section — change scheduled date
+            handleCrossSectionMove(movedEntry: movedEntry, sourceSection: sourceSection, destSection: destSection, flat: flat, destination: destination)
+        }
+    }
+
+    private func handleWithinSectionMove(movedEntry: ScheduledItemEntry, section: ScheduledSection, flat: [ScheduledFlatItem], fromIdx: Int, destination: Int) {
+        // Collect all .item entries in this section with their flat indices
+        let sectionItems = flat.enumerated().compactMap { (i, flatItem) -> (flatIdx: Int, entry: ScheduledItemEntry)? in
+            guard case .item(let entry) = flatItem else { return nil }
+            // Check if this item belongs to this section by scanning backward
+            for j in stride(from: i, through: 0, by: -1) {
+                if case .sectionHeader(let s) = flat[j] {
+                    return s.id == section.id ? (i, entry) : nil
+                }
+            }
+            return nil
+        }
+
+        guard let itemFrom = sectionItems.firstIndex(where: { $0.entry.id == movedEntry.id }) else { return }
+
+        var itemTo = sectionItems.count
+        for (ci, entry) in sectionItems.enumerated() {
+            if destination <= entry.flatIdx {
+                itemTo = ci
+                break
+            }
+        }
+        if itemTo > itemFrom { itemTo = min(itemTo, sectionItems.count) }
+
+        guard itemFrom != itemTo && itemFrom + 1 != itemTo else { return }
+
+        var items = sectionItems.map { $0.entry }
+        items.move(fromOffsets: IndexSet(integer: itemFrom), toOffset: itemTo)
+
+        // Assign sequential sort orders (1-based)
+        var updates: [(id: UUID, sortOrder: Int)] = []
+        for (index, entry) in items.enumerated() {
+            let newOrder = index + 1
+            updates.append((id: entry.scheduleId, sortOrder: newOrder))
+            updateLocalSortOrder(taskId: entry.id, scheduleId: entry.scheduleId, sortOrder: newOrder)
+        }
+
+        _Concurrency.Task {
+            let repo = ScheduleRepository()
+            try? await repo.updateScheduleSortOrders(updates)
+        }
+    }
+
+    private func handleCrossSectionMove(movedEntry: ScheduledItemEntry, sourceSection: ScheduledSection, destSection: ScheduledSection, flat: [ScheduledFlatItem], destination: Int) {
+        guard let targetDate = destSection.date else { return }
+
+        let calendar = Calendar.current
+        let newDate = calendar.startOfDay(for: targetDate)
+
+        // Collect destination section items to determine insert position
+        let destItems = flat.enumerated().compactMap { (i, flatItem) -> (flatIdx: Int, entry: ScheduledItemEntry)? in
+            guard case .item(let entry) = flatItem else { return nil }
+            for j in stride(from: i, through: 0, by: -1) {
+                if case .sectionHeader(let s) = flat[j] {
+                    return s.id == destSection.id ? (i, entry) : nil
+                }
+            }
+            return nil
+        }
+
+        var insertAt = destItems.count
+        for (ci, entry) in destItems.enumerated() {
+            if destination <= entry.flatIdx {
+                insertAt = ci
+                break
+            }
+        }
+
+        // Update local state: change the schedule's date
+        if var entries = itemSchedules[movedEntry.id] {
+            if let idx = entries.firstIndex(where: { $0.scheduleId == movedEntry.scheduleId }) {
+                entries[idx].date = newDate
+                entries[idx].sortOrder = insertAt + 1
+                itemSchedules[movedEntry.id] = entries
+            }
+        }
+
+        // Re-number sort orders for all items now in the destination section
+        // (rebuild from updated itemSchedules)
+        let updatedFlat = flattenedItems
+        let newDestItems = updatedFlat.enumerated().compactMap { (i, flatItem) -> ScheduledItemEntry? in
+            guard case .item(let entry) = flatItem else { return nil }
+            for j in stride(from: i, through: 0, by: -1) {
+                if case .sectionHeader(let s) = updatedFlat[j] {
+                    return s.id == destSection.id ? entry : nil
+                }
+            }
+            return nil
+        }
+
+        var sortUpdates: [(id: UUID, sortOrder: Int)] = []
+        for (index, entry) in newDestItems.enumerated() {
+            let newOrder = index + 1
+            updateLocalSortOrder(taskId: entry.id, scheduleId: entry.scheduleId, sortOrder: newOrder)
+            sortUpdates.append((id: entry.scheduleId, sortOrder: newOrder))
+        }
+
+        // Also re-number source section
+        let sourceItems = updatedFlat.enumerated().compactMap { (i, flatItem) -> ScheduledItemEntry? in
+            guard case .item(let entry) = flatItem else { return nil }
+            for j in stride(from: i, through: 0, by: -1) {
+                if case .sectionHeader(let s) = updatedFlat[j] {
+                    return s.id == sourceSection.id ? entry : nil
+                }
+            }
+            return nil
+        }
+
+        for (index, entry) in sourceItems.enumerated() {
+            let newOrder = index + 1
+            updateLocalSortOrder(taskId: entry.id, scheduleId: entry.scheduleId, sortOrder: newOrder)
+            sortUpdates.append((id: entry.scheduleId, sortOrder: newOrder))
+        }
+
+        // Persist: date change + sort orders
+        let movedScheduleId = movedEntry.scheduleId
+        _Concurrency.Task {
+            let repo = ScheduleRepository()
+            try? await repo.updateScheduleDateAndSortOrder(id: movedScheduleId, date: newDate, sortOrder: insertAt + 1)
+            try? await repo.updateScheduleSortOrders(sortUpdates)
+        }
+    }
+
+    private func updateLocalSortOrder(taskId: UUID, scheduleId: UUID, sortOrder: Int) {
+        if var entries = itemSchedules[taskId] {
+            if let idx = entries.firstIndex(where: { $0.scheduleId == scheduleId }) {
+                entries[idx].sortOrder = sortOrder
+                itemSchedules[taskId] = entries
+            }
+        }
     }
 
     private func cleanupPendingCompletions() {
@@ -1673,29 +1888,41 @@ private extension ScheduledView {
 // MARK: - Data Models
 
 private enum ScheduledItemEntry: Identifiable {
-    case task(FocusTask, isNative: Bool)
-    case project(FocusTask, isNative: Bool)
-    case list(FocusTask, isNative: Bool)
+    case task(FocusTask, isNative: Bool, scheduleId: UUID, sortOrder: Int)
+    case project(FocusTask, isNative: Bool, scheduleId: UUID, sortOrder: Int)
+    case list(FocusTask, isNative: Bool, scheduleId: UUID, sortOrder: Int)
 
     var id: UUID {
         switch self {
-        case .task(let t, _): return t.id
-        case .project(let p, _): return p.id
-        case .list(let l, _): return l.id
+        case .task(let t, _, _, _): return t.id
+        case .project(let p, _, _, _): return p.id
+        case .list(let l, _, _, _): return l.id
         }
     }
 
     var isNative: Bool {
         switch self {
-        case .task(_, let n), .project(_, let n), .list(_, let n): return n
+        case .task(_, let n, _, _), .project(_, let n, _, _), .list(_, let n, _, _): return n
+        }
+    }
+
+    var scheduleId: UUID {
+        switch self {
+        case .task(_, _, let sid, _), .project(_, _, let sid, _), .list(_, _, let sid, _): return sid
+        }
+    }
+
+    var sortOrder: Int {
+        switch self {
+        case .task(_, _, _, let so), .project(_, _, _, let so), .list(_, _, _, let so): return so
         }
     }
 
     var createdDate: Date {
         switch self {
-        case .task(let t, _): return t.createdDate
-        case .project(let p, _): return p.createdDate
-        case .list(let l, _): return l.createdDate
+        case .task(let t, _, _, _): return t.createdDate
+        case .project(let p, _, _, _): return p.createdDate
+        case .list(let l, _, _, _): return l.createdDate
         }
     }
 
@@ -1714,6 +1941,16 @@ private enum ScheduledItemEntry: Identifiable {
         if a.isNative != b.isNative { return a.isNative && !b.isNative }
         return a.createdDate < b.createdDate
     }
+
+    /// Sort for display: use sort order if any item has been manually reordered, otherwise type-based
+    static func sortForDisplay(_ items: [ScheduledItemEntry]) -> [ScheduledItemEntry] {
+        let allZero = items.allSatisfy { $0.sortOrder == 0 }
+        if allZero {
+            return items.sorted(by: stableSort)
+        } else {
+            return items.sorted { $0.sortOrder < $1.sortOrder }
+        }
+    }
 }
 
 private struct ScheduledSection: Identifiable {
@@ -1721,9 +1958,29 @@ private struct ScheduledSection: Identifiable {
     let title: String
     let isRange: Bool
     let isSubDate: Bool
-    let items: [ScheduledItemEntry]
+    var items: [ScheduledItemEntry]
     let date: Date?
     let alwaysVisible: Bool
+}
+
+private enum ScheduledFlatItem: Identifiable {
+    case sectionHeader(ScheduledSection)
+    case item(ScheduledItemEntry)
+    case subtask(FocusTask, parentId: UUID)
+    case inlineAddSubtask(parentId: UUID)
+    case addButton(Date)
+    case bottomSpacer
+
+    var id: String {
+        switch self {
+        case .sectionHeader(let s): return "header-\(s.id)"
+        case .item(let e): return "item-\(e.id.uuidString)"
+        case .subtask(let t, _): return "subtask-\(t.id.uuidString)"
+        case .inlineAddSubtask(let pid): return "add-subtask-\(pid.uuidString)"
+        case .addButton(let d): return "add-\(Int(d.timeIntervalSince1970))"
+        case .bottomSpacer: return "bottom-spacer"
+        }
+    }
 }
 
 private enum ScheduleViewMode: String, CaseIterable {

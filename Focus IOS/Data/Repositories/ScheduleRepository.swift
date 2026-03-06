@@ -30,6 +30,16 @@ class ScheduleRepository {
         }
     }
 
+    private struct ScheduleDateSortUpdate: Encodable {
+        let scheduleDate: Date
+        let sortOrder: Int
+
+        enum CodingKeys: String, CodingKey {
+            case scheduleDate = "schedule_date"
+            case sortOrder = "sort_order"
+        }
+    }
+
     private struct ScheduleTimeUpdate: Encodable {
         let scheduledTime: Date?
         let durationMinutes: Int?
@@ -200,22 +210,26 @@ class ScheduleRepository {
     // MARK: - Scheduled Task IDs & Due Dates
 
     struct ScheduleSummary: Decodable {
+        let id: UUID
         let taskId: UUID
         let timeframe: Timeframe
         let scheduleDate: Date
+        let sortOrder: Int
 
         enum CodingKeys: String, CodingKey {
+            case id
             case taskId = "task_id"
             case timeframe
             case scheduleDate = "schedule_date"
+            case sortOrder = "sort_order"
         }
     }
 
-    /// Fetch lightweight summaries of all schedules (task_id, timeframe, schedule_date)
+    /// Fetch lightweight summaries of all schedules
     func fetchScheduleSummaries() async throws -> [ScheduleSummary] {
         let rows: [ScheduleSummary] = try await supabase
             .from("schedules")
-            .select("task_id, timeframe, schedule_date")
+            .select("id, task_id, timeframe, schedule_date, sort_order")
             .execute()
             .value
         return rows
@@ -290,6 +304,16 @@ class ScheduleRepository {
                 .eq("id", value: update.id.uuidString)
                 .execute()
         }
+    }
+
+    /// Update schedule date and sort order (for cross-section drag)
+    func updateScheduleDateAndSortOrder(id: UUID, date: Date, sortOrder: Int) async throws {
+        let update = ScheduleDateSortUpdate(scheduleDate: date, sortOrder: sortOrder)
+        try await supabase
+            .from("schedules")
+            .update(update)
+            .eq("id", value: id.uuidString)
+            .execute()
     }
 
     // MARK: - Scheduled Time Methods

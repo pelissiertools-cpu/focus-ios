@@ -536,6 +536,8 @@ struct FlatTaskRow: View {
     var isSelected: Bool = false
     var onSelectToggle: (() -> Void)? = nil
     var onToggleCompletion: ((FocusTask) -> Void)? = nil
+    var onReschedule: (() -> Void)? = nil
+    var onPushToTomorrow: (() -> Void)? = nil
     var appearCompleted: Bool? = nil
     @State private var showDeleteConfirmation = false
 
@@ -613,8 +615,15 @@ struct FlatTaskRow: View {
                     viewModel.selectedTaskForDetails = task
                 }
 
-                ContextMenuItems.scheduleButton {
-                    viewModel.selectedTaskForSchedule = task
+                if let onReschedule {
+                    ContextMenuItems.rescheduleButton { onReschedule() }
+                    if let onPushToTomorrow {
+                        ContextMenuItems.pushToTomorrowButton { onPushToTomorrow() }
+                    }
+                } else {
+                    ContextMenuItems.scheduleButton {
+                        viewModel.selectedTaskForSchedule = task
+                    }
                 }
 
                 if isParent {

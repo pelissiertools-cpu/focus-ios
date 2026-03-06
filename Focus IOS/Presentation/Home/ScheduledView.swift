@@ -30,6 +30,8 @@ struct ScheduledView: View {
     @State private var selectedDate = Date()
     @State private var showCalendarPicker = false
 
+    @State private var selectedScheduleForReschedule: Schedule?
+
     // Navigation
     @State private var selectedListForNavigation: FocusTask?
     @State private var selectedProjectForNavigation: FocusTask?
@@ -696,6 +698,10 @@ struct ScheduledView: View {
             ScheduleSelectionSheet(task: task, focusViewModel: focusViewModel)
                 .drawerStyle()
         }
+        .sheet(item: $selectedScheduleForReschedule) { schedule in
+            RescheduleSheet(schedule: schedule, focusViewModel: focusViewModel)
+                .drawerStyle()
+        }
         // Navigation
         .navigationDestination(item: $selectedListForNavigation) { list in
             ListContentView(list: list, viewModel: listsVM)
@@ -1097,17 +1103,23 @@ struct ScheduledView: View {
 
             Group {
                 switch entry {
-                case .task(let task, _, _, _):
+                case .task(let task, _, let scheduleId, _):
                     FlatTaskRow(
                         task: task,
                         viewModel: taskListVM,
                         isEditMode: taskListVM.isEditMode,
                         isSelected: taskListVM.selectedTaskIds.contains(task.id),
                         onSelectToggle: { taskListVM.toggleTaskSelection(task.id) },
-                        onToggleCompletion: { t in taskListVM.requestToggleCompletion(t) }
+                        onToggleCompletion: { t in taskListVM.requestToggleCompletion(t) },
+                        onReschedule: {
+                            fetchAndReschedule(taskId: task.id, scheduleId: scheduleId)
+                        },
+                        onPushToTomorrow: {
+                            pushItemToTomorrow(taskId: task.id, scheduleId: scheduleId)
+                        }
                     )
 
-                case .project(let project, _, _, _):
+                case .project(let project, _, let scheduleId, _):
                     ScheduledProjectRow(
                         project: project,
                         isPending: taskListVM.isPendingCompletion(project.id),
@@ -1122,14 +1134,17 @@ struct ScheduledView: View {
                             }
                         },
                         onEdit: { projectsVM.selectedProjectForDetails = project },
-                        onSchedule: { projectsVM.selectedTaskForSchedule = project },
+                        onReschedule: { fetchAndReschedule(taskId: project.id, scheduleId: scheduleId) },
+                        onPushToTomorrow: {
+                            pushItemToTomorrow(taskId: project.id, scheduleId: scheduleId)
+                        },
                         onDelete: {
                             await projectsVM.deleteProject(project)
                             await refreshAllData()
                         }
                     )
 
-                case .list(let list, _, _, _):
+                case .list(let list, _, let scheduleId, _):
                     ScheduledListRow(
                         list: list,
                         isPending: taskListVM.isPendingCompletion(list.id),
@@ -1144,7 +1159,10 @@ struct ScheduledView: View {
                             }
                         },
                         onEdit: { listsVM.selectedListForDetails = list },
-                        onSchedule: { listsVM.selectedItemForSchedule = list },
+                        onReschedule: { fetchAndReschedule(taskId: list.id, scheduleId: scheduleId) },
+                        onPushToTomorrow: {
+                            pushItemToTomorrow(taskId: list.id, scheduleId: scheduleId)
+                        },
                         onDelete: {
                             await listsVM.deleteList(list)
                             await refreshAllData()
@@ -1213,6 +1231,25 @@ struct ScheduledView: View {
 
     private func refreshAllData() async {
         await loadAllData()
+    }
+
+    private func pushItemToTomorrow(taskId: UUID, scheduleId: UUID) {
+        _Concurrency.Task {
+            let schedules = try? await ScheduleRepository().fetchSchedules(forTask: taskId)
+            if let schedule = schedules?.first(where: { $0.id == scheduleId }) {
+                let _ = await focusViewModel.pushScheduleToNext(schedule)
+                await refreshAllData()
+            }
+        }
+    }
+
+    private func fetchAndReschedule(taskId: UUID, scheduleId: UUID) {
+        _Concurrency.Task {
+            let schedules = try? await ScheduleRepository().fetchSchedules(forTask: taskId)
+            if let schedule = schedules?.first(where: { $0.id == scheduleId }) {
+                selectedScheduleForReschedule = schedule
+            }
+        }
     }
 
     // MARK: - Reorder
@@ -1924,7 +1961,8 @@ private struct ScheduledProjectRow: View {
     var onTap: () -> Void
     var onToggleCompletion: () -> Void
     var onEdit: () -> Void
-    var onSchedule: () -> Void
+    var onReschedule: () -> Void
+    var onPushToTomorrow: () -> Void
     var onDelete: () async -> Void
     @State private var showDeleteConfirmation = false
 
@@ -1963,7 +2001,8 @@ private struct ScheduledProjectRow: View {
         .contextMenu {
             if !isEditMode {
                 ContextMenuItems.editButton { onEdit() }
-                ContextMenuItems.scheduleButton { onSchedule() }
+                ContextMenuItems.rescheduleButton { onReschedule() }
+                ContextMenuItems.pushToTomorrowButton { onPushToTomorrow() }
                 Divider()
                 ContextMenuItems.deleteButton { showDeleteConfirmation = true }
             }
@@ -1995,7 +2034,8 @@ private struct ScheduledListRow: View {
     var onTap: () -> Void
     var onToggleCompletion: () -> Void
     var onEdit: () -> Void
-    var onSchedule: () -> Void
+    var onReschedule: () -> Void
+    var onPushToTomorrow: () -> Void
     var onDelete: () async -> Void
     @State private var showDeleteConfirmation = false
 
@@ -2035,7 +2075,8 @@ private struct ScheduledListRow: View {
         .contextMenu {
             if !isEditMode {
                 ContextMenuItems.editButton { onEdit() }
-                ContextMenuItems.scheduleButton { onSchedule() }
+                ContextMenuItems.rescheduleButton { onReschedule() }
+                ContextMenuItems.pushToTomorrowButton { onPushToTomorrow() }
                 Divider()
                 ContextMenuItems.deleteButton { showDeleteConfirmation = true }
             }

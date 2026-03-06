@@ -94,6 +94,28 @@ enum ContextMenuItems {
         }
     }
 
+    // MARK: - Reschedule
+
+    @ViewBuilder
+    static func rescheduleButton(action: @escaping () -> Void) -> some View {
+        Button {
+            action()
+        } label: {
+            Label("Reschedule", systemImage: "calendar.badge.clock")
+        }
+    }
+
+    // MARK: - Push to Tomorrow
+
+    @ViewBuilder
+    static func pushToTomorrowButton(action: @escaping () -> Void) -> some View {
+        Button {
+            action()
+        } label: {
+            Label("Push to Tomorrow", systemImage: "arrow.right")
+        }
+    }
+
     // MARK: - Delete
 
     @ViewBuilder

@@ -15,6 +15,8 @@ struct TodayView: View {
     @State private var isInlineAddFocused = false
     @State private var isLoading = false
     @State private var todaySchedules: [UUID: (scheduleId: UUID, sortOrder: Int)] = [:]
+    @State private var scheduleById: [UUID: Schedule] = [:]
+    @State private var selectedScheduleForReschedule: Schedule?
 
     // Navigation
     @State private var selectedListForNavigation: FocusTask?
@@ -156,6 +158,10 @@ struct TodayView: View {
             ScheduleSelectionSheet(task: task, focusViewModel: focusViewModel)
                 .drawerStyle()
         }
+        .sheet(item: $selectedScheduleForReschedule) { schedule in
+            RescheduleSheet(schedule: schedule, focusViewModel: focusViewModel)
+                .drawerStyle()
+        }
         .navigationDestination(item: $selectedListForNavigation) { list in
             ListContentView(list: list, viewModel: listsVM)
         }
@@ -201,10 +207,13 @@ struct TodayView: View {
 
             let allSchedules = focusSchedules + todoSchedules
             var schedules: [UUID: (scheduleId: UUID, sortOrder: Int)] = [:]
+            var byId: [UUID: Schedule] = [:]
             for s in allSchedules {
                 schedules[s.taskId] = (scheduleId: s.id, sortOrder: s.sortOrder)
+                byId[s.id] = s
             }
             todaySchedules = schedules
+            scheduleById = byId
 
             taskListVM.scheduledTaskIds = Set(schedules.keys)
             taskListVM.scheduleFilter = .scheduled
@@ -284,7 +293,7 @@ struct TodayView: View {
     private func todayItemRow(_ entry: TodayItemEntry) -> some View {
         Group {
             switch entry {
-            case .task(let task, _, _):
+            case .task(let task, let scheduleId, _):
                 FlatTaskRow(
                     task: task,
                     viewModel: taskListVM,
@@ -293,23 +302,50 @@ struct TodayView: View {
                     onSelectToggle: nil,
                     onToggleCompletion: { t in
                         taskListVM.requestToggleCompletion(t)
+                    },
+                    onReschedule: {
+                        selectedScheduleForReschedule = scheduleById[scheduleId]
+                    },
+                    onPushToTomorrow: {
+                        if let schedule = scheduleById[scheduleId] {
+                            _Concurrency.Task {
+                                let _ = await focusViewModel.pushScheduleToNext(schedule)
+                                await fetchTodayData()
+                            }
+                        }
                     }
                 )
 
-            case .project(let project, _, _):
+            case .project(let project, let scheduleId, _):
                 TodayProjectRow(
                     project: project,
                     onTap: { selectedProjectForNavigation = project },
                     onEdit: { projectsVM.selectedProjectForDetails = project },
-                    onSchedule: { projectsVM.selectedTaskForSchedule = project }
+                    onReschedule: { selectedScheduleForReschedule = scheduleById[scheduleId] },
+                    onPushToTomorrow: {
+                        if let schedule = scheduleById[scheduleId] {
+                            _Concurrency.Task {
+                                let _ = await focusViewModel.pushScheduleToNext(schedule)
+                                await fetchTodayData()
+                            }
+                        }
+                    }
                 )
 
-            case .list(let list, _, _):
+            case .list(let list, let scheduleId, _):
                 TodayListRow(
                     list: list,
                     onTap: { selectedListForNavigation = list },
                     onEdit: { listsVM.selectedListForDetails = list },
-                    onSchedule: { listsVM.selectedItemForSchedule = list }
+                    onReschedule: { selectedScheduleForReschedule = scheduleById[scheduleId] },
+                    onPushToTomorrow: {
+                        if let schedule = scheduleById[scheduleId] {
+                            _Concurrency.Task {
+                                let _ = await focusViewModel.pushScheduleToNext(schedule)
+                                await fetchTodayData()
+                            }
+                        }
+                    }
                 )
             }
         }
@@ -374,7 +410,8 @@ private struct TodayProjectRow: View {
     let project: FocusTask
     var onTap: () -> Void
     var onEdit: () -> Void
-    var onSchedule: () -> Void
+    var onReschedule: () -> Void
+    var onPushToTomorrow: () -> Void
 
     var body: some View {
         HStack(spacing: 12) {
@@ -395,7 +432,8 @@ private struct TodayProjectRow: View {
         .onTapGesture { onTap() }
         .contextMenu {
             ContextMenuItems.editButton { onEdit() }
-            ContextMenuItems.scheduleButton { onSchedule() }
+            ContextMenuItems.rescheduleButton { onReschedule() }
+            ContextMenuItems.pushToTomorrowButton { onPushToTomorrow() }
         }
     }
 }
@@ -406,7 +444,8 @@ private struct TodayListRow: View {
     let list: FocusTask
     var onTap: () -> Void
     var onEdit: () -> Void
-    var onSchedule: () -> Void
+    var onReschedule: () -> Void
+    var onPushToTomorrow: () -> Void
 
     var body: some View {
         HStack(spacing: 12) {
@@ -428,7 +467,8 @@ private struct TodayListRow: View {
         .onTapGesture { onTap() }
         .contextMenu {
             ContextMenuItems.editButton { onEdit() }
-            ContextMenuItems.scheduleButton { onSchedule() }
+            ContextMenuItems.rescheduleButton { onReschedule() }
+            ContextMenuItems.pushToTomorrowButton { onPushToTomorrow() }
         }
     }
 }

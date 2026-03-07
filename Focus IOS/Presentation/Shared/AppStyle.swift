@@ -16,8 +16,13 @@ enum AppStyle {
         static let pageTitle: Font = .helveticaNeue(size: 26.14)
         static let pageTitleTracking: CGFloat = -0.272
 
-        /// Collapsible section headers
+        /// Section headers — collapsible sections in Backlog, CategoryDetail, Scheduled, Archive, etc.
         static let sectionHeader: Font = .roboto(size: 22, weight: .semiBold)
+
+        /// Home screen section labels (PINNED, CATEGORIES) — smaller uppercase style, distinct from sectionHeader
+        static let homeSectionLabel: Font = .roboto(size: 14.63, weight: .regular)
+        static let homeSectionLabelTracking: CGFloat = 0.686
+        static let homeSectionLabelLineSpacing: CGFloat = 17.56 - 14.63
 
         /// Task / item row titles
         static let itemTitle: Font = .helveticaNeue(.body)
@@ -37,10 +42,6 @@ enum AppStyle {
         /// Small collapse / expand chevrons
         static let chevron: Font = .inter(size: 8, weight: .semiBold)
 
-        /// Home screen section labels (PINNED, CATEGORIES)
-        static let homeSectionLabel: Font = .roboto(size: 14.63, weight: .regular)
-        static let homeSectionLabelTracking: CGFloat = 0.686
-        static let homeSectionLabelLineSpacing: CGFloat = 17.56 - 14.63
     }
 
     // MARK: - Opacity

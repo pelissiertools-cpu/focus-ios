@@ -149,19 +149,17 @@ struct HomeView: View {
                             }
                             .buttonStyle(.plain)
 
-                            VStack(alignment: .leading, spacing: 2) {
+                            VStack(alignment: .leading, spacing: 0) {
                                 Text(currentDayName)
-                                    .font(.inter(.title, weight: .light))
+                                    .font(.helveticaNeue(size: 34.6))
+                                    .tracking(-0.36)
+                                    .lineSpacing(36 - 34.6)
                                     .foregroundColor(.primary)
-                                HStack {
-                                    Text(currentDateShort)
-                                        .font(.inter(.subheadline))
-                                        .foregroundColor(.primary)
-                                    Spacer()
-                                    Text(currentWeekString)
-                                        .font(.inter(.caption))
-                                        .foregroundColor(.secondary)
-                                }
+                                Text(currentDateShort)
+                                    .font(.helveticaNeue(size: 17.3))
+                                    .tracking(-0.18)
+                                    .lineSpacing(20 - 17.3)
+                                    .foregroundColor(Color(red: 0x26/255, green: 0x26/255, blue: 0x26/255))
                             }
                         }
                         .padding(.horizontal, 20)
@@ -477,18 +475,21 @@ struct HomeView: View {
             HStack {
                 if centered { Spacer() }
                 Text(title)
-                    .font(.inter(.body))
-                    .foregroundColor(.primary)
+                    .font(.helveticaNeue(size: 13.84))
+                    .tracking(-0.144)
+                    .foregroundColor(Color(red: 0x26/255, green: 0x26/255, blue: 0x26/255))
                 if let count, count > 0 {
                     Text("(\(count))")
-                        .font(.inter(.footnote, weight: .medium))
+                        .font(.helveticaNeue(size: 11.08))
+                        .tracking(-0.11)
+                        .lineSpacing(13.4 - 11.08)
                         .foregroundColor(.secondary)
                 }
                 Spacer()
                 if let icon {
                     Image(systemName: icon)
-                        .font(.inter(.body, weight: .medium))
-                        .foregroundColor(.primary)
+                        .font(.helveticaNeue(size: 17.3))
+                        .foregroundColor(Color(red: 0x26/255, green: 0x26/255, blue: 0x26/255))
                 }
             }
             .padding(16)
@@ -572,8 +573,10 @@ struct HomeView: View {
                 .fill(Color.secondary.opacity(0.3))
                 .frame(height: 1)
             Text(title)
-                .font(.inter(size: 17, weight: .medium))
-                .foregroundColor(.secondary)
+                .font(.fragmentMono(size: 13.3))
+                .tracking(0.624)
+                .lineSpacing(15.96 - 13.3)
+                .foregroundColor(Color(red: 0x26/255, green: 0x26/255, blue: 0x26/255))
         }
         .padding(.horizontal, 20)
     }
@@ -587,8 +590,10 @@ struct HomeView: View {
                 .frame(height: 1)
             HStack {
                 Text("CATEGORIES")
-                    .font(.inter(size: 17, weight: .medium))
-                    .foregroundColor(.secondary)
+                    .font(.fragmentMono(size: 13.3))
+                    .tracking(0.624)
+                    .lineSpacing(15.96 - 13.3)
+                    .foregroundColor(Color(red: 0x26/255, green: 0x26/255, blue: 0x26/255))
                 Spacer()
                 Menu {
                     Button {

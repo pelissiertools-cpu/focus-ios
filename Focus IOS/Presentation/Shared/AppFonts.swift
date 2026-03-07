@@ -52,6 +52,24 @@ extension Font {
     static func inter(_ style: TextStyle, weight: InterWeight = .regular) -> Font {
         .custom(weight.fontName, size: style.defaultSize, relativeTo: style)
     }
+
+    /// Fragment Mono with explicit point size.
+    /// Usage: `.font(.fragmentMono(size: 12))`
+    static func fragmentMono(size: CGFloat) -> Font {
+        .custom("FragmentMono-Regular", size: size)
+    }
+
+    /// Helvetica Neue with explicit point size.
+    /// Usage: `.font(.helveticaNeue(size: 16, weight: .medium))`
+    static func helveticaNeue(size: CGFloat, weight: HelveticaNeueWeight = .regular) -> Font {
+        .custom(weight.fontName, size: size)
+    }
+
+    /// Helvetica Neue matching a Dynamic Type text style.
+    /// Usage: `.font(.helveticaNeue(.body, weight: .medium))`
+    static func helveticaNeue(_ style: TextStyle, weight: HelveticaNeueWeight = .regular) -> Font {
+        .custom(weight.fontName, size: style.defaultSize, relativeTo: style)
+    }
 }
 
 // MARK: - SF Weight Mapping
@@ -132,6 +150,25 @@ enum InterWeight {
         case .semiBold:   "Inter18pt-SemiBold"
         case .bold:       "Inter18pt-Bold"
         case .extraBold:  "Inter18pt-ExtraBold"
+        }
+    }
+}
+
+// MARK: - Helvetica Neue Weight Mapping
+
+enum HelveticaNeueWeight {
+    case ultraLight, thin, light, regular, medium, bold, condensedBold, condensedBlack
+
+    var fontName: String {
+        switch self {
+        case .ultraLight:     "HelveticaNeue-UltraLight"
+        case .thin:           "HelveticaNeue-Thin"
+        case .light:          "HelveticaNeue-Light"
+        case .regular:        "HelveticaNeue"
+        case .medium:         "HelveticaNeue-Medium"
+        case .bold:           "HelveticaNeue-Bold"
+        case .condensedBold:  "HelveticaNeue-CondensedBold"
+        case .condensedBlack: "HelveticaNeue-CondensedBlack"
         }
     }
 }

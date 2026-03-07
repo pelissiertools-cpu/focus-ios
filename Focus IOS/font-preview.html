@@ -1,0 +1,1202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Focus iOS — Font Preview</title>
+<style>
+/* ============================================================
+   @font-face declarations — all available project fonts
+   ============================================================ */
+
+/* Inter */
+@font-face { font-family:'Inter'; src:url('Fonts/Inter_18pt-Thin.ttf'); font-weight:100; }
+@font-face { font-family:'Inter'; src:url('Fonts/Inter_18pt-ExtraLight.ttf'); font-weight:200; }
+@font-face { font-family:'Inter'; src:url('Fonts/Inter_18pt-Light.ttf'); font-weight:300; }
+@font-face { font-family:'Inter'; src:url('Fonts/Inter_18pt-Regular.ttf'); font-weight:400; }
+@font-face { font-family:'Inter'; src:url('Fonts/Inter_18pt-Medium.ttf'); font-weight:500; }
+@font-face { font-family:'Inter'; src:url('Fonts/Inter_18pt-SemiBold.ttf'); font-weight:600; }
+@font-face { font-family:'Inter'; src:url('Fonts/Inter_18pt-Bold.ttf'); font-weight:700; }
+@font-face { font-family:'Inter'; src:url('Fonts/Inter_18pt-ExtraBold.ttf'); font-weight:800; }
+
+/* Roboto */
+@font-face { font-family:'Roboto'; src:url('Fonts/Roboto-Thin.ttf'); font-weight:100; }
+@font-face { font-family:'Roboto'; src:url('Fonts/Roboto-Light.ttf'); font-weight:300; }
+@font-face { font-family:'Roboto'; src:url('Fonts/Roboto-Regular.ttf'); font-weight:400; }
+@font-face { font-family:'Roboto'; src:url('Fonts/Roboto-Medium.ttf'); font-weight:500; }
+@font-face { font-family:'Roboto'; src:url('Fonts/Roboto-Bold.ttf'); font-weight:700; }
+@font-face { font-family:'Roboto'; src:url('Fonts/Roboto-Black.ttf'); font-weight:900; }
+
+
+/* GolosText */
+@font-face { font-family:'GolosText'; src:url('Fonts/GolosText-Regular.ttf'); font-weight:400; }
+@font-face { font-family:'GolosText'; src:url('Fonts/GolosText-Medium.ttf'); font-weight:500; }
+@font-face { font-family:'GolosText'; src:url('Fonts/GolosText-SemiBold.ttf'); font-weight:600; }
+@font-face { font-family:'GolosText'; src:url('Fonts/GolosText-Bold.ttf'); font-weight:700; }
+@font-face { font-family:'GolosText'; src:url('Fonts/GolosText-ExtraBold.ttf'); font-weight:800; }
+@font-face { font-family:'GolosText'; src:url('Fonts/GolosText-Black.ttf'); font-weight:900; }
+
+/* FragmentMono */
+@font-face { font-family:'FragmentMono'; src:url('Fonts/FragmentMono-Regular.ttf'); font-weight:400; }
+
+/* ============================================================
+   CSS Variables — the 3 font roles
+   ============================================================ */
+:root {
+  --family-1: 'Inter', sans-serif;
+  --family-2: 'Helvetica Neue', sans-serif;
+  --family-3: 'Roboto', sans-serif;
+
+  --f1-weight: initial;
+  --f2-weight: initial;
+  --f3-weight: initial;
+  --f1-spacing: normal;
+  --f2-spacing: normal;
+  --f3-spacing: normal;
+
+  /* Light mode */
+  --bg: #ffffff;
+  --fg: #000000;
+  --fg-secondary: #8e8e93;
+  --card-border: rgba(142,142,147,0.3);
+  --chip-bg: #f2f2f7;
+  --divider: rgba(142,142,147,0.3);
+  --fab-bg: #1c1c1e;
+}
+[data-theme="dark"] {
+  --bg: #000000;
+  --fg: #ffffff;
+  --fg-secondary: #8e8e93;
+  --card-border: rgba(142,142,147,0.35);
+  --chip-bg: #1c1c1e;
+  --divider: rgba(142,142,147,0.35);
+  --fab-bg: #f2f2f7;
+}
+
+/* ============================================================
+   Layout
+   ============================================================ */
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: -apple-system, sans-serif;
+  background: #f5f5f5;
+  min-height: 100vh;
+}
+[data-theme="dark"] body { background: #1a1a1a; }
+
+.controls {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: #fff;
+  border-bottom: 1px solid #e0e0e0;
+  padding: 16px 24px;
+}
+[data-theme="dark"] .controls {
+  background: #1c1c1e;
+  border-bottom-color: #333;
+}
+.controls h1 {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: #000;
+}
+[data-theme="dark"] .controls h1 { color: #fff; }
+
+.selectors {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+.selector-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.selector-group label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #666;
+}
+[data-theme="dark"] .selector-group label { color: #999; }
+
+.selector-group select {
+  padding: 6px 10px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  font-size: 14px;
+  background: #fff;
+  cursor: pointer;
+  min-width: 160px;
+}
+[data-theme="dark"] .selector-group select {
+  background: #2c2c2e;
+  border-color: #555;
+  color: #fff;
+}
+
+.toggle-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.toggle-group label { font-size: 13px; color: #666; }
+[data-theme="dark"] .toggle-group label { color: #999; }
+
+.weight-badges {
+  display: flex;
+  gap: 3px;
+  margin-top: 2px;
+}
+.weight-badge {
+  font-size: 9px;
+  padding: 1px 4px;
+  border-radius: 3px;
+  background: #e8e8e8;
+  color: #666;
+}
+[data-theme="dark"] .weight-badge { background: #333; color: #999; }
+
+/* Page tabs */
+.page-tabs {
+  display: flex;
+  gap: 0;
+  justify-content: center;
+  margin: 20px auto 0;
+  max-width: 420px;
+}
+.page-tab {
+  padding: 8px 20px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #666;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.15s;
+}
+.page-tab.active {
+  color: #000;
+  border-bottom-color: #000;
+}
+[data-theme="dark"] .page-tab { color: #888; }
+[data-theme="dark"] .page-tab.active { color: #fff; border-bottom-color: #fff; }
+
+/* Phone frame */
+.phone-container {
+  display: flex;
+  justify-content: center;
+  padding: 20px 0 60px;
+  gap: 24px;
+}
+.phone {
+  width: 390px;
+  min-height: 760px;
+  background: var(--bg);
+  border-radius: 40px;
+  border: 6px solid #1c1c1e;
+  overflow: hidden;
+  position: relative;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+}
+.phone-screen {
+  padding: 56px 0 34px;
+  overflow-y: auto;
+  height: 100%;
+}
+
+/* Notch */
+.phone::before {
+  content: '';
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 120px;
+  height: 28px;
+  background: #1c1c1e;
+  border-radius: 20px;
+  z-index: 10;
+}
+
+/* ============================================================
+   Home Page Styles
+   ============================================================ */
+.home-content {
+  padding: 8px 20px;
+}
+
+.top-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+.profile-circle {
+  width: 41px;
+  height: 41px;
+  border-radius: 50%;
+  border: 1px solid var(--card-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  color: var(--fg);
+}
+.search-icon {
+  font-size: 17px;
+  color: var(--fg-secondary);
+}
+
+/* Date header */
+.date-header {
+  margin-bottom: 24px;
+}
+.day-name {
+  font-family: var(--family-2);
+  font-size: 26.14px;
+  font-weight: 400;
+  letter-spacing: -0.272px;
+  line-height: 1.21;
+  color: var(--fg);
+}
+.date-line {
+  font-family: var(--family-2);
+  font-weight: 400;
+  color: var(--fg-secondary);
+}
+.date-line .main { font-size: 15.22px; letter-spacing: -0.158px; }
+.date-line .small { font-size: 13.22px; letter-spacing: -0.158px; }
+
+/* Cards */
+.card-grid { display: flex; flex-direction: column; gap: 12px; }
+.card-row { display: flex; gap: 12px; }
+
+.home-card {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  padding: 16px;
+  min-height: 56px;
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.home-card:hover { background: var(--chip-bg); }
+.home-card.full-width { justify-content: center; }
+
+.card-title {
+  font-family: var(--family-2);
+  font-size: 15.22px;
+  font-weight: 400;
+  letter-spacing: -0.158px;
+  color: var(--fg);
+}
+.card-count {
+  font-family: var(--family-2);
+  font-size: 11.08px;
+  font-weight: 400;
+  letter-spacing: -0.11px;
+  color: var(--fg-secondary);
+  margin-left: 4px;
+}
+.card-icon {
+  margin-left: auto;
+  font-size: 17.3px;
+  color: var(--fg);
+  width: 24px;
+  text-align: center;
+}
+
+/* Section dividers */
+.section-divider {
+  margin-top: 20px;
+  margin-bottom: 12px;
+}
+.section-divider .line {
+  height: 1px;
+  background: var(--divider);
+  margin-bottom: 8px;
+}
+.section-label {
+  font-family: var(--family-3);
+  font-size: 14.63px;
+  font-weight: 400;
+  letter-spacing: 0.686px;
+  line-height: 1.2;
+  color: var(--fg);
+}
+.section-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.section-dots {
+  font-size: 15px;
+  color: var(--fg-secondary);
+  cursor: pointer;
+  padding: 4px;
+}
+
+/* Category chips */
+.category-row {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+.category-chip {
+  font-family: var(--family-2);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: -0.135px;
+  color: var(--fg);
+  padding: 12px 8px;
+  background: var(--chip-bg);
+  border-radius: 12px;
+  text-align: center;
+  flex: 1;
+  max-width: calc((100% - 24px) / 3);
+  cursor: pointer;
+}
+
+/* Pinned rows */
+.pinned-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+}
+.pinned-icon {
+  font-size: 17px;
+  color: var(--fg-secondary);
+  width: 24px;
+  text-align: center;
+}
+.pinned-title {
+  font-family: var(--family-2);
+  font-size: 17px;
+  font-weight: 500;
+  color: var(--fg);
+  flex: 1;
+}
+.pinned-chevron {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--fg-secondary);
+}
+
+/* FAB */
+.fab {
+  position: absolute;
+  bottom: 54px;
+  right: 20px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--fab-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--bg);
+  font-size: 24px;
+  font-weight: 500;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  cursor: pointer;
+}
+
+/* ============================================================
+   Task List Page Styles
+   ============================================================ */
+.tasklist-content {
+  padding: 0 20px;
+}
+
+.page-title {
+  font-family: var(--family-1);
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--fg);
+  padding: 16px 0 12px;
+}
+
+.task-section-header {
+  font-family: var(--family-1);
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--fg);
+  padding: 12px 0 8px;
+  border-bottom: 1px solid var(--divider);
+  margin-bottom: 4px;
+}
+
+.task-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--divider);
+}
+.task-checkbox {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1.5px solid var(--fg-secondary);
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.task-info { flex: 1; }
+.task-title {
+  font-family: var(--family-1);
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--fg);
+  line-height: 1.3;
+}
+.task-meta {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+.task-pill {
+  font-family: var(--family-1);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--fg-secondary);
+  background: var(--chip-bg);
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+.task-date {
+  font-family: var(--family-1);
+  font-size: 12px;
+  color: var(--fg-secondary);
+}
+.subtask-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0 6px 30px;
+}
+.subtask-circle {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1px solid var(--fg-secondary);
+  flex-shrink: 0;
+  opacity: 0.5;
+}
+.subtask-title {
+  font-family: var(--family-1);
+  font-size: 15px;
+  font-weight: 400;
+  color: var(--fg);
+}
+
+/* ============================================================
+   Add Bar Styles
+   ============================================================ */
+.addbar-content { padding: 0 20px; }
+
+.add-bar {
+  background: var(--chip-bg);
+  border-radius: 20px;
+  padding: 20px 14px 20px;
+  margin-top: 16px;
+}
+.add-bar-input {
+  font-family: var(--family-1);
+  font-size: 20px;
+  font-weight: 400;
+  color: var(--fg-secondary);
+  margin-bottom: 12px;
+}
+.add-bar-pills {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.pill {
+  font-family: var(--family-1);
+  font-size: 12px;
+  font-weight: 400;
+  padding: 8px 10px;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+}
+.pill.dark {
+  background: #000; color: #fff;
+}
+[data-theme="dark"] .pill.dark { background: #fff; color: #000; }
+.pill.light {
+  background: #fff; color: #000;
+}
+[data-theme="dark"] .pill.light { background: #2c2c2e; color: #fff; }
+.pill.accent {
+  background: #8b5cf6; color: #fff;
+}
+.pill .icon { font-size: 11px; }
+
+.add-bar-bottom {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+  align-items: center;
+}
+.pill-category {
+  font-family: var(--family-1);
+  font-size: 12px;
+  color: #000;
+  background: #fff;
+  padding: 8px 10px;
+  border-radius: 20px;
+}
+[data-theme="dark"] .pill-category { background: #2c2c2e; color: #fff; }
+
+.checkmark-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 600;
+  margin-left: auto;
+}
+.checkmark-btn.active { background: #8b5cf6; color: #fff; }
+.checkmark-btn.inactive { background: #d1d1d6; color: #8e8e93; }
+
+/* ============================================================
+   Settings Page Styles
+   ============================================================ */
+.settings-content { padding: 0 20px; }
+
+.settings-title {
+  font-family: var(--family-1);
+  font-size: 48px;
+  font-weight: 700;
+  color: var(--fg);
+  padding: 16px 0 24px;
+}
+.settings-section-label {
+  font-family: var(--family-1);
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--fg-secondary);
+  text-transform: uppercase;
+  margin-bottom: 6px;
+  margin-top: 20px;
+}
+.settings-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--divider);
+}
+.settings-row-label {
+  font-family: var(--family-1);
+  font-size: 17px;
+  font-weight: 400;
+  color: var(--fg);
+}
+.settings-row-value {
+  font-family: var(--family-1);
+  font-size: 15px;
+  font-weight: 400;
+  color: var(--fg-secondary);
+}
+
+/* Role labels */
+.role-tag {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 600;
+  padding: 1px 5px;
+  border-radius: 3px;
+  vertical-align: middle;
+  margin-left: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+.role-tag.f1 { background: #dbeafe; color: #1d4ed8; }
+.role-tag.f2 { background: #fef3c7; color: #92400e; }
+.role-tag.f3 { background: #d1fae5; color: #065f46; }
+[data-theme="dark"] .role-tag.f1 { background: #1e3a5f; color: #93c5fd; }
+[data-theme="dark"] .role-tag.f2 { background: #422006; color: #fcd34d; }
+[data-theme="dark"] .role-tag.f3 { background: #064e3b; color: #6ee7b7; }
+
+/* Page visibility */
+.page { display: none; }
+.page.active { display: block; }
+
+/* Font specimen at top of phone */
+.specimen-bar {
+  padding: 8px 20px;
+  border-bottom: 1px solid var(--divider);
+  margin-bottom: 8px;
+  display: flex;
+  gap: 12px;
+  font-size: 10px;
+  color: var(--fg-secondary);
+}
+.specimen-bar span {
+  background: var(--chip-bg);
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+.specimen-bar .f1-name { font-family: var(--family-1); }
+.specimen-bar .f2-name { font-family: var(--family-2); }
+.specimen-bar .f3-name { font-family: var(--family-3); }
+
+/* Weight & spacing overrides per family role */
+.page-title, .task-section-header, .task-title, .task-pill,
+.task-date, .subtask-title, .add-bar-input, .pill,
+.pill-category, .settings-title, .settings-section-label,
+.settings-row-label, .settings-row-value {
+  font-weight: var(--f1-weight);
+  letter-spacing: var(--f1-spacing);
+}
+.day-name, .date-line, .card-title, .card-count,
+.category-chip, .pinned-title {
+  font-weight: var(--f2-weight);
+  letter-spacing: var(--f2-spacing);
+}
+.section-label {
+  font-weight: var(--f3-weight);
+  letter-spacing: var(--f3-spacing);
+}
+
+/* Controls: weight & spacing rows */
+.control-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+.control-row label {
+  font-size: 10px;
+  font-weight: 500;
+  color: #888;
+  min-width: 52px;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.control-row select {
+  padding: 3px 6px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 12px;
+  background: #fff;
+  cursor: pointer;
+}
+[data-theme="dark"] .control-row select {
+  background: #2c2c2e;
+  border-color: #555;
+  color: #fff;
+}
+.control-row input[type="range"] {
+  width: 110px;
+  cursor: pointer;
+}
+.spacing-value {
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: #888;
+  min-width: 42px;
+}
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     Controls
+     ============================================================ -->
+<div class="controls">
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+    <h1>Focus iOS — Font Preview</h1>
+    <div class="toggle-group">
+      <label>Dark</label>
+      <input type="checkbox" id="darkToggle" onchange="toggleTheme()">
+    </div>
+  </div>
+  <div class="selectors">
+    <div class="selector-group">
+      <label>Family 1 — Primary <span class="role-tag f1">96% of app</span></label>
+      <select id="family1" onchange="setFamily(1, this.value)">
+        <option value="Inter" selected>Inter</option>
+        <option value="Roboto">Roboto</option>
+        <option value="GolosText">GolosText</option>
+        <option value="Helvetica Neue">Helvetica Neue</option>
+        <option value="FragmentMono">Fragment Mono</option>
+      </select>
+      <div class="weight-badges" id="badges1"></div>
+      <div class="control-row">
+        <label>Weight</label>
+        <select id="weight1" onchange="setWeight(1, this.value)">
+          <option value="">Auto</option>
+        </select>
+        <label>Spacing</label>
+        <input type="range" id="spacing1" min="-2" max="4" step="0.1" value="0" oninput="setSpacing(1, this.value)">
+        <span class="spacing-value" id="spacingVal1">0px</span>
+      </div>
+    </div>
+    <div class="selector-group">
+      <label>Family 2 — Display <span class="role-tag f2">Home headers</span></label>
+      <select id="family2" onchange="setFamily(2, this.value)">
+        <option value="Helvetica Neue" selected>Helvetica Neue</option>
+        <option value="Inter">Inter</option>
+        <option value="Roboto">Roboto</option>
+        <option value="GolosText">GolosText</option>
+        <option value="FragmentMono">Fragment Mono</option>
+      </select>
+      <div class="weight-badges" id="badges2"></div>
+      <div class="control-row">
+        <label>Weight</label>
+        <select id="weight2" onchange="setWeight(2, this.value)">
+          <option value="">Auto</option>
+        </select>
+        <label>Spacing</label>
+        <input type="range" id="spacing2" min="-2" max="4" step="0.1" value="0" oninput="setSpacing(2, this.value)">
+        <span class="spacing-value" id="spacingVal2">0px</span>
+      </div>
+    </div>
+    <div class="selector-group">
+      <label>Family 3 — Accent <span class="role-tag f3">Section headers</span></label>
+      <select id="family3" onchange="setFamily(3, this.value)">
+        <option value="Roboto" selected>Roboto</option>
+        <option value="Inter">Inter</option>
+        <option value="GolosText">GolosText</option>
+        <option value="Helvetica Neue">Helvetica Neue</option>
+        <option value="FragmentMono">Fragment Mono</option>
+      </select>
+      <div class="weight-badges" id="badges3"></div>
+      <div class="control-row">
+        <label>Weight</label>
+        <select id="weight3" onchange="setWeight(3, this.value)">
+          <option value="">Auto</option>
+        </select>
+        <label>Spacing</label>
+        <input type="range" id="spacing3" min="-2" max="4" step="0.1" value="0" oninput="setSpacing(3, this.value)">
+        <span class="spacing-value" id="spacingVal3">0px</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Page tabs -->
+<div class="page-tabs">
+  <div class="page-tab active" onclick="switchPage('home', this)">Home</div>
+  <div class="page-tab" onclick="switchPage('tasks', this)">Task List</div>
+  <div class="page-tab" onclick="switchPage('addbar', this)">Add Bar</div>
+  <div class="page-tab" onclick="switchPage('settings', this)">Settings</div>
+</div>
+
+<!-- ============================================================
+     Phone Mockup
+     ============================================================ -->
+<div class="phone-container">
+  <div class="phone">
+    <div class="phone-screen">
+
+      <!-- Active font specimen -->
+      <div class="specimen-bar">
+        <span>F1: <b class="f1-name" id="specF1">Inter</b></span>
+        <span>F2: <b class="f2-name" id="specF2">Helvetica Neue</b></span>
+        <span>F3: <b class="f3-name" id="specF3">Roboto</b></span>
+      </div>
+
+      <!-- ==================== HOME PAGE ==================== -->
+      <div class="page active" id="page-home">
+        <div class="home-content">
+
+          <!-- Top bar -->
+          <div class="top-bar">
+            <div class="profile-circle">&#9786;</div>
+            <div class="search-icon">&#128269;</div>
+          </div>
+
+          <!-- Date header -->
+          <div class="date-header">
+            <div class="day-name">Saturday</div>
+            <div class="date-line">
+              <span class="main">March 7</span><span class="small">th__2026</span>
+            </div>
+          </div>
+
+          <!-- Cards -->
+          <div class="card-grid">
+            <!-- Inbox full width -->
+            <div class="home-card full-width">
+              <span class="card-title">Inbox</span>
+              <span class="card-count">(3)</span>
+            </div>
+
+            <!-- Today / Scheduled -->
+            <div class="card-row">
+              <div class="home-card">
+                <span class="card-title">Today</span>
+                <span class="card-icon">&#9728;</span>
+              </div>
+              <div class="home-card">
+                <span class="card-title">Scheduled</span>
+                <span class="card-icon">&#128197;</span>
+              </div>
+            </div>
+
+            <!-- All / Completed -->
+            <div class="card-row">
+              <div class="home-card">
+                <span class="card-title">All</span>
+                <span class="card-icon">&#128229;</span>
+              </div>
+              <div class="home-card">
+                <span class="card-title">Completed</span>
+                <span class="card-icon">&#9745;</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- LIBRARY section -->
+          <div class="section-divider">
+            <div class="line"></div>
+            <span class="section-label">LIBRARY</span>
+          </div>
+
+          <div class="card-grid">
+            <div class="card-row">
+              <div class="home-card">
+                <span class="card-title">Projects</span>
+                <span class="card-count">(4)</span>
+                <span class="card-icon">&#128193;</span>
+              </div>
+              <div class="home-card">
+                <span class="card-title">Quick lists</span>
+                <span class="card-count">(4)</span>
+                <span class="card-icon">&#9776;</span>
+              </div>
+            </div>
+            <div class="card-row">
+              <div class="home-card">
+                <span class="card-title">Someday</span>
+                <span class="card-icon">&#8987;</span>
+              </div>
+              <div class="home-card">
+                <span class="card-title">Goals</span>
+                <span class="card-icon">&#127919;</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- CATEGORIES section -->
+          <div class="section-divider">
+            <div class="line"></div>
+            <div class="section-header-row">
+              <span class="section-label">CATEGORIES</span>
+              <span class="section-dots">&#8943;</span>
+            </div>
+          </div>
+
+          <div class="category-row">
+            <div class="category-chip">Design</div>
+            <div class="category-chip">Work</div>
+            <div class="category-chip" style="opacity: 0;"></div>
+          </div>
+
+          <!-- PINNED section -->
+          <div class="section-divider">
+            <div class="line"></div>
+            <span class="section-label">PINNED</span>
+          </div>
+
+          <div class="pinned-row">
+            <span class="pinned-icon">&#128193;</span>
+            <span class="pinned-title">Launching consumer app</span>
+            <span class="pinned-chevron">&#8250;</span>
+          </div>
+          <div class="pinned-row">
+            <span class="pinned-icon">&#9776;</span>
+            <span class="pinned-title">Grocery</span>
+            <span class="pinned-chevron">&#8250;</span>
+          </div>
+
+          <div style="height:80px"></div>
+        </div>
+        <div class="fab">+</div>
+      </div>
+
+      <!-- ==================== TASK LIST PAGE ==================== -->
+      <div class="page" id="page-tasks">
+        <div class="tasklist-content">
+          <div class="page-title">Today</div>
+
+          <div class="task-section-header">Focus</div>
+
+          <div class="task-row">
+            <div class="task-checkbox"></div>
+            <div class="task-info">
+              <div class="task-title">Design onboarding flow</div>
+              <div class="task-meta">
+                <span class="task-pill">Design</span>
+                <span class="task-date">Mar 7</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="subtask-row">
+            <div class="subtask-circle"></div>
+            <span class="subtask-title">Create wireframes</span>
+          </div>
+          <div class="subtask-row">
+            <div class="subtask-circle"></div>
+            <span class="subtask-title">Review with team</span>
+          </div>
+
+          <div class="task-row">
+            <div class="task-checkbox"></div>
+            <div class="task-info">
+              <div class="task-title">Fix authentication bug</div>
+              <div class="task-meta">
+                <span class="task-pill">Work</span>
+                <span class="task-pill" style="background:#fee2e2; color:#991b1b;">High</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="task-section-header">To-Do</div>
+
+          <div class="task-row">
+            <div class="task-checkbox"></div>
+            <div class="task-info">
+              <div class="task-title">Update project documentation</div>
+              <div class="task-meta">
+                <span class="task-date">Scheduled: Mar 8</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="task-row">
+            <div class="task-checkbox"></div>
+            <div class="task-info">
+              <div class="task-title">Review pull requests</div>
+            </div>
+          </div>
+
+          <div class="task-row">
+            <div class="task-checkbox"></div>
+            <div class="task-info">
+              <div class="task-title">Prepare weekly standup notes</div>
+              <div class="task-meta">
+                <span class="task-pill">Work</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="task-row">
+            <div class="task-checkbox"></div>
+            <div class="task-info">
+              <div class="task-title">Research competitor pricing</div>
+              <div class="task-meta">
+                <span class="task-pill">Design</span>
+                <span class="task-pill" style="background:#fef3c7; color:#92400e;">Medium</span>
+              </div>
+            </div>
+          </div>
+
+          <div style="height: 40px"></div>
+        </div>
+      </div>
+
+      <!-- ==================== ADD BAR PAGE ==================== -->
+      <div class="page" id="page-addbar">
+        <div class="addbar-content">
+          <div class="page-title">Add Bar Preview</div>
+
+          <!-- Task add bar -->
+          <div class="add-bar">
+            <div class="add-bar-input">Create a new task</div>
+            <div class="add-bar-pills">
+              <span class="pill dark"><span class="icon">+</span> Sub-task</span>
+              <span class="pill light">&#8943;</span>
+              <span style="flex:1"></span>
+              <span class="pill light" style="font-weight:600; color: #3b82f6;">&#10024; Suggest Breakdown</span>
+              <div class="checkmark-btn inactive">&#10003;</div>
+            </div>
+            <div class="add-bar-bottom">
+              <span class="pill light"><span class="icon">&#128193;</span> Category</span>
+              <span class="pill light"><span class="icon">&#10145;</span> Schedule</span>
+              <span class="pill light">
+                <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#22c55e;"></span>
+                Low
+              </span>
+            </div>
+          </div>
+
+          <!-- Filled task bar -->
+          <div class="add-bar" style="margin-top:16px;">
+            <div class="add-bar-input" style="color:var(--fg); font-weight:400;">Ship landing page v2</div>
+            <div style="border-top:1px solid var(--divider); margin:4px 0 10px;"></div>
+            <div class="subtask-row" style="padding-left:0;">
+              <div class="subtask-circle"></div>
+              <span class="subtask-title">Update hero section copy</span>
+            </div>
+            <div class="subtask-row" style="padding-left:0;">
+              <div class="subtask-circle"></div>
+              <span class="subtask-title">Add testimonials block</span>
+            </div>
+            <div class="subtask-row" style="padding-left:0;">
+              <div class="subtask-circle"></div>
+              <span class="subtask-title">Optimize images for mobile</span>
+            </div>
+            <div style="height:8px;"></div>
+            <div class="add-bar-pills">
+              <span class="pill dark"><span class="icon">+</span> Sub-task</span>
+              <span class="pill light">&#8943;</span>
+              <span style="flex:1"></span>
+              <span class="pill light" style="font-weight:600;">&#8635; Regenerate</span>
+              <div class="checkmark-btn active">&#10003;</div>
+            </div>
+            <div class="add-bar-bottom">
+              <span class="pill light"><span class="icon">&#128193;</span> Design</span>
+              <span class="pill" style="background:#ef4444; color:#fff;"><span class="icon">&#10145;</span> Schedule</span>
+              <span class="pill light">
+                <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#f59e0b;"></span>
+                Medium
+              </span>
+            </div>
+          </div>
+
+          <div style="height:40px"></div>
+        </div>
+      </div>
+
+      <!-- ==================== SETTINGS PAGE ==================== -->
+      <div class="page" id="page-settings">
+        <div class="settings-content">
+          <div class="settings-title">Focus</div>
+
+          <div class="settings-section-label">Account</div>
+          <div class="settings-row">
+            <span class="settings-row-label">Email</span>
+            <span class="settings-row-value">user@example.com</span>
+          </div>
+          <div class="settings-row">
+            <span class="settings-row-label">Sign Out</span>
+            <span class="settings-row-value" style="color:#ef4444;">&#8250;</span>
+          </div>
+
+          <div class="settings-section-label">Preferences</div>
+          <div class="settings-row">
+            <span class="settings-row-label">Default Timeframe</span>
+            <span class="settings-row-value">Daily</span>
+          </div>
+          <div class="settings-row">
+            <span class="settings-row-label">Start of Week</span>
+            <span class="settings-row-value">Monday</span>
+          </div>
+          <div class="settings-row">
+            <span class="settings-row-label">Notifications</span>
+            <span class="settings-row-value">On</span>
+          </div>
+
+          <div class="settings-section-label">About</div>
+          <div class="settings-row">
+            <span class="settings-row-label">Version</span>
+            <span class="settings-row-value">1.0.0</span>
+          </div>
+          <div class="settings-row">
+            <span class="settings-row-label">Rate on App Store</span>
+            <span class="settings-row-value">&#8250;</span>
+          </div>
+
+          <div style="height:40px"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     JavaScript
+     ============================================================ -->
+<script>
+const FONT_WEIGHTS = {
+  'Inter':          [100,200,300,400,500,600,700,800],
+  'Roboto':         [100,300,400,500,700,900],
+  'GolosText':      [400,500,600,700,800,900],
+  'Helvetica Neue': [100,200,300,400,500,700],
+  'FragmentMono':   [400],
+};
+
+const WEIGHT_NAMES = {
+  100:'Thin', 200:'ExtraLight', 300:'Light', 400:'Regular',
+  500:'Medium', 600:'SemiBold', 700:'Bold', 800:'ExtraBold', 900:'Black'
+};
+
+function setFamily(num, value) {
+  document.documentElement.style.setProperty(`--family-${num}`, `'${value}', sans-serif`);
+  document.getElementById(`specF${num}`).textContent = value;
+  updateBadges(num, value);
+  populateWeightDropdown(num, value);
+}
+
+function updateBadges(num, fontName) {
+  const container = document.getElementById(`badges${num}`);
+  const weights = FONT_WEIGHTS[fontName] || [];
+  container.innerHTML = weights.map(w =>
+    `<span class="weight-badge">${WEIGHT_NAMES[w] || w}</span>`
+  ).join('');
+}
+
+function populateWeightDropdown(num, fontName) {
+  const sel = document.getElementById(`weight${num}`);
+  const weights = FONT_WEIGHTS[fontName] || [];
+  sel.innerHTML = '<option value="">Auto</option>' +
+    weights.map(w => `<option value="${w}">${w} ${WEIGHT_NAMES[w] || ''}</option>`).join('');
+  // Reset to auto
+  sel.value = '';
+  setWeight(num, '');
+}
+
+function setWeight(num, value) {
+  document.documentElement.style.setProperty(`--f${num}-weight`, value || 'initial');
+}
+
+function setSpacing(num, value) {
+  const px = parseFloat(value);
+  document.documentElement.style.setProperty(`--f${num}-spacing`, px === 0 ? 'normal' : px + 'px');
+  document.getElementById(`spacingVal${num}`).textContent = px.toFixed(1) + 'px';
+}
+
+function toggleTheme() {
+  const dark = document.getElementById('darkToggle').checked;
+  document.documentElement.setAttribute('data-theme', dark ? 'dark' : '');
+}
+
+function switchPage(pageId, tab) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.page-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(`page-${pageId}`).classList.add('active');
+  tab.classList.add('active');
+}
+
+// Init badges & weight dropdowns
+updateBadges(1, 'Inter');
+updateBadges(2, 'Helvetica Neue');
+updateBadges(3, 'Roboto');
+populateWeightDropdown(1, 'Inter');
+populateWeightDropdown(2, 'Helvetica Neue');
+populateWeightDropdown(3, 'Roboto');
+</script>
+
+</body>
+</html>

@@ -21,16 +21,6 @@ extension Font {
         .system(size: size, weight: weight.systemWeight)
     }
 
-    /// Montserrat custom font — used for date navigator.
-    static func montserratHeader(size: CGFloat, weight: MontserratWeight = .regular) -> Font {
-        .custom(weight.fontName, size: size)
-    }
-
-    /// Montserrat custom font matching a Dynamic Type text style — used for date navigator.
-    static func montserratHeader(_ style: TextStyle, weight: MontserratWeight = .regular) -> Font {
-        .custom(weight.fontName, size: style.defaultSize, relativeTo: style)
-    }
-
     /// GolosText custom font — used for focus/extra section headers and task titles.
     static func golosText(size: CGFloat, weight: GolosTextWeight = .semiBold) -> Font {
         .custom(weight.fontName, size: size)
@@ -50,6 +40,16 @@ extension Font {
     /// Inter custom font matching a Dynamic Type text style.
     /// Usage: `.font(.inter(.body, weight: .semiBold))`
     static func inter(_ style: TextStyle, weight: InterWeight = .regular) -> Font {
+        .custom(weight.fontName, size: style.defaultSize, relativeTo: style)
+    }
+
+    /// Roboto custom font with explicit point size.
+    static func roboto(size: CGFloat, weight: RobotoWeight = .regular) -> Font {
+        .custom(weight.fontName, size: size)
+    }
+
+    /// Roboto custom font matching a Dynamic Type text style.
+    static func roboto(_ style: TextStyle, weight: RobotoWeight = .regular) -> Font {
         .custom(weight.fontName, size: style.defaultSize, relativeTo: style)
     }
 
@@ -88,26 +88,6 @@ enum SFWeight {
         case .bold:       .bold
         case .extraBold:  .heavy
         case .black:      .black
-        }
-    }
-}
-
-// MARK: - Montserrat Weight Mapping (custom font for date navigator)
-
-enum MontserratWeight {
-    case thin, extraLight, light, regular, medium, semibold, bold, extraBold, black
-
-    var fontName: String {
-        switch self {
-        case .thin:       "Montserrat-Thin"
-        case .extraLight: "Montserrat-ExtraLight"
-        case .light:      "Montserrat-Light"
-        case .regular:    "Montserrat-Regular"
-        case .medium:     "Montserrat-Medium"
-        case .semibold:   "Montserrat-SemiBold"
-        case .bold:       "Montserrat-Bold"
-        case .extraBold:  "Montserrat-ExtraBold"
-        case .black:      "Montserrat-Black"
         }
     }
 }
@@ -169,6 +149,23 @@ enum HelveticaNeueWeight {
         case .bold:           "HelveticaNeue-Bold"
         case .condensedBold:  "HelveticaNeue-CondensedBold"
         case .condensedBlack: "HelveticaNeue-CondensedBlack"
+        }
+    }
+}
+
+// MARK: - Roboto Weight Mapping
+
+enum RobotoWeight {
+    case thin, light, regular, medium, bold, black
+
+    var fontName: String {
+        switch self {
+        case .thin:    "Roboto-Thin"
+        case .light:   "Roboto-Light"
+        case .regular: "Roboto-Regular"
+        case .medium:  "Roboto-Medium"
+        case .bold:    "Roboto-Bold"
+        case .black:   "Roboto-Black"
         }
     }
 }

@@ -246,7 +246,7 @@ struct HomeView: View {
 
                         // MARK: - Pinned Section
                         if !viewModel.pinnedItems.isEmpty {
-                            homeSectionDivider(title: "PINNED")
+                            homeSectionDivider(title: "PINNED", assetIcon: "PushPin")
 
                             VStack(spacing: 0) {
                                 ForEach(viewModel.pinnedItems) { item in
@@ -624,16 +624,24 @@ struct HomeView: View {
 
     // MARK: - Section Divider
 
-    private func homeSectionDivider(title: String) -> some View {
+    private func homeSectionDivider(title: String, assetIcon: String? = nil) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Rectangle()
                 .fill(Color.secondary.opacity(0.3))
                 .frame(height: 1)
-            Text(title)
-                .font(.fragmentMono(size: 14.63))
-                .tracking(0.686)
-                .lineSpacing(17.56 - 14.63)
-                .foregroundColor(.primary)
+            if let assetIcon = assetIcon {
+                Image(assetIcon)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 17.3, height: 17.3)
+                    .foregroundColor(.primary)
+            } else {
+                Text(title)
+                    .font(.roboto(size: 14.63, weight: .regular))
+                    .tracking(0.686)
+                    .lineSpacing(17.56 - 14.63)
+                    .foregroundColor(.primary)
+            }
         }
         .padding(.horizontal, 20)
     }
@@ -647,7 +655,7 @@ struct HomeView: View {
                 .frame(height: 1)
             HStack {
                 Text("CATEGORIES")
-                    .font(.fragmentMono(size: 14.63))
+                    .font(.roboto(size: 14.63, weight: .regular))
                     .tracking(0.686)
                     .lineSpacing(17.56 - 14.63)
                     .foregroundColor(.primary)

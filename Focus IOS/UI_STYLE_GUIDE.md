@@ -49,7 +49,6 @@ Reference document for all UI patterns, tokens, and component dimensions used ac
 | Family | Helper | Usage |
 |---|---|---|
 | **SF Pro** (system) | `.sf(size:weight:)` / `.sf(_:weight:)` | All body text, labels, captions |
-| **Montserrat** | `.montserratHeader(size:weight:)` | Date navigator month/year label |
 | **GolosText** | `.golosText(size:weight:)` | Section header titles |
 
 ### Type Scale
@@ -59,7 +58,7 @@ Reference document for all UI patterns, tokens, and component dimensions used ac
 | Page title | `.sf(size: 48, weight: .bold)` | 48 |
 | Section header (focus) | `.golosText(size: 30)` | 30 |
 | Section header (extra) | `.golosText(size: 22)` | 22 |
-| Date navigator label | `.montserratHeader(size: 24)` | 24 (20 compact) |
+| Date navigator label | `.inter(.subheadline, weight: .medium)` | 15 |
 | Nav bar title | `.sf(.title3, weight: .medium)` | 20 |
 | Drawer / sheet title | `.sf(.title2, weight: .bold)` | 22 |
 | Drawer section title | `.sf(.headline, weight: .semibold)` | 17 |

@@ -86,5 +86,4 @@
 | Helvetica Neue  | Home cards, profile header   |
 | Fragment Mono   | Section divider labels       |
 | Inter            | Other screens (default)      |
-| Montserrat      | Date navigator               |
 | GolosText       | Focus/extra section headers  |

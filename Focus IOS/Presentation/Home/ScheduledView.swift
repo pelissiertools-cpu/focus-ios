@@ -780,7 +780,7 @@ struct ScheduledView: View {
                     } label: {
                         HStack(spacing: 4) {
                             Text(dateText)
-                                .font(.montserratHeader(.subheadline, weight: .medium))
+                                .font(.inter(.subheadline, weight: .medium))
                                 .foregroundColor(.primary)
                             Image(systemName: "chevron.right")
                                 .font(.inter(size: 8, weight: .semiBold))

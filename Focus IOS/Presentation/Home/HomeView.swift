@@ -122,21 +122,8 @@ struct HomeView: View {
             ZStack {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
-                        // MARK: - Search Button (top right)
+                        // MARK: - Top Bar (Profile + Search)
                         HStack {
-                            Spacer()
-                            Button(action: { showSearch = true }) {
-                                Image(systemName: "magnifyingglass")
-                                    .font(.inter(.body, weight: .medium))
-                                    .foregroundColor(.secondary)
-                            }
-                            .buttonStyle(.plain)
-                        }
-                        .padding(.horizontal, 20)
-                        .padding(.top, 8)
-
-                        // MARK: - Profile Header
-                        HStack(alignment: .center, spacing: 12) {
                             Button(action: { showSettings = true }) {
                                 Circle()
                                     .stroke(Color.secondary.opacity(0.3), lineWidth: 1)
@@ -149,15 +136,27 @@ struct HomeView: View {
                             }
                             .buttonStyle(.plain)
 
-                            VStack(alignment: .leading, spacing: 0) {
-                                Text(currentDayName)
-                                    .font(.helveticaNeue(size: 26.14))
-                                    .tracking(-0.272)
-                                    .lineSpacing(31.6 - 26.14)
-                                    .foregroundColor(.primary)
-                                formattedDateView
-                                    .foregroundColor(Color(red: 0x26/255, green: 0x26/255, blue: 0x26/255).opacity(0.6))
+                            Spacer()
+
+                            Button(action: { showSearch = true }) {
+                                Image(systemName: "magnifyingglass")
+                                    .font(.inter(.body, weight: .medium))
+                                    .foregroundColor(.secondary)
                             }
+                            .buttonStyle(.plain)
+                        }
+                        .padding(.horizontal, 20)
+                        .padding(.top, 8)
+
+                        // MARK: - Date Header
+                        VStack(alignment: .leading, spacing: 0) {
+                            Text(currentDayName)
+                                .font(.helveticaNeue(size: 26.14))
+                                .tracking(-0.272)
+                                .lineSpacing(31.6 - 26.14)
+                                .foregroundColor(.primary)
+                            formattedDateView
+                                .foregroundColor(Color(red: 0x26/255, green: 0x26/255, blue: 0x26/255).opacity(0.6))
                         }
                         .padding(.horizontal, 20)
                         .padding(.bottom, 16)
@@ -173,7 +172,7 @@ struct HomeView: View {
                             homeCard(title: "Today", icon: "sun.max") {
                                 viewModel.selectedMenuItem = .today
                             }
-                            homeCard(title: "Schedule", icon: "calendar") {
+                            homeCard(title: "Scheduled", icon: "calendar") {
                                 viewModel.selectedMenuItem = .assign
                             }
                         }
@@ -213,7 +212,14 @@ struct HomeView: View {
                             }) {
                                 viewModel.selectedMenuItem = .someday
                             }
-                            homeCard(title: "Goals", centered: true) { }
+                            homeCard(title: "Goals", customIcon: {
+                                Image("TargetIcon")
+                                    .renderingMode(.template)
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(width: 21, height: 21)
+                                    .foregroundColor(Color(red: 0x26/255, green: 0x26/255, blue: 0x26/255))
+                            }) { }
                         }
                         .padding(.horizontal, 20)
 
@@ -517,17 +523,14 @@ struct HomeView: View {
             viewModel.selectedCategory = category
         } label: {
             Text(category.name)
-                .font(.helveticaNeue(size: 13))
+                .font(.helveticaNeue(size: 13, weight: .medium))
                 .tracking(-0.135)
                 .foregroundColor(Color(red: 0x26/255, green: 0x26/255, blue: 0x26/255))
                 .lineLimit(1)
                 .padding(.vertical, 12)
                 .padding(.horizontal, 8)
                 .frame(width: (containerWidth - 40 - 24) / 3)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12)
-                        .strokeBorder(Color.secondary.opacity(0.3), lineWidth: 1)
-                )
+                .background(Color(red: 0xF7/255, green: 0xF7/255, blue: 0xF9/255), in: RoundedRectangle(cornerRadius: 12))
                 .contentShape(RoundedRectangle(cornerRadius: 12))
         }
         .buttonStyle(.plain)

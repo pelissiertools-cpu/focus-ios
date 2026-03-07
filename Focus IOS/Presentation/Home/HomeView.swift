@@ -221,16 +221,17 @@ struct HomeView: View {
                         if !viewModel.categories.isEmpty {
                             categoriesSectionHeader
 
-                            LazyVGrid(columns: [
-                                GridItem(.flexible()),
-                                GridItem(.flexible()),
-                                GridItem(.flexible())
-                            ], spacing: 12) {
-                                ForEach(viewModel.categories) { category in
-                                    categoryCard(category)
+                            GeometryReader { geo in
+                                ScrollView(.horizontal, showsIndicators: false) {
+                                    HStack(spacing: 12) {
+                                        ForEach(viewModel.categories) { category in
+                                            categoryCard(category, containerWidth: geo.size.width)
+                                        }
+                                    }
+                                    .padding(.horizontal, 20)
                                 }
                             }
-                            .padding(.horizontal, 20)
+                            .frame(height: 44)
                         }
 
                         // MARK: - Pinned Section
@@ -511,7 +512,7 @@ struct HomeView: View {
 
     // MARK: - Category Card
 
-    private func categoryCard(_ category: Category) -> some View {
+    private func categoryCard(_ category: Category, containerWidth: CGFloat) -> some View {
         Button {
             viewModel.selectedCategory = category
         } label: {
@@ -520,15 +521,29 @@ struct HomeView: View {
                 .tracking(-0.135)
                 .foregroundColor(Color(red: 0x26/255, green: 0x26/255, blue: 0x26/255))
                 .lineLimit(1)
-                .frame(maxWidth: .infinity)
                 .padding(.vertical, 12)
                 .padding(.horizontal, 8)
+                .frame(width: (containerWidth - 40 - 24) / 3)
                 .overlay(
                     RoundedRectangle(cornerRadius: 12)
-                        .stroke(Color.secondary.opacity(0.3), lineWidth: 1)
+                        .strokeBorder(Color.secondary.opacity(0.3), lineWidth: 1)
                 )
+                .contentShape(RoundedRectangle(cornerRadius: 12))
         }
         .buttonStyle(.plain)
+        .contextMenu {
+            Button {
+                renameCategoryName = category.name
+                categoryToRename = category
+            } label: {
+                Label("Rename", systemImage: "pencil")
+            }
+            Button(role: .destructive) {
+                categoryToDelete = category
+            } label: {
+                Label("Delete", systemImage: "trash")
+            }
+        }
     }
 
     // MARK: - Pinned Item Row

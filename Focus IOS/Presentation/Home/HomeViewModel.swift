@@ -10,7 +10,7 @@ import SwiftUI
 enum HomeMenuItem: String, CaseIterable, Identifiable, Hashable {
     case today = "Today"
     case assign = "Scheduled"
-    case braindump = "Braindump"
+    case inbox = "Inbox"
     case backlog = "Backlog"
     case archive = "Archive"
     case projects = "Projects"
@@ -23,7 +23,7 @@ enum HomeMenuItem: String, CaseIterable, Identifiable, Hashable {
         switch self {
         case .today:      return "sun.max"
         case .assign:     return "calendar"
-        case .braindump:  return "brain.head.profile"
+        case .inbox:      return "tray.and.arrow.down"
         case .backlog:    return "tray"
         case .archive:    return "archivebox"
         case .projects:   return "folder"

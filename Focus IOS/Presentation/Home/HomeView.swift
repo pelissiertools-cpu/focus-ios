@@ -91,7 +91,7 @@ struct HomeView: View {
         addProjectTitle.trimmingCharacters(in: .whitespaces).isEmpty
     }
 
-    private var braindumpCount: Int {
+    private var inboxCount: Int {
         taskListVM.tasks.filter {
             !$0.isCompleted && $0.projectId == nil && $0.parentTaskId == nil
             && $0.categoryId == nil
@@ -166,8 +166,8 @@ struct HomeView: View {
                         .padding(.bottom, 16)
 
                         // MARK: - Inbox (full width)
-                        homeCard(title: "Inbox", count: braindumpCount, centered: true) {
-                            viewModel.selectedMenuItem = .braindump
+                        homeCard(title: "Inbox", count: inboxCount, centered: true) {
+                            viewModel.selectedMenuItem = .inbox
                         }
                         .padding(.horizontal, 20)
 
@@ -305,8 +305,8 @@ struct HomeView: View {
             .navigationDestination(item: $viewModel.selectedMenuItem) { menuItem in
                 if menuItem == .archive {
                     ArchiveView()
-                } else if menuItem == .braindump {
-                    BraindumpView(authService: authService)
+                } else if menuItem == .inbox {
+                    InboxView(authService: authService)
                 } else if menuItem == .assign {
                     ScheduledView(authService: authService)
                 } else if menuItem == .backlog {

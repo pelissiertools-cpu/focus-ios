@@ -13,7 +13,7 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
     let categories: [Category]
     @ObservedObject var viewModel: VM
 
-    // Pending schedule interception (used by BraindumpView)
+    // Pending schedule interception (used by InboxView)
     var pendingSchedule: PendingScheduleInfo? = nil
     var onScheduleCallback: ((Timeframe, Section, Set<Date>) -> Void)? = nil
     var onClearSchedule: (() -> Void)? = nil

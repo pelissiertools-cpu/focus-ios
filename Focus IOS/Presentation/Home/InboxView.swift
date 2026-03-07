@@ -1,5 +1,5 @@
 //
-//  BraindumpView.swift
+//  InboxView.swift
 //  Focus IOS
 //
 
@@ -14,7 +14,7 @@ struct PendingScheduleInfo {
     var dates: Set<Date>
 }
 
-struct BraindumpView: View {
+struct InboxView: View {
     @StateObject private var taskListVM: TaskListViewModel
     @StateObject private var projectsVM: ProjectsViewModel
     @EnvironmentObject var focusViewModel: FocusTabViewModel
@@ -84,12 +84,13 @@ struct BraindumpView: View {
             VStack(spacing: 0) {
                 // Header
                 HStack(alignment: .center, spacing: 8) {
-                    Image(systemName: "brain.head.profile")
+                    Image(systemName: "tray.and.arrow.down")
                         .font(.inter(size: 22, weight: .regular))
                         .foregroundColor(.primary)
 
-                    Text("Braindump")
-                        .font(.inter(size: 28, weight: .regular))
+                    Text("Inbox")
+                        .font(.helveticaNeue(size: 26.14))
+                        .tracking(-0.272)
                         .foregroundColor(.primary)
 
                     Spacer()
@@ -103,7 +104,7 @@ struct BraindumpView: View {
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else if isEmpty {
                     VStack(spacing: 4) {
-                        Text("No braindump items")
+                        Text("No inbox items")
                             .font(.inter(.headline))
                             .bold()
                         Text("Tasks without a schedule will appear here")
@@ -424,7 +425,7 @@ struct BraindumpView: View {
         await projectsVM.fetchProjects()
     }
 
-    private func handleBraindumpMove(from source: IndexSet, to destination: Int) {
+    private func handleInboxMove(from source: IndexSet, to destination: Int) {
         let braindumpItems = standaloneTaskDisplayItems
         let fullItems = taskListVM.flattenedDisplayItems
 
@@ -565,7 +566,7 @@ struct BraindumpView: View {
                         .moveDisabled(true)
                 }
             }
-            .onMove(perform: handleBraindumpMove)
+            .onMove(perform: handleInboxMove)
 
             // Pending scheduled section
             if !pendingTasks.isEmpty {

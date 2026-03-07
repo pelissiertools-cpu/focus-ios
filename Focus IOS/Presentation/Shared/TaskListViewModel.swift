@@ -1091,7 +1091,7 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
         hasScheduledTime: Bool,
         scheduledTime: Date?
     ) async -> UUID? {
-        // 1. Create the task (mark as scheduled immediately to avoid Brain Dump flash)
+        // 1. Create the task (mark as scheduled immediately to avoid Inbox flash)
         let shouldSchedule = scheduleAfterCreate && !selectedDates.isEmpty
         guard let parentId = await createTask(title: title, categoryId: categoryId, priority: priority, markScheduled: shouldSchedule) else {
             return nil

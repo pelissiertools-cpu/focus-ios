@@ -37,7 +37,7 @@ struct DraftSubtaskListEditor: View {
                             .foregroundColor(.secondary.opacity(0.5))
 
                         TextField(placeholder, text: binding(for: subtask.id), axis: .vertical)
-                            .font(.inter(.body))
+                            .font(.helveticaNeue(.body))
                             .textFieldStyle(.plain)
                             .focused(focusedSubtaskId, equals: subtask.id)
                             .lineLimit(1...3)

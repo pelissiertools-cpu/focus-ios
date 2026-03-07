@@ -13,8 +13,8 @@ struct InlineAddRow: View {
     let onSubmit: (String) async -> Void
     var isAnyAddFieldActive: Binding<Bool>?
 
-    var textFont: Font = .inter(.subheadline)
-    var iconFont: Font = .inter(.subheadline)
+    var textFont: Font = .helveticaNeue(.subheadline)
+    var iconFont: Font = .helveticaNeue(.subheadline)
     var verticalPadding: CGFloat = 12
 
     @State private var title = ""

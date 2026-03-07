@@ -566,7 +566,7 @@ struct FlatTaskRow: View {
             // Task content
             VStack(alignment: .leading, spacing: 4) {
                 Text(task.title)
-                    .font(isParent ? .inter(.body) : .inter(.subheadline))
+                    .font(isParent ? .helveticaNeue(.body) : .helveticaNeue(.subheadline))
                     .strikethrough(displayCompleted)
                     .foregroundColor(displayCompleted ? .secondary : .primary)
 

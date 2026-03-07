@@ -124,7 +124,11 @@ struct HomeView: View {
                     VStack(alignment: .leading, spacing: 16) {
                         // MARK: - Top Bar (Profile + Search)
                         HStack {
-                            Button(action: { showSettings = true }) {
+                            Button(action: {
+                                withAnimation(.easeInOut(duration: 0.3)) {
+                                    showSettings = true
+                                }
+                            }) {
                                 Circle()
                                     .stroke(Color.secondary.opacity(0.3), lineWidth: 1)
                                     .frame(width: 41, height: 41)
@@ -331,9 +335,7 @@ struct HomeView: View {
             .navigationDestination(item: $viewModel.selectedCategory) { category in
                 CategoryDetailView(category: category, authService: authService)
             }
-            .navigationDestination(isPresented: $showSettings) {
-                SettingsView()
-            }
+            // Settings presented via overlay with left-edge slide
             .navigationDestination(isPresented: $showSearch) {
                 BacklogView(authService: authService, startWithSearch: true)
             }
@@ -474,6 +476,35 @@ struct HomeView: View {
                     }
                 }
             }
+        }
+        .overlay {
+            if showSettings {
+                settingsPanel
+                    .transition(.move(edge: .leading))
+            }
+        }
+    }
+
+    // MARK: - Settings Panel (slides from left)
+
+    private var settingsPanel: some View {
+        NavigationStack {
+            SettingsView()
+                .toolbar {
+                    ToolbarItem(placement: .navigationBarLeading) {
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.3)) {
+                                showSettings = false
+                            }
+                        } label: {
+                            Image(systemName: "chevron.left")
+                                .font(.inter(.body, weight: .semiBold))
+                                .foregroundColor(.primary)
+                                .frame(width: 44, height: 44)
+                                .contentShape(Rectangle())
+                        }
+                    }
+                }
         }
     }
 

@@ -843,8 +843,8 @@ struct BacklogView: View {
             }
         } label: {
             HStack(spacing: 8) {
-                ProjectIconShape()
-                    .frame(width: 16, height: 16)
+                Image(systemName: "folder")
+                    .font(.system(size: 14))
                     .foregroundColor(.appRed)
                 Text("Projects")
                     .font(.inter(.headline, weight: .bold))
@@ -1299,9 +1299,10 @@ private struct BacklogProjectRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            ProjectIconShape()
-                .frame(width: 24, height: 24)
+            Image(systemName: "folder")
+                .font(.inter(.body, weight: .medium))
                 .foregroundColor(.secondary)
+                .frame(width: 24)
 
             Text(project.title)
                 .font(.inter(.body))

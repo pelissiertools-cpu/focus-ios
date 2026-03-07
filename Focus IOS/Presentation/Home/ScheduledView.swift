@@ -1995,9 +1995,10 @@ private struct ScheduledProjectRow: View {
                     .font(.inter(.title3))
                     .foregroundColor(isSelected ? .appRed : .secondary)
             }
-            ProjectIconShape()
-                .frame(width: 24, height: 24)
+            Image(systemName: "folder")
+                .font(.inter(.body, weight: .medium))
                 .foregroundColor(.secondary)
+                .frame(width: 24)
             Text(project.title)
                 .font(.inter(.body))
                 .strikethrough(isPending)

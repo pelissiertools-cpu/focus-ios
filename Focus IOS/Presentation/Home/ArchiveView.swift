@@ -234,8 +234,8 @@ private struct ArchiveItemRow: View {
             Spacer()
 
             if task.type == .project {
-                ProjectIconShape()
-                    .frame(width: 18, height: 18)
+                Image(systemName: "folder")
+                    .font(.system(size: 14))
                     .foregroundColor(.secondary)
             } else if task.type == .list {
                 Image(systemName: "list.bullet")

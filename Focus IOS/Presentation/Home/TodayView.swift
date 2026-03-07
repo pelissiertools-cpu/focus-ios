@@ -473,9 +473,10 @@ private struct TodayProjectRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            ProjectIconShape()
-                .frame(width: 24, height: 24)
+            Image(systemName: "folder")
+                .font(.inter(.body, weight: .medium))
                 .foregroundColor(.secondary)
+                .frame(width: 24)
             VStack(alignment: .leading, spacing: 4) {
                 Text(project.title)
                     .font(.inter(.body))

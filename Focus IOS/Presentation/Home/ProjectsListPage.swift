@@ -282,9 +282,10 @@ struct ProjectsListPage: View {
                     .foregroundColor(projectsViewModel.selectedProjectIds.contains(project.id) ? .appRed : .secondary)
             }
 
-            ProjectIconShape()
-                .frame(width: 24, height: 24)
+            Image(systemName: "folder")
+                .font(.inter(.body, weight: .medium))
                 .foregroundColor(.secondary)
+                .frame(width: 24)
 
             Text(project.title)
                 .font(.inter(.body))

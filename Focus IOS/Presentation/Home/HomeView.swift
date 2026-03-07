@@ -555,9 +555,10 @@ struct HomeView: View {
         } label: {
             HStack(spacing: 12) {
                 if item.type == .project {
-                    ProjectIconShape()
-                        .frame(width: 24, height: 24)
+                    Image(systemName: "folder")
+                        .font(.inter(.body, weight: .medium))
                         .foregroundColor(.secondary)
+                        .frame(width: 24)
                 } else {
                     Image(systemName: "list.bullet")
                         .font(.inter(.body, weight: .medium))
@@ -566,7 +567,7 @@ struct HomeView: View {
                 }
 
                 Text(item.title)
-                    .font(.inter(.body))
+                    .font(.helveticaNeue(.body, weight: .medium))
                     .foregroundColor(.primary)
                     .lineLimit(1)
 
@@ -1963,9 +1964,10 @@ struct HomeProjectRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            ProjectIconShape()
-                .frame(width: 24, height: 24)
+            Image(systemName: "folder")
+                .font(.inter(.body, weight: .medium))
                 .foregroundColor(.secondary)
+                .frame(width: 24)
 
             Text(project.title)
                 .font(.inter(.body))

@@ -97,9 +97,9 @@ struct ProjectsListPage: View {
                     // Someday section
                     if !viewModel.somedayProjects.isEmpty {
                         HStack(spacing: 8) {
-                            Image(systemName: "moon.zzz")
-                                .font(.inter(.subheadline))
-                                .foregroundColor(.appRed)
+                            HourglassIcon()
+                                .fill(Color.appRed, style: FillStyle(eoFill: true))
+                                .frame(width: 15, height: 15)
                             Text("Someday")
                                 .font(.inter(.headline, weight: .bold))
                                 .foregroundColor(.appRed)

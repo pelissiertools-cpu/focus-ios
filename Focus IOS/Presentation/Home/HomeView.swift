@@ -140,7 +140,7 @@ struct HomeView: View {
                             Button(action: { showSettings = true }) {
                                 Circle()
                                     .stroke(Color.secondary.opacity(0.3), lineWidth: 1)
-                                    .frame(width: 56, height: 56)
+                                    .frame(width: 41, height: 41)
                                     .overlay(
                                         Image(systemName: "person")
                                             .font(.inter(.title3, weight: .medium))
@@ -155,12 +155,12 @@ struct HomeView: View {
                                     .tracking(-0.272)
                                     .lineSpacing(31.6 - 26.14)
                                     .foregroundColor(.primary)
-                                formattedDateText
-                                    .tracking(-0.158)
+                                formattedDateView
                                     .foregroundColor(Color(red: 0x26/255, green: 0x26/255, blue: 0x26/255).opacity(0.6))
                             }
                         }
                         .padding(.horizontal, 20)
+                        .padding(.bottom, 16)
 
                         // MARK: - Inbox (full width)
                         homeCard(title: "Inbox", count: braindumpCount, centered: true) {
@@ -206,7 +206,11 @@ struct HomeView: View {
 
                         // MARK: - Someday / Goals
                         HStack(spacing: 12) {
-                            homeCard(title: "Someday", icon: "moon.zzz") {
+                            homeCard(title: "Someday", customIcon: {
+                                HourglassIcon()
+                                    .fill(Color(red: 0x26/255, green: 0x26/255, blue: 0x26/255), style: FillStyle(eoFill: true))
+                                    .frame(width: 21, height: 21)
+                            }) {
                                 viewModel.selectedMenuItem = .someday
                             }
                             homeCard(title: "Goals", centered: true) { }
@@ -468,7 +472,7 @@ struct HomeView: View {
 
     // MARK: - Home Card
 
-    private func homeCard(title: String, icon: String? = nil, count: Int? = nil, centered: Bool = false, action: @escaping () -> Void) -> some View {
+    private func homeCard<Icon: View>(title: String, icon: String? = nil, @ViewBuilder customIcon: () -> Icon = { EmptyView() }, count: Int? = nil, centered: Bool = false, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             HStack {
                 if centered { Spacer() }
@@ -488,6 +492,10 @@ struct HomeView: View {
                     Image(systemName: icon)
                         .font(.helveticaNeue(size: 17.3))
                         .foregroundColor(Color(red: 0x26/255, green: 0x26/255, blue: 0x26/255))
+                        .frame(width: 24, alignment: .center)
+                } else {
+                    customIcon()
+                        .frame(width: 24, alignment: .center)
                 }
             }
             .padding(16)
@@ -508,8 +516,9 @@ struct HomeView: View {
             viewModel.selectedCategory = category
         } label: {
             Text(category.name)
-                .font(.inter(.footnote))
-                .foregroundColor(.primary)
+                .font(.helveticaNeue(size: 13))
+                .tracking(-0.135)
+                .foregroundColor(Color(red: 0x26/255, green: 0x26/255, blue: 0x26/255))
                 .lineLimit(1)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 12)
@@ -571,9 +580,9 @@ struct HomeView: View {
                 .fill(Color.secondary.opacity(0.3))
                 .frame(height: 1)
             Text(title)
-                .font(.fragmentMono(size: 13.3))
-                .tracking(0.624)
-                .lineSpacing(15.96 - 13.3)
+                .font(.fragmentMono(size: 14.63))
+                .tracking(0.686)
+                .lineSpacing(17.56 - 14.63)
                 .foregroundColor(Color(red: 0x26/255, green: 0x26/255, blue: 0x26/255))
         }
         .padding(.horizontal, 20)
@@ -588,9 +597,9 @@ struct HomeView: View {
                 .frame(height: 1)
             HStack {
                 Text("CATEGORIES")
-                    .font(.fragmentMono(size: 13.3))
-                    .tracking(0.624)
-                    .lineSpacing(15.96 - 13.3)
+                    .font(.fragmentMono(size: 14.63))
+                    .tracking(0.686)
+                    .lineSpacing(17.56 - 14.63)
                     .foregroundColor(Color(red: 0x26/255, green: 0x26/255, blue: 0x26/255))
                 Spacer()
                 Menu {
@@ -623,10 +632,12 @@ struct HomeView: View {
                     Image(systemName: "ellipsis")
                         .font(.inter(.subheadline, weight: .semiBold))
                         .foregroundColor(.secondary)
-                        .frame(width: 30, height: 30)
-                        .contentShape(Circle())
+                        .padding(14)
+                        .contentShape(Rectangle())
+                        .offset(x: 14, y: 0)
                 }
             }
+            .frame(height: 17.56)
         }
         .padding(.horizontal, 20)
     }
@@ -645,7 +656,7 @@ struct HomeView: View {
         return formatter.string(from: Date())
     }
 
-    private var formattedDateText: Text {
+    private var formattedDateView: some View {
         let now = Date()
         let cal = Calendar.current
         let day = cal.component(.day, from: now)
@@ -665,15 +676,16 @@ struct HomeView: View {
 
         let baseSize: CGFloat = 15.22
         let smallSize: CGFloat = baseSize - 2
+        let yearStr = String(format: "%d", year)
 
-        return Text(month)
-            .font(.helveticaNeue(size: baseSize))
-        + Text(" \(day)")
-            .font(.helveticaNeue(size: baseSize))
-        + Text(suffix)
-            .font(.helveticaNeue(size: smallSize))
-        + Text("__\(String(format: "%d", year))")
-            .font(.helveticaNeue(size: smallSize))
+        return HStack(alignment: .firstTextBaseline, spacing: 0) {
+            Text("\(month) \(day)")
+                .font(.helveticaNeue(size: baseSize))
+                .tracking(-0.158)
+            Text("\(suffix)__\(yearStr)")
+                .font(.helveticaNeue(size: smallSize))
+                .tracking(-0.158)
+        }
     }
 
     private var currentWeekString: String {

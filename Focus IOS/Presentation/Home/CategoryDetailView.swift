@@ -73,9 +73,17 @@ struct CategoryDetailView: View {
         VStack(spacing: 0) {
             // Header
             HStack(alignment: .center, spacing: 8) {
-                Image(systemName: category.isSystem ? "moon.zzz" : "folder")
-                    .font(.inter(size: 22, weight: .regular))
-                    .foregroundColor(.primary)
+                Group {
+                    if category.isSystem {
+                        HourglassIcon()
+                            .fill(.primary, style: FillStyle(eoFill: true))
+                            .frame(width: 22, height: 22)
+                    } else {
+                        Image(systemName: "folder")
+                            .font(.inter(size: 22, weight: .regular))
+                            .foregroundColor(.primary)
+                    }
+                }
 
                 if category.isSystem {
                     Text(category.name)

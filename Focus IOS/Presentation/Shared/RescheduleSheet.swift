@@ -117,8 +117,9 @@ struct RescheduleSheet: View {
                                 _Concurrency.Task { await moveToSomeday() }
                             } label: {
                                 HStack(spacing: 6) {
-                                    Image(systemName: "moon.zzz")
-                                        .font(.inter(.subheadline))
+                                    HourglassIcon()
+                                        .fill(.primary, style: FillStyle(eoFill: true))
+                                        .frame(width: 15, height: 15)
                                     Text("Someday")
                                         .font(.inter(.subheadline, weight: .medium))
                                 }

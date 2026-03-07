@@ -15,16 +15,16 @@ struct LogSectionHeader: View {
             HStack(spacing: 12) {
                 HStack(alignment: .lastTextBaseline, spacing: 8) {
                     Text(title)
-                        .font(.inter(size: 22, weight: .semiBold))
+                        .font(AppStyle.Typography.sectionHeader)
 
                     HStack(spacing: 4) {
                         if count > 0 {
                             Text("\(count)")
-                                .font(.inter(size: 10))
+                                .font(AppStyle.Typography.countBadge)
                                 .foregroundColor(.secondary)
                         }
                         Image(systemName: "chevron.right")
-                            .font(.inter(size: 8, weight: .semiBold))
+                            .font(AppStyle.Typography.chevron)
                             .foregroundColor(.secondary)
                             .rotationEffect(.degrees(isCollapsed ? 0 : 90))
                     }
@@ -47,7 +47,7 @@ struct LogSectionHeader: View {
             .padding(.horizontal, 12)
 
             Rectangle()
-                .fill(Color.secondary.opacity(0.7))
+                .fill(Color.secondary.opacity(0.3))
                 .frame(height: 1)
         }
         .padding(.horizontal, 16)

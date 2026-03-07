@@ -751,10 +751,9 @@ struct ScheduledView: View {
             } else if searchIsEmpty {
                 VStack(spacing: 4) {
                     Text("No results")
-                        .font(.inter(.headline))
-                        .bold()
+                        .font(AppStyle.Typography.emptyTitle)
                     Text("No items match \"\(searchText)\"")
-                        .font(.inter(.subheadline))
+                        .font(AppStyle.Typography.emptySubtitle)
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
                 }
@@ -771,7 +770,7 @@ struct ScheduledView: View {
         VStack(spacing: 10) {
             HStack(alignment: .center, spacing: 8) {
                 Text("Scheduled")
-                    .font(.inter(size: 28, weight: .regular))
+                    .pageTitleStyle()
                     .foregroundColor(.appRed)
                 Spacer()
                 if let dateText = scheduleDateText {
@@ -783,7 +782,7 @@ struct ScheduledView: View {
                                 .font(.inter(.subheadline, weight: .medium))
                                 .foregroundColor(.primary)
                             Image(systemName: "chevron.right")
-                                .font(.inter(size: 8, weight: .semiBold))
+                                .font(AppStyle.Typography.chevron)
                                 .foregroundColor(.primary)
                         }
                     }
@@ -877,10 +876,9 @@ struct ScheduledView: View {
     private var emptyStateView: some View {
         VStack(spacing: 4) {
             Text("No scheduled items")
-                .font(.inter(.headline))
-                .bold()
+                .font(AppStyle.Typography.emptyTitle)
             Text("Scheduled tasks, lists, and projects will appear here")
-                .font(.inter(.subheadline))
+                .font(AppStyle.Typography.emptySubtitle)
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
         }
@@ -1007,11 +1005,11 @@ struct ScheduledView: View {
                     HStack(spacing: 0) {
                         Text(section.title)
                             .font(.inter(size: 16, weight: .medium))
-                            .foregroundColor(.secondary.opacity(0.4))
+                            .foregroundColor(.secondary.opacity(0.5))
                         Spacer()
                         Text("Drop here")
                             .font(.inter(.caption, weight: .light))
-                            .foregroundColor(.secondary.opacity(0.25))
+                            .foregroundColor(.secondary.opacity(0.3))
                     }
                     .padding(.vertical, 8)
                     .contentShape(Rectangle())
@@ -1057,7 +1055,7 @@ struct ScheduledView: View {
             VStack(spacing: 0) {
                 HStack {
                     Text(section.title)
-                        .font(.inter(size: 22, weight: .semiBold))
+                        .font(AppStyle.Typography.sectionHeader)
                         .foregroundColor(.primary)
                     Spacer()
                 }
@@ -1090,7 +1088,7 @@ struct ScheduledView: View {
             VStack(spacing: 0) {
                 HStack {
                     Text(section.title)
-                        .font(.inter(size: 22, weight: .semiBold))
+                        .font(AppStyle.Typography.sectionHeader)
                         .foregroundColor(.primary)
                     Spacer()
                 }
@@ -1210,7 +1208,7 @@ struct ScheduledView: View {
         } label: {
             Image(systemName: "circle.dashed")
                 .font(.inter(.title3))
-                .foregroundColor(.secondary.opacity(0.4))
+                .foregroundColor(.secondary.opacity(0.5))
         }
         .buttonStyle(.plain)
         .padding(.vertical, 4)
@@ -1704,7 +1702,7 @@ private extension ScheduledView {
                     .font(.inter(.body, weight: .semiBold))
                     .foregroundColor(isAddTaskTitleEmpty ? .secondary : .white)
                     .frame(width: 36, height: 36)
-                    .background(isAddTaskTitleEmpty ? Color(.systemGray4) : Color.completedPurple, in: Circle())
+                    .background(isAddTaskTitleEmpty ? Color(.systemGray4) : Color.focusBlue, in: Circle())
             }
             .buttonStyle(.plain)
             .disabled(isAddTaskTitleEmpty)
@@ -2012,7 +2010,7 @@ private struct ScheduledProjectRow: View {
                 } label: {
                     Image(systemName: isPending ? "checkmark.circle.fill" : "circle")
                         .font(.inter(.title3))
-                        .foregroundColor(isPending ? Color.completedPurple.opacity(0.6) : .gray)
+                        .foregroundColor(isPending ? Color.focusBlue.opacity(0.6) : .gray)
                         .symbolEffect(.pulse, isActive: isPending)
                 }
                 .buttonStyle(.plain)
@@ -2086,7 +2084,7 @@ private struct ScheduledListRow: View {
                 } label: {
                     Image(systemName: isPending ? "checkmark.circle.fill" : "circle")
                         .font(.inter(.title3))
-                        .foregroundColor(isPending ? Color.completedPurple.opacity(0.6) : .gray)
+                        .foregroundColor(isPending ? Color.focusBlue.opacity(0.6) : .gray)
                         .symbolEffect(.pulse, isActive: isPending)
                 }
                 .buttonStyle(.plain)

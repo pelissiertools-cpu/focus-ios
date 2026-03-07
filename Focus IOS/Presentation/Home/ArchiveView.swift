@@ -14,7 +14,7 @@ struct ArchiveView: View {
             LazyVStack(alignment: .leading, spacing: 0) {
                 // Title
                 Text("Archive")
-                    .font(.inter(size: 28, weight: .regular))
+                    .pageTitleStyle()
                     .foregroundColor(.primary)
                     .padding(.horizontal, 20)
                     .padding(.top, 16)
@@ -35,7 +35,7 @@ struct ArchiveView: View {
                         } label: {
                             Text("Clear")
                                 .font(.inter(.subheadline, weight: .medium))
-                                .foregroundColor(.completedPurple)
+                                .foregroundColor(.focusBlue)
                         }
                         .buttonStyle(.plain)
 
@@ -52,10 +52,9 @@ struct ArchiveView: View {
                 } else if viewModel.sections.isEmpty {
                     VStack(spacing: 4) {
                         Text("No completed items")
-                            .font(.inter(.headline))
-                            .bold()
+                            .font(AppStyle.Typography.emptyTitle)
                         Text("Completed tasks, projects, and lists will appear here")
-                            .font(.inter(.subheadline))
+                            .font(AppStyle.Typography.emptySubtitle)
                             .foregroundColor(.secondary)
                     }
                     .frame(maxWidth: .infinity)
@@ -143,10 +142,10 @@ struct ArchiveView: View {
                         Text("Delete \(viewModel.selectedIds.count)")
                     }
                     .font(.inter(.body, weight: .medium))
-                    .foregroundColor(.white)
+                    .foregroundColor(.red)
                     .padding(.horizontal, 24)
                     .padding(.vertical, 12)
-                    .background(Color.appRed, in: Capsule())
+                    .glassEffect(.regular, in: .capsule)
                     .shadow(radius: 4, y: 2)
                 }
                 .buttonStyle(.plain)
@@ -190,7 +189,7 @@ private struct ArchiveSectionHeader: View {
         VStack(spacing: 0) {
             HStack {
                 Text(title)
-                    .font(.inter(size: 22, weight: .semiBold))
+                    .font(AppStyle.Typography.sectionHeader)
                     .foregroundColor(.primary)
                 Spacer()
             }
@@ -198,7 +197,7 @@ private struct ArchiveSectionHeader: View {
             .padding(.horizontal, 12)
 
             Rectangle()
-                .fill(Color.secondary.opacity(0.7))
+                .fill(Color.secondary.opacity(0.3))
                 .frame(height: 1)
         }
         .padding(.horizontal, 16)
@@ -223,7 +222,7 @@ private struct ArchiveItemRow: View {
             } else {
                 Image(systemName: "checkmark.circle.fill")
                     .font(.inter(.title3))
-                    .foregroundColor(.completedPurple)
+                    .foregroundColor(.focusBlue)
             }
 
             Text(task.title)

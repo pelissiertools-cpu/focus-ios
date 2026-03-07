@@ -87,7 +87,7 @@ struct DrawerContainer<Content: View>: View {
                     .foregroundColor(highlighted ? .white : .secondary)
                     .frame(width: 30, height: 30)
             }
-            .background(highlighted ? Color.completedPurple : Color(.systemGray5))
+            .background(highlighted ? Color.focusBlue : Color(.systemGray5))
             .clipShape(Circle())
             .buttonStyle(.plain)
             .frame(width: 44, height: 44)

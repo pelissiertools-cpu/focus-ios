@@ -41,7 +41,7 @@ struct SectionDividerRow: View {
                 .padding(.top, 16)
 
             Rectangle()
-                .fill(Color.secondary.opacity(0.7))
+                .fill(Color.secondary.opacity(0.3))
                 .frame(height: 1)
         }
         .contentShape(Rectangle())

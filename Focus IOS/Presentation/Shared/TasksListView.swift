@@ -206,10 +206,9 @@ struct TasksListView: View {
     private var emptyState: some View {
         VStack(spacing: 4) {
             Text("No tasks yet")
-                .font(.inter(.headline))
-                .bold()
+                .font(AppStyle.Typography.emptyTitle)
             Text("Tap + to create your first task")
-                .font(.inter(.subheadline))
+                .font(AppStyle.Typography.emptySubtitle)
                 .foregroundColor(.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -338,12 +337,12 @@ struct PrioritySectionHeader: View {
 
                     if count > 0 {
                         Text("\(count)")
-                            .font(.inter(size: 10))
+                            .font(AppStyle.Typography.countBadge)
                             .foregroundColor(.secondary)
                     }
 
                     Image(systemName: "chevron.right")
-                        .font(.inter(size: 8, weight: .semiBold))
+                        .font(AppStyle.Typography.chevron)
                         .foregroundColor(.secondary)
                         .rotationEffect(.degrees(isCollapsed ? 0 : 90))
                 }
@@ -420,7 +419,7 @@ struct CategorySelectorHeader<TrailingContent: View>: View {
                 // Title displayed independently (not inside Menu label to avoid clip animation)
                 HStack(alignment: .center, spacing: 8) {
                     Text(title)
-                        .font(.inter(size: 28, weight: .regular))
+                        .pageTitleStyle()
                         .foregroundColor(.primary)
 
                     Text("\(count) \(countSuffix)\(count == 1 ? "" : "s")")
@@ -471,7 +470,7 @@ struct LogDonePillView: View {
                             .foregroundColor(.secondary)
 
                         Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
-                            .font(.inter(size: 8, weight: .semiBold))
+                            .font(AppStyle.Typography.chevron)
                             .foregroundColor(.secondary)
                     }
                     .padding(.horizontal, 10)
@@ -566,7 +565,7 @@ struct FlatTaskRow: View {
             // Task content
             VStack(alignment: .leading, spacing: 4) {
                 Text(task.title)
-                    .font(isParent ? .helveticaNeue(.body) : .helveticaNeue(.subheadline))
+                    .font(isParent ? AppStyle.Typography.itemTitle : AppStyle.Typography.itemSubtitle)
                     .strikethrough(displayCompleted)
                     .foregroundColor(displayCompleted ? .secondary : .primary)
 
@@ -606,7 +605,7 @@ struct FlatTaskRow: View {
                 } label: {
                     Image(systemName: displayCompleted ? "checkmark.circle.fill" : "circle")
                         .font(isParent ? .inter(.title3) : .inter(.subheadline))
-                        .foregroundColor(displayCompleted ? Color.completedPurple.opacity(0.6) : .gray)
+                        .foregroundColor(displayCompleted ? Color.focusBlue.opacity(0.6) : .gray)
                         .symbolEffect(.pulse, isActive: isPending)
                 }
                 .buttonStyle(.plain)
@@ -756,7 +755,7 @@ struct ExpandableTaskRow: View {
                 } label: {
                     Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
                         .font(.inter(.title3))
-                        .foregroundColor(task.isCompleted ? Color.completedPurple.opacity(0.6) : .gray)
+                        .foregroundColor(task.isCompleted ? Color.focusBlue.opacity(0.6) : .gray)
                 }
                 .buttonStyle(.plain)
             }
@@ -855,7 +854,7 @@ struct SubtaskRow: View {
             } label: {
                 Image(systemName: displayCompleted ? "checkmark.circle.fill" : "circle")
                     .font(.inter(.subheadline))
-                    .foregroundColor(displayCompleted ? Color.completedPurple.opacity(0.6) : .gray)
+                    .foregroundColor(displayCompleted ? Color.focusBlue.opacity(0.6) : .gray)
                     .symbolEffect(.pulse, isActive: isPending)
             }
             .buttonStyle(.plain)

@@ -104,7 +104,7 @@ struct ProjectCard: View {
                     .resizable()
                     .scaledToFit()
                     .frame(width: 28, height: 28)
-                    .foregroundColor(Color.completedPurple)
+                    .foregroundColor(Color.focusBlue)
             } else if !viewModel.isEditMode, let onDragChanged, let onDragEnded {
                 // Drag handle
                 DragHandleView()
@@ -160,7 +160,7 @@ struct ProjectTaskRow: View {
             // Task title + subtask count
             VStack(alignment: .leading, spacing: 4) {
                 Text(task.title)
-                    .font(.inter(.body))
+                    .font(AppStyle.Typography.itemTitle)
                     .strikethrough(displayCompleted)
                     .foregroundColor(displayCompleted ? .secondary : .primary)
 
@@ -179,7 +179,7 @@ struct ProjectTaskRow: View {
             } label: {
                 Image(systemName: displayCompleted ? "checkmark.circle.fill" : "circle")
                     .font(.inter(.title3))
-                    .foregroundColor(displayCompleted ? Color.completedPurple.opacity(0.6) : .gray)
+                    .foregroundColor(displayCompleted ? Color.focusBlue.opacity(0.6) : .gray)
                     .symbolEffect(.pulse, isActive: isPending)
             }
             .buttonStyle(.plain)
@@ -234,7 +234,7 @@ struct ProjectSubtaskRow: View {
     var body: some View {
         HStack(spacing: 12) {
             Text(subtask.title)
-                .font(.inter(.subheadline))
+                .font(AppStyle.Typography.itemSubtitle)
                 .strikethrough(displayCompleted)
                 .foregroundColor(displayCompleted ? .secondary : .primary)
 
@@ -246,7 +246,7 @@ struct ProjectSubtaskRow: View {
             } label: {
                 Image(systemName: displayCompleted ? "checkmark.circle.fill" : "circle")
                     .font(.inter(.subheadline))
-                    .foregroundColor(displayCompleted ? Color.completedPurple.opacity(0.6) : .gray)
+                    .foregroundColor(displayCompleted ? Color.focusBlue.opacity(0.6) : .gray)
                     .symbolEffect(.pulse, isActive: isPending)
             }
             .buttonStyle(.plain)

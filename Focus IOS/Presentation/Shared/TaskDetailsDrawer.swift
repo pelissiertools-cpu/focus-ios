@@ -375,7 +375,7 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
         HStack(spacing: 8) {
             Image(systemName: subtask.isCompleted ? "checkmark.circle.fill" : "circle")
                 .font(.inter(.caption2))
-                .foregroundColor(subtask.isCompleted ? Color.completedPurple.opacity(0.6) : .secondary.opacity(0.5))
+                .foregroundColor(subtask.isCompleted ? Color.focusBlue.opacity(0.6) : .secondary.opacity(0.5))
 
             // Editable title
             SubtaskTextField(subtask: subtask, viewModel: viewModel, focusedId: $focusedSubtaskId)

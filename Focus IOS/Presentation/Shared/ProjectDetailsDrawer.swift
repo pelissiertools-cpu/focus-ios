@@ -275,7 +275,7 @@ struct ProjectDetailsDrawer: View {
         HStack(spacing: 8) {
             Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
                 .font(.inter(.caption2))
-                .foregroundColor(task.isCompleted ? Color.completedPurple.opacity(0.6) : .secondary.opacity(0.5))
+                .foregroundColor(task.isCompleted ? Color.focusBlue.opacity(0.6) : .secondary.opacity(0.5))
 
             ProjectTaskTextField(task: task, viewModel: viewModel, focusedId: $focusedTaskId)
 

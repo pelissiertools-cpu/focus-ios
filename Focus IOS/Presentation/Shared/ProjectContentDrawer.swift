@@ -275,8 +275,7 @@ struct ProjectContentView: View {
             if items.count <= 1 {
                 // Only addTaskRow — no tasks yet
                 Text("No tasks yet")
-                    .font(.inter(.headline))
-                    .bold()
+                    .font(AppStyle.Typography.emptyTitle)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 20)
                     .padding(.bottom, 8)
@@ -422,7 +421,7 @@ private struct ContentTaskRow: View {
             // Task title + subtask count
             VStack(alignment: .leading, spacing: 4) {
                 Text(task.title)
-                    .font(.inter(.body))
+                    .font(AppStyle.Typography.itemTitle)
                     .strikethrough(displayCompleted)
                     .foregroundColor(displayCompleted ? .secondary : .primary)
 
@@ -442,7 +441,7 @@ private struct ContentTaskRow: View {
                 } label: {
                     Image(systemName: displayCompleted ? "checkmark.circle.fill" : "circle")
                         .font(.inter(.title3))
-                        .foregroundColor(displayCompleted ? Color.completedPurple.opacity(0.6) : .gray)
+                        .foregroundColor(displayCompleted ? Color.focusBlue.opacity(0.6) : .gray)
                         .symbolEffect(.pulse, isActive: isPending)
                 }
                 .buttonStyle(.plain)
@@ -614,7 +613,7 @@ struct ProjectSectionRow: View {
                 .padding(.top, 16)
 
             Rectangle()
-                .fill(Color.secondary.opacity(0.7))
+                .fill(Color.secondary.opacity(0.3))
                 .frame(height: 1)
         }
         .contentShape(Rectangle())
@@ -688,7 +687,7 @@ private struct ProjectContentDonePill: View {
                         .foregroundColor(.secondary)
 
                     Image(systemName: isCollapsed ? "chevron.right" : "chevron.down")
-                        .font(.inter(size: 8, weight: .semiBold))
+                        .font(AppStyle.Typography.chevron)
                         .foregroundColor(.secondary)
                 }
                 .padding(.horizontal, 10)

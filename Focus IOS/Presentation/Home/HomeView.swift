@@ -155,8 +155,7 @@ struct HomeView: View {
                         // MARK: - Date Header
                         VStack(alignment: .leading, spacing: 0) {
                             Text(currentDayName)
-                                .font(.helveticaNeue(size: 26.14))
-                                .tracking(-0.272)
+                                .pageTitleStyle()
                                 .lineSpacing(31.6 - 26.14)
                                 .foregroundColor(.primary)
                             formattedDateView
@@ -637,9 +636,7 @@ struct HomeView: View {
                     .foregroundColor(.primary)
             } else {
                 Text(title)
-                    .font(.roboto(size: 14.63, weight: .regular))
-                    .tracking(0.686)
-                    .lineSpacing(17.56 - 14.63)
+                    .homeSectionLabelStyle()
                     .foregroundColor(.primary)
             }
         }
@@ -655,9 +652,7 @@ struct HomeView: View {
                 .frame(height: 1)
             HStack {
                 Text("CATEGORIES")
-                    .font(.roboto(size: 14.63, weight: .regular))
-                    .tracking(0.686)
-                    .lineSpacing(17.56 - 14.63)
+                    .homeSectionLabelStyle()
                     .foregroundColor(.primary)
                 Spacer()
                 Menu {
@@ -978,7 +973,7 @@ struct HomeView: View {
                         .foregroundColor(isAddTaskTitleEmpty ? .secondary : .white)
                         .frame(width: 36, height: 36)
                         .background(
-                            isAddTaskTitleEmpty ? Color(.systemGray4) : Color.completedPurple,
+                            isAddTaskTitleEmpty ? Color(.systemGray4) : Color.focusBlue,
                             in: Circle()
                         )
                 }
@@ -1213,7 +1208,7 @@ struct HomeView: View {
                         .foregroundColor(isAddListTitleEmpty ? .secondary : .white)
                         .frame(width: 36, height: 36)
                         .background(
-                            isAddListTitleEmpty ? Color(.systemGray4) : Color.completedPurple,
+                            isAddListTitleEmpty ? Color(.systemGray4) : Color.focusBlue,
                             in: Circle()
                         )
                 }
@@ -1454,7 +1449,7 @@ struct HomeView: View {
                         .foregroundColor(isAddProjectTitleEmpty ? .secondary : .white)
                         .frame(width: 36, height: 36)
                         .background(
-                            isAddProjectTitleEmpty ? Color(.systemGray4) : Color.completedPurple,
+                            isAddProjectTitleEmpty ? Color(.systemGray4) : Color.focusBlue,
                             in: Circle()
                         )
                 }

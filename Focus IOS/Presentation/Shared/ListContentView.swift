@@ -217,8 +217,7 @@ struct ListContentView: View {
             .padding()
         } else if allEmpty {
             Text("No items yet")
-                .font(.inter(.headline))
-                .bold()
+                .font(AppStyle.Typography.emptyTitle)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 20)
                 .padding(.bottom, 8)
@@ -306,7 +305,7 @@ private struct ListContentItemRow: View {
     var body: some View {
         HStack(spacing: 12) {
             Text(item.title)
-                .font(.inter(.body))
+                .font(AppStyle.Typography.itemTitle)
                 .strikethrough(displayCompleted)
                 .foregroundColor(displayCompleted ? .secondary : .primary)
                 .frame(maxWidth: .infinity, minHeight: 36, alignment: .leading)
@@ -317,7 +316,7 @@ private struct ListContentItemRow: View {
             } label: {
                 Image(systemName: displayCompleted ? "checkmark.circle.fill" : "circle")
                     .font(.inter(.title3))
-                    .foregroundColor(displayCompleted ? Color.completedPurple.opacity(0.6) : .gray)
+                    .foregroundColor(displayCompleted ? Color.focusBlue.opacity(0.6) : .gray)
                     .symbolEffect(.pulse, isActive: isPending)
             }
             .buttonStyle(.plain)
@@ -390,7 +389,7 @@ private struct ListContentDonePill: View {
                         .foregroundColor(.secondary)
 
                     Image(systemName: isCollapsed ? "chevron.right" : "chevron.down")
-                        .font(.inter(size: 8, weight: .semiBold))
+                        .font(AppStyle.Typography.chevron)
                         .foregroundColor(.secondary)
                 }
                 .padding(.horizontal, 10)

@@ -198,7 +198,7 @@ struct BacklogView: View {
                         .foregroundColor(.primary)
 
                     Text("Backlog")
-                        .font(.inter(size: 28, weight: .regular))
+                        .pageTitleStyle()
                         .foregroundColor(.primary)
 
                     Spacer()
@@ -263,10 +263,9 @@ struct BacklogView: View {
                 } else if searchIsEmpty {
                     VStack(spacing: 4) {
                         Text("No results")
-                            .font(.inter(.headline))
-                            .bold()
+                            .font(AppStyle.Typography.emptyTitle)
                         Text("No items match \"\(searchText)\"")
-                            .font(.inter(.subheadline))
+                            .font(AppStyle.Typography.emptySubtitle)
                             .foregroundColor(.secondary)
                             .multilineTextAlignment(.center)
                     }
@@ -275,10 +274,9 @@ struct BacklogView: View {
                 } else if isEmpty {
                     VStack(spacing: 4) {
                         Text("No items yet")
-                            .font(.inter(.headline))
-                            .bold()
+                            .font(AppStyle.Typography.emptyTitle)
                         Text("All your tasks, projects, and lists will appear here")
-                            .font(.inter(.subheadline))
+                            .font(AppStyle.Typography.emptySubtitle)
                             .foregroundColor(.secondary)
                             .multilineTextAlignment(.center)
                     }
@@ -816,13 +814,13 @@ struct BacklogView: View {
                     .font(.inter(.subheadline))
                     .foregroundColor(.appRed)
                 Text("Tasks")
-                    .font(.inter(.headline, weight: .bold))
+                    .font(AppStyle.Typography.sectionHeader)
                     .foregroundColor(.primary)
                 Text("\(filteredTasks.count)")
-                    .font(.inter(.caption))
+                    .font(AppStyle.Typography.countBadge)
                     .foregroundColor(.secondary)
                 Image(systemName: "chevron.right")
-                    .font(.inter(size: 10, weight: .semiBold))
+                    .font(AppStyle.Typography.chevron)
                     .foregroundColor(.secondary)
                     .rotationEffect(.degrees(isTasksSectionCollapsed ? 0 : 90))
                 Spacer()
@@ -847,13 +845,13 @@ struct BacklogView: View {
                     .font(.system(size: 14))
                     .foregroundColor(.appRed)
                 Text("Projects")
-                    .font(.inter(.headline, weight: .bold))
+                    .font(AppStyle.Typography.sectionHeader)
                     .foregroundColor(.primary)
                 Text("\(filteredProjects.count)")
-                    .font(.inter(.caption))
+                    .font(AppStyle.Typography.countBadge)
                     .foregroundColor(.secondary)
                 Image(systemName: "chevron.right")
-                    .font(.inter(size: 10, weight: .semiBold))
+                    .font(AppStyle.Typography.chevron)
                     .foregroundColor(.secondary)
                     .rotationEffect(.degrees(isProjectsSectionCollapsed ? 0 : 90))
                 Spacer()
@@ -878,13 +876,13 @@ struct BacklogView: View {
                     .font(.inter(.subheadline))
                     .foregroundColor(.appRed)
                 Text("Quick Lists")
-                    .font(.inter(.headline, weight: .bold))
+                    .font(AppStyle.Typography.sectionHeader)
                     .foregroundColor(.primary)
                 Text("\(filteredLists.count)")
-                    .font(.inter(.caption))
+                    .font(AppStyle.Typography.countBadge)
                     .foregroundColor(.secondary)
                 Image(systemName: "chevron.right")
-                    .font(.inter(size: 10, weight: .semiBold))
+                    .font(AppStyle.Typography.chevron)
                     .foregroundColor(.secondary)
                     .rotationEffect(.degrees(isListsSectionCollapsed ? 0 : 90))
                 Spacer()
@@ -909,14 +907,14 @@ struct BacklogView: View {
                     .fill(Color.appRed, style: FillStyle(eoFill: true))
                     .frame(width: 15, height: 15)
                 Text("Someday")
-                    .font(.inter(.headline, weight: .bold))
+                    .font(AppStyle.Typography.sectionHeader)
                     .foregroundColor(.primary)
                 Text("\(isSearching ? filteredSomedayCount : somedayItemCount)")
-                    .font(.inter(.caption))
+                    .font(AppStyle.Typography.countBadge)
                     .foregroundColor(.secondary)
                 if !isSearching {
                     Image(systemName: "chevron.right")
-                        .font(.inter(size: 10, weight: .semiBold))
+                        .font(AppStyle.Typography.chevron)
                         .foregroundColor(.secondary)
                         .rotationEffect(.degrees(isSomedaySectionCollapsed ? 0 : 90))
                 }
@@ -1089,7 +1087,7 @@ private extension BacklogView {
                             .foregroundColor(isAddTaskTitleEmpty ? .secondary : .white)
                             .frame(width: 36, height: 36)
                             .background(
-                                isAddTaskTitleEmpty ? Color(.systemGray4) : Color.completedPurple,
+                                isAddTaskTitleEmpty ? Color(.systemGray4) : Color.focusBlue,
                                 in: Circle()
                             )
                     }

@@ -107,7 +107,7 @@ struct TodayView: View {
                     .foregroundColor(.primary)
 
                 Text("Today")
-                    .font(.inter(size: 28, weight: .regular))
+                    .pageTitleStyle()
                     .foregroundColor(.primary)
 
                 Spacer()
@@ -122,10 +122,9 @@ struct TodayView: View {
             } else if isEmpty {
                 VStack(spacing: 4) {
                     Text("No tasks scheduled")
-                        .font(.inter(.headline))
-                        .bold()
+                        .font(AppStyle.Typography.emptyTitle)
                     Text("Tasks scheduled for today will appear here")
-                        .font(.inter(.subheadline))
+                        .font(AppStyle.Typography.emptySubtitle)
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
                 }

@@ -45,12 +45,16 @@ extension Font {
 
     /// Roboto custom font with explicit point size.
     static func roboto(size: CGFloat, weight: RobotoWeight = .regular) -> Font {
-        .custom(weight.fontName, size: size)
+        let font = Font.custom(weight.fontName, size: size)
+        if let w = weight.swiftUIWeight { return font.weight(w) }
+        return font
     }
 
     /// Roboto custom font matching a Dynamic Type text style.
     static func roboto(_ style: TextStyle, weight: RobotoWeight = .regular) -> Font {
-        .custom(weight.fontName, size: style.defaultSize, relativeTo: style)
+        let font = Font.custom(weight.fontName, size: style.defaultSize, relativeTo: style)
+        if let w = weight.swiftUIWeight { return font.weight(w) }
+        return font
     }
 
     /// Fragment Mono with explicit point size.
@@ -156,16 +160,24 @@ enum HelveticaNeueWeight {
 // MARK: - Roboto Weight Mapping
 
 enum RobotoWeight {
-    case thin, light, regular, medium, bold, black
+    case thin, light, regular, medium, semiBold, bold, black
 
     var fontName: String {
         switch self {
-        case .thin:    "Roboto-Thin"
-        case .light:   "Roboto-Light"
-        case .regular: "Roboto-Regular"
-        case .medium:  "Roboto-Medium"
-        case .bold:    "Roboto-Bold"
-        case .black:   "Roboto-Black"
+        case .thin:     "Roboto-Thin"
+        case .light:    "Roboto-Light"
+        case .regular:  "Roboto-Regular"
+        case .medium:   "Roboto-Medium"
+        case .semiBold: "Roboto-Medium"
+        case .bold:     "Roboto-Bold"
+        case .black:    "Roboto-Black"
+        }
+    }
+
+    var swiftUIWeight: Font.Weight? {
+        switch self {
+        case .semiBold: .semibold
+        default: nil
         }
     }
 }

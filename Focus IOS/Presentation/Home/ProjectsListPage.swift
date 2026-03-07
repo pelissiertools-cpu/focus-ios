@@ -27,7 +27,7 @@ struct ProjectsListPage: View {
         ZStack {
             List {
                 Text("Projects")
-                    .font(.inter(.title2, weight: .bold))
+                    .pageTitleStyle()
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .listRowInsets(EdgeInsets(top: 16, leading: 20, bottom: 16, trailing: 20))
                     .listRowBackground(Color.clear)
@@ -42,13 +42,19 @@ struct ProjectsListPage: View {
                         .listRowSeparator(.hidden)
                         .moveDisabled(true)
                 } else if viewModel.regularProjects.isEmpty && viewModel.somedayProjects.isEmpty {
-                    Text("No projects yet")
-                        .font(.inter(.subheadline))
-                        .foregroundColor(.secondary)
-                        .listRowInsets(EdgeInsets(top: 12, leading: 20, bottom: 0, trailing: 20))
-                        .listRowBackground(Color.clear)
-                        .listRowSeparator(.hidden)
-                        .moveDisabled(true)
+                    VStack(spacing: 4) {
+                        Text("No projects yet")
+                            .font(AppStyle.Typography.emptyTitle)
+                        Text("Your projects will appear here")
+                            .font(AppStyle.Typography.emptySubtitle)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .listRowInsets(EdgeInsets(top: 12, leading: 20, bottom: 0, trailing: 20))
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+                    .moveDisabled(true)
                 } else {
                     ForEach(viewModel.regularProjects) { item in
                         if item.isSection {
@@ -101,7 +107,7 @@ struct ProjectsListPage: View {
                                 .fill(Color.appRed, style: FillStyle(eoFill: true))
                                 .frame(width: 15, height: 15)
                             Text("Someday")
-                                .font(.inter(.headline, weight: .bold))
+                                .font(AppStyle.Typography.sectionHeader)
                                 .foregroundColor(.appRed)
                             Spacer()
                         }

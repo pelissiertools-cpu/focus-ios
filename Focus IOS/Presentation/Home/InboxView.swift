@@ -89,8 +89,7 @@ struct InboxView: View {
                         .foregroundColor(.primary)
 
                     Text("Inbox")
-                        .font(.helveticaNeue(size: 26.14))
-                        .tracking(-0.272)
+                        .pageTitleStyle()
                         .foregroundColor(.primary)
 
                     Spacer()
@@ -105,10 +104,9 @@ struct InboxView: View {
                 } else if isEmpty {
                     VStack(spacing: 4) {
                         Text("No inbox items")
-                            .font(.inter(.headline))
-                            .bold()
+                            .font(AppStyle.Typography.emptyTitle)
                         Text("Tasks without a schedule will appear here")
-                            .font(.inter(.subheadline))
+                            .font(AppStyle.Typography.emptySubtitle)
                             .foregroundColor(.secondary)
                             .multilineTextAlignment(.center)
                     }
@@ -801,7 +799,7 @@ struct InboxView: View {
                             .foregroundColor(isAddTaskTitleEmpty ? .secondary : .white)
                             .frame(width: 36, height: 36)
                             .background(
-                                isAddTaskTitleEmpty ? Color(.systemGray4) : Color.completedPurple,
+                                isAddTaskTitleEmpty ? Color(.systemGray4) : Color.focusBlue,
                                 in: Circle()
                             )
                     }

@@ -156,7 +156,7 @@ struct HomeView: View {
                                 .lineSpacing(31.6 - 26.14)
                                 .foregroundColor(.primary)
                             formattedDateView
-                                .foregroundColor(Color(red: 0x26/255, green: 0x26/255, blue: 0x26/255).opacity(0.6))
+                                .foregroundColor(.secondary)
                         }
                         .padding(.horizontal, 20)
                         .padding(.bottom, 16)
@@ -207,7 +207,7 @@ struct HomeView: View {
                         HStack(spacing: 12) {
                             homeCard(title: "Someday", customIcon: {
                                 HourglassIcon()
-                                    .fill(Color(red: 0x26/255, green: 0x26/255, blue: 0x26/255), style: FillStyle(eoFill: true))
+                                    .fill(.primary, style: FillStyle(eoFill: true))
                                     .frame(width: 21, height: 21)
                             }) {
                                 viewModel.selectedMenuItem = .someday
@@ -218,7 +218,7 @@ struct HomeView: View {
                                     .resizable()
                                     .scaledToFit()
                                     .frame(width: 21, height: 21)
-                                    .foregroundColor(Color(red: 0x26/255, green: 0x26/255, blue: 0x26/255))
+                                    .foregroundColor(.primary)
                             }) { }
                         }
                         .padding(.horizontal, 20)
@@ -486,7 +486,7 @@ struct HomeView: View {
                 Text(title)
                     .font(.helveticaNeue(size: 15.22))
                     .tracking(-0.158)
-                    .foregroundColor(Color(red: 0x26/255, green: 0x26/255, blue: 0x26/255))
+                    .foregroundColor(.primary)
                 if let count, count > 0 {
                     Text("(\(count))")
                         .font(.helveticaNeue(size: 11.08))
@@ -498,7 +498,7 @@ struct HomeView: View {
                 if let icon {
                     Image(systemName: icon)
                         .font(.helveticaNeue(size: 17.3))
-                        .foregroundColor(Color(red: 0x26/255, green: 0x26/255, blue: 0x26/255))
+                        .foregroundColor(.primary)
                         .frame(width: 24, alignment: .center)
                 } else {
                     customIcon()
@@ -525,12 +525,12 @@ struct HomeView: View {
             Text(category.name)
                 .font(.helveticaNeue(size: 13, weight: .medium))
                 .tracking(-0.135)
-                .foregroundColor(Color(red: 0x26/255, green: 0x26/255, blue: 0x26/255))
+                .foregroundColor(.primary)
                 .lineLimit(1)
                 .padding(.vertical, 12)
                 .padding(.horizontal, 8)
                 .frame(width: (containerWidth - 40 - 24) / 3)
-                .background(Color(red: 0xF7/255, green: 0xF7/255, blue: 0xF9/255), in: RoundedRectangle(cornerRadius: 12))
+                .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12))
                 .contentShape(RoundedRectangle(cornerRadius: 12))
         }
         .buttonStyle(.plain)
@@ -602,7 +602,7 @@ struct HomeView: View {
                 .font(.fragmentMono(size: 14.63))
                 .tracking(0.686)
                 .lineSpacing(17.56 - 14.63)
-                .foregroundColor(Color(red: 0x26/255, green: 0x26/255, blue: 0x26/255))
+                .foregroundColor(.primary)
         }
         .padding(.horizontal, 20)
     }
@@ -619,7 +619,7 @@ struct HomeView: View {
                     .font(.fragmentMono(size: 14.63))
                     .tracking(0.686)
                     .lineSpacing(17.56 - 14.63)
-                    .foregroundColor(Color(red: 0x26/255, green: 0x26/255, blue: 0x26/255))
+                    .foregroundColor(.primary)
                 Spacer()
                 Menu {
                     Button {

@@ -15,6 +15,7 @@ enum HomeMenuItem: String, CaseIterable, Identifiable, Hashable {
     case archive = "Archive"
     case projects = "Projects"
     case quickLists = "Quick Lists"
+    case someday = "Someday"
 
     var id: String { rawValue }
 
@@ -27,6 +28,7 @@ enum HomeMenuItem: String, CaseIterable, Identifiable, Hashable {
         case .archive:    return "archivebox"
         case .projects:   return "folder"
         case .quickLists: return "list.bullet"
+        case .someday:    return "moon.zzz"
         }
     }
 }
@@ -44,9 +46,30 @@ class HomeViewModel: ObservableObject {
     @Published var selectedPinnedItem: FocusTask?
     @Published var categories: [Category] = []
     @Published var selectedCategory: Category?
+    @Published var somedayCategory: Category?
 
     var pinnedItems: [FocusTask] {
         (projects + lists).filter { $0.isPinned && !$0.isSection }
+    }
+
+    var regularProjects: [FocusTask] {
+        guard let somedayId = somedayCategory?.id else { return projects }
+        return projects.filter { $0.categoryId != somedayId }
+    }
+
+    var somedayProjects: [FocusTask] {
+        guard let somedayId = somedayCategory?.id else { return [] }
+        return projects.filter { $0.categoryId == somedayId && !$0.isSection }
+    }
+
+    var regularLists: [FocusTask] {
+        guard let somedayId = somedayCategory?.id else { return lists }
+        return lists.filter { $0.categoryId != somedayId }
+    }
+
+    var somedayLists: [FocusTask] {
+        guard let somedayId = somedayCategory?.id else { return [] }
+        return lists.filter { $0.categoryId == somedayId && !$0.isSection }
     }
 
     private let repository: TaskRepository
@@ -93,7 +116,17 @@ class HomeViewModel: ObservableObject {
 
     func fetchCategories() async {
         do {
-            categories = try await categoryRepository.fetchCategories()
+            let allCategories = try await categoryRepository.fetchCategories()
+            categories = allCategories.filter { !$0.isSystem }
+            somedayCategory = allCategories.first { $0.isSystem && $0.name == Category.somedayName }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func ensureSomedayCategory(userId: UUID) async {
+        do {
+            somedayCategory = try await categoryRepository.ensureSomedayCategory(userId: userId)
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -110,6 +143,7 @@ class HomeViewModel: ObservableObject {
     }
 
     func renameCategory(_ category: Category, newName: String) async {
+        guard !category.isSystem else { return }
         var updated = category
         updated.name = newName
         do {
@@ -123,6 +157,7 @@ class HomeViewModel: ObservableObject {
     }
 
     func deleteCategory(id: UUID) async {
+        guard somedayCategory?.id != id else { return }
         do {
             try await categoryRepository.deleteCategory(id: id)
             categories.removeAll { $0.id == id }

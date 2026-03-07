@@ -16,6 +16,10 @@ struct Category: Codable, Identifiable, Hashable {
     var sortOrder: Int
     var type: TaskType
     let createdDate: Date
+    var isSystem: Bool
+
+    /// Well-known name for the Someday system category
+    static let somedayName = "Someday"
 
     // Coding keys to match Supabase snake_case
     enum CodingKeys: String, CodingKey {
@@ -25,6 +29,7 @@ struct Category: Codable, Identifiable, Hashable {
         case sortOrder = "sort_order"
         case type
         case createdDate = "created_date"
+        case isSystem = "is_system"
     }
 
     /// Initializer for creating new categories
@@ -34,7 +39,8 @@ struct Category: Codable, Identifiable, Hashable {
         name: String,
         sortOrder: Int = 0,
         type: TaskType = .task,
-        createdDate: Date = Date()
+        createdDate: Date = Date(),
+        isSystem: Bool = false
     ) {
         self.id = id
         self.userId = userId
@@ -42,5 +48,17 @@ struct Category: Codable, Identifiable, Hashable {
         self.sortOrder = sortOrder
         self.type = type
         self.createdDate = createdDate
+        self.isSystem = isSystem
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        userId = try container.decode(UUID.self, forKey: .userId)
+        name = try container.decode(String.self, forKey: .name)
+        sortOrder = try container.decode(Int.self, forKey: .sortOrder)
+        type = try container.decode(TaskType.self, forKey: .type)
+        createdDate = try container.decode(Date.self, forKey: .createdDate)
+        isSystem = try container.decodeIfPresent(Bool.self, forKey: .isSystem) ?? false
     }
 }

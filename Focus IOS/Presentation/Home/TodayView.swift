@@ -148,7 +148,14 @@ struct TodayView: View {
                 .drawerStyle()
         }
         .sheet(item: $listsVM.selectedItemForSchedule) { item in
-            ScheduleSelectionSheet(task: item, focusViewModel: focusViewModel)
+            ScheduleSelectionSheet(
+                task: item,
+                focusViewModel: focusViewModel,
+                onSomeday: {
+                    _Concurrency.Task { await listsVM.moveTaskToSomeday(item) }
+                },
+                isSomedayTask: item.categoryId == listsVM.somedayCategory?.id
+            )
                 .drawerStyle()
         }
         .sheet(item: $projectsVM.selectedProjectForDetails) { project in
@@ -156,11 +163,18 @@ struct TodayView: View {
                 .drawerStyle()
         }
         .sheet(item: $projectsVM.selectedTaskForSchedule) { task in
-            ScheduleSelectionSheet(task: task, focusViewModel: focusViewModel)
+            ScheduleSelectionSheet(
+                task: task,
+                focusViewModel: focusViewModel,
+                onSomeday: {
+                    _Concurrency.Task { await projectsVM.moveTaskToSomeday(task) }
+                },
+                isSomedayTask: task.categoryId == projectsVM.somedayCategory?.id
+            )
                 .drawerStyle()
         }
         .sheet(item: $selectedScheduleForReschedule) { schedule in
-            RescheduleSheet(schedule: schedule, focusViewModel: focusViewModel)
+            RescheduleSheet(schedule: schedule, focusViewModel: focusViewModel, somedayCategoryId: taskListVM.somedayCategory?.id)
                 .drawerStyle()
         }
         .navigationDestination(item: $selectedListForNavigation) { list in

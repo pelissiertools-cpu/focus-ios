@@ -99,6 +99,16 @@ struct HomeView: View {
         }.count
     }
 
+    private var somedayItemCount: Int {
+        guard let somedayId = viewModel.somedayCategory?.id else { return 0 }
+        let tasks = taskListVM.tasks.filter {
+            !$0.isCompleted && $0.categoryId == somedayId && $0.projectId == nil && $0.parentTaskId == nil
+        }.count
+        let projects = viewModel.somedayProjects.count
+        let lists = viewModel.somedayLists.count
+        return tasks + projects + lists
+    }
+
     init(viewModel: HomeViewModel, authService: AuthService) {
         self.viewModel = viewModel
         self.authService = authService
@@ -198,9 +208,14 @@ struct HomeView: View {
                         }
                         .padding(.horizontal, 20)
 
-                        // MARK: - Goals (full width placeholder)
-                        homeCard(title: "Goals", centered: true) { }
-                            .padding(.horizontal, 20)
+                        // MARK: - Someday / Goals
+                        HStack(spacing: 12) {
+                            homeCard(title: "Someday", icon: "moon.zzz") {
+                                viewModel.selectedMenuItem = .someday
+                            }
+                            homeCard(title: "Goals", centered: true) { }
+                        }
+                        .padding(.horizontal, 20)
 
                         // MARK: - Categories Section
                         if !viewModel.categories.isEmpty {
@@ -291,6 +306,10 @@ struct HomeView: View {
                     ProjectsListPage(viewModel: viewModel, authService: authService)
                 } else if menuItem == .quickLists {
                     QuickListsPage(viewModel: viewModel, authService: authService)
+                } else if menuItem == .someday {
+                    if let somedayCategory = viewModel.somedayCategory {
+                        CategoryDetailView(category: somedayCategory, authService: authService)
+                    }
                 } else {
                     HomePlaceholderPage(title: menuItem.rawValue)
                 }
@@ -368,6 +387,9 @@ struct HomeView: View {
                 await taskListVM.fetchTasks()
                 await taskListVM.fetchCategories()
                 await viewModel.fetchCategories()
+                if let userId = authService.currentUser?.id {
+                    await viewModel.ensureSomedayCategory(userId: userId)
+                }
                 // Pre-load categories for add bar
                 await projectsViewModel.fetchProjects()
                 await listsViewModel.fetchLists()

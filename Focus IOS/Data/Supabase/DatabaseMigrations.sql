@@ -304,3 +304,11 @@ ALTER TABLE schedules ADD CONSTRAINT schedules_section_check CHECK (section IN (
 -- ==============================================
 
 ALTER TABLE tasks ADD COLUMN IF NOT EXISTS is_pinned BOOLEAN DEFAULT false;
+
+-- ==============================================
+-- SYSTEM CATEGORY SUPPORT (SOMEDAY)
+-- System categories are auto-created per user
+-- and cannot be deleted or renamed.
+-- ==============================================
+
+ALTER TABLE categories ADD COLUMN IF NOT EXISTS is_system BOOLEAN DEFAULT false;

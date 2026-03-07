@@ -956,6 +956,15 @@ class ListsViewModel: ObservableObject, LogFilterable, TaskEditingViewModel {
         }
     }
 
+    var somedayCategory: Category? {
+        categories.first { $0.isSystem && $0.name == Category.somedayName }
+    }
+
+    func moveTaskToSomeday(_ task: FocusTask) async {
+        guard let somedayId = somedayCategory?.id else { return }
+        await moveTaskToCategory(task, categoryId: somedayId)
+    }
+
     func createCategoryAndMove(name: String, task: FocusTask) async {
         guard let userId = authService.currentUser?.id else { return }
         let trimmed = name.trimmingCharacters(in: .whitespaces)

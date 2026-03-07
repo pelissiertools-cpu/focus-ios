@@ -34,7 +34,7 @@ struct QuickListsPage: View {
                     .listRowSeparator(.hidden)
                     .moveDisabled(true)
 
-                if viewModel.lists.isEmpty {
+                if viewModel.regularLists.isEmpty && viewModel.somedayLists.isEmpty {
                     Text("No lists yet")
                         .font(.inter(.subheadline))
                         .foregroundColor(.secondary)
@@ -43,7 +43,7 @@ struct QuickListsPage: View {
                         .listRowSeparator(.hidden)
                         .moveDisabled(true)
                 } else {
-                    ForEach(viewModel.lists) { item in
+                    ForEach(viewModel.regularLists) { item in
                         if item.isSection {
                             SectionDividerRow(
                                 section: item,
@@ -86,6 +86,40 @@ struct QuickListsPage: View {
                     .onMove { from, to in
                         viewModel.reorderLists(from: from, to: to)
                     }
+
+                    // Someday section
+                    if !viewModel.somedayLists.isEmpty {
+                        HStack(spacing: 8) {
+                            Image(systemName: "moon.zzz")
+                                .font(.inter(.subheadline))
+                                .foregroundColor(.appRed)
+                            Text("Someday")
+                                .font(.inter(.headline, weight: .bold))
+                                .foregroundColor(.appRed)
+                            Spacer()
+                        }
+                        .padding(.vertical, 8)
+                        .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                        .moveDisabled(true)
+
+                        ForEach(viewModel.somedayLists) { list in
+                            listRow(list)
+                                .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+                                .listRowBackground(Color.clear)
+                                .listRowSeparator(.hidden)
+                                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                    if !listsViewModel.isEditMode {
+                                        Button(role: .destructive) {
+                                            listToDelete = list
+                                        } label: {
+                                            Label("Delete", systemImage: "trash")
+                                        }
+                                    }
+                                }
+                        }
+                    }
                 }
 
                 Color.clear
@@ -115,7 +149,14 @@ struct QuickListsPage: View {
                 .drawerStyle()
         }
         .sheet(item: $listsViewModel.selectedItemForSchedule) { item in
-            ScheduleSelectionSheet(task: item, focusViewModel: focusViewModel)
+            ScheduleSelectionSheet(
+                task: item,
+                focusViewModel: focusViewModel,
+                onSomeday: {
+                    _Concurrency.Task { await listsViewModel.moveTaskToSomeday(item) }
+                },
+                isSomedayTask: item.categoryId == listsViewModel.somedayCategory?.id
+            )
                 .drawerStyle()
         }
         .sheet(isPresented: $listsViewModel.showBatchMovePicker) {

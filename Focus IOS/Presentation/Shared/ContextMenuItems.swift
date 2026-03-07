@@ -43,7 +43,7 @@ enum ContextMenuItems {
                     Text("None")
                 }
             }
-            ForEach(categories) { category in
+            ForEach(categories.filter { !$0.isSystem }) { category in
                 Button {
                     onMove(category.id)
                 } label: {

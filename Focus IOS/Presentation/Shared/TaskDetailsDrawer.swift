@@ -181,8 +181,7 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
             }
             .sheet(isPresented: $showingRescheduleSheet) {
                 if let schedule = schedule {
-                    RescheduleSheet(schedule: schedule, focusViewModel: focusViewModel)
-                        .drawerStyle()
+                    rescheduleSheet(for: schedule)
                 }
             }
             .alert(isSubtask ? "Delete subtask?" : "Delete task?", isPresented: $showingDeleteConfirmation) {
@@ -816,6 +815,17 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
     }
 
     // MARK: - Actions
+
+    @ViewBuilder
+    private func rescheduleSheet(for schedule: Schedule) -> some View {
+        let somedayId = categories.first { $0.isSystem && $0.name == Category.somedayName }?.id
+        RescheduleSheet(
+            schedule: schedule,
+            focusViewModel: focusViewModel,
+            somedayCategoryId: somedayId
+        )
+        .drawerStyle()
+    }
 
     private func saveTitle() {
         guard taskTitle != task.title else { return }

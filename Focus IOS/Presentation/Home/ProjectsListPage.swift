@@ -41,7 +41,7 @@ struct ProjectsListPage: View {
                         .listRowBackground(Color.clear)
                         .listRowSeparator(.hidden)
                         .moveDisabled(true)
-                } else if viewModel.projects.isEmpty {
+                } else if viewModel.regularProjects.isEmpty && viewModel.somedayProjects.isEmpty {
                     Text("No projects yet")
                         .font(.inter(.subheadline))
                         .foregroundColor(.secondary)
@@ -50,7 +50,7 @@ struct ProjectsListPage: View {
                         .listRowSeparator(.hidden)
                         .moveDisabled(true)
                 } else {
-                    ForEach(viewModel.projects) { item in
+                    ForEach(viewModel.regularProjects) { item in
                         if item.isSection {
                             SectionDividerRow(
                                 section: item,
@@ -93,6 +93,40 @@ struct ProjectsListPage: View {
                     .onMove { from, to in
                         viewModel.reorderProjects(from: from, to: to)
                     }
+
+                    // Someday section
+                    if !viewModel.somedayProjects.isEmpty {
+                        HStack(spacing: 8) {
+                            Image(systemName: "moon.zzz")
+                                .font(.inter(.subheadline))
+                                .foregroundColor(.appRed)
+                            Text("Someday")
+                                .font(.inter(.headline, weight: .bold))
+                                .foregroundColor(.appRed)
+                            Spacer()
+                        }
+                        .padding(.vertical, 8)
+                        .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                        .moveDisabled(true)
+
+                        ForEach(viewModel.somedayProjects) { project in
+                            projectRow(project)
+                                .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+                                .listRowBackground(Color.clear)
+                                .listRowSeparator(.hidden)
+                                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                    if !projectsViewModel.isEditMode {
+                                        Button(role: .destructive) {
+                                            projectToDelete = project
+                                        } label: {
+                                            Label("Delete", systemImage: "trash")
+                                        }
+                                    }
+                                }
+                        }
+                    }
                 }
 
                 Color.clear
@@ -122,7 +156,14 @@ struct ProjectsListPage: View {
                 .drawerStyle()
         }
         .sheet(item: $projectsViewModel.selectedTaskForSchedule) { task in
-            ScheduleSelectionSheet(task: task, focusViewModel: focusViewModel)
+            ScheduleSelectionSheet(
+                task: task,
+                focusViewModel: focusViewModel,
+                onSomeday: {
+                    _Concurrency.Task { await projectsViewModel.moveTaskToSomeday(task) }
+                },
+                isSomedayTask: task.categoryId == projectsViewModel.somedayCategory?.id
+            )
                 .drawerStyle()
         }
         .sheet(isPresented: $projectsViewModel.showBatchMovePicker) {

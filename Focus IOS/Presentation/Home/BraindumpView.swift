@@ -222,7 +222,11 @@ struct BraindumpView: View {
                 pendingSchedule: pendingSchedules[task.id],
                 onClearSchedule: {
                     pendingSchedules.removeValue(forKey: task.id)
-                }
+                },
+                onSomeday: {
+                    _Concurrency.Task { await taskListVM.moveTaskToSomeday(task) }
+                },
+                isSomedayTask: task.categoryId == taskListVM.somedayCategory?.id
             )
             .drawerStyle()
         }

@@ -34,6 +34,7 @@ struct BacklogView: View {
     @State private var isTasksSectionCollapsed = false
     @State private var isProjectsSectionCollapsed = false
     @State private var isListsSectionCollapsed = false
+    @State private var isSomedaySectionCollapsed = true
 
     // Batch create alerts
     @State private var showCreateProjectAlert = false
@@ -68,17 +69,31 @@ struct BacklogView: View {
 
     // MARK: - Computed Properties
 
-    /// All uncompleted standalone tasks (not inside a project)
-    private var standaloneTasks: [FocusTask] {
-        taskListVM.uncompletedTasks.filter { $0.projectId == nil }
+    private var somedayCategoryId: UUID? {
+        taskListVM.somedayCategory?.id
     }
 
-    /// Flattened task display items excluding project-contained tasks
+    private func isSomedayItem(_ task: FocusTask) -> Bool {
+        guard let somedayId = somedayCategoryId else { return false }
+        return task.categoryId == somedayId
+    }
+
+    /// All uncompleted standalone tasks (not inside a project), excluding Someday
+    private var standaloneTasks: [FocusTask] {
+        taskListVM.uncompletedTasks.filter { $0.projectId == nil && !isSomedayItem($0) }
+    }
+
+    /// Someday tasks
+    private var somedayTasks: [FocusTask] {
+        taskListVM.uncompletedTasks.filter { $0.projectId == nil && isSomedayItem($0) }
+    }
+
+    /// Flattened task display items excluding project-contained tasks and Someday
     private var standaloneTaskDisplayItems: [FlatDisplayItem] {
         let projectTaskIds = Set(taskListVM.uncompletedTasks.filter { $0.projectId != nil }.map { $0.id })
         return taskListVM.flattenedDisplayItems.filter { item in
             switch item {
-            case .task(let task): return task.projectId == nil
+            case .task(let task): return task.projectId == nil && !isSomedayItem(task)
             case .addSubtaskRow(let parentId): return !projectTaskIds.contains(parentId)
             default: return true
             }
@@ -86,15 +101,27 @@ struct BacklogView: View {
     }
 
     private var allProjects: [FocusTask] {
-        projectsVM.projects.filter { !$0.isCompleted && !$0.isCleared }
+        projectsVM.projects.filter { !$0.isCompleted && !$0.isCleared && !isSomedayItem($0) }
     }
 
     private var allLists: [FocusTask] {
-        listsVM.lists.filter { !$0.isCompleted && !$0.isCleared }
+        listsVM.lists.filter { !$0.isCompleted && !$0.isCleared && !isSomedayItem($0) }
+    }
+
+    private var somedayProjects: [FocusTask] {
+        projectsVM.projects.filter { !$0.isCompleted && !$0.isCleared && isSomedayItem($0) }
+    }
+
+    private var somedayLists: [FocusTask] {
+        listsVM.lists.filter { !$0.isCompleted && !$0.isCleared && isSomedayItem($0) }
+    }
+
+    private var somedayItemCount: Int {
+        somedayTasks.count + somedayProjects.count + somedayLists.count
     }
 
     private var isEmpty: Bool {
-        standaloneTasks.isEmpty && allProjects.isEmpty && allLists.isEmpty
+        standaloneTasks.isEmpty && allProjects.isEmpty && allLists.isEmpty && somedayItemCount == 0
     }
 
     private var isSearching: Bool {
@@ -133,8 +160,30 @@ struct BacklogView: View {
         return allLists.filter { $0.title.lowercased().contains(query) }
     }
 
+    private var filteredSomedayTasks: [FocusTask] {
+        guard isSearching else { return somedayTasks }
+        let query = searchText.lowercased()
+        return somedayTasks.filter { $0.title.lowercased().contains(query) }
+    }
+
+    private var filteredSomedayProjects: [FocusTask] {
+        guard isSearching else { return somedayProjects }
+        let query = searchText.lowercased()
+        return somedayProjects.filter { $0.title.lowercased().contains(query) }
+    }
+
+    private var filteredSomedayLists: [FocusTask] {
+        guard isSearching else { return somedayLists }
+        let query = searchText.lowercased()
+        return somedayLists.filter { $0.title.lowercased().contains(query) }
+    }
+
+    private var filteredSomedayCount: Int {
+        filteredSomedayTasks.count + filteredSomedayProjects.count + filteredSomedayLists.count
+    }
+
     private var searchIsEmpty: Bool {
-        isSearching && filteredTasks.isEmpty && filteredProjects.isEmpty && filteredLists.isEmpty
+        isSearching && filteredTasks.isEmpty && filteredProjects.isEmpty && filteredLists.isEmpty && filteredSomedayCount == 0
     }
 
     // MARK: - Body
@@ -318,7 +367,14 @@ struct BacklogView: View {
                 .drawerStyle()
         }
         .sheet(item: $taskListVM.selectedTaskForSchedule) { task in
-            ScheduleSelectionSheet(task: task, focusViewModel: focusViewModel)
+            ScheduleSelectionSheet(
+                task: task,
+                focusViewModel: focusViewModel,
+                onSomeday: {
+                    _Concurrency.Task { await taskListVM.moveTaskToSomeday(task) }
+                },
+                isSomedayTask: task.categoryId == taskListVM.somedayCategory?.id
+            )
                 .drawerStyle()
         }
         // List sheets
@@ -327,7 +383,14 @@ struct BacklogView: View {
                 .drawerStyle()
         }
         .sheet(item: $listsVM.selectedItemForSchedule) { item in
-            ScheduleSelectionSheet(task: item, focusViewModel: focusViewModel)
+            ScheduleSelectionSheet(
+                task: item,
+                focusViewModel: focusViewModel,
+                onSomeday: {
+                    _Concurrency.Task { await listsVM.moveTaskToSomeday(item) }
+                },
+                isSomedayTask: item.categoryId == listsVM.somedayCategory?.id
+            )
                 .drawerStyle()
         }
         // Project sheets
@@ -336,7 +399,14 @@ struct BacklogView: View {
                 .drawerStyle()
         }
         .sheet(item: $projectsVM.selectedTaskForSchedule) { task in
-            ScheduleSelectionSheet(task: task, focusViewModel: focusViewModel)
+            ScheduleSelectionSheet(
+                task: task,
+                focusViewModel: focusViewModel,
+                onSomeday: {
+                    _Concurrency.Task { await projectsVM.moveTaskToSomeday(task) }
+                },
+                isSomedayTask: task.categoryId == projectsVM.somedayCategory?.id
+            )
                 .drawerStyle()
         }
         // Batch operations
@@ -651,6 +721,61 @@ struct BacklogView: View {
                 }
             }
 
+            // MARK: Someday Section (collapsed by default, expanded when searching)
+            if filteredSomedayCount > 0 {
+                somedaySectionHeader
+
+                if !isSomedaySectionCollapsed || isSearching {
+                    ForEach(filteredSomedayTasks) { task in
+                        FlatTaskRow(
+                            task: task,
+                            viewModel: taskListVM,
+                            isEditMode: taskListVM.isEditMode,
+                            isSelected: taskListVM.selectedTaskIds.contains(task.id),
+                            onSelectToggle: { taskListVM.toggleTaskSelection(task.id) },
+                            onToggleCompletion: { t in
+                                taskListVM.requestToggleCompletion(t)
+                            }
+                        )
+                        .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                    }
+
+                    ForEach(filteredSomedayProjects) { project in
+                        BacklogProjectRow(
+                            project: project,
+                            onTap: { selectedProjectForNavigation = project },
+                            onEdit: { projectsVM.selectedProjectForDetails = project },
+                            onSchedule: { projectsVM.selectedTaskForSchedule = project },
+                            onDelete: {
+                                await projectsVM.deleteProject(project)
+                                await refreshAllData()
+                            }
+                        )
+                        .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                    }
+
+                    ForEach(filteredSomedayLists) { list in
+                        BacklogListRow(
+                            list: list,
+                            onTap: { selectedListForNavigation = list },
+                            onEdit: { listsVM.selectedListForDetails = list },
+                            onSchedule: { listsVM.selectedItemForSchedule = list },
+                            onDelete: {
+                                await listsVM.deleteList(list)
+                                await refreshAllData()
+                            }
+                        )
+                        .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                    }
+                }
+            }
+
             // Bottom spacer
             Color.clear
                 .frame(height: 100)
@@ -761,6 +886,39 @@ struct BacklogView: View {
                     .font(.inter(size: 10, weight: .semiBold))
                     .foregroundColor(.secondary)
                     .rotationEffect(.degrees(isListsSectionCollapsed ? 0 : 90))
+                Spacer()
+            }
+        }
+        .buttonStyle(.plain)
+        .padding(.top, 16)
+        .padding(.bottom, 4)
+        .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+        .listRowSeparator(.hidden)
+        .listRowBackground(Color.clear)
+    }
+
+    private var somedaySectionHeader: some View {
+        Button {
+            withAnimation(.easeInOut(duration: 0.2)) {
+                isSomedaySectionCollapsed.toggle()
+            }
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "moon.zzz")
+                    .font(.inter(.subheadline))
+                    .foregroundColor(.appRed)
+                Text("Someday")
+                    .font(.inter(.headline, weight: .bold))
+                    .foregroundColor(.primary)
+                Text("\(isSearching ? filteredSomedayCount : somedayItemCount)")
+                    .font(.inter(.caption))
+                    .foregroundColor(.secondary)
+                if !isSearching {
+                    Image(systemName: "chevron.right")
+                        .font(.inter(size: 10, weight: .semiBold))
+                        .foregroundColor(.secondary)
+                        .rotationEffect(.degrees(isSomedaySectionCollapsed ? 0 : 90))
+                }
                 Spacer()
             }
         }

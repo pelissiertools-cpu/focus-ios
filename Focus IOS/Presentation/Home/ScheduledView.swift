@@ -605,7 +605,14 @@ struct ScheduledView: View {
                 .drawerStyle()
         }
         .sheet(item: $taskListVM.selectedTaskForSchedule) { task in
-            ScheduleSelectionSheet(task: task, focusViewModel: focusViewModel)
+            ScheduleSelectionSheet(
+                task: task,
+                focusViewModel: focusViewModel,
+                onSomeday: {
+                    _Concurrency.Task { await taskListVM.moveTaskToSomeday(task) }
+                },
+                isSomedayTask: task.categoryId == taskListVM.somedayCategory?.id
+            )
                 .drawerStyle()
         }
         .sheet(item: $listsVM.selectedListForDetails) { list in
@@ -613,7 +620,14 @@ struct ScheduledView: View {
                 .drawerStyle()
         }
         .sheet(item: $listsVM.selectedItemForSchedule) { item in
-            ScheduleSelectionSheet(task: item, focusViewModel: focusViewModel)
+            ScheduleSelectionSheet(
+                task: item,
+                focusViewModel: focusViewModel,
+                onSomeday: {
+                    _Concurrency.Task { await listsVM.moveTaskToSomeday(item) }
+                },
+                isSomedayTask: item.categoryId == listsVM.somedayCategory?.id
+            )
                 .drawerStyle()
         }
         .sheet(isPresented: $taskListVM.showBatchMovePicker) {
@@ -695,11 +709,18 @@ struct ScheduledView: View {
                 .drawerStyle()
         }
         .sheet(item: $projectsVM.selectedTaskForSchedule) { task in
-            ScheduleSelectionSheet(task: task, focusViewModel: focusViewModel)
+            ScheduleSelectionSheet(
+                task: task,
+                focusViewModel: focusViewModel,
+                onSomeday: {
+                    _Concurrency.Task { await projectsVM.moveTaskToSomeday(task) }
+                },
+                isSomedayTask: task.categoryId == projectsVM.somedayCategory?.id
+            )
                 .drawerStyle()
         }
         .sheet(item: $selectedScheduleForReschedule) { schedule in
-            RescheduleSheet(schedule: schedule, focusViewModel: focusViewModel)
+            RescheduleSheet(schedule: schedule, focusViewModel: focusViewModel, somedayCategoryId: taskListVM.somedayCategory?.id)
                 .drawerStyle()
         }
         // Navigation

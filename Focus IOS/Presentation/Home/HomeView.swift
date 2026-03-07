@@ -151,15 +151,13 @@ struct HomeView: View {
 
                             VStack(alignment: .leading, spacing: 0) {
                                 Text(currentDayName)
-                                    .font(.helveticaNeue(size: 34.6))
-                                    .tracking(-0.36)
-                                    .lineSpacing(36 - 34.6)
+                                    .font(.helveticaNeue(size: 26.14))
+                                    .tracking(-0.272)
+                                    .lineSpacing(31.6 - 26.14)
                                     .foregroundColor(.primary)
-                                Text(currentDateShort)
-                                    .font(.helveticaNeue(size: 17.3))
-                                    .tracking(-0.18)
-                                    .lineSpacing(20 - 17.3)
-                                    .foregroundColor(Color(red: 0x26/255, green: 0x26/255, blue: 0x26/255))
+                                formattedDateText
+                                    .tracking(-0.158)
+                                    .foregroundColor(Color(red: 0x26/255, green: 0x26/255, blue: 0x26/255).opacity(0.6))
                             }
                         }
                         .padding(.horizontal, 20)
@@ -475,8 +473,8 @@ struct HomeView: View {
             HStack {
                 if centered { Spacer() }
                 Text(title)
-                    .font(.helveticaNeue(size: 13.84))
-                    .tracking(-0.144)
+                    .font(.helveticaNeue(size: 15.22))
+                    .tracking(-0.158)
                     .foregroundColor(Color(red: 0x26/255, green: 0x26/255, blue: 0x26/255))
                 if let count, count > 0 {
                     Text("(\(count))")
@@ -645,6 +643,37 @@ struct HomeView: View {
         let formatter = DateFormatter()
         formatter.dateFormat = "MMMM d, yyyy"
         return formatter.string(from: Date())
+    }
+
+    private var formattedDateText: Text {
+        let now = Date()
+        let cal = Calendar.current
+        let day = cal.component(.day, from: now)
+        let year = cal.component(.year, from: now)
+
+        let monthFormatter = DateFormatter()
+        monthFormatter.dateFormat = "MMMM"
+        let month = monthFormatter.string(from: now)
+
+        let suffix: String
+        switch day {
+        case 1, 21, 31: suffix = "st"
+        case 2, 22:     suffix = "nd"
+        case 3, 23:     suffix = "rd"
+        default:        suffix = "th"
+        }
+
+        let baseSize: CGFloat = 15.22
+        let smallSize: CGFloat = baseSize - 2
+
+        return Text(month)
+            .font(.helveticaNeue(size: baseSize))
+        + Text(" \(day)")
+            .font(.helveticaNeue(size: baseSize))
+        + Text(suffix)
+            .font(.helveticaNeue(size: smallSize))
+        + Text("__\(String(format: "%d", year))")
+            .font(.helveticaNeue(size: smallSize))
     }
 
     private var currentWeekString: String {

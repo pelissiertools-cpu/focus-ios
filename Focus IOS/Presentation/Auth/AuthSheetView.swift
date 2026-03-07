@@ -66,6 +66,8 @@ struct AuthSheetView: View {
                             .background(.ultraThinMaterial)
                             .clipShape(Circle())
                     }
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
                 }
 
                 Spacer()
@@ -78,6 +80,8 @@ struct AuthSheetView: View {
                         .background(.ultraThinMaterial)
                         .clipShape(Circle())
                 }
+                .frame(width: 44, height: 44)
+                .contentShape(Rectangle())
             }
             .padding(.horizontal, 16)
             .padding(.top, 16)

@@ -217,7 +217,8 @@ struct QuickListsPage: View {
                     Image(systemName: listsViewModel.isEditMode ? "xmark" : "chevron.left")
                         .font(.inter(.body, weight: .semiBold))
                         .foregroundColor(.primary)
-                        .contentShape(Circle())
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
                 }
             }
             ToolbarItem(placement: .navigationBarTrailing) {

@@ -78,6 +78,8 @@ struct DrawerContainer<Content: View>: View {
                     .frame(width: 30, height: 30)
                     .background(Color.pillBackground, in: Circle())
             }
+            .frame(width: 44, height: 44)
+            .contentShape(Rectangle())
         case .check(let action, let highlighted):
             Button(action: action) {
                 Image(systemName: "checkmark")
@@ -88,6 +90,8 @@ struct DrawerContainer<Content: View>: View {
             .background(highlighted ? Color.completedPurple : Color(.systemGray5))
             .clipShape(Circle())
             .buttonStyle(.plain)
+            .frame(width: 44, height: 44)
+            .contentShape(Rectangle())
         }
     }
 }

@@ -314,7 +314,8 @@ struct BraindumpView: View {
                         Image(systemName: "chevron.left")
                             .font(.inter(.body, weight: .semiBold))
                             .foregroundColor(.primary)
-                            .contentShape(Circle())
+                            .frame(width: 44, height: 44)
+                            .contentShape(Rectangle())
                     }
                 }
             }

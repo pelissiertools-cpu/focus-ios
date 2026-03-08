@@ -91,9 +91,8 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
     @Published var showBatchScheduleSheet: Bool = false
 
     // Pending completion grace period
+    let pendingCompletion = PendingCompletionManager()
     @Published var pendingCompletionTaskIds: Set<UUID> = []
-    private var pendingCompletionTimers: [UUID: _Concurrency.Task<Void, Never>] = [:]
-    static let completionGracePeriod: Duration = .seconds(1.5)
 
     private let repository: TaskRepository
     let scheduleRepository: ScheduleRepository
@@ -147,6 +146,10 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
         }
         if cache.hasLoadedCategories {
             self.categories = cache.categories
+        }
+
+        pendingCompletion.onChange = { [weak self] in
+            self?.pendingCompletionTaskIds = self?.pendingCompletion.pendingIds ?? []
         }
 
         setupNotificationObserver()
@@ -533,29 +536,17 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
     /// If already pending, cancels the pending completion.
     func requestToggleCompletion(_ task: FocusTask) {
         if task.isCompleted {
-            // Uncompleting: immediate, no grace period
             _Concurrency.Task { await toggleCompletion(task) }
             return
         }
 
-        if pendingCompletionTaskIds.contains(task.id) {
-            cancelPendingCompletion(task.id)
-            return
-        }
-
-        // Start grace period
-        pendingCompletionTaskIds.insert(task.id)
         let taskId = task.id
-        let timer = _Concurrency.Task {
-            try? await _Concurrency.Task.sleep(for: Self.completionGracePeriod)
-            guard !_Concurrency.Task.isCancelled else { return }
-            self.pendingCompletionTaskIds.remove(taskId)
-            self.pendingCompletionTimers.removeValue(forKey: taskId)
-            guard let currentTask = self.tasks.first(where: { $0.id == taskId }),
+        pendingCompletion.scheduleCompletion(for: taskId) { [weak self] in
+            guard let self,
+                  let currentTask = self.tasks.first(where: { $0.id == taskId }),
                   !currentTask.isCompleted else { return }
             await self.toggleCompletion(currentTask)
         }
-        pendingCompletionTimers[taskId] = timer
     }
 
     /// Request subtask completion with a grace period for undo.
@@ -565,53 +556,27 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
             return
         }
 
-        if pendingCompletionTaskIds.contains(subtask.id) {
-            cancelPendingCompletion(subtask.id)
-            return
-        }
-
-        pendingCompletionTaskIds.insert(subtask.id)
         let subtaskId = subtask.id
-        let timer = _Concurrency.Task {
-            try? await _Concurrency.Task.sleep(for: Self.completionGracePeriod)
-            guard !_Concurrency.Task.isCancelled else { return }
-            self.pendingCompletionTaskIds.remove(subtaskId)
-            self.pendingCompletionTimers.removeValue(forKey: subtaskId)
-            guard let subtasks = self.subtasksMap[parentId],
+        pendingCompletion.scheduleCompletion(for: subtaskId) { [weak self] in
+            guard let self,
+                  let subtasks = self.subtasksMap[parentId],
                   let currentSubtask = subtasks.first(where: { $0.id == subtaskId }),
                   !currentSubtask.isCompleted else { return }
             await self.toggleSubtaskCompletion(currentSubtask, parentId: parentId)
         }
-        pendingCompletionTimers[subtaskId] = timer
     }
 
     /// Generic pending completion for external items (projects, lists) not in this ViewModel's tasks array.
-    /// Manages the pending set and timer; calls onComplete after the grace period.
     func requestExternalCompletion(id: UUID, onComplete: @escaping @MainActor () async -> Void) {
-        if pendingCompletionTaskIds.contains(id) {
-            cancelPendingCompletion(id)
-            return
-        }
-
-        pendingCompletionTaskIds.insert(id)
-        let timer = _Concurrency.Task {
-            try? await _Concurrency.Task.sleep(for: Self.completionGracePeriod)
-            guard !_Concurrency.Task.isCancelled else { return }
-            self.pendingCompletionTaskIds.remove(id)
-            self.pendingCompletionTimers.removeValue(forKey: id)
-            await onComplete()
-        }
-        pendingCompletionTimers[id] = timer
+        pendingCompletion.scheduleCompletion(for: id, action: onComplete)
     }
 
     func cancelPendingCompletion(_ taskId: UUID) {
-        pendingCompletionTimers[taskId]?.cancel()
-        pendingCompletionTimers.removeValue(forKey: taskId)
-        pendingCompletionTaskIds.remove(taskId)
+        pendingCompletion.cancel(taskId)
     }
 
     func isPendingCompletion(_ taskId: UUID) -> Bool {
-        pendingCompletionTaskIds.contains(taskId)
+        pendingCompletion.isPending(taskId)
     }
 
     /// Toggle parent task completion with cascade to subtasks

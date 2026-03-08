@@ -306,12 +306,12 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
 
             for task in tasks {
                 tasksMap[task.id] = task
+            }
 
-                // Fetch subtasks for any task that has a schedule in this view
-                let subtasks = try await taskRepository.fetchSubtasks(parentId: task.id)
-                if !subtasks.isEmpty {
-                    subtasksMap[task.id] = subtasks
-                }
+            // Batch-fetch all subtasks in a single query instead of N+1
+            let allSubtasks = try await taskRepository.fetchSubtasksByParentIds(taskIds)
+            for (parentId, subtasks) in allSubtasks {
+                subtasksMap[parentId] = subtasks
             }
         } catch {
             errorMessage = error.localizedDescription

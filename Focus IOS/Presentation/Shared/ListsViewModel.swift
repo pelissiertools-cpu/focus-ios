@@ -78,8 +78,8 @@ class ListsViewModel: ObservableObject, LogFilterable, TaskEditingViewModel {
     @Published var sortDirection: SortDirection = .lowestFirst
 
     // Pending completion grace period
+    let pendingCompletion = PendingCompletionManager()
     @Published var pendingCompletionTaskIds: Set<UUID> = []
-    private var pendingCompletionTimers: [UUID: _Concurrency.Task<Void, Never>] = [:]
 
     private let repository: TaskRepository
     private let categoryRepository: CategoryRepository
@@ -103,6 +103,10 @@ class ListsViewModel: ObservableObject, LogFilterable, TaskEditingViewModel {
         }
         if cache.hasLoadedCategories {
             self.categories = cache.categories
+        }
+
+        pendingCompletion.onChange = { [weak self] in
+            self?.pendingCompletionTaskIds = self?.pendingCompletion.pendingIds ?? []
         }
 
         setupNotificationObserver()
@@ -439,34 +443,22 @@ class ListsViewModel: ObservableObject, LogFilterable, TaskEditingViewModel {
             return
         }
 
-        if pendingCompletionTaskIds.contains(item.id) {
-            cancelPendingCompletion(item.id)
-            return
-        }
-
-        pendingCompletionTaskIds.insert(item.id)
         let itemId = item.id
-        let timer = _Concurrency.Task {
-            try? await _Concurrency.Task.sleep(for: .seconds(1.5))
-            guard !_Concurrency.Task.isCancelled else { return }
-            self.pendingCompletionTaskIds.remove(itemId)
-            self.pendingCompletionTimers.removeValue(forKey: itemId)
-            guard let items = self.itemsMap[listId],
+        pendingCompletion.scheduleCompletion(for: itemId) { [weak self] in
+            guard let self,
+                  let items = self.itemsMap[listId],
                   let currentItem = items.first(where: { $0.id == itemId }),
                   !currentItem.isCompleted else { return }
             await self.toggleItemCompletion(currentItem, listId: listId)
         }
-        pendingCompletionTimers[itemId] = timer
     }
 
     func cancelPendingCompletion(_ taskId: UUID) {
-        pendingCompletionTimers[taskId]?.cancel()
-        pendingCompletionTimers.removeValue(forKey: taskId)
-        pendingCompletionTaskIds.remove(taskId)
+        pendingCompletion.cancel(taskId)
     }
 
     func isPendingCompletion(_ taskId: UUID) -> Bool {
-        pendingCompletionTaskIds.contains(taskId)
+        pendingCompletion.isPending(taskId)
     }
 
     // MARK: - Item Completion (NO parent auto-complete — lists are never "completed")

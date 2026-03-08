@@ -169,6 +169,27 @@ class TaskRepository {
         return tasks
     }
 
+    /// Fetch subtasks for multiple parent tasks in a single query
+    func fetchSubtasksByParentIds(_ parentIds: [UUID]) async throws -> [UUID: [FocusTask]] {
+        guard !parentIds.isEmpty else { return [:] }
+
+        let tasks: [FocusTask] = try await supabase
+            .from("tasks")
+            .select()
+            .in("parent_task_id", values: parentIds.map { $0.uuidString })
+            .order("sort_order", ascending: true)
+            .execute()
+            .value
+
+        var grouped: [UUID: [FocusTask]] = [:]
+        for task in tasks {
+            if let parentId = task.parentTaskId {
+                grouped[parentId, default: []].append(task)
+            }
+        }
+        return grouped
+    }
+
     /// Create a new task
     func createTask(_ task: FocusTask) async throws -> FocusTask {
         let createdTask: FocusTask = try await supabase
@@ -397,25 +418,7 @@ class TaskRepository {
 
     /// Fetch all projects for the current user with optional server-side filters
     func fetchProjects(isCleared: Bool? = nil, isCompleted: Bool? = nil) async throws -> [FocusTask] {
-        var query = supabase
-            .from("tasks")
-            .select()
-            .eq("type", value: TaskType.project.rawValue)
-
-        if let isCleared {
-            query = query.eq("is_cleared", value: isCleared)
-        }
-        if let isCompleted {
-            query = query.eq("is_completed", value: isCompleted)
-        }
-
-        let projects: [FocusTask] = try await query
-            .order("sort_order", ascending: true)
-            .order("created_date", ascending: false)
-            .execute()
-            .value
-
-        return projects
+        try await fetchTasks(ofType: .project, isCleared: isCleared, isCompleted: isCompleted)
     }
 
     /// Fetch tasks belonging to a specific project
@@ -549,25 +552,7 @@ class TaskRepository {
 
     /// Fetch all goals for the current user
     func fetchGoals(isCleared: Bool? = nil, isCompleted: Bool? = nil) async throws -> [FocusTask] {
-        var query = supabase
-            .from("tasks")
-            .select()
-            .eq("type", value: TaskType.goal.rawValue)
-
-        if let isCleared {
-            query = query.eq("is_cleared", value: isCleared)
-        }
-        if let isCompleted {
-            query = query.eq("is_completed", value: isCompleted)
-        }
-
-        let goals: [FocusTask] = try await query
-            .order("sort_order", ascending: true)
-            .order("created_date", ascending: false)
-            .execute()
-            .value
-
-        return goals
+        try await fetchTasks(ofType: .goal, isCleared: isCleared, isCompleted: isCompleted)
     }
 
     /// Fetch tasks belonging to a specific goal (uses project_id FK)

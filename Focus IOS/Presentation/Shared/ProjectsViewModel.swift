@@ -86,8 +86,8 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
     @Published var isContentDoneCollapsed: Bool = true
 
     // Pending completion grace period
+    let pendingCompletion = PendingCompletionManager()
     @Published var pendingCompletionTaskIds: Set<UUID> = []
-    private var pendingCompletionTimers: [UUID: _Concurrency.Task<Void, Never>] = [:]
 
     private let repository: TaskRepository
     let scheduleRepository: ScheduleRepository
@@ -111,6 +111,10 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
         }
         if cache.hasLoadedCategories {
             self.categories = cache.categories
+        }
+
+        pendingCompletion.onChange = { [weak self] in
+            self?.pendingCompletionTaskIds = self?.pendingCompletion.pendingIds ?? []
         }
 
         setupNotificationObserver()
@@ -753,24 +757,14 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
             return
         }
 
-        if pendingCompletionTaskIds.contains(task.id) {
-            cancelPendingCompletion(task.id)
-            return
-        }
-
-        pendingCompletionTaskIds.insert(task.id)
         let taskId = task.id
-        let timer = _Concurrency.Task {
-            try? await _Concurrency.Task.sleep(for: .seconds(1.5))
-            guard !_Concurrency.Task.isCancelled else { return }
-            self.pendingCompletionTaskIds.remove(taskId)
-            self.pendingCompletionTimers.removeValue(forKey: taskId)
-            guard let tasks = self.projectTasksMap[projectId],
+        pendingCompletion.scheduleCompletion(for: taskId) { [weak self] in
+            guard let self,
+                  let tasks = self.projectTasksMap[projectId],
                   let currentTask = tasks.first(where: { $0.id == taskId }),
                   !currentTask.isCompleted else { return }
             await self.toggleTaskCompletion(currentTask, projectId: projectId)
         }
-        pendingCompletionTimers[taskId] = timer
     }
 
     func requestToggleSubtaskCompletion(_ subtask: FocusTask, parentId: UUID) {
@@ -779,34 +773,22 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
             return
         }
 
-        if pendingCompletionTaskIds.contains(subtask.id) {
-            cancelPendingCompletion(subtask.id)
-            return
-        }
-
-        pendingCompletionTaskIds.insert(subtask.id)
         let subtaskId = subtask.id
-        let timer = _Concurrency.Task {
-            try? await _Concurrency.Task.sleep(for: .seconds(1.5))
-            guard !_Concurrency.Task.isCancelled else { return }
-            self.pendingCompletionTaskIds.remove(subtaskId)
-            self.pendingCompletionTimers.removeValue(forKey: subtaskId)
-            guard let subtasks = self.subtasksMap[parentId],
+        pendingCompletion.scheduleCompletion(for: subtaskId) { [weak self] in
+            guard let self,
+                  let subtasks = self.subtasksMap[parentId],
                   let currentSubtask = subtasks.first(where: { $0.id == subtaskId }),
                   !currentSubtask.isCompleted else { return }
             await self.toggleSubtaskCompletion(currentSubtask, parentId: parentId)
         }
-        pendingCompletionTimers[subtaskId] = timer
     }
 
     func cancelPendingCompletion(_ taskId: UUID) {
-        pendingCompletionTimers[taskId]?.cancel()
-        pendingCompletionTimers.removeValue(forKey: taskId)
-        pendingCompletionTaskIds.remove(taskId)
+        pendingCompletion.cancel(taskId)
     }
 
     func isPendingCompletion(_ taskId: UUID) -> Bool {
-        pendingCompletionTaskIds.contains(taskId)
+        pendingCompletion.isPending(taskId)
     }
 
     func toggleSubtaskCompletion(_ subtask: FocusTask, parentId: UUID) async {

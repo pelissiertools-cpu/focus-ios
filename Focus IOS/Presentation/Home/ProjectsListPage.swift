@@ -85,15 +85,6 @@ struct ProjectsListPage: View {
                                 .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
                                 .listRowBackground(Color.clear)
                                 .listRowSeparator(.hidden)
-                                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                                    if !projectsViewModel.isEditMode {
-                                        Button(role: .destructive) {
-                                            projectToDelete = item
-                                        } label: {
-                                            Label("Delete", systemImage: "trash")
-                                        }
-                                    }
-                                }
                         }
                     }
                     .onMove { from, to in
@@ -122,15 +113,6 @@ struct ProjectsListPage: View {
                                 .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
                                 .listRowBackground(Color.clear)
                                 .listRowSeparator(.hidden)
-                                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                                    if !projectsViewModel.isEditMode {
-                                        Button(role: .destructive) {
-                                            projectToDelete = project
-                                        } label: {
-                                            Label("Delete", systemImage: "trash")
-                                        }
-                                    }
-                                }
                         }
                     }
                 }

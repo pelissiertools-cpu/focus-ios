@@ -78,15 +78,6 @@ struct QuickListsPage: View {
                                 .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
                                 .listRowBackground(Color.clear)
                                 .listRowSeparator(.hidden)
-                                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                                    if !listsViewModel.isEditMode {
-                                        Button(role: .destructive) {
-                                            listToDelete = item
-                                        } label: {
-                                            Label("Delete", systemImage: "trash")
-                                        }
-                                    }
-                                }
                         }
                     }
                     .onMove { from, to in
@@ -115,15 +106,6 @@ struct QuickListsPage: View {
                                 .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
                                 .listRowBackground(Color.clear)
                                 .listRowSeparator(.hidden)
-                                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                                    if !listsViewModel.isEditMode {
-                                        Button(role: .destructive) {
-                                            listToDelete = list
-                                        } label: {
-                                            Label("Delete", systemImage: "trash")
-                                        }
-                                    }
-                                }
                         }
                     }
                 }

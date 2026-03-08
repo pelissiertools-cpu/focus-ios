@@ -14,7 +14,7 @@ enum ProjectCardDisplayItem: Identifiable {
     case task(FocusTask)
     case section(FocusTask)
     case addSubtaskRow(parentId: UUID)
-    case addTaskRow
+    case addTaskRow(sectionId: UUID?)
     case completedHeader(count: Int)
 
     var id: String {
@@ -22,7 +22,7 @@ enum ProjectCardDisplayItem: Identifiable {
         case .task(let task): return "\(task.id.uuidString)-\(task.isCompleted)"
         case .section(let section): return "section-\(section.id.uuidString)"
         case .addSubtaskRow(let parentId): return "add-subtask-\(parentId.uuidString)"
-        case .addTaskRow: return "add-task"
+        case .addTaskRow(let sectionId): return "add-task-\(sectionId?.uuidString ?? "default")"
         case .completedHeader: return "completed-header"
         }
     }
@@ -277,11 +277,39 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
         let uncompleted = allTasks.filter { !$0.isCompleted && $0.parentTaskId == nil }.sorted { $0.sortOrder < $1.sortOrder }
         let completed = allTasks.filter { $0.isCompleted && $0.parentTaskId == nil }.sorted { $0.sortOrder < $1.sortOrder }
 
+        let hasSections = uncompleted.contains { $0.isSection }
         var result: [ProjectCardDisplayItem] = []
-        for task in uncompleted {
-            if task.isSection {
-                result.append(.section(task))
-            } else {
+
+        if hasSections {
+            var currentSectionId: UUID? = nil
+            var hasItemsBeforeFirstSection = false
+
+            for task in uncompleted {
+                if task.isSection {
+                    // Close previous group with an add row
+                    if currentSectionId != nil || hasItemsBeforeFirstSection {
+                        result.append(.addTaskRow(sectionId: currentSectionId))
+                    }
+                    result.append(.section(task))
+                    currentSectionId = task.id
+                } else {
+                    if currentSectionId == nil { hasItemsBeforeFirstSection = true }
+                    result.append(.task(task))
+                    if expandedTasks.contains(task.id) {
+                        for subtask in getUncompletedSubtasks(for: task.id) {
+                            result.append(.task(subtask))
+                        }
+                        for subtask in getCompletedSubtasks(for: task.id) {
+                            result.append(.task(subtask))
+                        }
+                        result.append(.addSubtaskRow(parentId: task.id))
+                    }
+                }
+            }
+            // Add row for the last section
+            result.append(.addTaskRow(sectionId: currentSectionId))
+        } else {
+            for task in uncompleted {
                 result.append(.task(task))
                 if expandedTasks.contains(task.id) {
                     for subtask in getUncompletedSubtasks(for: task.id) {
@@ -293,8 +321,9 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
                     result.append(.addSubtaskRow(parentId: task.id))
                 }
             }
+            result.append(.addTaskRow(sectionId: nil))
         }
-        result.append(.addTaskRow)
+
         if !completed.isEmpty {
             result.append(.completedHeader(count: completed.count))
             if !isContentDoneCollapsed {
@@ -553,6 +582,70 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
                 projectTasksMap[projectId] = [task]
             }
             subtasksMap[task.id] = []
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    /// Create a task positioned at the end of a specific section (or before the first section if sectionId is nil).
+    func createProjectTaskInSection(title: String, projectId: UUID, sectionId: UUID?) async {
+        guard let userId = authService.currentUser?.id else {
+            errorMessage = "No authenticated user"
+            return
+        }
+
+        let trimmed = title.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return }
+
+        do {
+            var allTasks = projectTasksMap[projectId] ?? []
+            let uncompleted = allTasks.filter { !$0.isCompleted && $0.parentTaskId == nil }.sorted { $0.sortOrder < $1.sortOrder }
+
+            // Find insertion index among uncompleted parent items
+            let insertionIndex: Int
+            if let sectionId = sectionId {
+                if let sectionIdx = uncompleted.firstIndex(where: { $0.id == sectionId }) {
+                    let rest = uncompleted[(sectionIdx + 1)...]
+                    insertionIndex = rest.firstIndex(where: { $0.isSection }) ?? uncompleted.count
+                } else {
+                    insertionIndex = uncompleted.count
+                }
+            } else {
+                insertionIndex = uncompleted.firstIndex(where: { $0.isSection }) ?? uncompleted.count
+            }
+
+            // Bump sort orders of items at or after insertion point
+            var updates: [(id: UUID, sortOrder: Int)] = []
+            for i in insertionIndex..<uncompleted.count {
+                let item = uncompleted[i]
+                let newSortOrder = item.sortOrder + 1
+                if let mapIdx = allTasks.firstIndex(where: { $0.id == item.id }) {
+                    allTasks[mapIdx].sortOrder = newSortOrder
+                }
+                updates.append((id: item.id, sortOrder: newSortOrder))
+            }
+            projectTasksMap[projectId] = allTasks
+
+            // Create the task with the insertion sort order
+            let task = try await repository.createProjectTask(
+                title: trimmed,
+                projectId: projectId,
+                userId: userId,
+                sortOrder: insertionIndex
+            )
+
+            if var tasks = projectTasksMap[projectId] {
+                tasks.append(task)
+                projectTasksMap[projectId] = tasks
+            } else {
+                projectTasksMap[projectId] = [task]
+            }
+            subtasksMap[task.id] = []
+
+            // Persist the bumped sort orders
+            if !updates.isEmpty {
+                _Concurrency.Task { await persistSortOrders(updates) }
+            }
         } catch {
             errorMessage = error.localizedDescription
         }

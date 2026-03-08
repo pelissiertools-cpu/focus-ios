@@ -368,12 +368,12 @@ struct ProjectContentView: View {
                             .listRowBackground(Color.clear)
                             .listRowSeparator(.hidden)
 
-                        case .addTaskRow:
+                        case .addTaskRow(let sectionId):
                             if !viewModel.contentEditMode {
                                 InlineAddRow(
                                     placeholder: "Task title",
                                     buttonLabel: "Add task",
-                                    onSubmit: { title in await viewModel.createProjectTask(title: title, projectId: project.id) },
+                                    onSubmit: { title in await viewModel.createProjectTaskInSection(title: title, projectId: project.id, sectionId: sectionId) },
                                     isAnyAddFieldActive: $isInlineAddFocused,
                                     verticalPadding: 8
                                 )
@@ -399,7 +399,7 @@ struct ProjectContentView: View {
                     case .section: return sum + 58
                     case .task(let t) where t.parentTaskId == nil: return sum + 56
                     case .completedHeader: return sum + 52
-                    case .addTaskRow: return viewModel.contentEditMode ? sum : sum + 56
+                    case .addTaskRow(_): return viewModel.contentEditMode ? sum : sum + 56
                     case .addSubtaskRow: return viewModel.contentEditMode ? sum : sum + 44
                     default: return sum + 44
                     }

@@ -122,8 +122,10 @@ struct HomeView: View {
     var body: some View {
         NavigationStack {
             ZStack {
+                ScrollViewReader { scrollProxy in
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
+                        Color.clear.frame(height: 0).id("homeScrollTop")
                         // MARK: - Top Bar (Profile + Search)
                         HStack {
                             Button(action: {
@@ -252,6 +254,10 @@ struct HomeView: View {
                     }
                     .padding(.bottom, 120)
                 }
+                .onAppear {
+                    scrollProxy.scrollTo("homeScrollTop", anchor: .top)
+                }
+                } // ScrollViewReader
 
                 // MARK: - FAB Button
                 if !showingAddBar {

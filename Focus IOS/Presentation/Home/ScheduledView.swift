@@ -1004,6 +1004,15 @@ struct ScheduledView: View {
                     }
                     .padding(.vertical, 8)
                     .contentShape(Rectangle())
+                    .onTapGesture {
+                        if let date = section.date {
+                            addTaskDates = [date]
+                            addTaskTimeframe = viewMode.timeframe
+                            withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                                showingAddBar = true
+                            }
+                        }
+                    }
                     .listRowInsets(EdgeInsets(top: 0, leading: 24, bottom: 0, trailing: 20))
                     .listRowSeparator(.visible, edges: .bottom)
                     .listRowBackground(Color.clear)

@@ -1138,6 +1138,9 @@ struct ScheduledView: View {
                         },
                         onPushToTomorrow: {
                             pushItemToTomorrow(taskId: task.id, scheduleId: scheduleId)
+                        },
+                        onUnschedule: {
+                            unscheduleItem(scheduleId: scheduleId)
                         }
                     )
 
@@ -1160,6 +1163,7 @@ struct ScheduledView: View {
                         onPushToTomorrow: {
                             pushItemToTomorrow(taskId: project.id, scheduleId: scheduleId)
                         },
+                        onUnschedule: { unscheduleItem(scheduleId: scheduleId) },
                         onDelete: {
                             await projectsVM.deleteProject(project)
                             await refreshAllData()
@@ -1185,6 +1189,7 @@ struct ScheduledView: View {
                         onPushToTomorrow: {
                             pushItemToTomorrow(taskId: list.id, scheduleId: scheduleId)
                         },
+                        onUnschedule: { unscheduleItem(scheduleId: scheduleId) },
                         onDelete: {
                             await listsVM.deleteList(list)
                             await refreshAllData()
@@ -1271,6 +1276,14 @@ struct ScheduledView: View {
             if let schedule = schedules?.first(where: { $0.id == scheduleId }) {
                 selectedScheduleForReschedule = schedule
             }
+        }
+    }
+
+    private func unscheduleItem(scheduleId: UUID) {
+        _Concurrency.Task {
+            try? await ScheduleRepository().deleteSchedule(id: scheduleId)
+            await refreshAllData()
+            await focusViewModel.fetchSchedules()
         }
     }
 
@@ -1986,6 +1999,7 @@ private struct ScheduledProjectRow: View {
     var onEdit: () -> Void
     var onReschedule: () -> Void
     var onPushToTomorrow: () -> Void
+    var onUnschedule: () -> Void
     var onDelete: () async -> Void
     @State private var showDeleteConfirmation = false
 
@@ -2027,6 +2041,7 @@ private struct ScheduledProjectRow: View {
                 ContextMenuItems.editButton { onEdit() }
                 ContextMenuItems.rescheduleButton { onReschedule() }
                 ContextMenuItems.pushToTomorrowButton { onPushToTomorrow() }
+                ContextMenuItems.unscheduleButton { onUnschedule() }
                 Divider()
                 ContextMenuItems.deleteButton { showDeleteConfirmation = true }
             }
@@ -2060,6 +2075,7 @@ private struct ScheduledListRow: View {
     var onEdit: () -> Void
     var onReschedule: () -> Void
     var onPushToTomorrow: () -> Void
+    var onUnschedule: () -> Void
     var onDelete: () async -> Void
     @State private var showDeleteConfirmation = false
 
@@ -2101,6 +2117,7 @@ private struct ScheduledListRow: View {
                 ContextMenuItems.editButton { onEdit() }
                 ContextMenuItems.rescheduleButton { onReschedule() }
                 ContextMenuItems.pushToTomorrowButton { onPushToTomorrow() }
+                ContextMenuItems.unscheduleButton { onUnschedule() }
                 Divider()
                 ContextMenuItems.deleteButton { showDeleteConfirmation = true }
             }

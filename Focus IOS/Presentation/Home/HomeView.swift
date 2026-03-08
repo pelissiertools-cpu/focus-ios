@@ -197,11 +197,11 @@ struct HomeView: View {
 
                         // MARK: - Projects / Quick Lists / Goals
                         HStack(spacing: 8) {
-                            homeCardCompact(title: "Projects", icon: "folder", count: viewModel.projects.filter({ !$0.isSection }).count) {
-                                viewModel.selectedMenuItem = .projects
-                            }
                             homeCardCompact(title: "Quick lists", icon: "list.bullet", count: viewModel.lists.filter({ !$0.isSection }).count) {
                                 viewModel.selectedMenuItem = .quickLists
+                            }
+                            homeCardCompact(title: "Projects", icon: "folder", count: viewModel.projects.filter({ !$0.isSection }).count) {
+                                viewModel.selectedMenuItem = .projects
                             }
                             homeCardCompact(title: "Goals", customIcon: {
                                 Image("TargetIcon")
@@ -641,10 +641,6 @@ struct HomeView: View {
                     .lineLimit(1)
 
                 Spacer()
-
-                Image(systemName: "chevron.right")
-                    .font(.inter(size: 12, weight: .semiBold))
-                    .foregroundColor(.secondary)
             }
             .padding(.vertical, 10)
             .contentShape(Rectangle())

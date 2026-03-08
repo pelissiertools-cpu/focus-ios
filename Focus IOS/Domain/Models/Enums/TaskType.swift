@@ -12,12 +12,14 @@ enum TaskType: String, Codable, CaseIterable {
     case task = "task"
     case project = "project"
     case list = "list"
+    case goal = "goal"
 
     var displayName: String {
         switch self {
         case .task: return "Task"
         case .project: return "Project"
         case .list: return "List"
+        case .goal: return "Goal"
         }
     }
 }

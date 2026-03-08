@@ -463,11 +463,13 @@ class TaskRepository {
         return try await createTask(section)
     }
 
-    /// Create a top-level section header for projects or lists pages
+    /// Create a top-level section header for projects, lists, or goals pages
     func createTopLevelSection(title: String, type: TaskType, userId: UUID) async throws -> FocusTask {
         let existingItems: [FocusTask]
         if type == .project {
             existingItems = try await fetchProjects()
+        } else if type == .goal {
+            existingItems = try await fetchGoals()
         } else {
             existingItems = try await fetchTasks(ofType: type)
         }
@@ -523,6 +525,106 @@ class TaskRepository {
             .update(update)
             .eq("category_id", value: sourceCategoryId.uuidString)
             .execute()
+    }
+
+    // MARK: - Goal Operations
+
+    /// Fetch all goals for the current user
+    func fetchGoals(isCleared: Bool? = nil, isCompleted: Bool? = nil) async throws -> [FocusTask] {
+        var query = supabase
+            .from("tasks")
+            .select()
+            .eq("type", value: TaskType.goal.rawValue)
+
+        if let isCleared {
+            query = query.eq("is_cleared", value: isCleared)
+        }
+        if let isCompleted {
+            query = query.eq("is_completed", value: isCompleted)
+        }
+
+        let goals: [FocusTask] = try await query
+            .order("sort_order", ascending: true)
+            .order("created_date", ascending: false)
+            .execute()
+            .value
+
+        return goals
+    }
+
+    /// Fetch tasks belonging to a specific goal (uses project_id FK)
+    func fetchGoalTasks(goalId: UUID) async throws -> [FocusTask] {
+        let tasks: [FocusTask] = try await supabase
+            .from("tasks")
+            .select()
+            .eq("project_id", value: goalId.uuidString)
+            .order("sort_order", ascending: true)
+            .execute()
+            .value
+
+        return tasks
+    }
+
+    /// Create a new goal
+    func createGoal(title: String, userId: UUID, dueDate: Date? = nil, categoryId: UUID? = nil, priority: Priority = .low) async throws -> FocusTask {
+        let existingGoals = try await fetchGoals()
+        let nextSortOrder = (existingGoals.map { $0.sortOrder }.max() ?? -1) + 1
+
+        let goal = FocusTask(
+            userId: userId,
+            title: title,
+            type: .goal,
+            sortOrder: nextSortOrder,
+            priority: priority,
+            dueDate: dueDate,
+            categoryId: categoryId
+        )
+
+        return try await createTask(goal)
+    }
+
+    /// Create a task under a goal
+    func createGoalTask(title: String, goalId: UUID, userId: UUID, sortOrder: Int? = nil) async throws -> FocusTask {
+        let order: Int
+        if let sortOrder = sortOrder {
+            order = sortOrder
+        } else {
+            let existingTasks = try await fetchGoalTasks(goalId: goalId)
+            order = (existingTasks.map { $0.sortOrder }.max() ?? -1) + 1
+        }
+
+        let task = FocusTask(
+            userId: userId,
+            title: title,
+            type: .task,
+            sortOrder: order,
+            projectId: goalId
+        )
+
+        return try await createTask(task)
+    }
+
+    /// Create a section header under a goal
+    func createGoalSection(title: String, goalId: UUID, userId: UUID, sortOrder: Int? = nil) async throws -> FocusTask {
+        let order: Int
+        if let sortOrder = sortOrder {
+            order = sortOrder
+        } else {
+            let existingTasks = try await fetchGoalTasks(goalId: goalId)
+            order = (existingTasks.map { $0.sortOrder }.max() ?? -1) + 1
+        }
+
+        let section = FocusTask(
+            userId: userId,
+            title: title,
+            type: .task,
+            sortOrder: order,
+            isInLibrary: false,
+            isSection: true,
+            projectId: goalId
+        )
+
+        return try await createTask(section)
     }
 
     /// Restore subtasks to specific completion states

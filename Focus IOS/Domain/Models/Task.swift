@@ -29,6 +29,9 @@ struct FocusTask: Codable, Identifiable, Hashable {
     var isCleared: Bool
     var isPinned: Bool
 
+    // Due date
+    var dueDate: Date?
+
     // Foreign keys
     var categoryId: UUID?
     var projectId: UUID?
@@ -52,6 +55,7 @@ struct FocusTask: Codable, Identifiable, Hashable {
         case isSection = "is_section"
         case isCleared = "is_cleared"
         case isPinned = "is_pinned"
+        case dueDate = "due_date"
         case categoryId = "category_id"
         case projectId = "project_id"
         case parentTaskId = "parent_task_id"
@@ -75,6 +79,7 @@ struct FocusTask: Codable, Identifiable, Hashable {
         isSection: Bool = false,
         isCleared: Bool = false,
         isPinned: Bool = false,
+        dueDate: Date? = nil,
         categoryId: UUID? = nil,
         projectId: UUID? = nil,
         parentTaskId: UUID? = nil
@@ -95,6 +100,7 @@ struct FocusTask: Codable, Identifiable, Hashable {
         self.isSection = isSection
         self.isCleared = isCleared
         self.isPinned = isPinned
+        self.dueDate = dueDate
         self.categoryId = categoryId
         self.projectId = projectId
         self.parentTaskId = parentTaskId
@@ -118,6 +124,7 @@ struct FocusTask: Codable, Identifiable, Hashable {
         isSection = try container.decode(Bool.self, forKey: .isSection)
         isCleared = try container.decodeIfPresent(Bool.self, forKey: .isCleared) ?? false
         isPinned = try container.decodeIfPresent(Bool.self, forKey: .isPinned) ?? false
+        dueDate = try container.decodeIfPresent(Date.self, forKey: .dueDate)
         categoryId = try container.decodeIfPresent(UUID.self, forKey: .categoryId)
         projectId = try container.decodeIfPresent(UUID.self, forKey: .projectId)
         parentTaskId = try container.decodeIfPresent(UUID.self, forKey: .parentTaskId)

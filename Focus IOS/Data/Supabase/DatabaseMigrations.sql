@@ -312,3 +312,35 @@ ALTER TABLE tasks ADD COLUMN IF NOT EXISTS is_pinned BOOLEAN DEFAULT false;
 -- ==============================================
 
 ALTER TABLE categories ADD COLUMN IF NOT EXISTS is_system BOOLEAN DEFAULT false;
+
+-- ==============================================
+-- GOAL SUPPORT
+-- Goals are FocusTask entries with type = 'goal'.
+-- Also adds due_date for deadline tracking (any task type).
+-- ==============================================
+
+-- 1. Update type CHECK to include 'goal'
+DO $$
+DECLARE
+  cname TEXT;
+BEGIN
+  SELECT conname INTO cname
+  FROM pg_constraint
+  WHERE conrelid = 'tasks'::regclass
+    AND contype = 'c'
+    AND pg_get_constraintdef(oid) LIKE '%type%';
+  IF cname IS NOT NULL THEN
+    EXECUTE 'ALTER TABLE tasks DROP CONSTRAINT ' || cname;
+  END IF;
+END$$;
+
+ALTER TABLE tasks ADD CONSTRAINT tasks_type_check CHECK (type IN ('task', 'project', 'list', 'goal'));
+
+-- 2. Add due_date column (nullable, usable by any task type)
+ALTER TABLE tasks ADD COLUMN IF NOT EXISTS due_date TIMESTAMPTZ;
+
+-- 3. Index for goal lookups
+CREATE INDEX IF NOT EXISTS idx_tasks_goals ON tasks(user_id, type) WHERE type = 'goal';
+
+-- 4. Index for due date queries
+CREATE INDEX IF NOT EXISTS idx_tasks_due_date ON tasks(due_date) WHERE due_date IS NOT NULL;

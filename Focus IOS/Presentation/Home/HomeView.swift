@@ -15,6 +15,7 @@ struct HomeView: View {
     @EnvironmentObject var focusViewModel: FocusTabViewModel
     @StateObject private var projectsViewModel: ProjectsViewModel
     @StateObject private var listsViewModel: ListsViewModel
+    @StateObject private var goalsViewModel: GoalsViewModel
     @State private var showSettings = false
     @State private var showSearch = false
 
@@ -114,6 +115,7 @@ struct HomeView: View {
         self.authService = authService
         _projectsViewModel = StateObject(wrappedValue: ProjectsViewModel(authService: authService))
         _listsViewModel = StateObject(wrappedValue: ListsViewModel(authService: authService))
+        _goalsViewModel = StateObject(wrappedValue: GoalsViewModel(authService: authService))
         _taskListVM = StateObject(wrappedValue: TaskListViewModel(authService: authService))
     }
 
@@ -212,7 +214,9 @@ struct HomeView: View {
                                     .scaledToFit()
                                     .frame(width: 18, height: 18)
                                     .foregroundColor(.primary)
-                            }) { }
+                            }, count: viewModel.goals.filter({ !$0.isSection }).count) {
+                                viewModel.selectedMenuItem = .goals
+                            }
                         }
                         .padding(.horizontal, 20)
 
@@ -318,6 +322,8 @@ struct HomeView: View {
                     ProjectsListPage(viewModel: viewModel, authService: authService)
                 } else if menuItem == .quickLists {
                     QuickListsPage(viewModel: viewModel, authService: authService)
+                } else if menuItem == .goals {
+                    GoalsListPage(viewModel: viewModel, authService: authService)
                 } else if menuItem == .someday {
                     if let somedayCategory = viewModel.somedayCategory {
                         CategoryDetailView(category: somedayCategory, authService: authService)
@@ -329,6 +335,8 @@ struct HomeView: View {
             .navigationDestination(item: $viewModel.selectedPinnedItem) { item in
                 if item.type == .project {
                     ProjectContentView(project: item, viewModel: projectsViewModel)
+                } else if item.type == .goal {
+                    GoalContentView(goal: item, viewModel: goalsViewModel)
                 } else {
                     ListContentView(list: item, viewModel: listsViewModel)
                 }
@@ -393,6 +401,9 @@ struct HomeView: View {
                 if viewModel.lists.isEmpty {
                     await viewModel.fetchLists()
                 }
+                if viewModel.goals.isEmpty {
+                    await viewModel.fetchGoals()
+                }
                 await taskListVM.fetchScheduledTaskIds()
                 await taskListVM.fetchTasks()
                 await taskListVM.fetchCategories()
@@ -403,6 +414,7 @@ struct HomeView: View {
                 // Pre-load categories for add bar
                 await projectsViewModel.fetchProjects()
                 await listsViewModel.fetchLists()
+                await goalsViewModel.fetchGoals()
 
                 // Pre-fetch today schedules so TodayView opens instantly
                 await prefetchTodaySchedules()
@@ -412,7 +424,7 @@ struct HomeView: View {
                 if isShowing {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                         switch addBarMode {
-                        case .task: addBarTitleFocus = .task
+                        case .task, .goal: addBarTitleFocus = .task
                         case .list: addBarTitleFocus = .list
                         case .project: addBarTitleFocus = .project
                         }
@@ -426,7 +438,7 @@ struct HomeView: View {
                 focusedListItemId = nil
                 focusedProjectTaskId = nil
                 switch newMode {
-                case .task: addBarTitleFocus = .task
+                case .task, .goal: addBarTitleFocus = .task
                 case .list: addBarTitleFocus = .list
                 case .project: addBarTitleFocus = .project
                 }
@@ -628,6 +640,14 @@ struct HomeView: View {
                 if item.type == .project {
                     Image(systemName: "folder")
                         .font(.inter(.body, weight: .medium))
+                        .foregroundColor(.secondary)
+                        .frame(width: 24)
+                } else if item.type == .goal {
+                    Image("TargetIcon")
+                        .renderingMode(.template)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 20, height: 20)
                         .foregroundColor(.secondary)
                         .frame(width: 24)
                 } else {
@@ -842,7 +862,7 @@ struct HomeView: View {
     @ViewBuilder
     private var activeAddBar: some View {
         switch addBarMode {
-        case .task: addTaskBar
+        case .task, .goal: addTaskBar
         case .list: addListBar
         case .project: addProjectBar
         }

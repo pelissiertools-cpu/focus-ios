@@ -61,6 +61,7 @@ struct ProjectCard: View {
                 Image(systemName: viewModel.selectedProjectIds.contains(project.id) ? "checkmark.circle.fill" : "circle.dashed")
                     .font(.inter(.title3))
                     .foregroundColor(viewModel.selectedProjectIds.contains(project.id) ? .appRed : .secondary)
+                    .accessibilityLabel(viewModel.selectedProjectIds.contains(project.id) ? "Selected" : "Select")
             }
 
             // Project icon
@@ -193,6 +194,7 @@ struct ProjectTaskRow: View {
                     .symbolEffect(.pulse, isActive: isPending)
             }
             .buttonStyle(.plain)
+            .accessibilityLabel(displayCompleted ? "Completed" : "Mark complete")
         }
         .padding(.vertical, 8)
         .contentShape(Rectangle())
@@ -260,6 +262,7 @@ struct ProjectSubtaskRow: View {
                     .symbolEffect(.pulse, isActive: isPending)
             }
             .buttonStyle(.plain)
+            .accessibilityLabel(displayCompleted ? "Completed" : "Mark complete")
         }
         .padding(.vertical, 6)
         .contentShape(Rectangle())

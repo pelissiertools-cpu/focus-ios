@@ -92,6 +92,7 @@ struct AddListBar: View {
                             .frame(width: 36, height: 36)
                             .background(Color(.systemGray4), in: Circle())
                     }
+                    .accessibilityLabel("Clear schedule")
                     .buttonStyle(.plain)
 
                     Spacer()
@@ -112,6 +113,7 @@ struct AddListBar: View {
                                 in: Circle()
                             )
                     }
+                    .accessibilityLabel("Confirm schedule")
                     .buttonStyle(.plain)
                 }
                 .padding(.horizontal, 14)
@@ -150,6 +152,7 @@ struct AddListBar: View {
                             .padding(.vertical, 8)
                             .background(Color.white, in: Capsule())
                     }
+                    .accessibilityLabel("More options")
                     .buttonStyle(.plain)
 
                     Spacer()
@@ -166,6 +169,7 @@ struct AddListBar: View {
                                 in: Circle()
                             )
                     }
+                    .accessibilityLabel("Save list")
                     .buttonStyle(.plain)
                     .disabled(isTitleEmpty)
                 }

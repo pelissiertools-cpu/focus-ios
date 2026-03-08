@@ -304,6 +304,7 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                                 .foregroundColor(.secondary)
                         }
                         .buttonStyle(.plain)
+                        .accessibilityLabel("Remove suggestion")
                     }
                 }
 
@@ -331,6 +332,7 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                                 .foregroundColor(.secondary)
                         }
                         .buttonStyle(.plain)
+                        .accessibilityLabel("Cancel")
                     }
                 }
 
@@ -390,6 +392,7 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                         .foregroundColor(.secondary)
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel("Delete subtask")
             }
         }
     }
@@ -547,6 +550,7 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                     .glassEffect(.regular.interactive(), in: .circle)
             }
             .buttonStyle(.plain)
+            .accessibilityLabel("Delete task")
         }
         .padding(.horizontal, 16)
     }

@@ -184,6 +184,7 @@ struct CategoryDetailView: View {
                         .frame(width: 44, height: 44)
                         .contentShape(Rectangle())
                 }
+                .accessibilityLabel("Back")
             }
         }
         .onChange(of: isNameFocused) { _, focused in

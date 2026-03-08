@@ -197,6 +197,7 @@ struct ListContentView: View {
                         .frame(width: 44, height: 44)
                         .contentShape(Rectangle())
                 }
+                .accessibilityLabel("Back")
             }
         }
         .task {
@@ -333,6 +334,7 @@ private struct ListContentItemRow: View {
                     .symbolEffect(.pulse, isActive: isPending)
             }
             .buttonStyle(.plain)
+            .accessibilityLabel(displayCompleted ? "Completed" : "Mark complete")
         }
         .padding(.vertical, 8)
         .contentShape(Rectangle())

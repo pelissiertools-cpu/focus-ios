@@ -261,6 +261,7 @@ struct ProjectContentView: View {
                             .frame(width: 44, height: 44)
                             .contentShape(Rectangle())
                     }
+                    .accessibilityLabel("Back")
                 }
             }
             ToolbarItem(placement: .principal) {
@@ -430,6 +431,7 @@ private struct ContentTaskRow: View {
                 Image(systemName: viewModel.selectedContentTaskIds.contains(task.id) ? "checkmark.circle.fill" : "circle")
                     .font(.inter(.title3))
                     .foregroundColor(viewModel.selectedContentTaskIds.contains(task.id) ? .appRed : .secondary)
+                    .accessibilityLabel(viewModel.selectedContentTaskIds.contains(task.id) ? "Selected" : "Select")
             }
 
             VStack(alignment: .leading, spacing: 4) {
@@ -457,6 +459,7 @@ private struct ContentTaskRow: View {
                         .symbolEffect(.pulse, isActive: isPending)
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel(displayCompleted ? "Completed" : "Mark complete")
             }
         }
         .padding(.vertical, 8)

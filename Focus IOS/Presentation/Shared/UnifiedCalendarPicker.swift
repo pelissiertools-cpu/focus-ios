@@ -70,6 +70,7 @@ struct DailyCalendarView: View {
                     Image(systemName: "chevron.left")
                         .foregroundColor(Color.appRed)
                 }
+                .accessibilityLabel("Previous month")
                 .buttonStyle(.borderless)
 
                 Spacer()
@@ -86,6 +87,7 @@ struct DailyCalendarView: View {
                     Image(systemName: "chevron.right")
                         .foregroundColor(Color.appRed)
                 }
+                .accessibilityLabel("Next month")
                 .buttonStyle(.borderless)
             }
             .padding(.horizontal)
@@ -275,6 +277,7 @@ struct WeeklyCalendarView: View {
                     Image(systemName: "chevron.left")
                         .foregroundColor(Color.appRed)
                 }
+                .accessibilityLabel("Previous month")
                 .buttonStyle(.borderless)
 
                 Spacer()
@@ -302,6 +305,7 @@ struct WeeklyCalendarView: View {
                     Image(systemName: "chevron.right")
                         .foregroundColor(Color.appRed)
                 }
+                .accessibilityLabel("Next month")
                 .buttonStyle(.borderless)
             }
             .padding(.horizontal)
@@ -556,6 +560,7 @@ struct MonthlyCalendarView: View {
                         Image(systemName: "chevron.left")
                             .foregroundColor(Color.appRed)
                     }
+                    .accessibilityLabel("Previous year")
                     .buttonStyle(.borderless)
 
                     Spacer()
@@ -577,6 +582,7 @@ struct MonthlyCalendarView: View {
                         Image(systemName: "chevron.right")
                             .foregroundColor(Color.appRed)
                     }
+                    .accessibilityLabel("Next year")
                     .buttonStyle(.borderless)
                 }
                 .padding(.horizontal)

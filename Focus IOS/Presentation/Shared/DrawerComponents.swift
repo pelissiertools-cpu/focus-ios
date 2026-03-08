@@ -80,6 +80,7 @@ struct DrawerContainer<Content: View>: View {
             }
             .frame(width: 44, height: 44)
             .contentShape(Rectangle())
+            .accessibilityLabel("Close")
         case .check(let action, let highlighted):
             Button(action: action) {
                 Image(systemName: "checkmark")
@@ -92,6 +93,7 @@ struct DrawerContainer<Content: View>: View {
             .buttonStyle(.plain)
             .frame(width: 44, height: 44)
             .contentShape(Rectangle())
+            .accessibilityLabel("Confirm")
         }
     }
 }

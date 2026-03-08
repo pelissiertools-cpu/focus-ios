@@ -86,6 +86,7 @@ struct EditModeActionBar<VM: LogFilterable>: View {
                             }
                             .buttonStyle(.plain)
                             .disabled(!hasSelection)
+                            .accessibilityLabel(item.label)
 
                             if index < actions.count - 1 {
                                 Divider()

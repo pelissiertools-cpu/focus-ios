@@ -100,6 +100,7 @@ struct AddProjectBar: View {
                             .frame(width: 36, height: 36)
                             .background(Color(.systemGray4), in: Circle())
                     }
+                    .accessibilityLabel("Clear schedule")
                     .buttonStyle(.plain)
 
                     Spacer()
@@ -120,6 +121,7 @@ struct AddProjectBar: View {
                                 in: Circle()
                             )
                     }
+                    .accessibilityLabel("Confirm schedule")
                     .buttonStyle(.plain)
                 }
                 .padding(.horizontal, 14)
@@ -158,6 +160,7 @@ struct AddProjectBar: View {
                             .padding(.vertical, 8)
                             .background(Color.white, in: Capsule())
                     }
+                    .accessibilityLabel("More options")
                     .buttonStyle(.plain)
 
                     Spacer()
@@ -174,6 +177,7 @@ struct AddProjectBar: View {
                                 in: Circle()
                             )
                     }
+                    .accessibilityLabel("Save project")
                     .buttonStyle(.plain)
                     .disabled(isTitleEmpty)
                 }
@@ -310,6 +314,7 @@ struct AddProjectBar: View {
                     .font(.inter(.caption))
                     .foregroundColor(.secondary)
             }
+            .accessibilityLabel("Remove task")
             .buttonStyle(.plain)
         }
 
@@ -342,6 +347,7 @@ struct AddProjectBar: View {
                         .font(.inter(.caption))
                         .foregroundColor(.secondary)
                 }
+                .accessibilityLabel("Remove subtask")
                 .buttonStyle(.plain)
             }
             .padding(.leading, 28)

@@ -135,6 +135,7 @@ struct ProjectsListPage: View {
                                 .glassEffect(.regular.tint(.charcoal).interactive(), in: .circle)
                                 .shadow(radius: 4, y: 2)
                         }
+                        .accessibilityLabel("Add project")
                         .padding(.trailing, 20)
                         .padding(.bottom, 20)
                     }
@@ -252,6 +253,7 @@ struct ProjectsListPage: View {
                         .frame(width: 44, height: 44)
                         .contentShape(Rectangle())
                 }
+                .accessibilityLabel(projectsViewModel.isEditMode ? "Cancel" : "Back")
             }
             ToolbarItem(placement: .navigationBarTrailing) {
                 if projectsViewModel.isEditMode {
@@ -291,6 +293,7 @@ struct ProjectsListPage: View {
                             .frame(width: 30, height: 30)
                             .background(Color.pillBackground, in: Circle())
                     }
+                    .accessibilityLabel("More options")
                 }
             }
         }

@@ -94,6 +94,7 @@ struct TasksListView: View {
                                     .glassEffect(.regular.tint(.glassTint).interactive(), in: .circle)
                             }
                             .buttonStyle(.plain)
+                            .accessibilityLabel("Search")
                         }
 
                         SortMenuButton(viewModel: viewModel, onEditCategories: { showCategoryEditDrawer = true })
@@ -362,6 +363,7 @@ struct PrioritySectionHeader: View {
                             .background(Color.darkGray, in: Circle())
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel("Add task")
                 }
             }
             .padding(.leading, 16)
@@ -556,6 +558,7 @@ struct FlatTaskRow: View {
                 Image(systemName: isSelected ? "checkmark.circle.fill" : "circle.dashed")
                     .font(.inter(.title3))
                     .foregroundColor(isSelected ? .appRed : .secondary)
+                    .accessibilityLabel(isSelected ? "Selected" : "Select")
             }
 
             // Task content
@@ -605,6 +608,7 @@ struct FlatTaskRow: View {
                         .symbolEffect(.pulse, isActive: isPending)
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel(displayCompleted ? "Completed" : "Mark complete")
             }
         }
         .padding(.vertical, isParent ? 8 : 6)
@@ -726,6 +730,7 @@ struct ExpandableTaskRow: View {
                 Image(systemName: isSelected ? "checkmark.circle.fill" : "circle.dashed")
                     .font(.inter(.title3))
                     .foregroundColor(isSelected ? .appRed : .secondary)
+                    .accessibilityLabel(isSelected ? "Selected" : "Select")
             }
 
             // Task content
@@ -754,6 +759,7 @@ struct ExpandableTaskRow: View {
                         .foregroundColor(task.isCompleted ? Color.focusBlue.opacity(0.6) : .gray)
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel(task.isCompleted ? "Completed" : "Mark complete")
             }
         }
         .padding(.vertical, 8)
@@ -854,6 +860,7 @@ struct SubtaskRow: View {
                     .symbolEffect(.pulse, isActive: isPending)
             }
             .buttonStyle(.plain)
+            .accessibilityLabel(displayCompleted ? "Completed" : "Mark complete")
         }
         .padding(.vertical, 6)
         .contentShape(Rectangle())
@@ -987,6 +994,7 @@ struct SortMenuButton<VM: LogFilterable>: View {
                 .glassEffect(.regular.tint(.glassTint).interactive(), in: .circle)
                 .allowsHitTesting(false)
         )
+        .accessibilityLabel("Sort and filter")
     }
 }
 

@@ -491,6 +491,7 @@ struct HomeView: View {
                                 .frame(width: 44, height: 44)
                                 .contentShape(Rectangle())
                         }
+                        .accessibilityLabel("Back")
                     }
                 }
         }
@@ -790,6 +791,7 @@ struct HomeView: View {
                         .glassEffect(.regular.tint(.charcoal).interactive(), in: .circle)
                         .shadow(radius: 4, y: 2)
                 }
+                .accessibilityLabel("Add")
                 .padding(.trailing, 20)
                 .padding(.bottom, 20)
             }
@@ -2160,6 +2162,7 @@ private struct HomePlaceholderPage: View {
                         .frame(width: 44, height: 44)
                         .contentShape(Rectangle())
                 }
+                .accessibilityLabel("Back")
             }
         }
     }

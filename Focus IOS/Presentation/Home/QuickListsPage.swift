@@ -128,6 +128,7 @@ struct QuickListsPage: View {
                                 .glassEffect(.regular.tint(.charcoal).interactive(), in: .circle)
                                 .shadow(radius: 4, y: 2)
                         }
+                        .accessibilityLabel("Add list")
                         .padding(.trailing, 20)
                         .padding(.bottom, 20)
                     }
@@ -245,6 +246,7 @@ struct QuickListsPage: View {
                         .frame(width: 44, height: 44)
                         .contentShape(Rectangle())
                 }
+                .accessibilityLabel(listsViewModel.isEditMode ? "Cancel" : "Back")
             }
             ToolbarItem(placement: .navigationBarTrailing) {
                 if listsViewModel.isEditMode {

@@ -821,6 +821,7 @@ struct ScheduledView: View {
                         .frame(width: 30, height: 30)
                         .background(Color.pillBackground, in: Circle())
                 }
+                .accessibilityLabel("Search")
             }
 
             if isSearchActive {
@@ -843,6 +844,7 @@ struct ScheduledView: View {
                                 .font(.inter(.subheadline))
                                 .foregroundColor(.secondary)
                         }
+                        .accessibilityLabel("Clear search")
                     }
                 }
                 .padding(.horizontal, 12)
@@ -913,6 +915,7 @@ struct ScheduledView: View {
                         .glassEffect(.regular.tint(.charcoal).interactive(), in: .circle)
                         .shadow(radius: 4, y: 2)
                 }
+                .accessibilityLabel("Add task")
                 .padding(.trailing, 20)
                 .padding(.bottom, 20)
             }
@@ -1213,6 +1216,7 @@ struct ScheduledView: View {
                 .font(.inter(.title3))
                 .foregroundColor(.secondary.opacity(0.5))
         }
+        .accessibilityLabel("Add task")
         .buttonStyle(.plain)
         .padding(.vertical, 4)
         .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
@@ -1636,6 +1640,7 @@ private extension ScheduledView {
                     .frame(width: 36, height: 36)
                     .background(Color(.systemGray4), in: Circle())
             }
+            .accessibilityLabel("Clear schedule")
             .buttonStyle(.plain)
 
             Spacer()
@@ -1653,6 +1658,7 @@ private extension ScheduledView {
                     .frame(width: 36, height: 36)
                     .background(hasDateChanges ? Color.appRed : Color(.systemGray4), in: Circle())
             }
+            .accessibilityLabel("Confirm schedule")
             .buttonStyle(.plain)
         }
         .padding(.horizontal, 14)
@@ -1684,6 +1690,7 @@ private extension ScheduledView {
                     .padding(.vertical, 8)
                     .background(Color.white, in: Capsule())
             }
+            .accessibilityLabel("More options")
             .buttonStyle(.plain)
 
             Spacer()
@@ -1715,6 +1722,7 @@ private extension ScheduledView {
                     .frame(width: 36, height: 36)
                     .background(isAddTaskTitleEmpty ? Color(.systemGray4) : Color.focusBlue, in: Circle())
             }
+            .accessibilityLabel("Save task")
             .buttonStyle(.plain)
             .disabled(isAddTaskTitleEmpty)
         }
@@ -1808,6 +1816,7 @@ private extension ScheduledView {
                     .frame(width: 44, height: 44)
                     .contentShape(Rectangle())
             }
+            .accessibilityLabel("Back")
         }
     }
 
@@ -1839,6 +1848,7 @@ private extension ScheduledView {
                 .frame(width: 30, height: 30)
                 .background(Color.pillBackground, in: Circle())
         }
+        .accessibilityLabel("More options")
     }
 }
 
@@ -2004,6 +2014,7 @@ private struct ScheduledProjectRow: View {
                 Image(systemName: isSelected ? "checkmark.circle.fill" : "circle.dashed")
                     .font(.inter(.title3))
                     .foregroundColor(isSelected ? .appRed : .secondary)
+                    .accessibilityLabel(isSelected ? "Selected" : "Select")
             }
             Image(systemName: "folder")
                 .font(.inter(.body, weight: .medium))
@@ -2025,6 +2036,7 @@ private struct ScheduledProjectRow: View {
                         .foregroundColor(isPending ? Color.focusBlue.opacity(0.6) : .gray)
                         .symbolEffect(.pulse, isActive: isPending)
                 }
+                .accessibilityLabel(isPending ? "Completed" : "Mark complete")
                 .buttonStyle(.plain)
             }
         }
@@ -2080,6 +2092,7 @@ private struct ScheduledListRow: View {
                 Image(systemName: isSelected ? "checkmark.circle.fill" : "circle.dashed")
                     .font(.inter(.title3))
                     .foregroundColor(isSelected ? .appRed : .secondary)
+                    .accessibilityLabel(isSelected ? "Selected" : "Select")
             }
             Image(systemName: "list.bullet")
                 .font(.inter(.body, weight: .medium))
@@ -2101,6 +2114,7 @@ private struct ScheduledListRow: View {
                         .foregroundColor(isPending ? Color.focusBlue.opacity(0.6) : .gray)
                         .symbolEffect(.pulse, isActive: isPending)
                 }
+                .accessibilityLabel(isPending ? "Completed" : "Mark complete")
                 .buttonStyle(.plain)
             }
         }

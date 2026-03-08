@@ -43,6 +43,8 @@ struct LogSectionHeader: View {
                     isCollapsed.toggle()
                 }
             }
+            .accessibilityLabel("\(title), \(count) items")
+            .accessibilityHint(isCollapsed ? "Double-tap to expand" : "Double-tap to collapse")
             .padding(.vertical, 6)
             .padding(.horizontal, 12)
 

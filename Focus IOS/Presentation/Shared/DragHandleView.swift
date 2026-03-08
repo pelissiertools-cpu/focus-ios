@@ -14,6 +14,7 @@ struct DragHandleView: View {
         Image(systemName: "line.3.horizontal")
             .font(.inter(.subheadline))
             .foregroundColor(.secondary)
+            .accessibilityLabel("Reorder")
     }
 }
      

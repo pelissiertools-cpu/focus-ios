@@ -194,6 +194,7 @@ struct GoalsListPage: View {
                         .frame(width: 44, height: 44)
                         .contentShape(Rectangle())
                 }
+                .accessibilityLabel(goalsViewModel.isEditMode ? "Cancel" : "Back")
             }
             ToolbarItem(placement: .navigationBarTrailing) {
                 if goalsViewModel.isEditMode {
@@ -219,6 +220,7 @@ struct GoalsListPage: View {
                                 .frame(width: 30, height: 30)
                                 .background(Color.pillBackground, in: Circle())
                         }
+                        .accessibilityLabel("Add goal")
 
                         Menu {
                             Button {
@@ -244,6 +246,7 @@ struct GoalsListPage: View {
                                 .frame(width: 30, height: 30)
                                 .background(Color.pillBackground, in: Circle())
                         }
+                        .accessibilityLabel("More options")
                     }
                 }
             }

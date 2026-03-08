@@ -66,6 +66,7 @@ struct AuthSheetView: View {
                             .background(.ultraThinMaterial)
                             .clipShape(Circle())
                     }
+                    .accessibilityLabel("Back")
                     .frame(width: 44, height: 44)
                     .contentShape(Rectangle())
                 }

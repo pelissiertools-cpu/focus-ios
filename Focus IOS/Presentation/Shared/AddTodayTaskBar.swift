@@ -86,6 +86,7 @@ struct AddTodayTaskBar: View {
                         .padding(.vertical, 8)
                         .background(Color.white, in: Capsule())
                 }
+                .accessibilityLabel("More options")
                 .buttonStyle(.plain)
 
                 Spacer()
@@ -129,6 +130,7 @@ struct AddTodayTaskBar: View {
                             in: Circle()
                         )
                 }
+                .accessibilityLabel("Save task")
                 .buttonStyle(.plain)
                 .disabled(isTitleEmpty)
             }

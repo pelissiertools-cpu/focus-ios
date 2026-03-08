@@ -104,6 +104,15 @@ class GoalsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
         self.categoryRepository = categoryRepository
         self.authService = authService
 
+        // Pre-populate from cache for instant display
+        let cache = AppDataCache.shared
+        if cache.hasLoadedGoals {
+            self.goals = cache.goals
+        }
+        if cache.hasLoadedCategories {
+            self.categories = cache.categories
+        }
+
         setupNotificationObserver()
     }
 
@@ -346,6 +355,11 @@ class GoalsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
             self.goals = fetchedGoals
             self.categories = try await categoryRepository.fetchCategories()
             await fetchScheduledTaskIds()
+
+            // Update cache
+            let cache = AppDataCache.shared
+            cache.goals = fetchedGoals
+            cache.hasLoadedGoals = true
 
             for goal in goals {
                 await fetchGoalTasks(for: goal.id)

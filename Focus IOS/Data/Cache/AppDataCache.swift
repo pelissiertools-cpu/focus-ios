@@ -25,6 +25,10 @@ final class AppDataCache {
     var lists: [FocusTask] = []
     var hasLoadedLists = false
 
+    // Goals
+    var goals: [FocusTask] = []
+    var hasLoadedGoals = false
+
     // Schedule summaries + derived scheduledTaskIds
     var scheduleSummaries: [ScheduleRepository.ScheduleSummary] = []
     var scheduledTaskIds: Set<UUID> = []

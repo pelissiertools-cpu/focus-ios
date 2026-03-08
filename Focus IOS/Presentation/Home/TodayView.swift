@@ -13,6 +13,7 @@ struct TodayView: View {
     @EnvironmentObject var focusViewModel: FocusTabViewModel
     @Environment(\.dismiss) private var dismiss
     @State private var isInlineAddFocused = false
+    @State private var showingAddBar = false
     @State private var isLoading = false
     @State private var todaySchedules: [UUID: (scheduleId: UUID, sortOrder: Int)] = [:]
     @State private var scheduleById: [UUID: Schedule] = [:]
@@ -125,28 +126,84 @@ struct TodayView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            // Header
-            HStack(alignment: .center, spacing: 8) {
-                Image(systemName: "sun.max")
-                    .font(.inter(size: 22, weight: .regular))
-                    .foregroundColor(.primary)
+        ZStack {
+            VStack(spacing: 0) {
+                // Header
+                HStack(alignment: .center, spacing: 8) {
+                    Image(systemName: "sun.max")
+                        .font(.inter(size: 22, weight: .regular))
+                        .foregroundColor(.primary)
 
-                Text("Today")
-                    .pageTitleStyle()
-                    .foregroundColor(.primary)
+                    Text("Today")
+                        .pageTitleStyle()
+                        .foregroundColor(.primary)
 
-                Spacer()
+                    Spacer()
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 16)
+                .padding(.bottom, 12)
+
+                if isLoading && isEmpty {
+                    ProgressView()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    itemList
+                }
             }
-            .padding(.horizontal, 20)
-            .padding(.top, 16)
-            .padding(.bottom, 12)
 
-            if isLoading && isEmpty {
-                ProgressView()
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else {
-                itemList
+            if !showingAddBar {
+                VStack {
+                    Spacer()
+                    HStack {
+                        Spacer()
+                        Button {
+                            withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                                showingAddBar = true
+                            }
+                        } label: {
+                            Image(systemName: "plus")
+                                .font(.inter(.title2, weight: .semiBold))
+                                .foregroundColor(.white)
+                                .frame(width: 56, height: 56)
+                                .glassEffect(.regular.tint(.charcoal).interactive(), in: .circle)
+                                .shadow(radius: 4, y: 2)
+                        }
+                        .padding(.trailing, 20)
+                        .padding(.bottom, 20)
+                    }
+                }
+            }
+
+            if showingAddBar {
+                Color.black.opacity(0.15)
+                    .ignoresSafeArea()
+                    .allowsHitTesting(false)
+                    .transition(.opacity)
+                    .zIndex(50)
+
+                VStack(spacing: 0) {
+                    Color.clear
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                                showingAddBar = false
+                            }
+                        }
+
+                    AddTodayTaskBar(
+                        taskListVM: taskListVM,
+                        authService: authService,
+                        onSaved: {
+                            _Concurrency.Task {
+                                await fetchTodayData()
+                            }
+                        }
+                    )
+                    .padding(.bottom, 8)
+                }
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+                .zIndex(51)
             }
         }
         .sheet(item: $taskListVM.selectedTaskForDetails) { task in
@@ -399,7 +456,7 @@ struct TodayView: View {
 
                 case .focusDivider:
                     Rectangle()
-                        .fill(Color.secondary.opacity(0.3))
+                        .fill(Color.focusBlue)
                         .frame(height: 1)
                         .listRowInsets(EdgeInsets(top: 8, leading: 20, bottom: 8, trailing: 20))
                         .listRowBackground(Color.clear)

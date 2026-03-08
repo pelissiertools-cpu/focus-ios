@@ -14,6 +14,7 @@ struct QuickListsPage: View {
     @State private var listToDelete: FocusTask?
     @State private var selectedList: FocusTask?
     @State private var editingSectionId: UUID?
+    @State private var showingAddBar = false
 
     private let authService: AuthService
 
@@ -108,6 +109,65 @@ struct QuickListsPage: View {
             if listsViewModel.isEditMode {
                 EditModeActionBar(viewModel: listsViewModel)
                     .transition(.scale.combined(with: .opacity))
+            }
+
+            if !showingAddBar && !listsViewModel.isEditMode {
+                VStack {
+                    Spacer()
+                    HStack {
+                        Spacer()
+                        Button {
+                            withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                                showingAddBar = true
+                            }
+                        } label: {
+                            Image(systemName: "plus")
+                                .font(.inter(.title2, weight: .semiBold))
+                                .foregroundColor(.white)
+                                .frame(width: 56, height: 56)
+                                .glassEffect(.regular.tint(.charcoal).interactive(), in: .circle)
+                                .shadow(radius: 4, y: 2)
+                        }
+                        .padding(.trailing, 20)
+                        .padding(.bottom, 20)
+                    }
+                }
+            }
+
+            if showingAddBar {
+                Color.black.opacity(0.15)
+                    .ignoresSafeArea()
+                    .allowsHitTesting(false)
+                    .transition(.opacity)
+                    .zIndex(50)
+
+                VStack(spacing: 0) {
+                    Color.clear
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                                showingAddBar = false
+                            }
+                        }
+
+                    AddListBar(
+                        listsViewModel: listsViewModel,
+                        onSaved: {
+                            _Concurrency.Task {
+                                await viewModel.fetchLists()
+                                await listsViewModel.fetchLists()
+                            }
+                        },
+                        onDismiss: {
+                            withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                                showingAddBar = false
+                            }
+                        }
+                    )
+                    .padding(.bottom, 8)
+                }
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+                .zIndex(51)
             }
         }
         .navigationDestination(item: $selectedList) { list in

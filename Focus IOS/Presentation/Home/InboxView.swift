@@ -222,10 +222,6 @@ struct InboxView: View {
                 onClearSchedule: {
                     pendingSchedules.removeValue(forKey: task.id)
                 },
-                onSomeday: {
-                    _Concurrency.Task { await taskListVM.moveTaskToSomeday(task) }
-                },
-                isSomedayTask: task.categoryId == taskListVM.somedayCategory?.id
             )
             .drawerStyle()
         }

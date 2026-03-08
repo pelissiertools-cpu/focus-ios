@@ -818,11 +818,9 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
 
     @ViewBuilder
     private func rescheduleSheet(for schedule: Schedule) -> some View {
-        let somedayId = categories.first { $0.isSystem && $0.name == Category.somedayName }?.id
         RescheduleSheet(
             schedule: schedule,
-            focusViewModel: focusViewModel,
-            somedayCategoryId: somedayId
+            focusViewModel: focusViewModel
         )
         .drawerStyle()
     }

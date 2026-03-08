@@ -72,29 +72,4 @@ class CategoryRepository {
             .execute()
     }
 
-    /// Ensure the Someday system category exists for the given user.
-    /// Returns the existing or newly created Someday category.
-    func ensureSomedayCategory(userId: UUID) async throws -> Category {
-        // Try to find an existing system category
-        let existing: [Category] = try await supabase
-            .from("categories")
-            .select()
-            .eq("is_system", value: true)
-            .execute()
-            .value
-
-        if let someday = existing.first {
-            return someday
-        }
-
-        // Create the Someday category
-        let someday = Category(
-            userId: userId,
-            name: Category.somedayName,
-            sortOrder: -1,
-            isSystem: true
-        )
-
-        return try await createCategory(someday)
-    }
 }

@@ -13,8 +13,6 @@ struct ScheduleSelectionSheet: View {
     var onSchedule: ((Timeframe, Section, Set<Date>) -> Void)? = nil
     var pendingSchedule: PendingScheduleInfo? = nil
     var onClearSchedule: (() -> Void)? = nil
-    var onSomeday: (() -> Void)? = nil
-    var isSomedayTask: Bool = false
     @Environment(\.dismiss) var dismiss
 
     @State private var selectedTimeframe: Timeframe = .daily
@@ -99,30 +97,6 @@ struct ScheduleSelectionSheet: View {
                     }
                     .background(Color(.secondarySystemGroupedBackground))
                     .clipShape(RoundedRectangle(cornerRadius: 12))
-
-                    // Someday pill
-                    if let onSomeday, !isSomedayTask {
-                        HStack {
-                            Button {
-                                onSomeday()
-                                dismiss()
-                            } label: {
-                                HStack(spacing: 6) {
-                                    HourglassIcon()
-                                        .fill(.primary, style: FillStyle(eoFill: true))
-                                        .frame(width: 15, height: 15)
-                                    Text("Someday")
-                                        .font(.inter(.subheadline, weight: .medium))
-                                }
-                                .foregroundColor(.primary)
-                                .padding(.horizontal, 14)
-                                .padding(.vertical, 10)
-                                .glassEffect(.regular.interactive(), in: .capsule)
-                            }
-                            .buttonStyle(.plain)
-                            Spacer()
-                        }
-                    }
 
                     // Clear scheduling pill (only in pending mode)
                     if isPendingMode {

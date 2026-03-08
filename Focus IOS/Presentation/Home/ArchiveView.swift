@@ -13,7 +13,7 @@ struct ArchiveView: View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 0) {
                 // Title
-                Text("Archive")
+                Text("Completed")
                     .pageTitleStyle()
                     .foregroundColor(.primary)
                     .padding(.horizontal, 20)

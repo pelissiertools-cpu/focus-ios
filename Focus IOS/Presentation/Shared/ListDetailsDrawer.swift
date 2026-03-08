@@ -83,11 +83,7 @@ struct ListDetailsDrawer: View {
             }) {
                 ScheduleSelectionSheet(
                     task: list,
-                    focusViewModel: focusViewModel,
-                    onSomeday: {
-                        _Concurrency.Task { await viewModel.moveTaskToSomeday(list) }
-                    },
-                    isSomedayTask: list.categoryId == viewModel.somedayCategory?.id
+                    focusViewModel: focusViewModel
                 )
             }
             .alert("Delete list?", isPresented: $showingDeleteConfirmation) {

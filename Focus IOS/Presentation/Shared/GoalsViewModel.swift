@@ -227,15 +227,6 @@ class GoalsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
         baseFilteredGoals.filter { $0.isCompleted }
     }
 
-    var somedayGoals: [FocusTask] {
-        guard let somedayId = somedayCategory?.id else { return [] }
-        return filteredGoals.filter { $0.categoryId == somedayId }
-    }
-
-    var regularGoals: [FocusTask] {
-        guard let somedayId = somedayCategory?.id else { return filteredGoals }
-        return filteredGoals.filter { $0.categoryId != somedayId }
-    }
 
     private func applySorting(to items: [FocusTask]) -> [FocusTask] {
         let ascending = sortDirection == .lowestFirst
@@ -1278,10 +1269,6 @@ class GoalsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
         }
     }
 
-    var somedayCategory: Category? {
-        categories.first { $0.isSystem && $0.name == Category.somedayName }
-    }
-
     func createCategoryAndMove(name: String, task: FocusTask) async {
         guard let userId = authService.currentUser?.id else { return }
         let trimmed = name.trimmingCharacters(in: .whitespaces)
@@ -1299,11 +1286,6 @@ class GoalsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
         } catch {
             errorMessage = error.localizedDescription
         }
-    }
-
-    func moveTaskToSomeday(_ task: FocusTask) async {
-        guard let somedayId = somedayCategory?.id else { return }
-        await moveTaskToCategory(task, categoryId: somedayId)
     }
 
     // MARK: - Due Date

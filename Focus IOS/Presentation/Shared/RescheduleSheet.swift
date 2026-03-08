@@ -10,7 +10,6 @@ import SwiftUI
 struct RescheduleSheet: View {
     let schedule: Schedule
     @ObservedObject var focusViewModel: FocusTabViewModel
-    var somedayCategoryId: UUID? = nil
     @Environment(\.dismiss) var dismiss
 
     @State private var selectedTimeframe: Timeframe
@@ -18,10 +17,9 @@ struct RescheduleSheet: View {
     @State private var isSaving = false
     @State private var errorMessage: String?
 
-    init(schedule: Schedule, focusViewModel: FocusTabViewModel, somedayCategoryId: UUID? = nil) {
+    init(schedule: Schedule, focusViewModel: FocusTabViewModel) {
         self.schedule = schedule
         self.focusViewModel = focusViewModel
-        self.somedayCategoryId = somedayCategoryId
         _selectedTimeframe = State(initialValue: schedule.timeframe)
         _selectedDate = State(initialValue: schedule.scheduleDate)
     }
@@ -110,29 +108,6 @@ struct RescheduleSheet: View {
                     .background(Color(.secondarySystemGroupedBackground))
                     .clipShape(RoundedRectangle(cornerRadius: 12))
 
-                    // Someday pill
-                    if somedayCategoryId != nil {
-                        HStack {
-                            Button {
-                                _Concurrency.Task { await moveToSomeday() }
-                            } label: {
-                                HStack(spacing: 6) {
-                                    HourglassIcon()
-                                        .fill(.primary, style: FillStyle(eoFill: true))
-                                        .frame(width: 15, height: 15)
-                                    Text("Someday")
-                                        .font(.inter(.subheadline, weight: .medium))
-                                }
-                                .foregroundColor(.primary)
-                                .padding(.horizontal, 14)
-                                .padding(.vertical, 10)
-                                .glassEffect(.regular.interactive(), in: .capsule)
-                            }
-                            .buttonStyle(.plain)
-                            Spacer()
-                        }
-                    }
-
                     if let error = errorMessage {
                         Label(error, systemImage: "exclamationmark.triangle")
                             .foregroundColor(.red)
@@ -146,41 +121,6 @@ struct RescheduleSheet: View {
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
             }
-        }
-    }
-
-    private func moveToSomeday() async {
-        isSaving = true
-        errorMessage = nil
-
-        do {
-            let scheduleRepo = ScheduleRepository()
-            let taskRepo = TaskRepository()
-            let categoryRepo = CategoryRepository()
-
-            // Delete all schedules for this task
-            try await scheduleRepo.deleteSchedules(forTask: schedule.taskId)
-
-            // Resolve someday category (use passed ID or look it up)
-            var somedayId = somedayCategoryId
-            if somedayId == nil {
-                somedayId = try await categoryRepo.ensureSomedayCategory(userId: schedule.userId).id
-            }
-
-            // Move task to someday category
-            if let somedayId,
-               let tasks = try? await taskRepo.fetchTasksByIds([schedule.taskId]),
-               var task = tasks.first {
-                task.categoryId = somedayId
-                task.modifiedDate = Date()
-                try await taskRepo.updateTask(task)
-            }
-
-            await focusViewModel.fetchSchedules()
-            dismiss()
-        } catch {
-            errorMessage = error.localizedDescription
-            isSaving = false
         }
     }
 

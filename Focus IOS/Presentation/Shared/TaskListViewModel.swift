@@ -1304,19 +1304,6 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
         }
     }
 
-    var somedayCategory: Category? {
-        categories.first { $0.isSystem && $0.name == Category.somedayName }
-    }
-
-    func moveTaskToSomeday(_ task: FocusTask) async {
-        guard let somedayId = somedayCategory?.id else { return }
-        await moveTaskToCategory(task, categoryId: somedayId)
-    }
-
-    func removeFromSomeday(_ task: FocusTask) async {
-        await moveTaskToCategory(task, categoryId: nil)
-    }
-
     // MARK: - Edit Mode
 
     var selectedCount: Int { selectedTaskIds.count }

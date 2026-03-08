@@ -100,16 +100,6 @@ struct HomeView: View {
         }.count
     }
 
-    private var somedayItemCount: Int {
-        guard let somedayId = viewModel.somedayCategory?.id else { return 0 }
-        let tasks = taskListVM.tasks.filter {
-            !$0.isCompleted && $0.categoryId == somedayId && $0.projectId == nil && $0.parentTaskId == nil
-        }.count
-        let projects = viewModel.somedayProjects.count
-        let lists = viewModel.somedayLists.count
-        return tasks + projects + lists
-    }
-
     init(viewModel: HomeViewModel, authService: AuthService) {
         self.viewModel = viewModel
         self.authService = authService
@@ -170,27 +160,21 @@ struct HomeView: View {
                         .padding(.horizontal, 20)
                         .padding(.bottom, 16)
 
-                        // MARK: - Inbox (full width)
-                        homeCard(title: "Inbox", count: inboxCount, centered: true) {
-                            viewModel.selectedMenuItem = .inbox
-                        }
-                        .padding(.horizontal, 20)
-
-                        // MARK: - Today / Schedule
+                        // MARK: - Today / Inbox
                         HStack(spacing: 12) {
                             homeCard(title: "Today", icon: "sun.max") {
                                 viewModel.selectedMenuItem = .today
                             }
-                            homeCard(title: "Scheduled", icon: "calendar") {
-                                viewModel.selectedMenuItem = .assign
+                            homeCard(title: "Inbox", icon: "tray.and.arrow.down", count: inboxCount) {
+                                viewModel.selectedMenuItem = .inbox
                             }
                         }
                         .padding(.horizontal, 20)
 
-                        // MARK: - All / Completed
+                        // MARK: - Schedule / Completed
                         HStack(spacing: 12) {
-                            homeCard(title: "All", icon: "tray") {
-                                viewModel.selectedMenuItem = .backlog
+                            homeCard(title: "Scheduled", icon: "calendar") {
+                                viewModel.selectedMenuItem = .assign
                             }
                             homeCard(title: "Completed", icon: "archivebox") {
                                 viewModel.selectedMenuItem = .archive
@@ -306,7 +290,7 @@ struct HomeView: View {
                 if menuItem == .archive {
                     ArchiveView()
                 } else if menuItem == .inbox {
-                    InboxView(authService: authService)
+                    BacklogView(authService: authService, tasksOnly: true)
                 } else if menuItem == .assign {
                     ScheduledView(authService: authService)
                 } else if menuItem == .backlog {
@@ -319,10 +303,6 @@ struct HomeView: View {
                     QuickListsPage(viewModel: viewModel, authService: authService)
                 } else if menuItem == .goals {
                     GoalsListPage(viewModel: viewModel, authService: authService)
-                } else if menuItem == .someday {
-                    if let somedayCategory = viewModel.somedayCategory {
-                        CategoryDetailView(category: somedayCategory, authService: authService)
-                    }
                 } else {
                     HomePlaceholderPage(title: menuItem.rawValue)
                 }
@@ -403,9 +383,6 @@ struct HomeView: View {
                 await taskListVM.fetchTasks()
                 await taskListVM.fetchCategories()
                 await viewModel.fetchCategories()
-                if let userId = authService.currentUser?.id {
-                    await viewModel.ensureSomedayCategory(userId: userId)
-                }
                 // Pre-load categories for add bar
                 await projectsViewModel.fetchProjects()
                 await listsViewModel.fetchLists()

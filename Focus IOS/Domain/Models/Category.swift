@@ -18,9 +18,6 @@ struct Category: Codable, Identifiable, Hashable {
     let createdDate: Date
     var isSystem: Bool
 
-    /// Well-known name for the Someday system category
-    static let somedayName = "Someday"
-
     // Coding keys to match Supabase snake_case
     enum CodingKeys: String, CodingKey {
         case id

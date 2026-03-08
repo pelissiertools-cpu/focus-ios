@@ -34,7 +34,7 @@ struct QuickListsPage: View {
                     .listRowSeparator(.hidden)
                     .moveDisabled(true)
 
-                if viewModel.regularLists.isEmpty && viewModel.somedayLists.isEmpty {
+                if viewModel.lists.isEmpty {
                     VStack(spacing: 4) {
                         Text("No lists yet")
                             .font(AppStyle.Typography.emptyTitle)
@@ -49,7 +49,7 @@ struct QuickListsPage: View {
                     .listRowSeparator(.hidden)
                     .moveDisabled(true)
                 } else {
-                    ForEach(viewModel.regularLists) { item in
+                    ForEach(viewModel.lists.filter { !$0.isCompleted && !$0.isCleared }) { item in
                         if item.isSection {
                             SectionDividerRow(
                                 section: item,
@@ -84,30 +84,6 @@ struct QuickListsPage: View {
                         viewModel.reorderLists(from: from, to: to)
                     }
 
-                    // Someday section
-                    if !viewModel.somedayLists.isEmpty {
-                        HStack(spacing: 8) {
-                            HourglassIcon()
-                                .fill(Color.appRed, style: FillStyle(eoFill: true))
-                                .frame(width: 15, height: 15)
-                            Text("Someday")
-                                .font(AppStyle.Typography.sectionHeader)
-                                .foregroundColor(.appRed)
-                            Spacer()
-                        }
-                        .padding(.vertical, 8)
-                        .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
-                        .listRowBackground(Color.clear)
-                        .listRowSeparator(.hidden)
-                        .moveDisabled(true)
-
-                        ForEach(viewModel.somedayLists) { list in
-                            listRow(list)
-                                .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
-                                .listRowBackground(Color.clear)
-                                .listRowSeparator(.hidden)
-                        }
-                    }
                 }
 
                 Color.clear
@@ -139,11 +115,7 @@ struct QuickListsPage: View {
         .sheet(item: $listsViewModel.selectedItemForSchedule) { item in
             ScheduleSelectionSheet(
                 task: item,
-                focusViewModel: focusViewModel,
-                onSomeday: {
-                    _Concurrency.Task { await listsViewModel.moveTaskToSomeday(item) }
-                },
-                isSomedayTask: item.categoryId == listsViewModel.somedayCategory?.id
+                focusViewModel: focusViewModel
             )
                 .drawerStyle()
         }

@@ -41,7 +41,7 @@ struct ProjectsListPage: View {
                         .listRowBackground(Color.clear)
                         .listRowSeparator(.hidden)
                         .moveDisabled(true)
-                } else if viewModel.regularProjects.isEmpty && viewModel.somedayProjects.isEmpty {
+                } else if viewModel.projects.isEmpty {
                     VStack(spacing: 4) {
                         Text("No projects yet")
                             .font(AppStyle.Typography.emptyTitle)
@@ -56,7 +56,7 @@ struct ProjectsListPage: View {
                     .listRowSeparator(.hidden)
                     .moveDisabled(true)
                 } else {
-                    ForEach(viewModel.regularProjects) { item in
+                    ForEach(viewModel.projects.filter { !$0.isCompleted && !$0.isCleared }) { item in
                         if item.isSection {
                             SectionDividerRow(
                                 section: item,
@@ -91,30 +91,6 @@ struct ProjectsListPage: View {
                         viewModel.reorderProjects(from: from, to: to)
                     }
 
-                    // Someday section
-                    if !viewModel.somedayProjects.isEmpty {
-                        HStack(spacing: 8) {
-                            HourglassIcon()
-                                .fill(Color.appRed, style: FillStyle(eoFill: true))
-                                .frame(width: 15, height: 15)
-                            Text("Someday")
-                                .font(AppStyle.Typography.sectionHeader)
-                                .foregroundColor(.appRed)
-                            Spacer()
-                        }
-                        .padding(.vertical, 8)
-                        .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
-                        .listRowBackground(Color.clear)
-                        .listRowSeparator(.hidden)
-                        .moveDisabled(true)
-
-                        ForEach(viewModel.somedayProjects) { project in
-                            projectRow(project)
-                                .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
-                                .listRowBackground(Color.clear)
-                                .listRowSeparator(.hidden)
-                        }
-                    }
                 }
 
                 Color.clear
@@ -146,11 +122,7 @@ struct ProjectsListPage: View {
         .sheet(item: $projectsViewModel.selectedTaskForSchedule) { task in
             ScheduleSelectionSheet(
                 task: task,
-                focusViewModel: focusViewModel,
-                onSomeday: {
-                    _Concurrency.Task { await projectsViewModel.moveTaskToSomeday(task) }
-                },
-                isSomedayTask: task.categoryId == projectsViewModel.somedayCategory?.id
+                focusViewModel: focusViewModel
             )
                 .drawerStyle()
         }

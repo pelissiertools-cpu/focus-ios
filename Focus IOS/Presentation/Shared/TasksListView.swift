@@ -137,11 +137,7 @@ struct TasksListView: View {
         .sheet(item: $viewModel.selectedTaskForSchedule) { task in
             ScheduleSelectionSheet(
                 task: task,
-                focusViewModel: focusViewModel,
-                onSomeday: {
-                    _Concurrency.Task { await viewModel.moveTaskToSomeday(task) }
-                },
-                isSomedayTask: task.categoryId == viewModel.somedayCategory?.id
+                focusViewModel: focusViewModel
             )
                 .drawerStyle()
         }

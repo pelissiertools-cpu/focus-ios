@@ -129,6 +129,26 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
             self.collapsedPriorities = Set(Priority.allCases)
         }
 
+        // Pre-populate from cache for instant display
+        let cache = AppDataCache.shared
+        if cache.hasLoadedTasks {
+            let allTasks = cache.allTasks
+            self.tasks = allTasks.filter { $0.parentTaskId == nil }
+            var newSubtasksMap: [UUID: [FocusTask]] = [:]
+            for task in allTasks where task.parentTaskId != nil {
+                newSubtasksMap[task.parentTaskId!, default: []].append(task)
+            }
+            for task in self.tasks {
+                if newSubtasksMap[task.id] == nil {
+                    newSubtasksMap[task.id] = []
+                }
+            }
+            self.subtasksMap = newSubtasksMap
+        }
+        if cache.hasLoadedCategories {
+            self.categories = cache.categories
+        }
+
         setupNotificationObserver()
     }
 
@@ -447,6 +467,11 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
                 }
             }
             self.subtasksMap = newSubtasksMap
+
+            // Update cache
+            let cache = AppDataCache.shared
+            cache.allTasks = allTasks
+            cache.hasLoadedTasks = true
 
             isLoading = false
         } catch {
@@ -1128,7 +1153,11 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
 
     func fetchCategories() async {
         do {
-            self.categories = try await categoryRepository.fetchCategories()
+            let fetched = try await categoryRepository.fetchCategories()
+            self.categories = fetched
+            let cache = AppDataCache.shared
+            cache.categories = fetched
+            cache.hasLoadedCategories = true
         } catch {
             if !Task.isCancelled { errorMessage = error.localizedDescription }
         }

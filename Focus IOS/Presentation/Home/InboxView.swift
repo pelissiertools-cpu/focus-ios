@@ -402,7 +402,10 @@ struct InboxView: View {
         .task {
             taskListVM.scheduleFilter = .unscheduled
 
-            isLoading = true
+            // Only show loading if no cached data
+            if isEmpty {
+                isLoading = true
+            }
             async let t: () = fetchTasks()
             async let p: () = fetchProjects()
             _ = await (t, p)

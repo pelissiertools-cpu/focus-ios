@@ -199,13 +199,53 @@ struct TodayView: View {
             }
         }
         .task {
-            isLoading = true
+            // Populate from cache for instant display
+            let cache = AppDataCache.shared
+            if let cachedDate = cache.todayScheduleDate,
+               Calendar.current.isDateInToday(cachedDate) {
+                populateScheduleState(
+                    focusSchedules: cache.todayFocusSchedules,
+                    todoSchedules: cache.todayTodoSchedules,
+                    overdueSchedules: cache.overdueSchedules
+                )
+            }
+
+            // Only show loading if no cached data available
+            if isEmpty {
+                isLoading = true
+            }
+
             await fetchTodayData()
             isLoading = false
         }
     }
 
     // MARK: - Data Fetching
+
+    private func populateScheduleState(focusSchedules: [Schedule], todoSchedules: [Schedule], overdueSchedules: [Schedule]) {
+        let allSchedules = focusSchedules + todoSchedules
+        var schedules: [UUID: (scheduleId: UUID, sortOrder: Int)] = [:]
+        var byId: [UUID: Schedule] = [:]
+        for s in allSchedules {
+            schedules[s.taskId] = (scheduleId: s.id, sortOrder: s.sortOrder)
+            byId[s.id] = s
+        }
+
+        var overdueDates: [UUID: Date] = [:]
+        for (index, s) in overdueSchedules.enumerated() {
+            guard schedules[s.taskId] == nil else { continue }
+            schedules[s.taskId] = (scheduleId: s.id, sortOrder: -1000 + index)
+            byId[s.id] = s
+            overdueDates[s.taskId] = s.scheduleDate
+        }
+        overdueScheduleDates = overdueDates
+
+        todaySchedules = schedules
+        scheduleById = byId
+
+        taskListVM.scheduledTaskIds = Set(schedules.keys)
+        taskListVM.scheduleFilter = .scheduled
+    }
 
     private func fetchTodayData() async {
         do {
@@ -219,31 +259,20 @@ struct TodayView: View {
                 date: Date(),
                 section: .todo
             )
-
-            let allSchedules = focusSchedules + todoSchedules
-            var schedules: [UUID: (scheduleId: UUID, sortOrder: Int)] = [:]
-            var byId: [UUID: Schedule] = [:]
-            for s in allSchedules {
-                schedules[s.taskId] = (scheduleId: s.id, sortOrder: s.sortOrder)
-                byId[s.id] = s
-            }
-
-            // Fetch overdue schedules and merge (only tasks not already scheduled today)
-            var overdueDates: [UUID: Date] = [:]
             let overdueSchedules = try await scheduleRepository.fetchOverdueSchedules()
-            for (index, s) in overdueSchedules.enumerated() {
-                guard schedules[s.taskId] == nil else { continue }
-                schedules[s.taskId] = (scheduleId: s.id, sortOrder: -1000 + index)
-                byId[s.id] = s
-                overdueDates[s.taskId] = s.scheduleDate
-            }
-            overdueScheduleDates = overdueDates
 
-            todaySchedules = schedules
-            scheduleById = byId
+            populateScheduleState(
+                focusSchedules: focusSchedules,
+                todoSchedules: todoSchedules,
+                overdueSchedules: overdueSchedules
+            )
 
-            taskListVM.scheduledTaskIds = Set(schedules.keys)
-            taskListVM.scheduleFilter = .scheduled
+            // Update cache
+            let cache = AppDataCache.shared
+            cache.todayFocusSchedules = focusSchedules
+            cache.todayTodoSchedules = todoSchedules
+            cache.overdueSchedules = overdueSchedules
+            cache.todayScheduleDate = Date()
         } catch {
             todaySchedules = [:]
             overdueScheduleDates = [:]

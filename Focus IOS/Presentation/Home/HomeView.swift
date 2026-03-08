@@ -401,6 +401,9 @@ struct HomeView: View {
                 // Pre-load categories for add bar
                 await projectsViewModel.fetchProjects()
                 await listsViewModel.fetchLists()
+
+                // Pre-fetch today schedules so TodayView opens instantly
+                await prefetchTodaySchedules()
             }
             // Add bar: auto-focus on open
             .onChange(of: showingAddBar) { _, isShowing in
@@ -1987,6 +1990,29 @@ struct HomeView: View {
         dismissAddList()
         dismissAddProject()
         showingAddBar = false
+    }
+
+    // MARK: - Today Schedule Pre-fetch
+
+    private func prefetchTodaySchedules() async {
+        let cache = AppDataCache.shared
+        // Skip if already cached for today
+        if let cachedDate = cache.todayScheduleDate,
+           Calendar.current.isDateInToday(cachedDate) {
+            return
+        }
+        let scheduleRepository = ScheduleRepository()
+        do {
+            let focus = try await scheduleRepository.fetchSchedules(timeframe: .daily, date: Date(), section: .focus)
+            let todo = try await scheduleRepository.fetchSchedules(timeframe: .daily, date: Date(), section: .todo)
+            let overdue = try await scheduleRepository.fetchOverdueSchedules()
+            cache.todayFocusSchedules = focus
+            cache.todayTodoSchedules = todo
+            cache.overdueSchedules = overdue
+            cache.todayScheduleDate = Date()
+        } catch {
+            // Non-critical — TodayView will fetch on its own
+        }
     }
 }
 

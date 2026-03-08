@@ -103,6 +103,16 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
         self.scheduleRepository = scheduleRepository
         self.categoryRepository = categoryRepository
         self.authService = authService
+
+        // Pre-populate from cache for instant display
+        let cache = AppDataCache.shared
+        if cache.hasLoadedProjects {
+            self.projects = cache.projects
+        }
+        if cache.hasLoadedCategories {
+            self.categories = cache.categories
+        }
+
         setupNotificationObserver()
     }
 
@@ -339,9 +349,15 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
         errorMessage = nil
 
         do {
-            self.projects = try await repository.fetchProjects(isCleared: false)
+            let fetchedProjects = try await repository.fetchProjects(isCleared: false)
+            self.projects = fetchedProjects
             self.categories = try await categoryRepository.fetchCategories()
             await fetchScheduledTaskIds()
+
+            // Update cache
+            let cache = AppDataCache.shared
+            cache.projects = fetchedProjects
+            cache.hasLoadedProjects = true
 
             // Pre-fetch task counts for all projects
             for project in projects {

@@ -595,7 +595,10 @@ struct ScheduledView: View {
         }
         .task {
             taskListVM.scheduleFilter = .scheduled
-            isLoading = true
+            // Only show loading if no cached data
+            if isEmpty {
+                isLoading = true
+            }
             await loadAllData()
             isLoading = false
         }

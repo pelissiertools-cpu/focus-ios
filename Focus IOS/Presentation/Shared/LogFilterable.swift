@@ -66,27 +66,40 @@ extension LogFilterable {
     }
 
     func fetchScheduledTaskIds() async {
+        // Pre-populate from cache for instant display
+        let cache = AppDataCache.shared
+        if scheduledTaskIds.isEmpty && cache.hasLoadedScheduleSummaries {
+            scheduledTaskIds = cache.scheduledTaskIds
+            taskDueDates = Self.buildDueDates(from: cache.scheduleSummaries)
+        }
+
         do {
             let summaries = try await scheduleRepository.fetchScheduleSummaries()
             scheduledTaskIds = Set(summaries.map { $0.taskId })
+            taskDueDates = Self.buildDueDates(from: summaries)
 
-            // For each task, pick the smallest timeframe schedule → end of that period = due date
-            var bestByTask: [UUID: (urgency: Int, endDate: Date)] = [:]
-            for s in summaries {
-                let endDate = ScheduleRepository.dateRange(for: s.timeframe, date: s.scheduleDate).end
-                let urgency = s.timeframe.urgencyIndex
-                if let existing = bestByTask[s.taskId] {
-                    // Smaller timeframe wins; among same timeframe, earlier end date wins
-                    if urgency < existing.urgency || (urgency == existing.urgency && endDate < existing.endDate) {
-                        bestByTask[s.taskId] = (urgency, endDate)
-                    }
-                } else {
-                    bestByTask[s.taskId] = (urgency, endDate)
-                }
-            }
-            taskDueDates = bestByTask.mapValues { $0.endDate }
+            // Update cache
+            cache.scheduleSummaries = summaries
+            cache.scheduledTaskIds = scheduledTaskIds
+            cache.hasLoadedScheduleSummaries = true
         } catch {
             // Silently handled — sorting falls back to creation date
         }
+    }
+
+    private static func buildDueDates(from summaries: [ScheduleRepository.ScheduleSummary]) -> [UUID: Date] {
+        var bestByTask: [UUID: (urgency: Int, endDate: Date)] = [:]
+        for s in summaries {
+            let endDate = ScheduleRepository.dateRange(for: s.timeframe, date: s.scheduleDate).end
+            let urgency = s.timeframe.urgencyIndex
+            if let existing = bestByTask[s.taskId] {
+                if urgency < existing.urgency || (urgency == existing.urgency && endDate < existing.endDate) {
+                    bestByTask[s.taskId] = (urgency, endDate)
+                }
+            } else {
+                bestByTask[s.taskId] = (urgency, endDate)
+            }
+        }
+        return bestByTask.mapValues { $0.endDate }
     }
 }

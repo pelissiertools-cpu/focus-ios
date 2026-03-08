@@ -95,6 +95,16 @@ class ListsViewModel: ObservableObject, LogFilterable, TaskEditingViewModel {
         self.categoryRepository = categoryRepository
         self.scheduleRepository = scheduleRepository
         self.authService = authService
+
+        // Pre-populate from cache for instant display
+        let cache = AppDataCache.shared
+        if cache.hasLoadedLists {
+            self.lists = cache.lists
+        }
+        if cache.hasLoadedCategories {
+            self.categories = cache.categories
+        }
+
         setupNotificationObserver()
     }
 
@@ -342,9 +352,15 @@ class ListsViewModel: ObservableObject, LogFilterable, TaskEditingViewModel {
         errorMessage = nil
 
         do {
-            self.lists = try await repository.fetchTasks(ofType: .list, isCleared: false)
+            let fetchedLists = try await repository.fetchTasks(ofType: .list, isCleared: false)
+            self.lists = fetchedLists
             self.categories = try await categoryRepository.fetchCategories()
             await fetchScheduledTaskIds()
+
+            // Update cache
+            let cache = AppDataCache.shared
+            cache.lists = fetchedLists
+            cache.hasLoadedLists = true
 
             // Pre-fetch items for all lists
             for list in lists {

@@ -581,7 +581,10 @@ struct BacklogView: View {
         }
         .task {
             // No schedule filter — show ALL tasks
-            isLoading = true
+            // Only show loading if no cached data
+            if isEmpty {
+                isLoading = true
+            }
             await loadAllData()
             isLoading = false
         }

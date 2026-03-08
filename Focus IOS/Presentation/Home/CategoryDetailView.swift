@@ -8,6 +8,7 @@ import Auth
 
 struct CategoryDetailView: View {
     let category: Category
+    private let authService: AuthService
 
     @StateObject private var taskListVM: TaskListViewModel
     @StateObject private var projectsVM: ProjectsViewModel
@@ -30,8 +31,13 @@ struct CategoryDetailView: View {
     @State private var selectedProjectForNavigation: FocusTask?
     @State private var selectedListForNavigation: FocusTask?
 
+    // Add bar
+    @State private var showingAddBar = false
+    @State private var addBarMode: TaskType = .task
+
     init(category: Category, authService: AuthService) {
         self.category = category
+        self.authService = authService
         _categoryName = State(initialValue: category.name)
         _taskListVM = StateObject(wrappedValue: TaskListViewModel(authService: authService))
         _projectsVM = StateObject(wrappedValue: ProjectsViewModel(authService: authService))
@@ -70,61 +76,120 @@ struct CategoryDetailView: View {
     // MARK: - Body
 
     var body: some View {
-        VStack(spacing: 0) {
-            // Header
-            HStack(alignment: .center, spacing: AppStyle.Spacing.compact) {
-                Group {
-                    if category.isSystem {
-                        HourglassIcon()
-                            .fill(.primary, style: FillStyle(eoFill: true))
-                            .frame(width: 22, height: 22)
-                    } else {
-                        Image(systemName: "folder")
-                            .font(.inter(size: 22, weight: .regular))
-                            .foregroundColor(.primary)
+        ZStack {
+            VStack(spacing: 0) {
+                // Header
+                HStack(alignment: .center, spacing: AppStyle.Spacing.compact) {
+                    Group {
+                        if category.isSystem {
+                            HourglassIcon()
+                                .fill(.primary, style: FillStyle(eoFill: true))
+                                .frame(width: 22, height: 22)
+                        } else {
+                            Image(systemName: "folder")
+                                .font(.inter(size: 22, weight: .regular))
+                                .foregroundColor(.primary)
+                        }
                     }
+
+                    if category.isSystem {
+                        Text(category.name)
+                            .pageTitleStyle()
+                            .foregroundColor(.primary)
+                    } else {
+                        TextField("Category name", text: $categoryName)
+                            .pageTitleStyle()
+                            .foregroundColor(.primary)
+                            .textFieldStyle(.plain)
+                            .focused($isNameFocused)
+                            .submitLabel(.done)
+                            .onSubmit { saveName() }
+                    }
+
+                    Spacer()
                 }
+                .padding(.horizontal, AppStyle.Spacing.page)
+                .padding(.top, AppStyle.Spacing.section)
+                .padding(.bottom, AppStyle.Spacing.compact)
 
-                if category.isSystem {
-                    Text(category.name)
-                        .pageTitleStyle()
-                        .foregroundColor(.primary)
-                } else {
-                    TextField("Category name", text: $categoryName)
-                        .pageTitleStyle()
-                        .foregroundColor(.primary)
-                        .textFieldStyle(.plain)
-                        .focused($isNameFocused)
-                        .submitLabel(.done)
-                        .onSubmit { saveName() }
-                }
-
-                Spacer()
-            }
-            .padding(.horizontal, AppStyle.Spacing.page)
-            .padding(.top, AppStyle.Spacing.section)
-            .padding(.bottom, AppStyle.Spacing.compact)
-
-            if isLoading && isEmpty {
-                ProgressView()
+                if isLoading && isEmpty {
+                    ProgressView()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .contentShape(Rectangle())
+                        .onTapGesture { isNameFocused = false }
+                } else if isEmpty {
+                    VStack(spacing: AppStyle.Spacing.tiny) {
+                        Text("No items yet")
+                            .font(AppStyle.Typography.emptyTitle)
+                        Text("Tasks, projects, and lists in \"\(category.name)\" will appear here")
+                            .font(AppStyle.Typography.emptySubtitle)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                    }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .padding(.horizontal, AppStyle.Spacing.page)
                     .contentShape(Rectangle())
                     .onTapGesture { isNameFocused = false }
-            } else if isEmpty {
-                VStack(spacing: AppStyle.Spacing.tiny) {
-                    Text("No items yet")
-                        .font(AppStyle.Typography.emptyTitle)
-                    Text("Tasks, projects, and lists in \"\(category.name)\" will appear here")
-                        .font(AppStyle.Typography.emptySubtitle)
-                        .foregroundColor(.secondary)
-                        .multilineTextAlignment(.center)
+                } else {
+                    itemList
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .padding(.horizontal, AppStyle.Spacing.page)
-                .contentShape(Rectangle())
-                .onTapGesture { isNameFocused = false }
-            } else {
-                itemList
+            }
+
+            // MARK: - FAB Button
+            if !showingAddBar {
+                VStack {
+                    Spacer()
+                    HStack {
+                        Spacer()
+                        Button {
+                            withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                                addBarMode = .task
+                                showingAddBar = true
+                            }
+                        } label: {
+                            Image(systemName: "plus")
+                                .font(.inter(.title2, weight: .semiBold))
+                                .foregroundColor(.white)
+                                .frame(width: AppStyle.Layout.fab, height: AppStyle.Layout.fab)
+                                .glassEffect(.regular.tint(.charcoal).interactive(), in: .circle)
+                                .shadow(radius: 4, y: 2)
+                        }
+                        .accessibilityLabel("Add item")
+                        .padding(.trailing, AppStyle.Spacing.page)
+                        .padding(.bottom, AppStyle.Spacing.page)
+                    }
+                }
+                .transition(.opacity)
+            }
+
+            // MARK: - Add Bar Overlay
+            if showingAddBar {
+                Color.black.opacity(0.15)
+                    .ignoresSafeArea()
+                    .allowsHitTesting(false)
+                    .transition(.opacity)
+                    .zIndex(50)
+
+                VStack(spacing: 0) {
+                    Color.clear
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                                showingAddBar = false
+                            }
+                        }
+
+                    VStack(spacing: 0) {
+                        addBarModeSelector
+                            .padding(.vertical, AppStyle.Spacing.comfortable)
+
+                        activeAddBar
+                            .padding(.bottom, AppStyle.Spacing.compact)
+                    }
+                    .contentShape(Rectangle())
+                }
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+                .zIndex(100)
             }
         }
         // Task sheets
@@ -186,6 +251,58 @@ struct CategoryDetailView: View {
                 }
                 .accessibilityLabel("Back")
             }
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Menu {
+                    Menu {
+                        ForEach(SortOption.allCases, id: \.self) { option in
+                            Button {
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    taskListVM.sortOption = option
+                                }
+                            } label: {
+                                if taskListVM.sortOption == option {
+                                    Label(option.displayName, systemImage: "checkmark")
+                                } else {
+                                    Text(option.displayName)
+                                }
+                            }
+                        }
+
+                        Divider()
+
+                        ForEach(taskListVM.sortOption.directionOrder, id: \.self) { direction in
+                            Button {
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    taskListVM.sortDirection = direction
+                                }
+                            } label: {
+                                if taskListVM.sortDirection == direction {
+                                    Label(direction.displayName(for: taskListVM.sortOption), systemImage: "checkmark")
+                                } else {
+                                    Text(direction.displayName(for: taskListVM.sortOption))
+                                }
+                            }
+                        }
+                    } label: {
+                        Label("Sort By", systemImage: "arrow.up.arrow.down")
+                    }
+
+                    Divider()
+
+                    Button {
+                        taskListVM.enterEditMode()
+                    } label: {
+                        Label("Select", systemImage: "checkmark.circle")
+                    }
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .font(.inter(.body, weight: .semiBold))
+                        .foregroundColor(.primary)
+                        .frame(width: AppStyle.Layout.compactButton, height: AppStyle.Layout.compactButton)
+                        .background(Color.pillBackground, in: Circle())
+                }
+                .accessibilityLabel("More options")
+            }
         }
         .onChange(of: isNameFocused) { _, focused in
             if !focused { saveName() }
@@ -202,6 +319,87 @@ struct CategoryDetailView: View {
             async let l: () = listsVM.fetchLists()
             _ = await (t, p, l)
             isLoading = false
+        }
+    }
+
+    // MARK: - Add Bar Mode Selector
+
+    private var addBarModeSelector: some View {
+        HStack(spacing: AppStyle.Spacing.comfortable) {
+            addBarModeCircle(mode: .task, icon: "checklist")
+            addBarModeCircle(mode: .list, icon: "list.bullet")
+            addBarModeCircle(mode: .project, icon: "folder")
+            Spacer()
+        }
+        .padding(.horizontal)
+    }
+
+    private func addBarModeCircle(mode: TaskType, icon: String) -> some View {
+        let isActive = addBarMode == mode
+        return Button {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                addBarMode = mode
+            }
+        } label: {
+            Image(systemName: isActive && mode == .project ? "folder.fill" : icon)
+                .font(.inter(.body, weight: .medium))
+                .foregroundColor(isActive ? .white : .primary)
+                .frame(width: AppStyle.Layout.iconButton, height: AppStyle.Layout.iconButton)
+                .glassEffect(
+                    isActive
+                        ? .regular.tint(.black).interactive()
+                        : .regular.interactive(),
+                    in: .circle
+                )
+        }
+        .buttonStyle(.plain)
+    }
+
+    // MARK: - Active Add Bar
+
+    @ViewBuilder
+    private var activeAddBar: some View {
+        switch addBarMode {
+        case .task, .goal:
+            AddTaskBar(
+                taskListVM: taskListVM,
+                authService: authService,
+                initialCategoryId: category.id,
+                onSaved: {
+                    _Concurrency.Task { await refreshData() }
+                },
+                onDismiss: {
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                        showingAddBar = false
+                    }
+                }
+            )
+        case .list:
+            AddListBar(
+                listsViewModel: listsVM,
+                initialCategoryId: category.id,
+                onSaved: {
+                    _Concurrency.Task { await refreshData() }
+                },
+                onDismiss: {
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                        showingAddBar = false
+                    }
+                }
+            )
+        case .project:
+            AddProjectBar(
+                projectsViewModel: projectsVM,
+                initialCategoryId: category.id,
+                onSaved: {
+                    _Concurrency.Task { await refreshData() }
+                },
+                onDismiss: {
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                        showingAddBar = false
+                    }
+                }
+            )
         }
     }
 
@@ -235,8 +433,9 @@ struct CategoryDetailView: View {
                             FlatTaskRow(
                                 task: task,
                                 viewModel: taskListVM,
-                                isEditMode: false,
-                                isSelected: false,
+                                isEditMode: taskListVM.isEditMode,
+                                isSelected: taskListVM.selectedTaskIds.contains(task.id),
+                                onSelectToggle: { taskListVM.toggleTaskSelection(task.id) },
                                 onToggleCompletion: { t in
                                     taskListVM.requestToggleCompletion(t)
                                 }

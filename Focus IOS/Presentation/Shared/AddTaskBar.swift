@@ -1,32 +1,35 @@
 //
-//  AddProjectBar.swift
+//  AddTaskBar.swift
 //  Focus IOS
 //
 
 import SwiftUI
 import Auth
 
-struct AddProjectBar: View {
-    @ObservedObject var projectsViewModel: ProjectsViewModel
+struct AddTaskBar: View {
+    @ObservedObject var taskListVM: TaskListViewModel
     @EnvironmentObject var focusViewModel: FocusTabViewModel
+    let authService: AuthService
     var initialCategoryId: UUID? = nil
     var onSaved: (() -> Void)?
     var onDismiss: () -> Void
 
     // State
     @State private var title = ""
-    @State private var draftTasks: [DraftTask] = []
+    @State private var subtasks: [DraftSubtaskEntry] = []
     @State private var categoryId: UUID?
     @State private var priority: Priority = .low
+    @State private var optionsExpanded = false
+    @State private var scheduleExpanded = false
     @State private var scheduleDates: Set<Date> = []
     @State private var scheduleDatesSnapshot: Set<Date> = []
     @State private var timeframe: Timeframe = .daily
     @State private var section: Section = .todo
-    @State private var scheduleExpanded = false
-    @State private var optionsExpanded = false
+    @State private var isGeneratingBreakdown = false
+    @State private var hasGeneratedBreakdown = false
 
     @FocusState private var titleFocused: Bool
-    @FocusState private var focusedTaskId: UUID?
+    @FocusState private var focusedSubtaskId: UUID?
 
     private var isTitleEmpty: Bool {
         title.trimmingCharacters(in: .whitespaces).isEmpty
@@ -34,7 +37,7 @@ struct AddProjectBar: View {
 
     private var categoryPillLabel: String {
         if let categoryId,
-           let category = projectsViewModel.categories.first(where: { $0.id == categoryId }) {
+           let category = taskListVM.categories.first(where: { $0.id == categoryId }) {
             return category.name
         }
         return "Category"
@@ -42,7 +45,7 @@ struct AddProjectBar: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            TextField("Create a new project", text: $title)
+            TextField("Create a new task", text: $title)
                 .font(.inter(.title3))
                 .textFieldStyle(.plain)
                 .focused($titleFocused)
@@ -52,20 +55,11 @@ struct AddProjectBar: View {
                 .padding(.top, AppStyle.Spacing.page)
                 .padding(.bottom, AppStyle.Spacing.medium)
 
-            // Tasks + subtasks area
-            if !draftTasks.isEmpty {
-                Divider()
-                    .padding(.horizontal, AppStyle.Spacing.content)
-
-                VStack(alignment: .leading, spacing: AppStyle.Spacing.small) {
-                    ForEach(draftTasks) { task in
-                        projectTaskDraftRow(task: task)
-                    }
-                }
-                .padding(.horizontal, AppStyle.Spacing.content)
-                .padding(.top, AppStyle.Spacing.compact)
-                .padding(.bottom, AppStyle.Spacing.small)
-            }
+            DraftSubtaskListEditor(
+                subtasks: $subtasks,
+                focusedSubtaskId: $focusedSubtaskId,
+                onAddNew: { addNewSubtask() }
+            )
 
             // Schedule expansion
             if scheduleExpanded {
@@ -129,16 +123,16 @@ struct AddProjectBar: View {
                 .padding(.bottom, AppStyle.Spacing.tiny)
             }
 
-            // Row 1: [Task] [...] Spacer [Checkmark]
+            // Row 1: [Sub-task] [...] Spacer [AI] [Checkmark]
             if !scheduleExpanded {
                 HStack(spacing: AppStyle.Spacing.compact) {
                     Button {
-                        addNewTask()
+                        addNewSubtask()
                     } label: {
                         HStack(spacing: AppStyle.Spacing.tiny) {
                             Image(systemName: "plus")
                                 .font(.inter(.caption))
-                            Text("Task")
+                            Text("Sub-task")
                                 .font(.inter(.caption))
                         }
                         .foregroundColor(.white)
@@ -167,6 +161,32 @@ struct AddProjectBar: View {
                     Spacer()
 
                     Button {
+                        generateBreakdown()
+                    } label: {
+                        HStack(spacing: AppStyle.Spacing.small) {
+                            if isGeneratingBreakdown {
+                                ProgressView()
+                                    .tint(.primary)
+                            } else {
+                                Image(systemName: hasGeneratedBreakdown ? "arrow.clockwise" : "sparkles")
+                                    .font(.inter(.subheadline, weight: .semiBold))
+                                    .foregroundColor(!isTitleEmpty ? .blue : .primary)
+                            }
+                            Text(LocalizedStringKey(hasGeneratedBreakdown ? "Regenerate" : "Suggest Breakdown"))
+                                .font(.inter(.caption, weight: .medium))
+                                .foregroundColor(.primary)
+                        }
+                        .padding(.horizontal, AppStyle.Spacing.content)
+                        .padding(.vertical, AppStyle.Spacing.compact)
+                        .background(
+                            !isTitleEmpty ? Color.pillBackground : Color.clear,
+                            in: Capsule()
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(isTitleEmpty || isGeneratingBreakdown)
+
+                    Button {
                         save()
                     } label: {
                         Image(systemName: "checkmark")
@@ -178,7 +198,7 @@ struct AddProjectBar: View {
                                 in: Circle()
                             )
                     }
-                    .accessibilityLabel("Save project")
+                    .accessibilityLabel("Save task")
                     .buttonStyle(.plain)
                     .disabled(isTitleEmpty)
                 }
@@ -199,7 +219,7 @@ struct AddProjectBar: View {
                                 Text("None")
                             }
                         }
-                        ForEach(projectsViewModel.categories) { category in
+                        ForEach(taskListVM.categories) { category in
                             Button {
                                 categoryId = category.id
                             } label: {
@@ -288,104 +308,15 @@ struct AddProjectBar: View {
         }
     }
 
-    // MARK: - Draft Task Row
-
-    @ViewBuilder
-    private func projectTaskDraftRow(task: DraftTask) -> some View {
-        HStack(spacing: AppStyle.Spacing.compact) {
-            Image(systemName: "circle")
-                .font(.inter(.caption2))
-                .foregroundColor(.secondary.opacity(0.5))
-
-            TextField("Task", text: taskBinding(for: task.id), axis: .vertical)
-                .font(.inter(.title3))
-                .textFieldStyle(.plain)
-                .focused($focusedTaskId, equals: task.id)
-                .lineLimit(1...3)
-                .onChange(of: taskBinding(for: task.id).wrappedValue) { _, newValue in
-                    if newValue.contains("\n") {
-                        if let idx = draftTasks.firstIndex(where: { $0.id == task.id }) {
-                            draftTasks[idx].title = newValue.replacingOccurrences(of: "\n", with: "")
-                        }
-                        addNewSubtask(toTask: task.id)
-                    }
-                }
-
-            Button {
-                removeTask(id: task.id)
-            } label: {
-                Image(systemName: "xmark.circle.fill")
-                    .font(.inter(.caption))
-                    .foregroundColor(.secondary)
-            }
-            .accessibilityLabel("Remove task")
-            .buttonStyle(.plain)
-        }
-
-        // Subtask rows
-        ForEach(task.subtasks) { subtask in
-            HStack(spacing: AppStyle.Spacing.compact) {
-                Image(systemName: "circle")
-                    .font(.inter(.caption2))
-                    .foregroundColor(.secondary.opacity(0.5))
-
-                TextField("Sub-task", text: subtaskBinding(forSubtask: subtask.id, inTask: task.id), axis: .vertical)
-                    .font(.inter(.body))
-                    .textFieldStyle(.plain)
-                    .focused($focusedTaskId, equals: subtask.id)
-                    .lineLimit(1...3)
-                    .onChange(of: subtaskBinding(forSubtask: subtask.id, inTask: task.id).wrappedValue) { _, newValue in
-                        if newValue.contains("\n") {
-                            if let tIdx = draftTasks.firstIndex(where: { $0.id == task.id }),
-                               let sIdx = draftTasks[tIdx].subtasks.firstIndex(where: { $0.id == subtask.id }) {
-                                draftTasks[tIdx].subtasks[sIdx].title = newValue.replacingOccurrences(of: "\n", with: "")
-                            }
-                            addNewSubtask(toTask: task.id)
-                        }
-                    }
-
-                Button {
-                    removeSubtask(id: subtask.id, fromTask: task.id)
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.inter(.caption))
-                        .foregroundColor(.secondary)
-                }
-                .accessibilityLabel("Remove subtask")
-                .buttonStyle(.plain)
-            }
-            .padding(.leading, 28)
-            .padding(.trailing, AppStyle.Spacing.compact)
-            .padding(.vertical, AppStyle.Spacing.small)
-        }
-        .padding(.top, AppStyle.Spacing.comfortable)
-
-        // "+ Sub-task" button
-        Button {
-            addNewSubtask(toTask: task.id)
-        } label: {
-            HStack(spacing: AppStyle.Spacing.tiny) {
-                Image(systemName: "plus")
-                    .font(.inter(.subheadline))
-                Text("Sub-task")
-                    .font(.inter(.subheadline))
-            }
-            .foregroundColor(.secondary)
-            .padding(.vertical, AppStyle.Spacing.tiny)
-        }
-        .buttonStyle(.plain)
-        .padding(.leading, 28)
-        .padding(.top, AppStyle.Spacing.compact)
-        .padding(.bottom, AppStyle.Spacing.small)
-    }
-
     // MARK: - Helpers
 
     private func save() {
         let trimmedTitle = title.trimmingCharacters(in: .whitespaces)
         guard !trimmedTitle.isEmpty else { return }
 
-        let tasks = draftTasks.filter { !$0.title.trimmingCharacters(in: .whitespaces).isEmpty }
+        let subtasksToCreate = subtasks
+            .map { $0.title.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
         let catId = categoryId
         let pri = priority
         let scheduleEnabled = !scheduleDates.isEmpty
@@ -396,105 +327,62 @@ struct AddProjectBar: View {
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
 
         titleFocused = true
-        focusedTaskId = nil
+        focusedSubtaskId = nil
 
         title = ""
-        draftTasks = []
+        subtasks = []
         scheduleDates = []
         scheduleExpanded = false
         optionsExpanded = false
         priority = .low
+        hasGeneratedBreakdown = false
 
         _Concurrency.Task { @MainActor in
-            guard let projectId = await projectsViewModel.saveNewProject(
+            await taskListVM.createTaskWithSchedules(
                 title: trimmedTitle,
                 categoryId: catId,
                 priority: pri,
-                draftTasks: tasks
-            ) else { return }
+                subtaskTitles: subtasksToCreate,
+                scheduleAfterCreate: scheduleEnabled,
+                selectedTimeframe: tf,
+                selectedSection: sec,
+                selectedDates: dates,
+                hasScheduledTime: false,
+                scheduledTime: nil
+            )
 
             if scheduleEnabled && !dates.isEmpty {
-                guard let userId = projectsViewModel.authService.currentUser?.id else { return }
-                for date in dates {
-                    let schedule = Schedule(
-                        userId: userId,
-                        taskId: projectId,
-                        timeframe: tf,
-                        section: sec,
-                        scheduleDate: date,
-                        sortOrder: 0,
-                        scheduledTime: nil,
-                        durationMinutes: nil
-                    )
-                    _ = try? await projectsViewModel.scheduleRepository.createSchedule(schedule)
-                }
                 await focusViewModel.fetchSchedules()
-                await projectsViewModel.fetchScheduledTaskIds()
             }
 
             onSaved?()
         }
     }
 
-    private func addNewTask() {
-        let newTask = DraftTask()
+    private func addNewSubtask() {
+        let newEntry = DraftSubtaskEntry()
         withAnimation(.easeInOut(duration: 0.15)) {
-            draftTasks.append(newTask)
+            subtasks.append(newEntry)
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            focusedTaskId = newTask.id
+            focusedSubtaskId = newEntry.id
         }
     }
 
-    private func addNewSubtask(toTask taskId: UUID) {
-        guard let tIdx = draftTasks.firstIndex(where: { $0.id == taskId }) else { return }
-        let newSubtask = DraftSubtask(title: "")
-        withAnimation(.easeInOut(duration: 0.15)) {
-            draftTasks[tIdx].subtasks.append(newSubtask)
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            focusedTaskId = newSubtask.id
-        }
-    }
-
-    private func removeTask(id: UUID) {
-        withAnimation(.easeInOut(duration: 0.15)) {
-            draftTasks.removeAll { $0.id == id }
-        }
-    }
-
-    private func removeSubtask(id: UUID, fromTask taskId: UUID) {
-        guard let tIdx = draftTasks.firstIndex(where: { $0.id == taskId }) else { return }
-        withAnimation(.easeInOut(duration: 0.15)) {
-            draftTasks[tIdx].subtasks.removeAll { $0.id == id }
-        }
-    }
-
-    private func taskBinding(for taskId: UUID) -> Binding<String> {
-        Binding(
-            get: { draftTasks.first(where: { $0.id == taskId })?.title ?? "" },
-            set: { newValue in
-                if let idx = draftTasks.firstIndex(where: { $0.id == taskId }) {
-                    draftTasks[idx].title = newValue
+    private func generateBreakdown() {
+        let taskTitle = title.trimmingCharacters(in: .whitespaces)
+        guard !taskTitle.isEmpty else { return }
+        isGeneratingBreakdown = true
+        _Concurrency.Task { @MainActor in
+            do {
+                let aiService = AIService()
+                let suggestions = try await aiService.generateSubtasks(title: taskTitle, description: nil)
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    subtasks.append(contentsOf: suggestions.map { DraftSubtaskEntry(title: $0) })
                 }
-            }
-        )
-    }
-
-    private func subtaskBinding(forSubtask subtaskId: UUID, inTask taskId: UUID) -> Binding<String> {
-        Binding(
-            get: {
-                guard let tIdx = draftTasks.firstIndex(where: { $0.id == taskId }),
-                      let s = draftTasks[tIdx].subtasks.first(where: { $0.id == subtaskId })
-                else { return "" }
-                return s.title
-            },
-            set: { newValue in
-                if let tIdx = draftTasks.firstIndex(where: { $0.id == taskId }),
-                   let sIdx = draftTasks[tIdx].subtasks.firstIndex(where: { $0.id == subtaskId }) {
-                    draftTasks[tIdx].subtasks[sIdx].title = newValue
-                }
-            }
-        )
+                hasGeneratedBreakdown = true
+            } catch { }
+            isGeneratingBreakdown = false
+        }
     }
 }

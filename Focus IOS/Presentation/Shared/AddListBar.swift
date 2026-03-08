@@ -9,6 +9,7 @@ import Auth
 struct AddListBar: View {
     @ObservedObject var listsViewModel: ListsViewModel
     @EnvironmentObject var focusViewModel: FocusTabViewModel
+    var initialCategoryId: UUID? = nil
     var onSaved: (() -> Void)?
     var onDismiss: () -> Void
 
@@ -270,6 +271,9 @@ struct AddListBar: View {
         .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 20))
         .padding(.horizontal)
         .onAppear {
+            if let initialCategoryId {
+                categoryId = initialCategoryId
+            }
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                 titleFocused = true
             }

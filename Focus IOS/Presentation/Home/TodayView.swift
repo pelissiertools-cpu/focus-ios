@@ -18,6 +18,7 @@ struct TodayView: View {
     @State private var scheduleById: [UUID: Schedule] = [:]
     @State private var selectedScheduleForReschedule: Schedule?
     @State private var overdueScheduleDates: [UUID: Date] = [:]
+    @State private var focusTaskIds: Set<UUID> = []
 
     // Navigation
     @State private var selectedListForNavigation: FocusTask?
@@ -73,25 +74,50 @@ struct TodayView: View {
         return TodayItemEntry.sortForDisplay(entries)
     }
 
+    private var focusEntries: [TodayItemEntry] {
+        allTodayEntries.filter { focusTaskIds.contains($0.id) }
+    }
+
+    private var todoEntries: [TodayItemEntry] {
+        allTodayEntries.filter { !focusTaskIds.contains($0.id) }
+    }
+
     private var flattenedTodayItems: [TodayFlatItem] {
         var result: [TodayFlatItem] = []
 
-        for entry in allTodayEntries {
+        // Main Focus section
+        result.append(.focusSectionHeader)
+        for entry in focusEntries {
             result.append(.item(entry))
+            appendExpandedSubtasks(for: entry, into: &result)
+        }
+        result.append(.focusInlineAdd)
+        result.append(.focusDivider)
 
-            if case .task(let task, _, _) = entry,
-               taskListVM.expandedTasks.contains(task.id) {
-                let subtasks = taskListVM.getUncompletedSubtasks(for: task.id)
-                    + taskListVM.getCompletedSubtasks(for: task.id)
-                for subtask in subtasks {
-                    result.append(.subtask(subtask, parentId: task.id))
-                }
-                result.append(.inlineAddSubtask(parentId: task.id))
-            }
+        // Rest of items
+        for entry in todoEntries {
+            result.append(.item(entry))
+            appendExpandedSubtasks(for: entry, into: &result)
+        }
+
+        if todoEntries.isEmpty {
+            result.append(.todoDropPlaceholder)
         }
 
         result.append(.bottomSpacer)
         return result
+    }
+
+    private func appendExpandedSubtasks(for entry: TodayItemEntry, into result: inout [TodayFlatItem]) {
+        if case .task(let task, _, _) = entry,
+           taskListVM.expandedTasks.contains(task.id) {
+            let subtasks = taskListVM.getUncompletedSubtasks(for: task.id)
+                + taskListVM.getCompletedSubtasks(for: task.id)
+            for subtask in subtasks {
+                result.append(.subtask(subtask, parentId: task.id))
+            }
+            result.append(.inlineAddSubtask(parentId: task.id))
+        }
     }
 
     private var isEmpty: Bool {
@@ -119,17 +145,6 @@ struct TodayView: View {
             if isLoading && isEmpty {
                 ProgressView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if isEmpty {
-                VStack(spacing: 4) {
-                    Text("No tasks scheduled")
-                        .font(AppStyle.Typography.emptyTitle)
-                    Text("Tasks scheduled for today will appear here")
-                        .font(AppStyle.Typography.emptySubtitle)
-                        .foregroundColor(.secondary)
-                        .multilineTextAlignment(.center)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .padding(.horizontal, 20)
             } else {
                 itemList
             }
@@ -226,9 +241,13 @@ struct TodayView: View {
         let allSchedules = focusSchedules + todoSchedules
         var schedules: [UUID: (scheduleId: UUID, sortOrder: Int)] = [:]
         var byId: [UUID: Schedule] = [:]
+        var focusIds: Set<UUID> = []
         for s in allSchedules {
             schedules[s.taskId] = (scheduleId: s.id, sortOrder: s.sortOrder)
             byId[s.id] = s
+        }
+        for s in focusSchedules {
+            focusIds.insert(s.taskId)
         }
 
         var overdueDates: [UUID: Date] = [:]
@@ -242,6 +261,7 @@ struct TodayView: View {
 
         todaySchedules = schedules
         scheduleById = byId
+        focusTaskIds = focusIds
 
         taskListVM.scheduledTaskIds = Set(schedules.keys)
         taskListVM.scheduleFilter = .scheduled
@@ -287,12 +307,58 @@ struct TodayView: View {
         _ = await (t, l, p)
     }
 
+    // MARK: - Focus Task Creation
+
+    private func createFocusTask(title: String) async {
+        guard let userId = authService.currentUser?.id else { return }
+        let taskRepo = TaskRepository()
+        do {
+            let newTask = FocusTask(
+                userId: userId,
+                title: title,
+                type: .task,
+                isCompleted: false,
+                isInLibrary: true
+            )
+            let created = try await taskRepo.createTask(newTask)
+
+            let maxSort = focusEntries.map { $0.sortOrder }.max() ?? -1
+            let schedule = Schedule(
+                userId: userId,
+                taskId: created.id,
+                timeframe: .daily,
+                section: .focus,
+                scheduleDate: Date(),
+                sortOrder: maxSort + 1
+            )
+            let createdSchedule = try await scheduleRepository.createSchedule(schedule)
+
+            todaySchedules[created.id] = (scheduleId: createdSchedule.id, sortOrder: createdSchedule.sortOrder)
+            scheduleById[createdSchedule.id] = createdSchedule
+            focusTaskIds.insert(created.id)
+            taskListVM.scheduledTaskIds.insert(created.id)
+            await taskListVM.fetchTasks()
+        } catch {
+            // silently fail
+        }
+    }
+
     // MARK: - Item List
 
     private var itemList: some View {
         List {
             ForEach(flattenedTodayItems) { flatItem in
                 switch flatItem {
+                case .focusSectionHeader:
+                    Text("Main Focus")
+                        .font(.inter(.headline, weight: .bold))
+                        .foregroundColor(.focusBlue)
+                        .padding(.top, 16)
+                        .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                        .moveDisabled(true)
+
                 case .item(let entry):
                     todayItemRow(entry)
 
@@ -324,6 +390,39 @@ struct TodayView: View {
                     .listRowBackground(Color.clear)
                     .listRowSeparator(.hidden)
                     .moveDisabled(true)
+
+                case .focusInlineAdd:
+                    InlineAddRow(
+                        placeholder: "Add to focus",
+                        buttonLabel: "Add task",
+                        onSubmit: { title in await createFocusTask(title: title) },
+                        isAnyAddFieldActive: $isInlineAddFocused,
+                        verticalPadding: 8,
+                        accentColor: .focusBlue
+                    )
+                    .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+                    .moveDisabled(true)
+
+                case .focusDivider:
+                    Rectangle()
+                        .fill(Color.secondary.opacity(0.3))
+                        .frame(height: 1)
+                        .listRowInsets(EdgeInsets(top: 8, leading: 20, bottom: 8, trailing: 20))
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                        .moveDisabled(true)
+
+                case .todoDropPlaceholder:
+                    Text("Drop items here")
+                        .font(.inter(.subheadline))
+                        .foregroundColor(.secondary.opacity(0.4))
+                        .frame(maxWidth: .infinity, alignment: .center)
+                        .padding(.vertical, 20)
+                        .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
 
                 case .bottomSpacer:
                     Color.clear
@@ -454,6 +553,9 @@ struct TodayView: View {
 
         guard case .item(let movedEntry) = flat[fromIdx] else { return }
 
+        // Find the divider index to determine focus vs todo zones
+        let dividerIdx = flat.firstIndex(where: { $0.id == "focus-divider" }) ?? 0
+
         let itemEntries = flat.enumerated().compactMap { (i, flatItem) -> (flatIdx: Int, entry: TodayItemEntry)? in
             guard case .item(let entry) = flatItem else { return nil }
             return (i, entry)
@@ -475,15 +577,39 @@ struct TodayView: View {
         var items = itemEntries.map { $0.entry }
         items.move(fromOffsets: IndexSet(integer: itemFrom), toOffset: itemTo)
 
-        var updates: [(id: UUID, sortOrder: Int)] = []
-        for (index, entry) in items.enumerated() {
+        // Determine which items land in focus vs todo based on divider position
+        // Focus items: those whose flatIdx is before the divider
+        let focusItemCount = itemEntries.filter { $0.flatIdx < dividerIdx }.count
+        // After the move, the first focusItemCount items are focus, rest are todo
+        // But if destination crosses the divider, the count shifts by 1
+        let movedFromFocus = focusTaskIds.contains(movedEntry.id)
+        let movedToFocus = destination <= dividerIdx
+
+        // Update focusTaskIds for the moved item
+        if movedFromFocus && !movedToFocus {
+            focusTaskIds.remove(movedEntry.id)
+        } else if !movedFromFocus && movedToFocus {
+            focusTaskIds.insert(movedEntry.id)
+        }
+
+        // Rebuild sort orders: focus items get their own sequence, todo items get their own
+        let newFocusItems = items.filter { focusTaskIds.contains($0.id) }
+        let newTodoItems = items.filter { !focusTaskIds.contains($0.id) }
+
+        var updates: [(id: UUID, sortOrder: Int, section: Section)] = []
+        for (index, entry) in newFocusItems.enumerated() {
             let newOrder = index + 1
-            updates.append((id: entry.scheduleId, sortOrder: newOrder))
+            updates.append((id: entry.scheduleId, sortOrder: newOrder, section: .focus))
+            todaySchedules[entry.id] = (scheduleId: entry.scheduleId, sortOrder: newOrder)
+        }
+        for (index, entry) in newTodoItems.enumerated() {
+            let newOrder = index + 1
+            updates.append((id: entry.scheduleId, sortOrder: newOrder, section: .todo))
             todaySchedules[entry.id] = (scheduleId: entry.scheduleId, sortOrder: newOrder)
         }
 
         _Concurrency.Task {
-            try? await scheduleRepository.updateScheduleSortOrders(updates)
+            try? await scheduleRepository.updateScheduleSortOrdersAndSections(updates)
         }
     }
 }
@@ -584,6 +710,10 @@ private enum TodayFlatItem: Identifiable {
     case item(TodayItemEntry)
     case subtask(FocusTask, parentId: UUID)
     case inlineAddSubtask(parentId: UUID)
+    case focusSectionHeader
+    case focusInlineAdd
+    case focusDivider
+    case todoDropPlaceholder
     case bottomSpacer
 
     var id: String {
@@ -591,6 +721,10 @@ private enum TodayFlatItem: Identifiable {
         case .item(let e): return "item-\(e.id.uuidString)"
         case .subtask(let t, _): return "subtask-\(t.id.uuidString)"
         case .inlineAddSubtask(let pid): return "add-subtask-\(pid.uuidString)"
+        case .focusSectionHeader: return "focus-section-header"
+        case .focusInlineAdd: return "focus-inline-add"
+        case .focusDivider: return "focus-divider"
+        case .todoDropPlaceholder: return "todo-drop-placeholder"
         case .bottomSpacer: return "bottom-spacer"
         }
     }

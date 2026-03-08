@@ -195,19 +195,27 @@ struct HomeView: View {
                         // MARK: - Library Divider
                         homeSectionDivider(title: "LIBRARY")
 
-                        // MARK: - Projects / Quick Lists
-                        HStack(spacing: 12) {
-                            homeCard(title: "Projects", icon: "folder", count: viewModel.projects.filter({ !$0.isSection }).count) {
+                        // MARK: - Projects / Quick Lists / Goals
+                        HStack(spacing: 8) {
+                            homeCardCompact(title: "Projects", icon: "folder", count: viewModel.projects.filter({ !$0.isSection }).count) {
                                 viewModel.selectedMenuItem = .projects
                             }
-                            homeCard(title: "Quick lists", icon: "list.bullet", count: viewModel.lists.filter({ !$0.isSection }).count) {
+                            homeCardCompact(title: "Quick lists", icon: "list.bullet", count: viewModel.lists.filter({ !$0.isSection }).count) {
                                 viewModel.selectedMenuItem = .quickLists
                             }
+                            homeCardCompact(title: "Goals", customIcon: {
+                                Image("TargetIcon")
+                                    .renderingMode(.template)
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(width: 18, height: 18)
+                                    .foregroundColor(.primary)
+                            }) { }
                         }
                         .padding(.horizontal, 20)
 
-                        // MARK: - Someday / Goals
-                        HStack(spacing: 12) {
+                        // MARK: - Someday
+                        HStack(spacing: 8) {
                             homeCard(title: "Someday", customIcon: {
                                 HourglassIcon()
                                     .fill(.primary, style: FillStyle(eoFill: true))
@@ -215,21 +223,13 @@ struct HomeView: View {
                             }) {
                                 viewModel.selectedMenuItem = .someday
                             }
-                            homeCard(title: "Goals", customIcon: {
-                                Image("TargetIcon")
-                                    .renderingMode(.template)
-                                    .resizable()
-                                    .scaledToFit()
-                                    .frame(width: 21, height: 21)
-                                    .foregroundColor(.primary)
-                            }) { }
                         }
                         .padding(.horizontal, 20)
 
                         // MARK: - Categories Section
-                        if !viewModel.categories.isEmpty {
-                            categoriesSectionHeader
+                        categoriesSectionHeader
 
+                        if !viewModel.categories.isEmpty {
                             GeometryReader { geo in
                                 ScrollView(.horizontal, showsIndicators: false) {
                                     HStack(spacing: 12) {
@@ -539,6 +539,39 @@ struct HomeView: View {
                 }
             }
             .padding(16)
+            .frame(maxWidth: .infinity, minHeight: 56)
+            .contentShape(Rectangle())
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(Color.secondary.opacity(0.3), lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func homeCardCompact<Icon: View>(title: String, icon: String? = nil, @ViewBuilder customIcon: () -> Icon = { EmptyView() }, count: Int? = nil, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            VStack(spacing: 6) {
+                if let icon {
+                    Image(systemName: icon)
+                        .font(.helveticaNeue(size: 17.3))
+                        .foregroundColor(.primary)
+                } else {
+                    customIcon()
+                }
+                HStack(spacing: 3) {
+                    Text(title)
+                        .font(.helveticaNeue(size: 13))
+                        .tracking(-0.135)
+                        .foregroundColor(.primary)
+                        .lineLimit(1)
+                    if let count, count > 0 {
+                        Text("(\(count))")
+                            .font(.helveticaNeue(size: 10))
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
             .frame(maxWidth: .infinity, minHeight: 56)
             .contentShape(Rectangle())
             .overlay(

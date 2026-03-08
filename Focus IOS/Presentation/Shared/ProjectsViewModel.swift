@@ -639,24 +639,34 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
                 insertionIndex = uncompleted.firstIndex(where: { $0.isSection }) ?? uncompleted.count
             }
 
+            // Determine the actual sort order value for the new task
+            let newSortOrder: Int
+            if insertionIndex < uncompleted.count {
+                newSortOrder = uncompleted[insertionIndex].sortOrder
+            } else if let last = uncompleted.last {
+                newSortOrder = last.sortOrder + 1
+            } else {
+                newSortOrder = 0
+            }
+
             // Bump sort orders of items at or after insertion point
             var updates: [(id: UUID, sortOrder: Int)] = []
             for i in insertionIndex..<uncompleted.count {
                 let item = uncompleted[i]
-                let newSortOrder = item.sortOrder + 1
+                let bumpedOrder = item.sortOrder + 1
                 if let mapIdx = allTasks.firstIndex(where: { $0.id == item.id }) {
-                    allTasks[mapIdx].sortOrder = newSortOrder
+                    allTasks[mapIdx].sortOrder = bumpedOrder
                 }
-                updates.append((id: item.id, sortOrder: newSortOrder))
+                updates.append((id: item.id, sortOrder: bumpedOrder))
             }
             projectTasksMap[projectId] = allTasks
 
-            // Create the task with the insertion sort order
+            // Create the task with the correct sort order
             let task = try await repository.createProjectTask(
                 title: trimmed,
                 projectId: projectId,
                 userId: userId,
-                sortOrder: insertionIndex
+                sortOrder: newSortOrder
             )
 
             if var tasks = projectTasksMap[projectId] {

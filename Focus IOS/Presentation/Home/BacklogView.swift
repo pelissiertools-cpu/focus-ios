@@ -594,6 +594,13 @@ struct BacklogView: View {
                 isLoading = true
             }
             await loadAllData()
+            // Auto-uncheck unscheduled filter if no unscheduled tasks exist
+            if tasksOnly && filterUnscheduled {
+                let hasUnscheduled = standaloneTasks.contains { !taskListVM.scheduledTaskIds.contains($0.id) }
+                if !hasUnscheduled {
+                    filterUnscheduled = false
+                }
+            }
             isLoading = false
         }
         .onAppear {

@@ -11,6 +11,7 @@ struct ProjectContentView: View {
     @EnvironmentObject var focusViewModel: FocusTabViewModel
     @Environment(\.dismiss) private var dismiss
     @State private var isInlineAddFocused = false
+    @State private var activeAddRowId: String?
     @State private var projectTitle: String
     @State private var projectNotes: String
     @State private var editingSectionId: UUID?
@@ -107,9 +108,16 @@ struct ProjectContentView: View {
                                 placeholder: "Task title",
                                 buttonLabel: "Add task",
                                 onSubmit: { title in await viewModel.createProjectTask(title: title, projectId: project.id) },
-                                isAnyAddFieldActive: $isInlineAddFocused,
+                                isAnyAddFieldActive: Binding(
+                                    get: { isInlineAddFocused },
+                                    set: { newValue in
+                                        isInlineAddFocused = newValue
+                                        if newValue { activeAddRowId = "empty-add-task" }
+                                    }
+                                ),
                                 verticalPadding: AppStyle.Spacing.compact
                             )
+                            .id("empty-add-task")
                             .listRowInsets(AppStyle.Insets.row)
                             .listRowBackground(Color.clear)
                             .listRowSeparator(.hidden)
@@ -152,11 +160,18 @@ struct ProjectContentView: View {
 
                                 case .addSubtaskRow(let parentId):
                                     if !viewModel.contentEditMode {
+                                        let rowId = "add-subtask-\(parentId.uuidString)"
                                         InlineAddRow(
                                             placeholder: "Subtask title",
                                             buttonLabel: "Add subtask",
                                             onSubmit: { title in await viewModel.createSubtask(title: title, parentId: parentId) },
-                                            isAnyAddFieldActive: $isInlineAddFocused,
+                                            isAnyAddFieldActive: Binding(
+                                                get: { isInlineAddFocused },
+                                                set: { newValue in
+                                                    isInlineAddFocused = newValue
+                                                    if newValue { activeAddRowId = rowId }
+                                                }
+                                            ),
                                             iconFont: .inter(.caption),
                                             verticalPadding: AppStyle.Spacing.small
                                         )
@@ -180,11 +195,18 @@ struct ProjectContentView: View {
 
                                 case .addTaskRow(let sectionId):
                                     if !viewModel.contentEditMode {
+                                        let rowId = item.id
                                         InlineAddRow(
                                             placeholder: "Task title",
                                             buttonLabel: "Add task",
                                             onSubmit: { title in await viewModel.createProjectTaskInSection(title: title, projectId: project.id, sectionId: sectionId) },
-                                            isAnyAddFieldActive: $isInlineAddFocused,
+                                            isAnyAddFieldActive: Binding(
+                                                get: { isInlineAddFocused },
+                                                set: { newValue in
+                                                    isInlineAddFocused = newValue
+                                                    if newValue { activeAddRowId = rowId }
+                                                }
+                                            ),
                                             verticalPadding: AppStyle.Spacing.compact
                                         )
                                         .moveDisabled(true)
@@ -203,14 +225,6 @@ struct ProjectContentView: View {
                     }
 
                     Color.clear
-                        .frame(height: 1)
-                        .id("inline-add-anchor")
-                        .listRowInsets(EdgeInsets())
-                        .listRowBackground(Color.clear)
-                        .listRowSeparator(.hidden)
-                        .moveDisabled(true)
-
-                    Color.clear
                         .frame(height: 200)
                         .listRowInsets(EdgeInsets())
                         .listRowBackground(Color.clear)
@@ -221,10 +235,10 @@ struct ProjectContentView: View {
                 .scrollContentBackground(.hidden)
                 .scrollDismissesKeyboard(.immediately)
                 .onChange(of: isInlineAddFocused) { _, focused in
-                    if focused {
+                    if focused, let targetId = activeAddRowId {
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                             withAnimation(.easeInOut(duration: 0.25)) {
-                                proxy.scrollTo("inline-add-anchor", anchor: .bottom)
+                                proxy.scrollTo(targetId, anchor: UnitPoint(x: 0.5, y: 0.75))
                             }
                         }
                     }

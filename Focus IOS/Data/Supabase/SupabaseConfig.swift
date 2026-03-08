@@ -8,9 +8,20 @@
 import Foundation
 
 /// Configuration for Supabase connection
-/// IMPORTANT: In production, use .xcconfig files or environment variables
-/// Never commit credentials to git
+/// Reads credentials from Info.plist, which pulls from Secrets.xcconfig at build time.
+/// See Secrets.xcconfig.template for setup instructions.
 enum SupabaseConfig {
-    static let supabaseURL = "https://ajsjtgnwbmdynwcrwdqb.supabase.co"
-    static let supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFqc2p0Z253Ym1keW53Y3J3ZHFiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAzMjQwMDAsImV4cCI6MjA4NTkwMDAwMH0.GSnfe6ykbmkeRzGZV9gN5xU9E0RZrlKsIiOlny39PFw"
+    static let supabaseURL: String = {
+        guard let value = Bundle.main.infoDictionary?["SUPABASE_URL"] as? String, !value.isEmpty else {
+            fatalError("SUPABASE_URL not set. Copy Secrets.xcconfig.template to Secrets.xcconfig and fill in your credentials.")
+        }
+        return value
+    }()
+
+    static let supabaseAnonKey: String = {
+        guard let value = Bundle.main.infoDictionary?["SUPABASE_ANON_KEY"] as? String, !value.isEmpty else {
+            fatalError("SUPABASE_ANON_KEY not set. Copy Secrets.xcconfig.template to Secrets.xcconfig and fill in your credentials.")
+        }
+        return value
+    }()
 }

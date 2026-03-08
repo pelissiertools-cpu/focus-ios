@@ -35,6 +35,7 @@
 		C05406BA2F33E33D00231EFE /* Focus IOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Focus IOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		C05406CC2F33E33E00231EFE /* Focus IOSTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Focus IOSTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		C05406D62F33E33E00231EFE /* Focus IOSUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Focus IOSUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		C0F0C0012F6A0B0000000001 /* Secrets.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Secrets.xcconfig; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -88,6 +89,7 @@
 		C05406B12F33E33D00231EFE = {
 			isa = PBXGroup;
 			children = (
+				C0F0C0012F6A0B0000000001 /* Secrets.xcconfig */,
 				C05406BC2F33E33D00231EFE /* Focus IOS */,
 				C05406CF2F33E33E00231EFE /* Focus IOSTests */,
 				C05406D92F33E33E00231EFE /* Focus IOSUITests */,
@@ -418,6 +420,7 @@
 		};
 		C05406E12F33E33E00231EFE /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = C0F0C0012F6A0B0000000001 /* Secrets.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -452,6 +455,7 @@
 		};
 		C05406E22F33E33E00231EFE /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = C0F0C0012F6A0B0000000001 /* Secrets.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;

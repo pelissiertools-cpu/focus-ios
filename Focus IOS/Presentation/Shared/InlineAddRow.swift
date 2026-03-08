@@ -16,6 +16,7 @@ struct InlineAddRow: View {
     var textFont: Font = .helveticaNeue(.subheadline)
     var iconFont: Font = .helveticaNeue(.subheadline)
     var verticalPadding: CGFloat = 12
+    var accentColor: Color = .secondary
 
     @State private var title = ""
     @State private var isEditing = false
@@ -48,7 +49,7 @@ struct InlineAddRow: View {
                         Text(buttonLabel)
                             .font(textFont)
                     }
-                    .foregroundColor(.secondary)
+                    .foregroundColor(accentColor)
                 }
                 .buttonStyle(.plain)
 

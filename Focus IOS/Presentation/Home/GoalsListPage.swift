@@ -146,9 +146,9 @@ struct GoalsListPage: View {
             .listStyle(.plain)
             .scrollContentBackground(.hidden)
             .scrollDismissesKeyboard(.immediately)
-            .onTapGesture {
+            .simultaneousGesture(TapGesture().onEnded {
                 UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-            }
+            })
 
             if goalsViewModel.isEditMode {
                 EditModeActionBar(viewModel: goalsViewModel)

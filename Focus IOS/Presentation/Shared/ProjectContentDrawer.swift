@@ -27,21 +27,22 @@ struct ProjectContentView: View {
     var body: some View {
         ZStack {
             ScrollViewReader { proxy in
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 0) {
-                        // Project title — editable inline
-                        TextField("Project name", text: $projectTitle, axis: .vertical)
-                            .font(.inter(.title2, weight: .bold))
-                            .foregroundColor(.primary)
-                            .textFieldStyle(.plain)
-                            .focused($isTitleFocused)
-                            .onSubmit { saveProjectTitle() }
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.horizontal, 20)
-                            .padding(.top, 16)
-                            .padding(.bottom, 4)
+                List {
+                    // Project title — editable inline
+                    TextField("Project name", text: $projectTitle, axis: .vertical)
+                        .font(.inter(.title2, weight: .bold))
+                        .foregroundColor(.primary)
+                        .textFieldStyle(.plain)
+                        .focused($isTitleFocused)
+                        .onSubmit { saveProjectTitle() }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .listRowInsets(EdgeInsets(top: 16, leading: 20, bottom: 4, trailing: 20))
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                        .moveDisabled(true)
 
-                        // Notes
+                    // Notes
+                    Group {
                         if isNotesFocused || projectNotes.isEmpty {
                             TextField("Notes", text: $projectNotes, axis: .vertical)
                                 .font(.inter(.body))
@@ -49,38 +50,165 @@ struct ProjectContentView: View {
                                 .textFieldStyle(.plain)
                                 .focused($isNotesFocused)
                                 .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(.horizontal, 20)
-                                .padding(.bottom, 12)
                         } else {
                             Text(linkifiedText(projectNotes))
                                 .font(.inter(.body))
                                 .foregroundColor(.secondary)
                                 .tint(.blue.opacity(0.5))
                                 .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(.horizontal, 20)
-                                .padding(.bottom, 12)
                                 .contentShape(Rectangle())
                                 .onTapGesture {
                                     isNotesFocused = true
                                 }
                         }
-
-                        // Task/section list
-                        contentList
-
-                        Color.clear
-                            .frame(height: 1)
-                            .id("inline-add-anchor")
                     }
-                    .padding(.bottom, 200)
+                    .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 12, trailing: 20))
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+                    .moveDisabled(true)
+
+                    // Content
+                    if viewModel.isLoadingProjectTasks.contains(project.id) {
+                        HStack {
+                            Spacer()
+                            ProgressView()
+                                .scaleEffect(0.8)
+                            Spacer()
+                        }
+                        .padding()
+                        .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                        .moveDisabled(true)
+                    } else {
+                        let items = viewModel.flattenedProjectItems(for: project.id)
+
+                        if items.count <= 1 {
+                            Text("No tasks yet")
+                                .font(AppStyle.Typography.emptyTitle)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 8, trailing: 20))
+                                .listRowBackground(Color.clear)
+                                .listRowSeparator(.hidden)
+                                .moveDisabled(true)
+
+                            InlineAddRow(
+                                placeholder: "Task title",
+                                buttonLabel: "Add task",
+                                onSubmit: { title in await viewModel.createProjectTask(title: title, projectId: project.id) },
+                                isAnyAddFieldActive: $isInlineAddFocused,
+                                verticalPadding: 8
+                            )
+                            .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+                            .listRowBackground(Color.clear)
+                            .listRowSeparator(.hidden)
+                            .moveDisabled(true)
+                        } else {
+                            ForEach(items) { item in
+                                switch item {
+                                case .section(let section):
+                                    ProjectSectionRow(
+                                        section: section,
+                                        viewModel: viewModel,
+                                        projectId: project.id,
+                                        editingSectionId: $editingSectionId
+                                    )
+                                    .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+                                    .listRowBackground(Color.clear)
+                                    .listRowSeparator(.hidden)
+
+                                case .task(let task):
+                                    Group {
+                                        if task.parentTaskId != nil {
+                                            ProjectSubtaskRow(
+                                                subtask: task,
+                                                parentId: task.parentTaskId!,
+                                                viewModel: viewModel
+                                            )
+                                            .padding(.leading, viewModel.contentEditMode ? 0 : 32)
+                                        } else {
+                                            ContentTaskRow(
+                                                task: task,
+                                                projectId: project.id,
+                                                viewModel: viewModel
+                                            )
+                                        }
+                                    }
+                                    .moveDisabled(task.isCompleted || viewModel.contentEditMode)
+                                    .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+                                    .listRowBackground(Color.clear)
+                                    .listRowSeparator(.hidden)
+
+                                case .addSubtaskRow(let parentId):
+                                    if !viewModel.contentEditMode {
+                                        InlineAddRow(
+                                            placeholder: "Subtask title",
+                                            buttonLabel: "Add subtask",
+                                            onSubmit: { title in await viewModel.createSubtask(title: title, parentId: parentId) },
+                                            isAnyAddFieldActive: $isInlineAddFocused,
+                                            iconFont: .inter(.caption),
+                                            verticalPadding: 6
+                                        )
+                                        .padding(.leading, 32)
+                                        .moveDisabled(true)
+                                        .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+                                        .listRowBackground(Color.clear)
+                                        .listRowSeparator(.hidden)
+                                    }
+
+                                case .completedHeader(let count):
+                                    ProjectContentDonePill(
+                                        count: count,
+                                        isCollapsed: viewModel.isContentDoneCollapsed,
+                                        onToggle: { viewModel.toggleContentDoneCollapsed() }
+                                    )
+                                    .moveDisabled(true)
+                                    .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+                                    .listRowBackground(Color.clear)
+                                    .listRowSeparator(.hidden)
+
+                                case .addTaskRow(let sectionId):
+                                    if !viewModel.contentEditMode {
+                                        InlineAddRow(
+                                            placeholder: "Task title",
+                                            buttonLabel: "Add task",
+                                            onSubmit: { title in await viewModel.createProjectTaskInSection(title: title, projectId: project.id, sectionId: sectionId) },
+                                            isAnyAddFieldActive: $isInlineAddFocused,
+                                            verticalPadding: 8
+                                        )
+                                        .moveDisabled(true)
+                                        .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+                                        .listRowBackground(Color.clear)
+                                        .listRowSeparator(.hidden)
+                                    }
+                                }
+                            }
+                            .onMove { from, to in
+                                if !viewModel.contentEditMode {
+                                    viewModel.handleProjectContentFlatMove(from: from, to: to, projectId: project.id)
+                                }
+                            }
+                        }
+                    }
+
+                    Color.clear
+                        .frame(height: 1)
+                        .id("inline-add-anchor")
+                        .listRowInsets(EdgeInsets())
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                        .moveDisabled(true)
+
+                    Color.clear
+                        .frame(height: 200)
+                        .listRowInsets(EdgeInsets())
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                        .moveDisabled(true)
                 }
+                .listStyle(.plain)
+                .scrollContentBackground(.hidden)
                 .scrollDismissesKeyboard(.immediately)
-                .simultaneousGesture(TapGesture().onEnded {
-                    UIApplication.shared.sendAction(
-                        #selector(UIResponder.resignFirstResponder),
-                        to: nil, from: nil, for: nil
-                    )
-                })
                 .onChange(of: isInlineAddFocused) { _, focused in
                     if focused {
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
@@ -272,141 +400,6 @@ struct ProjectContentView: View {
         }
     }
 
-    // MARK: - Content List
-
-    @ViewBuilder
-    private var contentList: some View {
-        if viewModel.isLoadingProjectTasks.contains(project.id) {
-            HStack {
-                Spacer()
-                ProgressView()
-                    .scaleEffect(0.8)
-                Spacer()
-            }
-            .padding()
-        } else {
-            let items = viewModel.flattenedProjectItems(for: project.id)
-
-            if items.count <= 1 {
-                // Only addTaskRow — no tasks yet
-                Text("No tasks yet")
-                    .font(AppStyle.Typography.emptyTitle)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 20)
-                    .padding(.bottom, 8)
-
-                InlineAddRow(
-                    placeholder: "Task title",
-                    buttonLabel: "Add task",
-                    onSubmit: { title in await viewModel.createProjectTask(title: title, projectId: project.id) },
-                    isAnyAddFieldActive: $isInlineAddFocused,
-                    verticalPadding: 8
-                )
-                .padding(.horizontal, 20)
-            } else {
-                List {
-                    ForEach(items) { item in
-                        switch item {
-                        case .section(let section):
-                            ProjectSectionRow(
-                                section: section,
-                                viewModel: viewModel,
-                                projectId: project.id,
-                                editingSectionId: $editingSectionId
-                            )
-                            .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
-                            .listRowBackground(Color.clear)
-                            .listRowSeparator(.hidden)
-
-                        case .task(let task):
-                            Group {
-                                if task.parentTaskId != nil {
-                                    ProjectSubtaskRow(
-                                        subtask: task,
-                                        parentId: task.parentTaskId!,
-                                        viewModel: viewModel
-                                    )
-                                    .padding(.leading, viewModel.contentEditMode ? 0 : 32)
-                                } else {
-                                    ContentTaskRow(
-                                        task: task,
-                                        projectId: project.id,
-                                        viewModel: viewModel
-                                    )
-                                }
-                            }
-                            .moveDisabled(task.isCompleted || viewModel.contentEditMode)
-                            .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
-                            .listRowBackground(Color.clear)
-                            .listRowSeparator(.hidden)
-
-                        case .addSubtaskRow(let parentId):
-                            if !viewModel.contentEditMode {
-                                InlineAddRow(
-                                    placeholder: "Subtask title",
-                                    buttonLabel: "Add subtask",
-                                    onSubmit: { title in await viewModel.createSubtask(title: title, parentId: parentId) },
-                                    isAnyAddFieldActive: $isInlineAddFocused,
-                                    iconFont: .inter(.caption),
-                                    verticalPadding: 6
-                                )
-                                .padding(.leading, 32)
-                                .moveDisabled(true)
-                                .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
-                                .listRowBackground(Color.clear)
-                                .listRowSeparator(.hidden)
-                            }
-
-                        case .completedHeader(let count):
-                            ProjectContentDonePill(
-                                count: count,
-                                isCollapsed: viewModel.isContentDoneCollapsed,
-                                onToggle: { viewModel.toggleContentDoneCollapsed() }
-                            )
-                            .moveDisabled(true)
-                            .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
-                            .listRowBackground(Color.clear)
-                            .listRowSeparator(.hidden)
-
-                        case .addTaskRow(let sectionId):
-                            if !viewModel.contentEditMode {
-                                InlineAddRow(
-                                    placeholder: "Task title",
-                                    buttonLabel: "Add task",
-                                    onSubmit: { title in await viewModel.createProjectTaskInSection(title: title, projectId: project.id, sectionId: sectionId) },
-                                    isAnyAddFieldActive: $isInlineAddFocused,
-                                    verticalPadding: 8
-                                )
-                                .moveDisabled(true)
-                                .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
-                                .listRowBackground(Color.clear)
-                                .listRowSeparator(.hidden)
-                            }
-                        }
-                    }
-                    .onMove { from, to in
-                        if !viewModel.contentEditMode {
-                            viewModel.handleProjectContentFlatMove(from: from, to: to, projectId: project.id)
-                        }
-                    }
-                }
-                .listStyle(.plain)
-                .scrollDisabled(true)
-                .scrollContentBackground(.hidden)
-                .keyboardDismissOverlay(isActive: $isInlineAddFocused)
-                .frame(minHeight: items.reduce(CGFloat(0)) { sum, item in
-                    switch item {
-                    case .section: return sum + 58
-                    case .task(let t) where t.parentTaskId == nil: return sum + 56
-                    case .completedHeader: return sum + 52
-                    case .addTaskRow(_): return viewModel.contentEditMode ? sum : sum + 56
-                    case .addSubtaskRow: return viewModel.contentEditMode ? sum : sum + 44
-                    default: return sum + 44
-                    }
-                } + 20)
-            }
-        }
-    }
 }
 
 // MARK: - Content Task Row (with selection support)
@@ -426,14 +419,12 @@ private struct ContentTaskRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            // Selection circle in edit mode
             if viewModel.contentEditMode {
                 Image(systemName: viewModel.selectedContentTaskIds.contains(task.id) ? "checkmark.circle.fill" : "circle")
                     .font(.inter(.title3))
                     .foregroundColor(viewModel.selectedContentTaskIds.contains(task.id) ? .appRed : .secondary)
             }
 
-            // Task title + subtask count
             VStack(alignment: .leading, spacing: 4) {
                 Text(task.title)
                     .font(AppStyle.Typography.itemTitle)
@@ -449,7 +440,6 @@ private struct ContentTaskRow: View {
             .frame(maxWidth: .infinity, minHeight: 36, alignment: .leading)
 
             if !viewModel.contentEditMode {
-                // Completion button
                 Button {
                     UIImpactFeedbackGenerator(style: isPending ? .light : .medium).impactOccurred()
                     viewModel.requestToggleTaskCompletion(task, projectId: projectId)
@@ -492,15 +482,6 @@ private struct ContentTaskRow: View {
                 }
             }
         }
-        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-            if !viewModel.contentEditMode && !task.isCompleted {
-                Button(role: .destructive) {
-                    showDeleteConfirmation = true
-                } label: {
-                    Label("Delete", systemImage: "trash")
-                }
-            }
-        }
         .alert("Delete Task", isPresented: $showDeleteConfirmation) {
             Button("Delete", role: .destructive) {
                 _Concurrency.Task {
@@ -510,6 +491,17 @@ private struct ContentTaskRow: View {
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("Are you sure you want to delete \"\(task.title)\"?")
+        }
+        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+            if !viewModel.contentEditMode && !task.isCompleted {
+                Button(role: .destructive) {
+                    _Concurrency.Task {
+                        await viewModel.deleteProjectTask(task, projectId: projectId)
+                    }
+                } label: {
+                    Label("Delete", systemImage: "trash")
+                }
+            }
         }
     }
 }

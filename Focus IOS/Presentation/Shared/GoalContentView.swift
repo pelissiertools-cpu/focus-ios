@@ -27,34 +27,37 @@ struct GoalContentView: View {
     var body: some View {
         ZStack {
             ScrollViewReader { proxy in
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 0) {
-                        // Goal title — editable inline
-                        TextField("Goal name", text: $goalTitle, axis: .vertical)
-                            .font(.inter(.title2, weight: .bold))
-                            .foregroundColor(.primary)
-                            .textFieldStyle(.plain)
-                            .focused($isTitleFocused)
-                            .onSubmit { saveGoalTitle() }
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.horizontal, 20)
-                            .padding(.top, 16)
-                            .padding(.bottom, 4)
+                List {
+                    // Goal title — editable inline
+                    TextField("Goal name", text: $goalTitle, axis: .vertical)
+                        .font(.inter(.title2, weight: .bold))
+                        .foregroundColor(.primary)
+                        .textFieldStyle(.plain)
+                        .focused($isTitleFocused)
+                        .onSubmit { saveGoalTitle() }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .listRowInsets(EdgeInsets(top: 16, leading: 20, bottom: 4, trailing: 20))
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                        .moveDisabled(true)
 
-                        // Deadline
-                        if let dueDate = goal.dueDate {
-                            HStack(spacing: 6) {
-                                Image(systemName: "calendar")
-                                    .font(.inter(.caption))
-                                Text(dueDate, style: .date)
-                                    .font(.inter(.subheadline))
-                            }
-                            .foregroundColor(dueDate < Date() ? .red : .secondary)
-                            .padding(.horizontal, 20)
-                            .padding(.bottom, 8)
+                    // Deadline
+                    if let dueDate = goal.dueDate {
+                        HStack(spacing: 6) {
+                            Image(systemName: "calendar")
+                                .font(.inter(.caption))
+                            Text(dueDate, style: .date)
+                                .font(.inter(.subheadline))
                         }
+                        .foregroundColor(dueDate < Date() ? .red : .secondary)
+                        .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 8, trailing: 20))
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                        .moveDisabled(true)
+                    }
 
-                        // Notes
+                    // Notes
+                    Group {
                         if isNotesFocused || goalNotes.isEmpty {
                             TextField("Notes", text: $goalNotes, axis: .vertical)
                                 .font(.inter(.body))
@@ -62,38 +65,165 @@ struct GoalContentView: View {
                                 .textFieldStyle(.plain)
                                 .focused($isNotesFocused)
                                 .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(.horizontal, 20)
-                                .padding(.bottom, 12)
                         } else {
                             Text(linkifiedText(goalNotes))
                                 .font(.inter(.body))
                                 .foregroundColor(.secondary)
                                 .tint(.blue.opacity(0.5))
                                 .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(.horizontal, 20)
-                                .padding(.bottom, 12)
                                 .contentShape(Rectangle())
                                 .onTapGesture {
                                     isNotesFocused = true
                                 }
                         }
-
-                        // Task/section list
-                        contentList
-
-                        Color.clear
-                            .frame(height: 1)
-                            .id("inline-add-anchor")
                     }
-                    .padding(.bottom, 200)
+                    .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 12, trailing: 20))
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+                    .moveDisabled(true)
+
+                    // Content
+                    if viewModel.isLoadingGoalTasks.contains(goal.id) {
+                        HStack {
+                            Spacer()
+                            ProgressView()
+                                .scaleEffect(0.8)
+                            Spacer()
+                        }
+                        .padding()
+                        .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                        .moveDisabled(true)
+                    } else {
+                        let items = viewModel.flattenedGoalItems(for: goal.id)
+
+                        if items.count <= 1 {
+                            Text("No tasks yet")
+                                .font(AppStyle.Typography.emptyTitle)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 8, trailing: 20))
+                                .listRowBackground(Color.clear)
+                                .listRowSeparator(.hidden)
+                                .moveDisabled(true)
+
+                            InlineAddRow(
+                                placeholder: "Task title",
+                                buttonLabel: "Add task",
+                                onSubmit: { title in await viewModel.createGoalTask(title: title, goalId: goal.id) },
+                                isAnyAddFieldActive: $isInlineAddFocused,
+                                verticalPadding: 8
+                            )
+                            .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+                            .listRowBackground(Color.clear)
+                            .listRowSeparator(.hidden)
+                            .moveDisabled(true)
+                        } else {
+                            ForEach(items) { item in
+                                switch item {
+                                case .section(let section):
+                                    GoalSectionRow(
+                                        section: section,
+                                        viewModel: viewModel,
+                                        goalId: goal.id,
+                                        editingSectionId: $editingSectionId
+                                    )
+                                    .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+                                    .listRowBackground(Color.clear)
+                                    .listRowSeparator(.hidden)
+
+                                case .task(let task):
+                                    Group {
+                                        if task.parentTaskId != nil {
+                                            GoalSubtaskRow(
+                                                subtask: task,
+                                                parentId: task.parentTaskId!,
+                                                viewModel: viewModel
+                                            )
+                                            .padding(.leading, viewModel.contentEditMode ? 0 : 32)
+                                        } else {
+                                            GoalContentTaskRow(
+                                                task: task,
+                                                goalId: goal.id,
+                                                viewModel: viewModel
+                                            )
+                                        }
+                                    }
+                                    .moveDisabled(task.isCompleted || viewModel.contentEditMode)
+                                    .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+                                    .listRowBackground(Color.clear)
+                                    .listRowSeparator(.hidden)
+
+                                case .addSubtaskRow(let parentId):
+                                    if !viewModel.contentEditMode {
+                                        InlineAddRow(
+                                            placeholder: "Subtask title",
+                                            buttonLabel: "Add subtask",
+                                            onSubmit: { title in await viewModel.createSubtask(title: title, parentId: parentId) },
+                                            isAnyAddFieldActive: $isInlineAddFocused,
+                                            iconFont: .inter(.caption),
+                                            verticalPadding: 6
+                                        )
+                                        .padding(.leading, 32)
+                                        .moveDisabled(true)
+                                        .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+                                        .listRowBackground(Color.clear)
+                                        .listRowSeparator(.hidden)
+                                    }
+
+                                case .completedHeader(let count):
+                                    GoalContentDonePill(
+                                        count: count,
+                                        isCollapsed: viewModel.isContentDoneCollapsed,
+                                        onToggle: { viewModel.toggleContentDoneCollapsed() }
+                                    )
+                                    .moveDisabled(true)
+                                    .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+                                    .listRowBackground(Color.clear)
+                                    .listRowSeparator(.hidden)
+
+                                case .addTaskRow:
+                                    if !viewModel.contentEditMode {
+                                        InlineAddRow(
+                                            placeholder: "Task title",
+                                            buttonLabel: "Add task",
+                                            onSubmit: { title in await viewModel.createGoalTask(title: title, goalId: goal.id) },
+                                            isAnyAddFieldActive: $isInlineAddFocused,
+                                            verticalPadding: 8
+                                        )
+                                        .moveDisabled(true)
+                                        .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+                                        .listRowBackground(Color.clear)
+                                        .listRowSeparator(.hidden)
+                                    }
+                                }
+                            }
+                            .onMove { from, to in
+                                if !viewModel.contentEditMode {
+                                    viewModel.handleGoalContentFlatMove(from: from, to: to, goalId: goal.id)
+                                }
+                            }
+                        }
+                    }
+
+                    Color.clear
+                        .frame(height: 1)
+                        .id("inline-add-anchor")
+                        .listRowInsets(EdgeInsets())
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                        .moveDisabled(true)
+
+                    Color.clear
+                        .frame(height: 200)
+                        .listRowInsets(EdgeInsets())
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                        .moveDisabled(true)
                 }
+                .listStyle(.plain)
+                .scrollContentBackground(.hidden)
                 .scrollDismissesKeyboard(.immediately)
-                .simultaneousGesture(TapGesture().onEnded {
-                    UIApplication.shared.sendAction(
-                        #selector(UIResponder.resignFirstResponder),
-                        to: nil, from: nil, for: nil
-                    )
-                })
                 .onChange(of: isInlineAddFocused) { _, focused in
                     if focused {
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
@@ -278,140 +408,6 @@ struct GoalContentView: View {
         }
     }
 
-    // MARK: - Content List
-
-    @ViewBuilder
-    private var contentList: some View {
-        if viewModel.isLoadingGoalTasks.contains(goal.id) {
-            HStack {
-                Spacer()
-                ProgressView()
-                    .scaleEffect(0.8)
-                Spacer()
-            }
-            .padding()
-        } else {
-            let items = viewModel.flattenedGoalItems(for: goal.id)
-
-            if items.count <= 1 {
-                Text("No tasks yet")
-                    .font(AppStyle.Typography.emptyTitle)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 20)
-                    .padding(.bottom, 8)
-
-                InlineAddRow(
-                    placeholder: "Task title",
-                    buttonLabel: "Add task",
-                    onSubmit: { title in await viewModel.createGoalTask(title: title, goalId: goal.id) },
-                    isAnyAddFieldActive: $isInlineAddFocused,
-                    verticalPadding: 8
-                )
-                .padding(.horizontal, 20)
-            } else {
-                List {
-                    ForEach(items) { item in
-                        switch item {
-                        case .section(let section):
-                            GoalSectionRow(
-                                section: section,
-                                viewModel: viewModel,
-                                goalId: goal.id,
-                                editingSectionId: $editingSectionId
-                            )
-                            .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
-                            .listRowBackground(Color.clear)
-                            .listRowSeparator(.hidden)
-
-                        case .task(let task):
-                            Group {
-                                if task.parentTaskId != nil {
-                                    GoalSubtaskRow(
-                                        subtask: task,
-                                        parentId: task.parentTaskId!,
-                                        viewModel: viewModel
-                                    )
-                                    .padding(.leading, viewModel.contentEditMode ? 0 : 32)
-                                } else {
-                                    GoalContentTaskRow(
-                                        task: task,
-                                        goalId: goal.id,
-                                        viewModel: viewModel
-                                    )
-                                }
-                            }
-                            .moveDisabled(task.isCompleted || viewModel.contentEditMode)
-                            .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
-                            .listRowBackground(Color.clear)
-                            .listRowSeparator(.hidden)
-
-                        case .addSubtaskRow(let parentId):
-                            if !viewModel.contentEditMode {
-                                InlineAddRow(
-                                    placeholder: "Subtask title",
-                                    buttonLabel: "Add subtask",
-                                    onSubmit: { title in await viewModel.createSubtask(title: title, parentId: parentId) },
-                                    isAnyAddFieldActive: $isInlineAddFocused,
-                                    iconFont: .inter(.caption),
-                                    verticalPadding: 6
-                                )
-                                .padding(.leading, 32)
-                                .moveDisabled(true)
-                                .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
-                                .listRowBackground(Color.clear)
-                                .listRowSeparator(.hidden)
-                            }
-
-                        case .completedHeader(let count):
-                            GoalContentDonePill(
-                                count: count,
-                                isCollapsed: viewModel.isContentDoneCollapsed,
-                                onToggle: { viewModel.toggleContentDoneCollapsed() }
-                            )
-                            .moveDisabled(true)
-                            .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
-                            .listRowBackground(Color.clear)
-                            .listRowSeparator(.hidden)
-
-                        case .addTaskRow:
-                            if !viewModel.contentEditMode {
-                                InlineAddRow(
-                                    placeholder: "Task title",
-                                    buttonLabel: "Add task",
-                                    onSubmit: { title in await viewModel.createGoalTask(title: title, goalId: goal.id) },
-                                    isAnyAddFieldActive: $isInlineAddFocused,
-                                    verticalPadding: 8
-                                )
-                                .moveDisabled(true)
-                                .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
-                                .listRowBackground(Color.clear)
-                                .listRowSeparator(.hidden)
-                            }
-                        }
-                    }
-                    .onMove { from, to in
-                        if !viewModel.contentEditMode {
-                            viewModel.handleGoalContentFlatMove(from: from, to: to, goalId: goal.id)
-                        }
-                    }
-                }
-                .listStyle(.plain)
-                .scrollDisabled(true)
-                .scrollContentBackground(.hidden)
-                .keyboardDismissOverlay(isActive: $isInlineAddFocused)
-                .frame(minHeight: items.reduce(CGFloat(0)) { sum, item in
-                    switch item {
-                    case .section: return sum + 58
-                    case .task(let t) where t.parentTaskId == nil: return sum + 56
-                    case .completedHeader: return sum + 52
-                    case .addTaskRow: return viewModel.contentEditMode ? sum : sum + 56
-                    case .addSubtaskRow: return viewModel.contentEditMode ? sum : sum + 44
-                    default: return sum + 44
-                    }
-                } + 20)
-            }
-        }
-    }
 }
 
 // MARK: - Goal Content Task Row
@@ -491,15 +487,6 @@ private struct GoalContentTaskRow: View {
                 }
             }
         }
-        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-            if !viewModel.contentEditMode && !task.isCompleted {
-                Button(role: .destructive) {
-                    showDeleteConfirmation = true
-                } label: {
-                    Label("Delete", systemImage: "trash")
-                }
-            }
-        }
         .alert("Delete Task", isPresented: $showDeleteConfirmation) {
             Button("Delete", role: .destructive) {
                 _Concurrency.Task {
@@ -509,6 +496,17 @@ private struct GoalContentTaskRow: View {
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("Are you sure you want to delete \"\(task.title)\"?")
+        }
+        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+            if !viewModel.contentEditMode && !task.isCompleted {
+                Button(role: .destructive) {
+                    _Concurrency.Task {
+                        await viewModel.deleteGoalTask(task, goalId: goalId)
+                    }
+                } label: {
+                    Label("Delete", systemImage: "trash")
+                }
+            }
         }
     }
 }

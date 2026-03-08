@@ -24,68 +24,158 @@ struct ListContentView: View {
     }
 
     var body: some View {
-        ZStack {
-            ScrollViewReader { proxy in
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 0) {
-                        // List title — editable inline
-                        TextField("List name", text: $listTitle, axis: .vertical)
-                            .font(.inter(.title2, weight: .bold))
-                            .foregroundColor(.primary)
+        ScrollViewReader { proxy in
+            List {
+                // List title — editable inline
+                TextField("List name", text: $listTitle, axis: .vertical)
+                    .font(.inter(.title2, weight: .bold))
+                    .foregroundColor(.primary)
+                    .textFieldStyle(.plain)
+                    .focused($isTitleFocused)
+                    .onSubmit { saveListTitle() }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .listRowInsets(EdgeInsets(top: 16, leading: 20, bottom: 4, trailing: 20))
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+                    .moveDisabled(true)
+
+                // Notes
+                Group {
+                    if isNotesFocused || listNotes.isEmpty {
+                        TextField("Notes", text: $listNotes, axis: .vertical)
+                            .font(.inter(.body))
+                            .foregroundColor(.secondary)
                             .textFieldStyle(.plain)
-                            .focused($isTitleFocused)
-                            .onSubmit { saveListTitle() }
+                            .focused($isNotesFocused)
                             .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.horizontal, 20)
-                            .padding(.top, 16)
-                            .padding(.bottom, 4)
-
-                        // Notes
-                        if isNotesFocused || listNotes.isEmpty {
-                            TextField("Notes", text: $listNotes, axis: .vertical)
-                                .font(.inter(.body))
-                                .foregroundColor(.secondary)
-                                .textFieldStyle(.plain)
-                                .focused($isNotesFocused)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(.horizontal, 20)
-                                .padding(.bottom, 12)
-                        } else {
-                            Text(linkifiedText(listNotes))
-                                .font(.inter(.body))
-                                .foregroundColor(.secondary)
-                                .tint(.blue.opacity(0.5))
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(.horizontal, 20)
-                                .padding(.bottom, 12)
-                                .contentShape(Rectangle())
-                                .onTapGesture {
-                                    isNotesFocused = true
-                                }
-                        }
-
-                        // Items list
-                        contentList
-
-                        Color.clear
-                            .frame(height: 1)
-                            .id("inline-add-anchor")
-                    }
-                    .padding(.bottom, 200)
-                }
-                .scrollDismissesKeyboard(.immediately)
-                .simultaneousGesture(TapGesture().onEnded {
-                    UIApplication.shared.sendAction(
-                        #selector(UIResponder.resignFirstResponder),
-                        to: nil, from: nil, for: nil
-                    )
-                })
-                .onChange(of: isInlineAddFocused) { _, focused in
-                    if focused {
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                            withAnimation(.easeInOut(duration: 0.25)) {
-                                proxy.scrollTo("inline-add-anchor", anchor: .bottom)
+                    } else {
+                        Text(linkifiedText(listNotes))
+                            .font(.inter(.body))
+                            .foregroundColor(.secondary)
+                            .tint(.blue.opacity(0.5))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                isNotesFocused = true
                             }
+                    }
+                }
+                .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 12, trailing: 20))
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
+                .moveDisabled(true)
+
+                // Content
+                let uncompletedItems = viewModel.getUncompletedItems(for: list.id)
+                let completedItems = viewModel.getCompletedItems(for: list.id)
+                let allEmpty = uncompletedItems.isEmpty && completedItems.isEmpty
+
+                if allEmpty && viewModel.isLoadingItems.contains(list.id) {
+                    HStack {
+                        Spacer()
+                        ProgressView()
+                            .scaleEffect(0.8)
+                        Spacer()
+                    }
+                    .padding()
+                    .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+                    .moveDisabled(true)
+                } else if allEmpty {
+                    Text("No items yet")
+                        .font(AppStyle.Typography.emptyTitle)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 8, trailing: 20))
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                        .moveDisabled(true)
+
+                    InlineAddRow(
+                        placeholder: "Item title",
+                        buttonLabel: "Add item",
+                        onSubmit: { title in await viewModel.createItem(title: title, listId: list.id) },
+                        isAnyAddFieldActive: $isInlineAddFocused,
+                        verticalPadding: 8
+                    )
+                    .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+                    .moveDisabled(true)
+                } else {
+                    let items = flattenedDisplayItems()
+
+                    ForEach(items) { displayItem in
+                        switch displayItem {
+                        case .item(let item):
+                            ListContentItemRow(
+                                item: item,
+                                listId: list.id,
+                                viewModel: viewModel
+                            )
+                            .moveDisabled(item.isCompleted)
+                            .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+                            .listRowBackground(Color.clear)
+                            .listRowSeparator(.hidden)
+
+                        case .addItemRow:
+                            InlineAddRow(
+                                placeholder: "Item title",
+                                buttonLabel: "Add item",
+                                onSubmit: { title in await viewModel.createItem(title: title, listId: list.id) },
+                                isAnyAddFieldActive: $isInlineAddFocused,
+                                verticalPadding: 8
+                            )
+                            .moveDisabled(true)
+                            .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+                            .listRowBackground(Color.clear)
+                            .listRowSeparator(.hidden)
+
+                        case .completedHeader(let count):
+                            ListContentDonePill(
+                                count: count,
+                                isCollapsed: viewModel.isDoneSectionCollapsed(for: list.id),
+                                onToggle: { viewModel.toggleDoneSectionCollapsed(for: list.id) },
+                                onClear: {
+                                    _Concurrency.Task {
+                                        await viewModel.clearCompletedItems(for: list.id)
+                                    }
+                                }
+                            )
+                            .moveDisabled(true)
+                            .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+                            .listRowBackground(Color.clear)
+                            .listRowSeparator(.hidden)
+                        }
+                    }
+                    .onMove { from, to in
+                        viewModel.handleListContentFlatMove(from: from, to: to, listId: list.id)
+                    }
+                }
+
+                Color.clear
+                    .frame(height: 1)
+                    .id("inline-add-anchor")
+                    .listRowInsets(EdgeInsets())
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+                    .moveDisabled(true)
+
+                Color.clear
+                    .frame(height: 200)
+                    .listRowInsets(EdgeInsets())
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+                    .moveDisabled(true)
+            }
+            .listStyle(.plain)
+            .scrollContentBackground(.hidden)
+            .scrollDismissesKeyboard(.immediately)
+            .onChange(of: isInlineAddFocused) { _, focused in
+                if focused {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        withAnimation(.easeInOut(duration: 0.25)) {
+                            proxy.scrollTo("inline-add-anchor", anchor: .bottom)
                         }
                     }
                 }
@@ -216,99 +306,6 @@ struct ListContentView: View {
         return result
     }
 
-    @ViewBuilder
-    private var contentList: some View {
-        let uncompletedItems = viewModel.getUncompletedItems(for: list.id)
-        let completedItems = viewModel.getCompletedItems(for: list.id)
-        let allEmpty = uncompletedItems.isEmpty && completedItems.isEmpty
-
-        if allEmpty && viewModel.isLoadingItems.contains(list.id) {
-            HStack {
-                Spacer()
-                ProgressView()
-                    .scaleEffect(0.8)
-                Spacer()
-            }
-            .padding()
-        } else if allEmpty {
-            Text("No items yet")
-                .font(AppStyle.Typography.emptyTitle)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 20)
-                .padding(.bottom, 8)
-
-            InlineAddRow(
-                placeholder: "Item title",
-                buttonLabel: "Add item",
-                onSubmit: { title in await viewModel.createItem(title: title, listId: list.id) },
-                isAnyAddFieldActive: $isInlineAddFocused,
-                verticalPadding: 8
-            )
-            .padding(.horizontal, 20)
-        } else {
-            let items = flattenedDisplayItems()
-
-            List {
-                ForEach(items) { displayItem in
-                    switch displayItem {
-                    case .item(let item):
-                        ListContentItemRow(
-                            item: item,
-                            listId: list.id,
-                            viewModel: viewModel
-                        )
-                        .moveDisabled(item.isCompleted)
-                        .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
-                        .listRowBackground(Color.clear)
-                        .listRowSeparator(.hidden)
-
-                    case .addItemRow:
-                        InlineAddRow(
-                            placeholder: "Item title",
-                            buttonLabel: "Add item",
-                            onSubmit: { title in await viewModel.createItem(title: title, listId: list.id) },
-                            isAnyAddFieldActive: $isInlineAddFocused,
-                            verticalPadding: 8
-                        )
-                        .moveDisabled(true)
-                        .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
-                        .listRowBackground(Color.clear)
-                        .listRowSeparator(.hidden)
-
-                    case .completedHeader(let count):
-                        ListContentDonePill(
-                            count: count,
-                            isCollapsed: viewModel.isDoneSectionCollapsed(for: list.id),
-                            onToggle: { viewModel.toggleDoneSectionCollapsed(for: list.id) },
-                            onClear: {
-                                _Concurrency.Task {
-                                    await viewModel.clearCompletedItems(for: list.id)
-                                }
-                            }
-                        )
-                        .moveDisabled(true)
-                        .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
-                        .listRowBackground(Color.clear)
-                        .listRowSeparator(.hidden)
-                    }
-                }
-                .onMove { from, to in
-                    viewModel.handleListContentFlatMove(from: from, to: to, listId: list.id)
-                }
-            }
-            .listStyle(.plain)
-            .scrollDisabled(true)
-            .scrollContentBackground(.hidden)
-            .keyboardDismissOverlay(isActive: $isInlineAddFocused)
-            .frame(minHeight: items.reduce(CGFloat(0)) { sum, item in
-                switch item {
-                case .item: return sum + 56
-                case .addItemRow: return sum + 56
-                case .completedHeader: return sum + 52
-                }
-            } + 20)
-        }
-    }
 }
 
 // MARK: - List Content Item Row
@@ -363,15 +360,6 @@ private struct ListContentItemRow: View {
                 }
             }
         }
-        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-            if !item.isCompleted {
-                Button(role: .destructive) {
-                    showDeleteConfirmation = true
-                } label: {
-                    Label("Delete", systemImage: "trash")
-                }
-            }
-        }
         .alert("Delete Item", isPresented: $showDeleteConfirmation) {
             Button("Delete", role: .destructive) {
                 _Concurrency.Task {
@@ -381,6 +369,17 @@ private struct ListContentItemRow: View {
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("Are you sure you want to delete \"\(item.title)\"?")
+        }
+        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+            if !item.isCompleted {
+                Button(role: .destructive) {
+                    _Concurrency.Task {
+                        await viewModel.deleteItem(item, listId: listId)
+                    }
+                } label: {
+                    Label("Delete", systemImage: "trash")
+                }
+            }
         }
     }
 }

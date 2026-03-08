@@ -888,8 +888,6 @@ struct ScheduledView: View {
                 showCreateListAlert: $showCreateListAlert
             )
             .transition(.scale.combined(with: .opacity))
-        } else if !showingAddBar && !isSearchActive {
-            fabButton
         }
 
         if showingAddBar {

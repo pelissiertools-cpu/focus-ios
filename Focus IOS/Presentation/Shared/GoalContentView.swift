@@ -26,69 +26,84 @@ struct GoalContentView: View {
 
     var body: some View {
         ZStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 0) {
-                    // Goal title — editable inline
-                    TextField("Goal name", text: $goalTitle, axis: .vertical)
-                        .font(.inter(.title2, weight: .bold))
-                        .foregroundColor(.primary)
-                        .textFieldStyle(.plain)
-                        .focused($isTitleFocused)
-                        .onSubmit { saveGoalTitle() }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal, 20)
-                        .padding(.top, 16)
-                        .padding(.bottom, 4)
-
-                    // Deadline
-                    if let dueDate = goal.dueDate {
-                        HStack(spacing: 6) {
-                            Image(systemName: "calendar")
-                                .font(.inter(.caption))
-                            Text(dueDate, style: .date)
-                                .font(.inter(.subheadline))
-                        }
-                        .foregroundColor(dueDate < Date() ? .red : .secondary)
-                        .padding(.horizontal, 20)
-                        .padding(.bottom, 8)
-                    }
-
-                    // Notes
-                    if isNotesFocused || goalNotes.isEmpty {
-                        TextField("Notes", text: $goalNotes, axis: .vertical)
-                            .font(.inter(.body))
-                            .foregroundColor(.secondary)
+            ScrollViewReader { proxy in
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 0) {
+                        // Goal title — editable inline
+                        TextField("Goal name", text: $goalTitle, axis: .vertical)
+                            .font(.inter(.title2, weight: .bold))
+                            .foregroundColor(.primary)
                             .textFieldStyle(.plain)
-                            .focused($isNotesFocused)
+                            .focused($isTitleFocused)
+                            .onSubmit { saveGoalTitle() }
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(.horizontal, 20)
-                            .padding(.bottom, 12)
-                    } else {
-                        Text(linkifiedText(goalNotes))
-                            .font(.inter(.body))
-                            .foregroundColor(.secondary)
-                            .tint(.blue.opacity(0.5))
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.horizontal, 20)
-                            .padding(.bottom, 12)
-                            .contentShape(Rectangle())
-                            .onTapGesture {
-                                isNotesFocused = true
-                            }
-                    }
+                            .padding(.top, 16)
+                            .padding(.bottom, 4)
 
-                    // Task/section list
-                    contentList
+                        // Deadline
+                        if let dueDate = goal.dueDate {
+                            HStack(spacing: 6) {
+                                Image(systemName: "calendar")
+                                    .font(.inter(.caption))
+                                Text(dueDate, style: .date)
+                                    .font(.inter(.subheadline))
+                            }
+                            .foregroundColor(dueDate < Date() ? .red : .secondary)
+                            .padding(.horizontal, 20)
+                            .padding(.bottom, 8)
+                        }
+
+                        // Notes
+                        if isNotesFocused || goalNotes.isEmpty {
+                            TextField("Notes", text: $goalNotes, axis: .vertical)
+                                .font(.inter(.body))
+                                .foregroundColor(.secondary)
+                                .textFieldStyle(.plain)
+                                .focused($isNotesFocused)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.horizontal, 20)
+                                .padding(.bottom, 12)
+                        } else {
+                            Text(linkifiedText(goalNotes))
+                                .font(.inter(.body))
+                                .foregroundColor(.secondary)
+                                .tint(.blue.opacity(0.5))
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.horizontal, 20)
+                                .padding(.bottom, 12)
+                                .contentShape(Rectangle())
+                                .onTapGesture {
+                                    isNotesFocused = true
+                                }
+                        }
+
+                        // Task/section list
+                        contentList
+
+                        Color.clear
+                            .frame(height: 1)
+                            .id("inline-add-anchor")
+                    }
+                    .padding(.bottom, 200)
                 }
-                .padding(.bottom, 120)
+                .scrollDismissesKeyboard(.immediately)
+                .simultaneousGesture(TapGesture().onEnded {
+                    UIApplication.shared.sendAction(
+                        #selector(UIResponder.resignFirstResponder),
+                        to: nil, from: nil, for: nil
+                    )
+                })
+                .onChange(of: isInlineAddFocused) { _, focused in
+                    if focused {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                            withAnimation(.easeInOut(duration: 0.25)) {
+                                proxy.scrollTo("inline-add-anchor", anchor: .bottom)
+                            }
+                        }
+                    }
+                }
             }
-            .scrollDismissesKeyboard(.immediately)
-            .simultaneousGesture(TapGesture().onEnded {
-                UIApplication.shared.sendAction(
-                    #selector(UIResponder.resignFirstResponder),
-                    to: nil, from: nil, for: nil
-                )
-            })
 
             // Edit mode action bar
             if viewModel.contentEditMode {

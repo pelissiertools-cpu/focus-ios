@@ -220,17 +220,6 @@ struct HomeView: View {
                         }
                         .padding(.horizontal, 20)
 
-                        // MARK: - Someday
-                        HStack(spacing: 8) {
-                            homeCard(title: "Someday", customIcon: {
-                                HourglassIcon()
-                                    .fill(.primary, style: FillStyle(eoFill: true))
-                                    .frame(width: 21, height: 21)
-                            }) {
-                                viewModel.selectedMenuItem = .someday
-                            }
-                        }
-                        .padding(.horizontal, 20)
 
                         // MARK: - Categories Section
                         categoriesSectionHeader

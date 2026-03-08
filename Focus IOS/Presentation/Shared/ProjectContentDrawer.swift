@@ -26,56 +26,71 @@ struct ProjectContentView: View {
 
     var body: some View {
         ZStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 0) {
-                    // Project title — editable inline
-                    TextField("Project name", text: $projectTitle, axis: .vertical)
-                        .font(.inter(.title2, weight: .bold))
-                        .foregroundColor(.primary)
-                        .textFieldStyle(.plain)
-                        .focused($isTitleFocused)
-                        .onSubmit { saveProjectTitle() }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal, 20)
-                        .padding(.top, 16)
-                        .padding(.bottom, 4)
-
-                    // Notes
-                    if isNotesFocused || projectNotes.isEmpty {
-                        TextField("Notes", text: $projectNotes, axis: .vertical)
-                            .font(.inter(.body))
-                            .foregroundColor(.secondary)
+            ScrollViewReader { proxy in
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 0) {
+                        // Project title — editable inline
+                        TextField("Project name", text: $projectTitle, axis: .vertical)
+                            .font(.inter(.title2, weight: .bold))
+                            .foregroundColor(.primary)
                             .textFieldStyle(.plain)
-                            .focused($isNotesFocused)
+                            .focused($isTitleFocused)
+                            .onSubmit { saveProjectTitle() }
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(.horizontal, 20)
-                            .padding(.bottom, 12)
-                    } else {
-                        Text(linkifiedText(projectNotes))
-                            .font(.inter(.body))
-                            .foregroundColor(.secondary)
-                            .tint(.blue.opacity(0.5))
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.horizontal, 20)
-                            .padding(.bottom, 12)
-                            .contentShape(Rectangle())
-                            .onTapGesture {
-                                isNotesFocused = true
-                            }
-                    }
+                            .padding(.top, 16)
+                            .padding(.bottom, 4)
 
-                    // Task/section list
-                    contentList
+                        // Notes
+                        if isNotesFocused || projectNotes.isEmpty {
+                            TextField("Notes", text: $projectNotes, axis: .vertical)
+                                .font(.inter(.body))
+                                .foregroundColor(.secondary)
+                                .textFieldStyle(.plain)
+                                .focused($isNotesFocused)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.horizontal, 20)
+                                .padding(.bottom, 12)
+                        } else {
+                            Text(linkifiedText(projectNotes))
+                                .font(.inter(.body))
+                                .foregroundColor(.secondary)
+                                .tint(.blue.opacity(0.5))
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.horizontal, 20)
+                                .padding(.bottom, 12)
+                                .contentShape(Rectangle())
+                                .onTapGesture {
+                                    isNotesFocused = true
+                                }
+                        }
+
+                        // Task/section list
+                        contentList
+
+                        Color.clear
+                            .frame(height: 1)
+                            .id("inline-add-anchor")
+                    }
+                    .padding(.bottom, 200)
                 }
-                .padding(.bottom, 120)
+                .scrollDismissesKeyboard(.immediately)
+                .simultaneousGesture(TapGesture().onEnded {
+                    UIApplication.shared.sendAction(
+                        #selector(UIResponder.resignFirstResponder),
+                        to: nil, from: nil, for: nil
+                    )
+                })
+                .onChange(of: isInlineAddFocused) { _, focused in
+                    if focused {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                            withAnimation(.easeInOut(duration: 0.25)) {
+                                proxy.scrollTo("inline-add-anchor", anchor: .bottom)
+                            }
+                        }
+                    }
+                }
             }
-            .scrollDismissesKeyboard(.immediately)
-            .simultaneousGesture(TapGesture().onEnded {
-                UIApplication.shared.sendAction(
-                    #selector(UIResponder.resignFirstResponder),
-                    to: nil, from: nil, for: nil
-                )
-            })
 
             // Edit mode action bar
             if viewModel.contentEditMode {

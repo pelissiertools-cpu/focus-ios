@@ -264,7 +264,12 @@ struct ListContentView: View {
                         ListContentDonePill(
                             count: count,
                             isCollapsed: viewModel.isDoneSectionCollapsed(for: list.id),
-                            onToggle: { viewModel.toggleDoneSectionCollapsed(for: list.id) }
+                            onToggle: { viewModel.toggleDoneSectionCollapsed(for: list.id) },
+                            onClear: {
+                                _Concurrency.Task {
+                                    await viewModel.clearCompletedItems(for: list.id)
+                                }
+                            }
                         )
                         .moveDisabled(true)
                         .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
@@ -371,6 +376,7 @@ private struct ListContentDonePill: View {
     let count: Int
     let isCollapsed: Bool
     let onToggle: () -> Void
+    let onClear: () -> Void
 
     var body: some View {
         HStack(spacing: 8) {
@@ -400,6 +406,19 @@ private struct ListContentDonePill: View {
             .buttonStyle(.plain)
 
             Spacer()
+
+            Button {
+                onClear()
+            } label: {
+                Text("Clear")
+                    .font(.inter(size: 12, weight: .medium))
+                    .foregroundColor(.secondary)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .clipShape(Capsule())
+                    .glassEffect(.regular.tint(.glassTint).interactive(), in: .capsule)
+            }
+            .buttonStyle(.plain)
         }
         .padding(.vertical, 10)
     }

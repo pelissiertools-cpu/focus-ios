@@ -632,7 +632,7 @@ struct HomeView: View {
                 Image(assetIcon)
                     .resizable()
                     .scaledToFit()
-                    .frame(width: 17.3, height: 17.3)
+                    .frame(width: 21, height: 21)
                     .foregroundColor(.primary)
             } else {
                 Text(title)

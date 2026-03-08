@@ -251,12 +251,41 @@ class TaskRepository {
             .execute()
     }
 
+    // MARK: - Sort Order Helpers
+
+    /// Lightweight next-sort-order: fetches only the max sort_order via LIMIT 1 instead of all rows
+    private func nextSortOrder(filterColumn: String, filterValue: String) async throws -> Int {
+        struct Row: Decodable { let sortOrder: Int; enum CodingKeys: String, CodingKey { case sortOrder = "sort_order" } }
+        let rows: [Row] = try await supabase
+            .from("tasks")
+            .select("sort_order")
+            .eq(filterColumn, value: filterValue)
+            .order("sort_order", ascending: false)
+            .limit(1)
+            .execute()
+            .value
+        return (rows.first?.sortOrder ?? -1) + 1
+    }
+
+    /// Next sort order for top-level items filtered by type
+    private func nextSortOrderByType(_ type: TaskType) async throws -> Int {
+        struct Row: Decodable { let sortOrder: Int; enum CodingKeys: String, CodingKey { case sortOrder = "sort_order" } }
+        let rows: [Row] = try await supabase
+            .from("tasks")
+            .select("sort_order")
+            .eq("type", value: type.rawValue)
+            .order("sort_order", ascending: false)
+            .limit(1)
+            .execute()
+            .value
+        return (rows.first?.sortOrder ?? -1) + 1
+    }
+
     // MARK: - Subtask Operations
 
     /// Create a subtask under a parent task
     func createSubtask(title: String, parentTaskId: UUID, userId: UUID, projectId: UUID? = nil) async throws -> FocusTask {
-        let existingSubtasks = try await fetchSubtasks(parentId: parentTaskId)
-        let nextSortOrder = (existingSubtasks.map { $0.sortOrder }.max() ?? -1) + 1
+        let nextSortOrder = try await nextSortOrder(filterColumn: "parent_task_id", filterValue: parentTaskId.uuidString)
 
         let subtask = FocusTask(
             userId: userId,
@@ -404,8 +433,7 @@ class TaskRepository {
 
     /// Create a new project
     func createProject(title: String, userId: UUID, categoryId: UUID? = nil, priority: Priority = .low) async throws -> FocusTask {
-        let existingProjects = try await fetchProjects()
-        let nextSortOrder = (existingProjects.map { $0.sortOrder }.max() ?? -1) + 1
+        let nextSortOrder = try await nextSortOrderByType(.project)
 
         let project = FocusTask(
             userId: userId,
@@ -425,8 +453,7 @@ class TaskRepository {
         if let sortOrder = sortOrder {
             order = sortOrder
         } else {
-            let existingTasks = try await fetchProjectTasks(projectId: projectId)
-            order = (existingTasks.map { $0.sortOrder }.max() ?? -1) + 1
+            order = try await nextSortOrder(filterColumn: "project_id", filterValue: projectId.uuidString)
         }
 
         let task = FocusTask(
@@ -446,8 +473,7 @@ class TaskRepository {
         if let sortOrder = sortOrder {
             order = sortOrder
         } else {
-            let existingTasks = try await fetchProjectTasks(projectId: projectId)
-            order = (existingTasks.map { $0.sortOrder }.max() ?? -1) + 1
+            order = try await nextSortOrder(filterColumn: "project_id", filterValue: projectId.uuidString)
         }
 
         let section = FocusTask(
@@ -465,15 +491,7 @@ class TaskRepository {
 
     /// Create a top-level section header for projects, lists, or goals pages
     func createTopLevelSection(title: String, type: TaskType, userId: UUID) async throws -> FocusTask {
-        let existingItems: [FocusTask]
-        if type == .project {
-            existingItems = try await fetchProjects()
-        } else if type == .goal {
-            existingItems = try await fetchGoals()
-        } else {
-            existingItems = try await fetchTasks(ofType: type)
-        }
-        let nextOrder = (existingItems.map { $0.sortOrder }.max() ?? -1) + 1
+        let nextOrder = try await nextSortOrderByType(type)
 
         let section = FocusTask(
             userId: userId,
@@ -567,8 +585,7 @@ class TaskRepository {
 
     /// Create a new goal
     func createGoal(title: String, userId: UUID, dueDate: Date? = nil, categoryId: UUID? = nil, priority: Priority = .low) async throws -> FocusTask {
-        let existingGoals = try await fetchGoals()
-        let nextSortOrder = (existingGoals.map { $0.sortOrder }.max() ?? -1) + 1
+        let nextSortOrder = try await nextSortOrderByType(.goal)
 
         let goal = FocusTask(
             userId: userId,
@@ -589,8 +606,7 @@ class TaskRepository {
         if let sortOrder = sortOrder {
             order = sortOrder
         } else {
-            let existingTasks = try await fetchGoalTasks(goalId: goalId)
-            order = (existingTasks.map { $0.sortOrder }.max() ?? -1) + 1
+            order = try await nextSortOrder(filterColumn: "project_id", filterValue: goalId.uuidString)
         }
 
         let task = FocusTask(
@@ -610,8 +626,7 @@ class TaskRepository {
         if let sortOrder = sortOrder {
             order = sortOrder
         } else {
-            let existingTasks = try await fetchGoalTasks(goalId: goalId)
-            order = (existingTasks.map { $0.sortOrder }.max() ?? -1) + 1
+            order = try await nextSortOrder(filterColumn: "project_id", filterValue: goalId.uuidString)
         }
 
         let section = FocusTask(

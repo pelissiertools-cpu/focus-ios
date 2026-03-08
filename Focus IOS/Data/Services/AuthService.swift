@@ -175,12 +175,14 @@ class AuthService: ObservableObject {
     }
 
     /// Check if an email already exists in auth.users via RPC
-    func checkEmailExists(email: String) async -> Bool {
+    /// Returns nil on network/RPC failure so callers can distinguish "not found" from "error"
+    func checkEmailExists(email: String) async -> Bool? {
         do {
             let result: Bool = try await supabase.rpc("check_email_exists", params: ["email_input": email]).execute().value
             return result
         } catch {
-            return false
+            errorMessage = "Could not verify email: \(error.localizedDescription)"
+            return nil
         }
     }
 
@@ -191,6 +193,7 @@ class AuthService: ObservableObject {
 
         do {
             try await supabase.auth.signOut()
+            AppDataCache.shared.invalidate()
             self.currentUser = nil
             self.isAuthenticated = false
             self.isLoading = false

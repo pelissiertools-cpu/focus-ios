@@ -154,14 +154,17 @@ struct AuthSheetView: View {
             Button(action: {
                 _Concurrency.Task { @MainActor in
                     isCheckingEmail = true
-                    let exists = await authService.checkEmailExists(email: email)
-                    detectedMode = exists ? .logIn : .signUp
-                    isCheckingEmail = false
-                    withAnimation {
-                        step = 2
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                            passwordFocused = true
+                    if let exists = await authService.checkEmailExists(email: email) {
+                        detectedMode = exists ? .logIn : .signUp
+                        isCheckingEmail = false
+                        withAnimation {
+                            step = 2
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                passwordFocused = true
+                            }
                         }
+                    } else {
+                        isCheckingEmail = false
                     }
                 }
             }) {

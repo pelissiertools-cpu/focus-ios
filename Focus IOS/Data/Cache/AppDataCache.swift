@@ -40,5 +40,26 @@ final class AppDataCache {
     var overdueSchedules: [Schedule] = []
     var todayScheduleDate: Date? = nil
 
+    /// Reset all cached data (call on sign-out or account switch)
+    func invalidate() {
+        allTasks = []
+        hasLoadedTasks = false
+        categories = []
+        hasLoadedCategories = false
+        projects = []
+        hasLoadedProjects = false
+        lists = []
+        hasLoadedLists = false
+        goals = []
+        hasLoadedGoals = false
+        scheduleSummaries = []
+        scheduledTaskIds = []
+        hasLoadedScheduleSummaries = false
+        todayFocusSchedules = []
+        todayTodoSchedules = []
+        overdueSchedules = []
+        todayScheduleDate = nil
+    }
+
     private init() {}
 }

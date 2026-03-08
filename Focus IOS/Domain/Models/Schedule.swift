@@ -9,7 +9,7 @@ import Foundation
 
 /// Represents a schedule of a task to a specific timeframe and section
 /// Maps to the schedules table in Supabase
-struct Schedule: Codable, Identifiable {
+struct Schedule: Codable, Identifiable, Hashable, Equatable {
     let id: UUID
     let userId: UUID
     let taskId: UUID

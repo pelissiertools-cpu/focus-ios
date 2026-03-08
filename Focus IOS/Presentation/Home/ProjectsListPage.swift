@@ -27,7 +27,7 @@ struct ProjectsListPage: View {
     var body: some View {
         ZStack {
             List {
-                HStack(spacing: 10) {
+                HStack(spacing: AppStyle.Spacing.medium) {
                     Image(systemName: "folder")
                         .font(.inter(.title2, weight: .medium))
                         .foregroundColor(.secondary)
@@ -35,7 +35,7 @@ struct ProjectsListPage: View {
                         .pageTitleStyle()
                 }
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .listRowInsets(EdgeInsets(top: 16, leading: 20, bottom: 16, trailing: 20))
+                    .listRowInsets(EdgeInsets(top: AppStyle.Spacing.section, leading: AppStyle.Spacing.page, bottom: AppStyle.Spacing.section, trailing: AppStyle.Spacing.page))
                     .listRowBackground(Color.clear)
                     .listRowSeparator(.hidden)
                     .moveDisabled(true)
@@ -43,12 +43,12 @@ struct ProjectsListPage: View {
                 if viewModel.isLoading {
                     ProgressView()
                         .frame(maxWidth: .infinity)
-                        .listRowInsets(EdgeInsets(top: 20, leading: 20, bottom: 0, trailing: 20))
+                        .listRowInsets(EdgeInsets(top: AppStyle.Spacing.page, leading: AppStyle.Spacing.page, bottom: 0, trailing: AppStyle.Spacing.page))
                         .listRowBackground(Color.clear)
                         .listRowSeparator(.hidden)
                         .moveDisabled(true)
                 } else if viewModel.projects.isEmpty {
-                    VStack(spacing: 4) {
+                    VStack(spacing: AppStyle.Spacing.tiny) {
                         Text("No projects yet")
                             .font(AppStyle.Typography.emptyTitle)
                         Text("Your projects will appear here")
@@ -57,7 +57,7 @@ struct ProjectsListPage: View {
                             .multilineTextAlignment(.center)
                     }
                     .frame(maxWidth: .infinity)
-                    .listRowInsets(EdgeInsets(top: 12, leading: 20, bottom: 0, trailing: 20))
+                    .listRowInsets(EdgeInsets(top: AppStyle.Spacing.comfortable, leading: AppStyle.Spacing.page, bottom: 0, trailing: AppStyle.Spacing.page))
                     .listRowBackground(Color.clear)
                     .listRowSeparator(.hidden)
                     .moveDisabled(true)
@@ -74,7 +74,7 @@ struct ProjectsListPage: View {
                                     await viewModel.deleteSection(section)
                                 }
                             )
-                            .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+                            .listRowInsets(AppStyle.Insets.row)
                             .listRowBackground(Color.clear)
                             .listRowSeparator(.hidden)
                             .swipeActions(edge: .trailing, allowsFullSwipe: true) {
@@ -88,7 +88,7 @@ struct ProjectsListPage: View {
                             }
                         } else {
                             projectRow(item)
-                                .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+                                .listRowInsets(AppStyle.Insets.row)
                                 .listRowBackground(Color.clear)
                                 .listRowSeparator(.hidden)
                         }
@@ -100,7 +100,7 @@ struct ProjectsListPage: View {
                 }
 
                 Color.clear
-                    .frame(height: projectsViewModel.isEditMode ? 100 : 20)
+                    .frame(height: projectsViewModel.isEditMode ? 100 : AppStyle.Spacing.page)
                     .listRowInsets(EdgeInsets())
                     .listRowSeparator(.hidden)
                     .listRowBackground(Color.clear)
@@ -131,13 +131,13 @@ struct ProjectsListPage: View {
                             Image(systemName: "plus")
                                 .font(.inter(.title2, weight: .semiBold))
                                 .foregroundColor(.white)
-                                .frame(width: 56, height: 56)
+                                .frame(width: AppStyle.Layout.fab, height: AppStyle.Layout.fab)
                                 .glassEffect(.regular.tint(.charcoal).interactive(), in: .circle)
                                 .shadow(radius: 4, y: 2)
                         }
                         .accessibilityLabel("Add project")
-                        .padding(.trailing, 20)
-                        .padding(.bottom, 20)
+                        .padding(.trailing, AppStyle.Spacing.page)
+                        .padding(.bottom, AppStyle.Spacing.page)
                     }
                 }
             }
@@ -172,7 +172,7 @@ struct ProjectsListPage: View {
                             }
                         }
                     )
-                    .padding(.bottom, 8)
+                    .padding(.bottom, AppStyle.Spacing.compact)
                 }
                 .transition(.move(edge: .bottom).combined(with: .opacity))
                 .zIndex(51)
@@ -250,7 +250,7 @@ struct ProjectsListPage: View {
                     Image(systemName: projectsViewModel.isEditMode ? "xmark" : "chevron.left")
                         .font(.inter(.body, weight: .semiBold))
                         .foregroundColor(.primary)
-                        .frame(width: 44, height: 44)
+                        .frame(width: AppStyle.Layout.touchTarget, height: AppStyle.Layout.touchTarget)
                         .contentShape(Rectangle())
                 }
                 .accessibilityLabel(projectsViewModel.isEditMode ? "Cancel" : "Back")
@@ -290,7 +290,7 @@ struct ProjectsListPage: View {
                         Image(systemName: "ellipsis")
                             .font(.inter(.body, weight: .semiBold))
                             .foregroundColor(.primary)
-                            .frame(width: 30, height: 30)
+                            .frame(width: AppStyle.Layout.compactButton, height: AppStyle.Layout.compactButton)
                             .background(Color.pillBackground, in: Circle())
                     }
                     .accessibilityLabel("More options")
@@ -303,7 +303,7 @@ struct ProjectsListPage: View {
 
     @ViewBuilder
     private func projectRow(_ project: FocusTask) -> some View {
-        HStack(spacing: 12) {
+        HStack(spacing: AppStyle.Spacing.comfortable) {
             if projectsViewModel.isEditMode {
                 Image(systemName: projectsViewModel.selectedProjectIds.contains(project.id) ? "checkmark.circle.fill" : "circle.dashed")
                     .font(.inter(.title3))
@@ -313,7 +313,7 @@ struct ProjectsListPage: View {
             ProjectProgressRing(
                 completed: projectsViewModel.taskProgress(for: project.id).completed,
                 total: projectsViewModel.taskProgress(for: project.id).total,
-                size: 24
+                size: AppStyle.Layout.pillButton
             )
 
             Text(project.title)
@@ -324,7 +324,7 @@ struct ProjectsListPage: View {
             Spacer()
 
         }
-        .padding(.vertical, 10)
+        .padding(.vertical, AppStyle.Spacing.medium)
         .contentShape(Rectangle())
         .onTapGesture {
             if projectsViewModel.isEditMode {

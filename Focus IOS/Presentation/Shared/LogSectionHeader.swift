@@ -12,12 +12,12 @@ struct LogSectionHeader: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack(spacing: 12) {
-                HStack(alignment: .lastTextBaseline, spacing: 8) {
+            HStack(spacing: AppStyle.Spacing.comfortable) {
+                HStack(alignment: .lastTextBaseline, spacing: AppStyle.Spacing.compact) {
                     Text(title)
                         .font(AppStyle.Typography.sectionHeader)
 
-                    HStack(spacing: 4) {
+                    HStack(spacing: AppStyle.Spacing.tiny) {
                         if count > 0 {
                             Text("\(count)")
                                 .font(AppStyle.Typography.countBadge)
@@ -28,8 +28,8 @@ struct LogSectionHeader: View {
                             .foregroundColor(.secondary)
                             .rotationEffect(.degrees(isCollapsed ? 0 : 90))
                     }
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
+                    .padding(.horizontal, AppStyle.Spacing.compact)
+                    .padding(.vertical, AppStyle.Spacing.tiny)
                     .clipShape(Capsule())
                     .glassEffect(.regular.interactive(), in: .capsule)
                     .alignmentGuide(.lastTextBaseline) { d in d[.bottom] - 1 }
@@ -45,13 +45,13 @@ struct LogSectionHeader: View {
             }
             .accessibilityLabel("\(title), \(count) items")
             .accessibilityHint(isCollapsed ? "Double-tap to expand" : "Double-tap to collapse")
-            .padding(.vertical, 6)
-            .padding(.horizontal, 12)
+            .padding(.vertical, AppStyle.Spacing.small)
+            .padding(.horizontal, AppStyle.Spacing.comfortable)
 
             Rectangle()
                 .fill(Color.secondary.opacity(0.3))
                 .frame(height: 1)
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, AppStyle.Spacing.section)
     }
 }

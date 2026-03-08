@@ -58,7 +58,7 @@ struct ListDetailsDrawer: View {
             }, highlighted: hasChanges)
         ) {
             ScrollView {
-                VStack(spacing: 12) {
+                VStack(spacing: AppStyle.Spacing.comfortable) {
                     // ─── TITLE ───
                     titleCard
 
@@ -68,7 +68,7 @@ struct ListDetailsDrawer: View {
                     // ─── NOTE ───
                     noteCard
                 }
-                .padding(.bottom, 20)
+                .padding(.bottom, AppStyle.Spacing.page)
             }
             .background(.clear)
             .alert("New Category", isPresented: $showingNewCategoryAlert) {
@@ -110,13 +110,13 @@ struct ListDetailsDrawer: View {
                 .textFieldStyle(.plain)
                 .focused($isTitleFocused)
                 .onSubmit { saveTitle() }
-                .padding(.horizontal, 14)
-                .padding(.vertical, 16)
+                .padding(.horizontal, AppStyle.Spacing.content)
+                .padding(.vertical, AppStyle.Spacing.section)
         }
         .background(Color(.secondarySystemGroupedBackground))
         .clipShape(RoundedRectangle(cornerRadius: 12))
-        .padding(.horizontal, 16)
-        .padding(.top, 8)
+        .padding(.horizontal, AppStyle.Spacing.section)
+        .padding(.top, AppStyle.Spacing.compact)
         .onAppear {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                 isTitleFocused = true
@@ -128,7 +128,7 @@ struct ListDetailsDrawer: View {
 
     @ViewBuilder
     private var actionPillsRow: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: AppStyle.Spacing.compact) {
             // Priority pill
             Menu {
                 ForEach(Priority.allCases, id: \.self) { priority in
@@ -143,17 +143,17 @@ struct ListDetailsDrawer: View {
                     }
                 }
             } label: {
-                HStack(spacing: 6) {
+                HStack(spacing: AppStyle.Spacing.small) {
                     Circle()
                         .fill(selectedPriority.dotColor)
-                        .frame(width: 8, height: 8)
+                        .frame(width: AppStyle.Layout.dotSize, height: AppStyle.Layout.dotSize)
                     Text(LocalizedStringKey(selectedPriority.displayName))
                         .font(.inter(.subheadline, weight: .medium))
                         .lineLimit(1)
                 }
                 .foregroundColor(.primary)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 10)
+                .padding(.horizontal, AppStyle.Spacing.comfortable)
+                .padding(.vertical, AppStyle.Spacing.medium)
                 .glassEffect(.regular.interactive(), in: .capsule)
             }
 
@@ -186,7 +186,7 @@ struct ListDetailsDrawer: View {
                     Label("New Category", systemImage: "plus")
                 }
             } label: {
-                HStack(spacing: 6) {
+                HStack(spacing: AppStyle.Spacing.small) {
                     Image(systemName: "folder")
                         .font(.inter(.subheadline))
                     Text(LocalizedStringKey(currentCategoryName))
@@ -194,8 +194,8 @@ struct ListDetailsDrawer: View {
                         .lineLimit(1)
                 }
                 .foregroundColor(.primary)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 10)
+                .padding(.horizontal, AppStyle.Spacing.comfortable)
+                .padding(.vertical, AppStyle.Spacing.medium)
                 .glassEffect(.regular.interactive(), in: .capsule)
             }
 
@@ -203,7 +203,7 @@ struct ListDetailsDrawer: View {
             Button {
                 showingScheduleSheet = true
             } label: {
-                HStack(spacing: 6) {
+                HStack(spacing: AppStyle.Spacing.small) {
                     Image(systemName: "arrow.right.circle")
                         .font(.inter(.subheadline))
                     Text("Schedule")
@@ -211,8 +211,8 @@ struct ListDetailsDrawer: View {
                         .lineLimit(1)
                 }
                 .foregroundColor(.primary)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 10)
+                .padding(.horizontal, AppStyle.Spacing.comfortable)
+                .padding(.vertical, AppStyle.Spacing.medium)
                 .glassEffect(.regular.interactive(), in: .capsule)
             }
             .buttonStyle(.plain)
@@ -226,12 +226,12 @@ struct ListDetailsDrawer: View {
                 Image(systemName: "trash")
                     .font(.inter(.body, weight: .semiBold))
                     .foregroundColor(.red)
-                    .frame(width: 44, height: 44)
+                    .frame(width: AppStyle.Layout.touchTarget, height: AppStyle.Layout.touchTarget)
                     .glassEffect(.regular.interactive(), in: .circle)
             }
             .buttonStyle(.plain)
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, AppStyle.Spacing.section)
     }
 
     // MARK: - Note Card
@@ -242,31 +242,31 @@ struct ListDetailsDrawer: View {
             Text("Note")
                 .font(.inter(.subheadline, weight: .medium))
                 .foregroundColor(.primary)
-                .padding(.horizontal, 14)
-                .padding(.top, 12)
-                .padding(.bottom, 6)
+                .padding(.horizontal, AppStyle.Spacing.content)
+                .padding(.top, AppStyle.Spacing.comfortable)
+                .padding(.bottom, AppStyle.Spacing.small)
 
             ZStack(alignment: .topLeading) {
                 if noteText.isEmpty {
                     Text("Add a note...")
                         .font(.inter(.body))
                         .foregroundColor(.secondary.opacity(0.5))
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 8)
+                        .padding(.horizontal, AppStyle.Spacing.medium)
+                        .padding(.vertical, AppStyle.Spacing.compact)
                 }
                 TextEditor(text: $noteText)
                     .font(.inter(.body))
                     .frame(minHeight: 60)
                     .scrollContentBackground(.hidden)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
+                    .padding(.horizontal, AppStyle.Spacing.small)
+                    .padding(.vertical, AppStyle.Spacing.micro)
             }
-            .padding(.horizontal, 8)
-            .padding(.bottom, 10)
+            .padding(.horizontal, AppStyle.Spacing.compact)
+            .padding(.bottom, AppStyle.Spacing.medium)
         }
         .background(Color(.secondarySystemGroupedBackground))
         .clipShape(RoundedRectangle(cornerRadius: 12))
-        .padding(.horizontal, 16)
+        .padding(.horizontal, AppStyle.Spacing.section)
     }
 
     // MARK: - Actions

@@ -36,21 +36,21 @@ struct GoalContentView: View {
                         .focused($isTitleFocused)
                         .onSubmit { saveGoalTitle() }
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .listRowInsets(EdgeInsets(top: 16, leading: 20, bottom: 4, trailing: 20))
+                        .listRowInsets(EdgeInsets(top: AppStyle.Spacing.section, leading: AppStyle.Spacing.page, bottom: AppStyle.Spacing.tiny, trailing: AppStyle.Spacing.page))
                         .listRowBackground(Color.clear)
                         .listRowSeparator(.hidden)
                         .moveDisabled(true)
 
                     // Deadline
                     if let dueDate = goal.dueDate {
-                        HStack(spacing: 6) {
+                        HStack(spacing: AppStyle.Spacing.small) {
                             Image(systemName: "calendar")
                                 .font(.inter(.caption))
                             Text(dueDate, style: .date)
                                 .font(.inter(.subheadline))
                         }
                         .foregroundColor(dueDate < Date() ? .red : .secondary)
-                        .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 8, trailing: 20))
+                        .listRowInsets(EdgeInsets(top: 0, leading: AppStyle.Spacing.page, bottom: AppStyle.Spacing.compact, trailing: AppStyle.Spacing.page))
                         .listRowBackground(Color.clear)
                         .listRowSeparator(.hidden)
                         .moveDisabled(true)
@@ -77,7 +77,7 @@ struct GoalContentView: View {
                                 }
                         }
                     }
-                    .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 12, trailing: 20))
+                    .listRowInsets(EdgeInsets(top: 0, leading: AppStyle.Spacing.page, bottom: AppStyle.Spacing.comfortable, trailing: AppStyle.Spacing.page))
                     .listRowBackground(Color.clear)
                     .listRowSeparator(.hidden)
                     .moveDisabled(true)
@@ -91,7 +91,7 @@ struct GoalContentView: View {
                             Spacer()
                         }
                         .padding()
-                        .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+                        .listRowInsets(AppStyle.Insets.row)
                         .listRowBackground(Color.clear)
                         .listRowSeparator(.hidden)
                         .moveDisabled(true)
@@ -102,7 +102,7 @@ struct GoalContentView: View {
                             Text("No tasks yet")
                                 .font(AppStyle.Typography.emptyTitle)
                                 .frame(maxWidth: .infinity, alignment: .leading)
-                                .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 8, trailing: 20))
+                                .listRowInsets(EdgeInsets(top: 0, leading: AppStyle.Spacing.page, bottom: AppStyle.Spacing.compact, trailing: AppStyle.Spacing.page))
                                 .listRowBackground(Color.clear)
                                 .listRowSeparator(.hidden)
                                 .moveDisabled(true)
@@ -112,9 +112,9 @@ struct GoalContentView: View {
                                 buttonLabel: "Add task",
                                 onSubmit: { title in await viewModel.createGoalTask(title: title, goalId: goal.id) },
                                 isAnyAddFieldActive: $isInlineAddFocused,
-                                verticalPadding: 8
+                                verticalPadding: AppStyle.Spacing.compact
                             )
-                            .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+                            .listRowInsets(AppStyle.Insets.row)
                             .listRowBackground(Color.clear)
                             .listRowSeparator(.hidden)
                             .moveDisabled(true)
@@ -128,7 +128,7 @@ struct GoalContentView: View {
                                         goalId: goal.id,
                                         editingSectionId: $editingSectionId
                                     )
-                                    .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+                                    .listRowInsets(AppStyle.Insets.row)
                                     .listRowBackground(Color.clear)
                                     .listRowSeparator(.hidden)
 
@@ -150,7 +150,7 @@ struct GoalContentView: View {
                                         }
                                     }
                                     .moveDisabled(task.isCompleted || viewModel.contentEditMode)
-                                    .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+                                    .listRowInsets(AppStyle.Insets.row)
                                     .listRowBackground(Color.clear)
                                     .listRowSeparator(.hidden)
 
@@ -162,11 +162,11 @@ struct GoalContentView: View {
                                             onSubmit: { title in await viewModel.createSubtask(title: title, parentId: parentId) },
                                             isAnyAddFieldActive: $isInlineAddFocused,
                                             iconFont: .inter(.caption),
-                                            verticalPadding: 6
+                                            verticalPadding: AppStyle.Spacing.small
                                         )
                                         .padding(.leading, 32)
                                         .moveDisabled(true)
-                                        .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+                                        .listRowInsets(AppStyle.Insets.row)
                                         .listRowBackground(Color.clear)
                                         .listRowSeparator(.hidden)
                                     }
@@ -178,7 +178,7 @@ struct GoalContentView: View {
                                         onToggle: { viewModel.toggleContentDoneCollapsed() }
                                     )
                                     .moveDisabled(true)
-                                    .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+                                    .listRowInsets(AppStyle.Insets.row)
                                     .listRowBackground(Color.clear)
                                     .listRowSeparator(.hidden)
 
@@ -189,10 +189,10 @@ struct GoalContentView: View {
                                             buttonLabel: "Add task",
                                             onSubmit: { title in await viewModel.createGoalTask(title: title, goalId: goal.id) },
                                             isAnyAddFieldActive: $isInlineAddFocused,
-                                            verticalPadding: 8
+                                            verticalPadding: AppStyle.Spacing.compact
                                         )
                                         .moveDisabled(true)
-                                        .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+                                        .listRowInsets(AppStyle.Insets.row)
                                         .listRowBackground(Color.clear)
                                         .listRowSeparator(.hidden)
                                     }
@@ -262,7 +262,7 @@ struct GoalContentView: View {
                         Image(systemName: "chevron.left")
                             .font(.inter(.body, weight: .semiBold))
                             .foregroundColor(.primary)
-                            .frame(width: 44, height: 44)
+                            .frame(width: AppStyle.Layout.touchTarget, height: AppStyle.Layout.touchTarget)
                             .contentShape(Rectangle())
                     }
                     .accessibilityLabel("Back")
@@ -318,7 +318,7 @@ struct GoalContentView: View {
                         Image(systemName: "ellipsis")
                             .font(.inter(.body, weight: .semiBold))
                             .foregroundColor(.primary)
-                            .frame(width: 30, height: 30)
+                            .frame(width: AppStyle.Layout.compactButton, height: AppStyle.Layout.compactButton)
                             .background(Color.pillBackground, in: Circle())
                     }
                 }
@@ -423,7 +423,7 @@ private struct GoalContentTaskRow: View {
     }
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: AppStyle.Spacing.comfortable) {
             if viewModel.contentEditMode {
                 Image(systemName: viewModel.selectedContentTaskIds.contains(task.id) ? "checkmark.circle.fill" : "circle")
                     .font(.inter(.title3))
@@ -431,7 +431,7 @@ private struct GoalContentTaskRow: View {
                     .accessibilityLabel(viewModel.selectedContentTaskIds.contains(task.id) ? "Selected" : "Select")
             }
 
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: AppStyle.Spacing.tiny) {
                 Text(task.title)
                     .font(AppStyle.Typography.itemTitle)
                     .strikethrough(displayCompleted)
@@ -443,7 +443,7 @@ private struct GoalContentTaskRow: View {
                         .foregroundColor(.secondary)
                 }
             }
-            .frame(maxWidth: .infinity, minHeight: 36, alignment: .leading)
+            .frame(maxWidth: .infinity, minHeight: AppStyle.Layout.iconButton, alignment: .leading)
 
             if !viewModel.contentEditMode {
                 Button {
@@ -459,7 +459,7 @@ private struct GoalContentTaskRow: View {
                 .accessibilityLabel(displayCompleted ? "Completed" : "Mark complete")
             }
         }
-        .padding(.vertical, 8)
+        .padding(.vertical, AppStyle.Spacing.compact)
         .contentShape(Rectangle())
         .onTapGesture {
             if viewModel.contentEditMode {
@@ -521,7 +521,7 @@ private struct GoalSubtaskRow: View {
     private var displayCompleted: Bool { subtask.isCompleted || isPending }
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: AppStyle.Spacing.compact) {
             Text(subtask.title)
                 .font(AppStyle.Typography.itemSubtitle)
                 .strikethrough(displayCompleted)
@@ -540,7 +540,7 @@ private struct GoalSubtaskRow: View {
             .buttonStyle(.plain)
             .accessibilityLabel(displayCompleted ? "Completed" : "Mark complete")
         }
-        .padding(.vertical, 6)
+        .padding(.vertical, AppStyle.Spacing.small)
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
             Button(role: .destructive) {
                 _Concurrency.Task {
@@ -585,13 +585,13 @@ struct GoalContentEditModeActionBar: View {
             HStack {
                 Spacer()
 
-                HStack(alignment: .top, spacing: 14) {
+                HStack(alignment: .top, spacing: AppStyle.Spacing.content) {
                     VStack(alignment: .trailing, spacing: 0) {
                         ForEach(Array(actions.reversed().enumerated()), id: \.element.id) { _, item in
                             Text(LocalizedStringKey(item.label))
                                 .font(.inter(.subheadline, weight: .medium))
                                 .foregroundColor(item.isDestructive ? .red : .primary)
-                                .frame(height: 52)
+                                .frame(height: AppStyle.Layout.largeButton)
                                 .contentShape(Rectangle())
                                 .onTapGesture {
                                     if hasSelection { item.action() }
@@ -607,7 +607,7 @@ struct GoalContentEditModeActionBar: View {
                                 Image(systemName: item.icon)
                                     .font(.inter(.title3))
                                     .foregroundColor(item.isDestructive ? .red : .primary)
-                                    .frame(width: 52, height: 52)
+                                    .frame(width: AppStyle.Layout.largeButton, height: AppStyle.Layout.largeButton)
                                     .contentShape(Rectangle())
                             }
                             .buttonStyle(.plain)
@@ -619,12 +619,12 @@ struct GoalContentEditModeActionBar: View {
                             }
                         }
                     }
-                    .padding(.vertical, 6)
+                    .padding(.vertical, AppStyle.Spacing.small)
                     .glassEffect(.regular, in: .capsule)
                     .shadow(radius: 4, y: 2)
                 }
                 .opacity(hasSelection ? 1.0 : 0.5)
-                .padding(.trailing, 20)
+                .padding(.trailing, AppStyle.Spacing.page)
                 .padding(.top, 62)
             }
             Spacer()
@@ -652,14 +652,14 @@ struct GoalSectionRow: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: AppStyle.Spacing.small) {
             TextField("Section name", text: $sectionTitle)
                 .font(.inter(.headline, weight: .bold))
                 .foregroundColor(.appRed)
                 .textFieldStyle(.plain)
                 .focused($isEditing)
                 .onSubmit { saveSectionTitle() }
-                .padding(.top, 16)
+                .padding(.top, AppStyle.Spacing.section)
 
             Rectangle()
                 .fill(Color.secondary.opacity(0.3))
@@ -720,13 +720,13 @@ private struct GoalContentDonePill: View {
     let onToggle: () -> Void
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: AppStyle.Spacing.compact) {
             Button {
                 withAnimation(.easeInOut(duration: 0.2)) {
                     onToggle()
                 }
             } label: {
-                HStack(spacing: 4) {
+                HStack(spacing: AppStyle.Spacing.tiny) {
                     Text("Completed")
                         .font(.inter(size: 12, weight: .medium))
                         .foregroundColor(.secondary)
@@ -739,8 +739,8 @@ private struct GoalContentDonePill: View {
                         .font(AppStyle.Typography.chevron)
                         .foregroundColor(.secondary)
                 }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
+                .padding(.horizontal, AppStyle.Spacing.medium)
+                .padding(.vertical, AppStyle.Spacing.small)
                 .clipShape(Capsule())
                 .glassEffect(.regular.tint(.glassTint).interactive(), in: .capsule)
             }
@@ -748,6 +748,6 @@ private struct GoalContentDonePill: View {
 
             Spacer()
         }
-        .padding(.vertical, 10)
+        .padding(.vertical, AppStyle.Spacing.medium)
     }
 }

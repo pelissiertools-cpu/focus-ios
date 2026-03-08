@@ -24,7 +24,7 @@ struct InlineAddRow: View {
     @FocusState private var isFocused: Bool
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: AppStyle.Spacing.comfortable) {
             if isEditing {
                 TextField(placeholder, text: $title)
                     .font(textFont)
@@ -43,7 +43,7 @@ struct InlineAddRow: View {
                     isEditing = true
                     isFocused = true
                 } label: {
-                    HStack(spacing: 8) {
+                    HStack(spacing: AppStyle.Spacing.compact) {
                         Image(systemName: "plus")
                             .font(textFont)
                         Text(buttonLabel)

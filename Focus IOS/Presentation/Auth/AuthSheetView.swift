@@ -34,15 +34,15 @@ struct AuthSheetView: View {
         ZStack(alignment: .top) {
             // Content
             ScrollView {
-                VStack(spacing: 20) {
+                VStack(spacing: AppStyle.Spacing.page) {
                     // Top bar spacer for buttons
-                    Color.clear.frame(height: 24)
+                    Color.clear.frame(height: AppStyle.Spacing.expanded)
 
                     // Logo
                     Image(systemName: "target")
                         .font(.inter(size: 40))
                         .foregroundColor(.primary)
-                        .padding(.top, 8)
+                        .padding(.top, AppStyle.Spacing.compact)
 
                     if step == 1 {
                         emailStep
@@ -50,7 +50,7 @@ struct AuthSheetView: View {
                         passwordStep
                     }
                 }
-                .padding(.horizontal, 24)
+                .padding(.horizontal, AppStyle.Spacing.expanded)
                 .padding(.bottom, 40)
             }
             .scrollDismissesKeyboard(.interactively)
@@ -62,12 +62,12 @@ struct AuthSheetView: View {
                         Image(systemName: "chevron.left")
                             .font(.inter(size: 16, weight: .semiBold))
                             .foregroundColor(.primary)
-                            .frame(width: 36, height: 36)
+                            .frame(width: AppStyle.Layout.iconButton, height: AppStyle.Layout.iconButton)
                             .background(.ultraThinMaterial)
                             .clipShape(Circle())
                     }
                     .accessibilityLabel("Back")
-                    .frame(width: 44, height: 44)
+                    .frame(width: AppStyle.Layout.touchTarget, height: AppStyle.Layout.touchTarget)
                     .contentShape(Rectangle())
                 }
 
@@ -77,15 +77,15 @@ struct AuthSheetView: View {
                     Image(systemName: "xmark")
                         .font(.inter(size: 14, weight: .semiBold))
                         .foregroundColor(.primary)
-                        .frame(width: 36, height: 36)
+                        .frame(width: AppStyle.Layout.iconButton, height: AppStyle.Layout.iconButton)
                         .background(.ultraThinMaterial)
                         .clipShape(Circle())
                 }
-                .frame(width: 44, height: 44)
+                .frame(width: AppStyle.Layout.touchTarget, height: AppStyle.Layout.touchTarget)
                 .contentShape(Rectangle())
             }
-            .padding(.horizontal, 16)
-            .padding(.top, 16)
+            .padding(.horizontal, AppStyle.Spacing.section)
+            .padding(.top, AppStyle.Spacing.section)
         }
         .onAppear {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
@@ -118,7 +118,7 @@ struct AuthSheetView: View {
     // MARK: - Step 1: Email
 
     private var emailStep: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: AppStyle.Spacing.section) {
             // Title
             Text("Log in or sign up")
                 .font(.inter(.title2, weight: .bold))
@@ -129,7 +129,7 @@ struct AuthSheetView: View {
                 .foregroundStyle(.secondary)
 
             // Email field
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: AppStyle.Spacing.small) {
                 TextField("Email", text: $email)
                     .textContentType(.emailAddress)
                     .autocapitalization(.none)
@@ -142,7 +142,7 @@ struct AuthSheetView: View {
                             .stroke(emailFocused ? Color.primary : Color(.separator), lineWidth: emailFocused ? 2 : 1)
                     )
             }
-            .padding(.top, 8)
+            .padding(.top, AppStyle.Spacing.compact)
 
             // Error
             if let errorMessage = authService.errorMessage {
@@ -200,13 +200,13 @@ struct AuthSheetView: View {
                     .frame(height: 1)
                     .foregroundStyle(Color(.separator))
             }
-            .padding(.vertical, 4)
+            .padding(.vertical, AppStyle.Spacing.tiny)
 
             // Continue with Google
             Button(action: handleGoogleSignIn) {
-                HStack(spacing: 8) {
+                HStack(spacing: AppStyle.Spacing.compact) {
                     GoogleLogoView()
-                        .frame(width: 18, height: 18)
+                        .frame(width: AppStyle.Layout.tinyIcon, height: AppStyle.Layout.tinyIcon)
                     Text("Continue with Google")
                         .font(.inter(.body, weight: .semiBold))
                         .foregroundColor(.primary)
@@ -225,7 +225,7 @@ struct AuthSheetView: View {
 
             // Continue with Apple
             Button(action: handleAppleSignIn) {
-                HStack(spacing: 8) {
+                HStack(spacing: AppStyle.Spacing.compact) {
                     Image(systemName: "apple.logo")
                         .font(.inter(size: 18))
                     Text("Continue with Apple")
@@ -249,7 +249,7 @@ struct AuthSheetView: View {
     // MARK: - Step 2: Password
 
     private var passwordStep: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: AppStyle.Spacing.section) {
             // Title
             Text(detectedMode == .logIn ? "Welcome back" : "Create your account")
                 .font(.inter(.title2, weight: .bold))
@@ -263,7 +263,7 @@ struct AuthSheetView: View {
                 .multilineTextAlignment(.center)
 
             // Email (editable — user can fix typos)
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: AppStyle.Spacing.small) {
                 TextField("Email", text: $email)
                     .textContentType(.emailAddress)
                     .autocapitalization(.none)
@@ -275,10 +275,10 @@ struct AuthSheetView: View {
                             .stroke(Color(.separator), lineWidth: 1)
                     )
             }
-            .padding(.top, 8)
+            .padding(.top, AppStyle.Spacing.compact)
 
             // Password field
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: AppStyle.Spacing.tiny) {
                 HStack {
                     if showPassword {
                         TextField("Password", text: $password)

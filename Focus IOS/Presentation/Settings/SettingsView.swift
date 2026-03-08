@@ -40,15 +40,15 @@ struct SettingsView: View {
                 // App branding
                 Text("Focus")
                     .font(.inter(size: 48, weight: .bold))
-                    .padding(.top, 24)
+                    .padding(.top, AppStyle.Spacing.expanded)
                     .padding(.bottom, 28)
 
                 // Account section
-                VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: AppStyle.Spacing.compact) {
                     Text("Account")
                         .font(.inter(.footnote))
                         .foregroundStyle(.secondary)
-                        .padding(.horizontal, 4)
+                        .padding(.horizontal, AppStyle.Spacing.tiny)
 
                     VStack(spacing: 0) {
                         // Email row
@@ -59,7 +59,7 @@ struct SettingsView: View {
                         )
 
                         Divider()
-                            .padding(.leading, 44)
+                            .padding(.leading, AppStyle.Layout.touchTarget)
 
                         // Change Email row
                         Button {
@@ -75,7 +75,7 @@ struct SettingsView: View {
                         .buttonStyle(.plain)
 
                         Divider()
-                            .padding(.leading, 44)
+                            .padding(.leading, AppStyle.Layout.touchTarget)
 
                         // Change Password row
                         Button {
@@ -92,7 +92,7 @@ struct SettingsView: View {
                         .buttonStyle(.plain)
 
                         Divider()
-                            .padding(.leading, 44)
+                            .padding(.leading, AppStyle.Layout.touchTarget)
 
                         // Subscription row
                         Button {
@@ -107,7 +107,7 @@ struct SettingsView: View {
                         .buttonStyle(.plain)
 
                         Divider()
-                            .padding(.leading, 44)
+                            .padding(.leading, AppStyle.Layout.touchTarget)
 
                         // Notifications row
                         Button {
@@ -124,14 +124,14 @@ struct SettingsView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 12))
                     .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 12))
                 }
-                .padding(.horizontal, 16)
+                .padding(.horizontal, AppStyle.Spacing.section)
 
                 // App section
-                VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: AppStyle.Spacing.compact) {
                     Text("App")
                         .font(.inter(.footnote))
                         .foregroundStyle(.secondary)
-                        .padding(.horizontal, 4)
+                        .padding(.horizontal, AppStyle.Spacing.tiny)
 
                     VStack(spacing: 0) {
                         // App Language row
@@ -140,11 +140,11 @@ struct SettingsView: View {
                                 showLanguagePicker.toggle()
                             }
                         } label: {
-                            HStack(spacing: 12) {
+                            HStack(spacing: AppStyle.Spacing.comfortable) {
                                 Image(systemName: "globe")
                                     .font(.inter(.body))
                                     .foregroundStyle(.primary)
-                                    .frame(width: 24)
+                                    .frame(width: AppStyle.Layout.pillButton)
 
                                 Text("App Language")
                                     .font(.inter(.body))
@@ -161,8 +161,8 @@ struct SettingsView: View {
                                     .foregroundStyle(.tertiary)
                                     .rotationEffect(.degrees(showLanguagePicker ? 90 : 0))
                             }
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 14)
+                            .padding(.horizontal, AppStyle.Spacing.section)
+                            .padding(.vertical, AppStyle.Spacing.content)
                             .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
@@ -171,7 +171,7 @@ struct SettingsView: View {
                         if showLanguagePicker {
                             ForEach(AppLanguage.allCases) { language in
                                 Divider()
-                                    .padding(.leading, 44)
+                                    .padding(.leading, AppStyle.Layout.touchTarget)
 
                                 Button {
                                     languageManager.currentLanguage = language
@@ -179,9 +179,9 @@ struct SettingsView: View {
                                         showLanguagePicker = false
                                     }
                                 } label: {
-                                    HStack(spacing: 12) {
+                                    HStack(spacing: AppStyle.Spacing.comfortable) {
                                         Spacer()
-                                            .frame(width: 24)
+                                            .frame(width: AppStyle.Layout.pillButton)
 
                                         Text(language.displayName)
                                             .font(.inter(.body))
@@ -195,8 +195,8 @@ struct SettingsView: View {
                                                 .foregroundColor(Color.appRed)
                                         }
                                     }
-                                    .padding(.horizontal, 16)
-                                    .padding(.vertical, 12)
+                                    .padding(.horizontal, AppStyle.Spacing.section)
+                                    .padding(.vertical, AppStyle.Spacing.comfortable)
                                     .contentShape(Rectangle())
                                 }
                                 .buttonStyle(.plain)
@@ -204,7 +204,7 @@ struct SettingsView: View {
                         }
 
                         Divider()
-                            .padding(.leading, 44)
+                            .padding(.leading, AppStyle.Layout.touchTarget)
 
                         // Appearance row
                         Button {
@@ -212,11 +212,11 @@ struct SettingsView: View {
                                 showAppearancePicker.toggle()
                             }
                         } label: {
-                            HStack(spacing: 12) {
+                            HStack(spacing: AppStyle.Spacing.comfortable) {
                                 Image(systemName: "sun.min")
                                     .font(.inter(.body))
                                     .foregroundStyle(.primary)
-                                    .frame(width: 24, alignment: .center)
+                                    .frame(width: AppStyle.Layout.pillButton, alignment: .center)
 
                                 Text("Appearance")
                                     .font(.inter(.body))
@@ -233,8 +233,8 @@ struct SettingsView: View {
                                     .foregroundStyle(.tertiary)
                                     .rotationEffect(.degrees(showAppearancePicker ? 90 : 0))
                             }
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 14)
+                            .padding(.horizontal, AppStyle.Spacing.section)
+                            .padding(.vertical, AppStyle.Spacing.content)
                             .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
@@ -243,7 +243,7 @@ struct SettingsView: View {
                         if showAppearancePicker {
                             ForEach(AppAppearance.allCases) { appearance in
                                 Divider()
-                                    .padding(.leading, 44)
+                                    .padding(.leading, AppStyle.Layout.touchTarget)
 
                                 Button {
                                     appearanceManager.currentAppearance = appearance
@@ -251,9 +251,9 @@ struct SettingsView: View {
                                         showAppearancePicker = false
                                     }
                                 } label: {
-                                    HStack(spacing: 12) {
+                                    HStack(spacing: AppStyle.Spacing.comfortable) {
                                         Spacer()
-                                            .frame(width: 24)
+                                            .frame(width: AppStyle.Layout.pillButton)
 
                                         Text(appearance.displayName)
                                             .font(.inter(.body))
@@ -267,8 +267,8 @@ struct SettingsView: View {
                                                 .foregroundColor(Color.appRed)
                                         }
                                     }
-                                    .padding(.horizontal, 16)
-                                    .padding(.vertical, 12)
+                                    .padding(.horizontal, AppStyle.Spacing.section)
+                                    .padding(.vertical, AppStyle.Spacing.comfortable)
                                     .contentShape(Rectangle())
                                 }
                                 .buttonStyle(.plain)
@@ -278,8 +278,8 @@ struct SettingsView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 12))
                     .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 12))
                 }
-                .padding(.horizontal, 16)
-                .padding(.top, 20)
+                .padding(.horizontal, AppStyle.Spacing.section)
+                .padding(.top, AppStyle.Spacing.page)
 
                 // Sign Out
                 VStack(spacing: 0) {
@@ -302,14 +302,14 @@ struct SettingsView: View {
                             }
                             Spacer()
                         }
-                        .padding(.vertical, 14)
+                        .padding(.vertical, AppStyle.Spacing.content)
                     }
                     .disabled(authService.isLoading)
                 }
                 .clipShape(RoundedRectangle(cornerRadius: 12))
                 .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 12))
-                .padding(.horizontal, 16)
-                .padding(.top, 20)
+                .padding(.horizontal, AppStyle.Spacing.section)
+                .padding(.top, AppStyle.Spacing.page)
             }
         }
         .background(Color.appBackground)
@@ -387,11 +387,11 @@ struct SettingsView: View {
         value: String? = nil,
         showChevron: Bool = false
     ) -> some View {
-        HStack(spacing: 12) {
+        HStack(spacing: AppStyle.Spacing.comfortable) {
             Image(systemName: icon)
                 .font(.inter(.body))
                 .foregroundStyle(.primary)
-                .frame(width: 24)
+                .frame(width: AppStyle.Layout.pillButton)
 
             Text(title)
                 .font(.inter(.body))
@@ -411,8 +411,8 @@ struct SettingsView: View {
                     .foregroundStyle(.tertiary)
             }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 14)
+        .padding(.horizontal, AppStyle.Spacing.section)
+        .padding(.vertical, AppStyle.Spacing.content)
         .contentShape(Rectangle())
     }
 }
@@ -437,7 +437,7 @@ private struct SettingsAlertOverlay<Fields: View>: View {
 
             VStack(spacing: 0) {
                 // Title + message
-                VStack(spacing: 4) {
+                VStack(spacing: AppStyle.Spacing.tiny) {
                     Text(title)
                         .font(.inter(.headline))
                     Text(message)
@@ -445,17 +445,17 @@ private struct SettingsAlertOverlay<Fields: View>: View {
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
                 }
-                .padding(.top, 20)
-                .padding(.horizontal, 16)
-                .padding(.bottom, 16)
+                .padding(.top, AppStyle.Spacing.page)
+                .padding(.horizontal, AppStyle.Spacing.section)
+                .padding(.bottom, AppStyle.Spacing.section)
 
                 // Text fields
-                VStack(spacing: 8) {
+                VStack(spacing: AppStyle.Spacing.compact) {
                     fields()
                 }
                 .textFieldStyle(.roundedBorder)
-                .padding(.horizontal, 16)
-                .padding(.bottom, 16)
+                .padding(.horizontal, AppStyle.Spacing.section)
+                .padding(.bottom, AppStyle.Spacing.section)
 
                 Divider()
 
@@ -468,20 +468,20 @@ private struct SettingsAlertOverlay<Fields: View>: View {
                             .font(.inter(.body))
                             .foregroundColor(.primary)
                             .frame(maxWidth: .infinity)
-                            .padding(.vertical, 12)
+                            .padding(.vertical, AppStyle.Spacing.comfortable)
                             .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
 
                     Divider()
-                        .frame(height: 44)
+                        .frame(height: AppStyle.Layout.touchTarget)
 
                     Button(action: onUpdate) {
                         Text("Update")
                             .font(.inter(.body, weight: hasInput() ? .semiBold : .regular))
                             .foregroundColor(hasInput() ? Color.appRed : .secondary)
                             .frame(maxWidth: .infinity)
-                            .padding(.vertical, 12)
+                            .padding(.vertical, AppStyle.Spacing.comfortable)
                             .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)

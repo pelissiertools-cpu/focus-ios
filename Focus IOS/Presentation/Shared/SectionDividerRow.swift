@@ -31,14 +31,14 @@ struct SectionDividerRow: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: AppStyle.Spacing.small) {
             TextField("Section name", text: $sectionTitle)
                 .font(.inter(.headline, weight: .bold))
                 .foregroundColor(.appRed)
                 .textFieldStyle(.plain)
                 .focused($isEditing)
                 .onSubmit { saveSectionTitle() }
-                .padding(.top, 16)
+                .padding(.top, AppStyle.Spacing.section)
 
             Rectangle()
                 .fill(Color.secondary.opacity(0.3))

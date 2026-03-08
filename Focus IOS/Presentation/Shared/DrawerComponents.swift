@@ -75,10 +75,10 @@ struct DrawerContainer<Content: View>: View {
                 Image(systemName: "xmark")
                     .font(.inter(.subheadline, weight: .semiBold))
                     .foregroundColor(.primary)
-                    .frame(width: 30, height: 30)
+                    .frame(width: AppStyle.Layout.compactButton, height: AppStyle.Layout.compactButton)
                     .background(Color.pillBackground, in: Circle())
             }
-            .frame(width: 44, height: 44)
+            .frame(width: AppStyle.Layout.touchTarget, height: AppStyle.Layout.touchTarget)
             .contentShape(Rectangle())
             .accessibilityLabel("Close")
         case .check(let action, let highlighted):
@@ -86,12 +86,12 @@ struct DrawerContainer<Content: View>: View {
                 Image(systemName: "checkmark")
                     .font(.inter(.subheadline, weight: .semiBold))
                     .foregroundColor(highlighted ? .white : .secondary)
-                    .frame(width: 30, height: 30)
+                    .frame(width: AppStyle.Layout.compactButton, height: AppStyle.Layout.compactButton)
             }
             .background(highlighted ? Color.focusBlue : Color(.systemGray5))
             .clipShape(Circle())
             .buttonStyle(.plain)
-            .frame(width: 44, height: 44)
+            .frame(width: AppStyle.Layout.touchTarget, height: AppStyle.Layout.touchTarget)
             .contentShape(Rectangle())
             .accessibilityLabel("Confirm")
         }
@@ -263,11 +263,11 @@ struct DrawerActionLabel: View {
     var iconColor: Color = .appRed
 
     var body: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: AppStyle.Spacing.medium) {
             Image(systemName: icon)
                 .font(.inter(.body))
                 .foregroundColor(iconColor)
-                .frame(width: 24)
+                .frame(width: AppStyle.Layout.pillButton)
             Text(LocalizedStringKey(text))
                 .font(.inter(.body))
                 .foregroundColor(.primary)
@@ -278,8 +278,8 @@ struct DrawerActionLabel: View {
                     .foregroundColor(.secondary)
             }
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 12)
+        .padding(.horizontal, AppStyle.Spacing.content)
+        .padding(.vertical, AppStyle.Spacing.comfortable)
         .contentShape(Rectangle())
     }
 }

@@ -47,31 +47,31 @@ struct AddProjectBar: View {
                 .focused($titleFocused)
                 .submitLabel(.return)
                 .onSubmit { save() }
-                .padding(.horizontal, 14)
-                .padding(.top, 20)
-                .padding(.bottom, 10)
+                .padding(.horizontal, AppStyle.Spacing.content)
+                .padding(.top, AppStyle.Spacing.page)
+                .padding(.bottom, AppStyle.Spacing.medium)
 
             // Tasks + subtasks area
             if !draftTasks.isEmpty {
                 Divider()
-                    .padding(.horizontal, 14)
+                    .padding(.horizontal, AppStyle.Spacing.content)
 
-                VStack(alignment: .leading, spacing: 6) {
+                VStack(alignment: .leading, spacing: AppStyle.Spacing.small) {
                     ForEach(draftTasks) { task in
                         projectTaskDraftRow(task: task)
                     }
                 }
-                .padding(.horizontal, 14)
-                .padding(.top, 8)
-                .padding(.bottom, 6)
+                .padding(.horizontal, AppStyle.Spacing.content)
+                .padding(.top, AppStyle.Spacing.compact)
+                .padding(.bottom, AppStyle.Spacing.small)
             }
 
             // Schedule expansion
             if scheduleExpanded {
                 Divider()
-                    .padding(.horizontal, 14)
+                    .padding(.horizontal, AppStyle.Spacing.content)
 
-                VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: AppStyle.Spacing.comfortable) {
                     Picker("Section", selection: $section) {
                         Text("Focus").tag(Section.focus)
                         Text("To-Do").tag(Section.todo)
@@ -83,9 +83,9 @@ struct AddProjectBar: View {
                         selectedTimeframe: $timeframe
                     )
                 }
-                .padding(.horizontal, 14)
-                .padding(.top, 6)
-                .padding(.bottom, 14)
+                .padding(.horizontal, AppStyle.Spacing.content)
+                .padding(.top, AppStyle.Spacing.small)
+                .padding(.bottom, AppStyle.Spacing.content)
 
                 HStack {
                     Button {
@@ -97,7 +97,7 @@ struct AddProjectBar: View {
                         Image(systemName: "xmark")
                             .font(.inter(.body, weight: .semiBold))
                             .foregroundColor(.primary)
-                            .frame(width: 36, height: 36)
+                            .frame(width: AppStyle.Layout.iconButton, height: AppStyle.Layout.iconButton)
                             .background(Color(.systemGray4), in: Circle())
                     }
                     .accessibilityLabel("Clear schedule")
@@ -115,7 +115,7 @@ struct AddProjectBar: View {
                         Image(systemName: "checkmark")
                             .font(.inter(.body, weight: .semiBold))
                             .foregroundColor(hasDateChanges ? .white : .secondary)
-                            .frame(width: 36, height: 36)
+                            .frame(width: AppStyle.Layout.iconButton, height: AppStyle.Layout.iconButton)
                             .background(
                                 hasDateChanges ? Color.appRed : Color(.systemGray4),
                                 in: Circle()
@@ -124,25 +124,25 @@ struct AddProjectBar: View {
                     .accessibilityLabel("Confirm schedule")
                     .buttonStyle(.plain)
                 }
-                .padding(.horizontal, 14)
-                .padding(.bottom, 4)
+                .padding(.horizontal, AppStyle.Spacing.content)
+                .padding(.bottom, AppStyle.Spacing.tiny)
             }
 
             // Row 1: [Task] [...] Spacer [Checkmark]
             if !scheduleExpanded {
-                HStack(spacing: 8) {
+                HStack(spacing: AppStyle.Spacing.compact) {
                     Button {
                         addNewTask()
                     } label: {
-                        HStack(spacing: 4) {
+                        HStack(spacing: AppStyle.Spacing.tiny) {
                             Image(systemName: "plus")
                                 .font(.inter(.caption))
                             Text("Task")
                                 .font(.inter(.caption))
                         }
                         .foregroundColor(.white)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 8)
+                        .padding(.horizontal, AppStyle.Spacing.medium)
+                        .padding(.vertical, AppStyle.Spacing.compact)
                         .background(Color.black, in: Capsule())
                     }
                     .buttonStyle(.plain)
@@ -156,8 +156,8 @@ struct AddProjectBar: View {
                             .font(.inter(.caption, weight: .bold))
                             .foregroundColor(.black)
                             .frame(minHeight: UIFont.preferredFont(forTextStyle: .caption1).lineHeight)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 8)
+                            .padding(.horizontal, AppStyle.Spacing.medium)
+                            .padding(.vertical, AppStyle.Spacing.compact)
                             .background(Color.white, in: Capsule())
                     }
                     .accessibilityLabel("More options")
@@ -171,7 +171,7 @@ struct AddProjectBar: View {
                         Image(systemName: "checkmark")
                             .font(.inter(.body, weight: .semiBold))
                             .foregroundColor(isTitleEmpty ? .secondary : .white)
-                            .frame(width: 36, height: 36)
+                            .frame(width: AppStyle.Layout.iconButton, height: AppStyle.Layout.iconButton)
                             .background(
                                 isTitleEmpty ? Color(.systemGray4) : Color.focusBlue,
                                 in: Circle()
@@ -181,13 +181,13 @@ struct AddProjectBar: View {
                     .buttonStyle(.plain)
                     .disabled(isTitleEmpty)
                 }
-                .padding(.horizontal, 14)
-                .padding(.bottom, 4)
+                .padding(.horizontal, AppStyle.Spacing.content)
+                .padding(.bottom, AppStyle.Spacing.tiny)
             }
 
             // Row 2: [Category] [Schedule] [Priority]
             if optionsExpanded && !scheduleExpanded {
-                HStack(spacing: 8) {
+                HStack(spacing: AppStyle.Spacing.compact) {
                     Menu {
                         Button {
                             categoryId = nil
@@ -210,15 +210,15 @@ struct AddProjectBar: View {
                             }
                         }
                     } label: {
-                        HStack(spacing: 4) {
+                        HStack(spacing: AppStyle.Spacing.tiny) {
                             Image(systemName: "folder")
                                 .font(.inter(.caption))
                             Text(LocalizedStringKey(categoryPillLabel))
                                 .font(.inter(.caption))
                         }
                         .foregroundColor(.black)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 8)
+                        .padding(.horizontal, AppStyle.Spacing.medium)
+                        .padding(.vertical, AppStyle.Spacing.compact)
                         .background(Color.white, in: Capsule())
                     }
 
@@ -228,15 +228,15 @@ struct AddProjectBar: View {
                             scheduleExpanded.toggle()
                         }
                     } label: {
-                        HStack(spacing: 4) {
+                        HStack(spacing: AppStyle.Spacing.tiny) {
                             Image(systemName: "arrow.right.circle")
                                 .font(.inter(.caption))
                             Text("Schedule")
                                 .font(.inter(.caption))
                         }
                         .foregroundColor(!scheduleDates.isEmpty ? .white : .black)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 8)
+                        .padding(.horizontal, AppStyle.Spacing.medium)
+                        .padding(.vertical, AppStyle.Spacing.compact)
                         .background(!scheduleDates.isEmpty ? Color.appRed : Color.white, in: Capsule())
                     }
                     .buttonStyle(.plain)
@@ -254,26 +254,26 @@ struct AddProjectBar: View {
                             }
                         }
                     } label: {
-                        HStack(spacing: 4) {
+                        HStack(spacing: AppStyle.Spacing.tiny) {
                             Circle()
                                 .fill(priority.dotColor)
-                                .frame(width: 8, height: 8)
+                                .frame(width: AppStyle.Layout.dotSize, height: AppStyle.Layout.dotSize)
                             Text(priority.displayName)
                                 .font(.inter(.caption))
                         }
                         .foregroundColor(.black)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 8)
+                        .padding(.horizontal, AppStyle.Spacing.medium)
+                        .padding(.vertical, AppStyle.Spacing.compact)
                         .background(Color.white, in: Capsule())
                     }
 
                     Spacer()
                 }
-                .padding(.horizontal, 14)
-                .padding(.top, 6)
+                .padding(.horizontal, AppStyle.Spacing.content)
+                .padding(.top, AppStyle.Spacing.small)
             }
 
-            Spacer().frame(height: 20)
+            Spacer().frame(height: AppStyle.Spacing.page)
         }
         .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 20))
         .padding(.horizontal)
@@ -288,7 +288,7 @@ struct AddProjectBar: View {
 
     @ViewBuilder
     private func projectTaskDraftRow(task: DraftTask) -> some View {
-        HStack(spacing: 8) {
+        HStack(spacing: AppStyle.Spacing.compact) {
             Image(systemName: "circle")
                 .font(.inter(.caption2))
                 .foregroundColor(.secondary.opacity(0.5))
@@ -320,7 +320,7 @@ struct AddProjectBar: View {
 
         // Subtask rows
         ForEach(task.subtasks) { subtask in
-            HStack(spacing: 8) {
+            HStack(spacing: AppStyle.Spacing.compact) {
                 Image(systemName: "circle")
                     .font(.inter(.caption2))
                     .foregroundColor(.secondary.opacity(0.5))
@@ -351,28 +351,28 @@ struct AddProjectBar: View {
                 .buttonStyle(.plain)
             }
             .padding(.leading, 28)
-            .padding(.trailing, 8)
-            .padding(.vertical, 6)
+            .padding(.trailing, AppStyle.Spacing.compact)
+            .padding(.vertical, AppStyle.Spacing.small)
         }
-        .padding(.top, 12)
+        .padding(.top, AppStyle.Spacing.comfortable)
 
         // "+ Sub-task" button
         Button {
             addNewSubtask(toTask: task.id)
         } label: {
-            HStack(spacing: 4) {
+            HStack(spacing: AppStyle.Spacing.tiny) {
                 Image(systemName: "plus")
                     .font(.inter(.subheadline))
                 Text("Sub-task")
                     .font(.inter(.subheadline))
             }
             .foregroundColor(.secondary)
-            .padding(.vertical, 4)
+            .padding(.vertical, AppStyle.Spacing.tiny)
         }
         .buttonStyle(.plain)
         .padding(.leading, 28)
-        .padding(.top, 8)
-        .padding(.bottom, 6)
+        .padding(.top, AppStyle.Spacing.compact)
+        .padding(.bottom, AppStyle.Spacing.small)
     }
 
     // MARK: - Helpers

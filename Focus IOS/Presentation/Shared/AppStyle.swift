@@ -82,6 +82,65 @@ enum AppStyle {
         /// Section divider lines
         static let divider: Double = 0.3
     }
+
+    // MARK: - Spacing
+
+    enum Spacing {
+        /// 2pt — hairline gaps, minor adjustments
+        static let micro: CGFloat = 2
+        /// 4pt — tight gaps, small bottom margins
+        static let tiny: CGFloat = 4
+        /// 6pt — minimal row spacing, tight padding
+        static let small: CGFloat = 6
+        /// 8pt — standard row vertical padding, compact spacing
+        static let compact: CGFloat = 8
+        /// 10pt — button/icon horizontal padding
+        static let medium: CGFloat = 10
+        /// 12pt — component spacing, medium padding
+        static let comfortable: CGFloat = 12
+        /// 14pt — content padding inside cards/sections
+        static let content: CGFloat = 14
+        /// 16pt — section-level padding
+        static let section: CGFloat = 16
+        /// 20pt — page-level horizontal padding
+        static let page: CGFloat = 20
+        /// 24pt — large section separation
+        static let expanded: CGFloat = 24
+    }
+
+    // MARK: - Layout
+
+    enum Layout {
+        /// 8pt — bullet points, small indicators
+        static let dotSize: CGFloat = 8
+        /// 18pt — small badges, tiny icons
+        static let tinyIcon: CGFloat = 18
+        /// 20pt — small indicators
+        static let smallIcon: CGFloat = 20
+        /// 24pt — icon frame inside pill/capsule
+        static let pillButton: CGFloat = 24
+        /// 30pt — small icon buttons (ellipsis, close pill)
+        static let compactButton: CGFloat = 30
+        /// 36pt — medium action buttons (save, confirm)
+        static let iconButton: CGFloat = 36
+        /// 44pt — standard touch target (back, nav buttons)
+        static let touchTarget: CGFloat = 44
+        /// 52pt — large secondary actions
+        static let largeButton: CGFloat = 52
+        /// 56pt — floating action button
+        static let fab: CGFloat = 56
+    }
+
+    // MARK: - Insets
+
+    enum Insets {
+        /// Standard list row insets (0, 20, 0, 20)
+        static let row = EdgeInsets(top: 0, leading: Spacing.page, bottom: 0, trailing: Spacing.page)
+        /// Indented subtask/nested row insets (0, 32, 0, 32)
+        static let nestedRow = EdgeInsets(top: 0, leading: 32, bottom: 0, trailing: 32)
+        /// Zero insets
+        static let zero = EdgeInsets()
+    }
 }
 
 // MARK: - View Modifiers

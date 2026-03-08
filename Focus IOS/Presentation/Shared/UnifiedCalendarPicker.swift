@@ -13,7 +13,7 @@ struct UnifiedCalendarPicker: View {
     @Binding var selectedTimeframe: Timeframe
 
     var body: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: AppStyle.Spacing.compact) {
             // Timeframe Toggle
             Picker("Timeframe", selection: $selectedTimeframe) {
                 Text("Day").tag(Timeframe.daily)
@@ -91,10 +91,10 @@ struct DailyCalendarView: View {
                 .buttonStyle(.borderless)
             }
             .padding(.horizontal)
-            .padding(.vertical, 8)
+            .padding(.vertical, AppStyle.Spacing.compact)
 
             Divider()
-                .padding(.bottom, 8)
+                .padding(.bottom, AppStyle.Spacing.compact)
 
             // Weekday headers
             LazyVGrid(columns: columns, spacing: 0) {
@@ -103,13 +103,13 @@ struct DailyCalendarView: View {
                         .font(.inter(.caption))
                         .foregroundColor(.secondary)
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 4)
+                        .padding(.vertical, AppStyle.Spacing.tiny)
                 }
             }
             .padding(.horizontal)
 
             // Calendar grid
-            LazyVGrid(columns: columns, spacing: 4) {
+            LazyVGrid(columns: columns, spacing: AppStyle.Spacing.tiny) {
                 ForEach(daysInMonth, id: \.self) { day in
                     if let day = day {
                         DayCell(
@@ -121,7 +121,7 @@ struct DailyCalendarView: View {
                         )
                     } else {
                         Color.clear
-                            .frame(height: 36)
+                            .frame(height: AppStyle.Layout.iconButton)
                     }
                 }
             }
@@ -227,7 +227,7 @@ struct DayCell: View {
             Text(dayNumber)
                 .font(.inter(.body, weight: isToday ? .bold : .regular))
                 .foregroundColor(textColor)
-                .frame(width: 36, height: 36)
+                .frame(width: AppStyle.Layout.iconButton, height: AppStyle.Layout.iconButton)
                 .background(backgroundColor)
                 .clipShape(Circle())
                 .overlay(
@@ -309,13 +309,13 @@ struct WeeklyCalendarView: View {
                 .buttonStyle(.borderless)
             }
             .padding(.horizontal)
-            .padding(.vertical, 8)
+            .padding(.vertical, AppStyle.Spacing.compact)
 
             Divider()
-                .padding(.bottom, 8)
+                .padding(.bottom, AppStyle.Spacing.compact)
 
             // Week pills in 2-column grid
-            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
+            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: AppStyle.Spacing.medium) {
                 ForEach(weeksInDisplayMonth, id: \.self) { weekStart in
                     WeekPillView(
                         weekStart: weekStart,
@@ -448,7 +448,7 @@ struct WeekPillView: View {
                 toggleSelection()
             }
         } label: {
-            VStack(spacing: 4) {
+            VStack(spacing: AppStyle.Spacing.tiny) {
                 Text("Week \(weekNumber)")
                     .font(.inter(.body, weight: .medium))
                     .foregroundColor(isSelected ? .white : (isExcluded ? .secondary : .primary))
@@ -470,7 +470,7 @@ struct WeekPillView: View {
                     Image(systemName: "checkmark")
                         .font(.inter(.caption2))
                         .foregroundColor(.green)
-                        .padding(6)
+                        .padding(AppStyle.Spacing.small)
                 }
             }
         }
@@ -550,7 +550,7 @@ struct MonthlyCalendarView: View {
                 // Fixed year mode: static text, no navigation
                 Text(String(effectiveYear))
                     .font(.inter(.headline))
-                    .padding(.vertical, 8)
+                    .padding(.vertical, AppStyle.Spacing.compact)
             } else {
                 // Navigable year mode
                 HStack {
@@ -586,14 +586,14 @@ struct MonthlyCalendarView: View {
                     .buttonStyle(.borderless)
                 }
                 .padding(.horizontal)
-                .padding(.vertical, 8)
+                .padding(.vertical, AppStyle.Spacing.compact)
             }
 
             Divider()
-                .padding(.bottom, 8)
+                .padding(.bottom, AppStyle.Spacing.compact)
 
             // Month grid (4x3)
-            LazyVGrid(columns: columns, spacing: 16) {
+            LazyVGrid(columns: columns, spacing: AppStyle.Spacing.section) {
                 ForEach(0..<12, id: \.self) { monthIndex in
                     MonthButton(
                         monthIndex: monthIndex,
@@ -765,7 +765,7 @@ struct YearlyCalendarView: View {
     }
 
     var body: some View {
-        LazyVGrid(columns: columns, spacing: 16) {
+        LazyVGrid(columns: columns, spacing: AppStyle.Spacing.section) {
             ForEach(years, id: \.self) { year in
                 YearButton(
                     year: year,

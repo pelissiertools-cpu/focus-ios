@@ -191,7 +191,7 @@ struct BacklogView: View {
         ZStack {
             VStack(spacing: 0) {
                 // Header
-                HStack(alignment: .center, spacing: 8) {
+                HStack(alignment: .center, spacing: AppStyle.Spacing.compact) {
                     Image(systemName: tasksOnly ? "tray.and.arrow.down" : "tray")
                         .font(.inter(size: 22, weight: .regular))
                         .foregroundColor(.primary)
@@ -218,16 +218,16 @@ struct BacklogView: View {
                         Image(systemName: "magnifyingglass")
                             .font(.inter(.body, weight: .semiBold))
                             .foregroundColor(.primary)
-                            .frame(width: 30, height: 30)
+                            .frame(width: AppStyle.Layout.compactButton, height: AppStyle.Layout.compactButton)
                             .background(Color.pillBackground, in: Circle())
                     }
                 }
-                .padding(.horizontal, 20)
-                .padding(.top, 16)
-                .padding(.bottom, 8)
+                .padding(.horizontal, AppStyle.Spacing.page)
+                .padding(.top, AppStyle.Spacing.section)
+                .padding(.bottom, AppStyle.Spacing.compact)
 
                 if isSearchActive {
-                    HStack(spacing: 8) {
+                    HStack(spacing: AppStyle.Spacing.compact) {
                         Image(systemName: "magnifyingglass")
                             .font(.inter(.subheadline))
                             .foregroundColor(.secondary)
@@ -248,11 +248,11 @@ struct BacklogView: View {
                             }
                         }
                     }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
+                    .padding(.horizontal, AppStyle.Spacing.comfortable)
+                    .padding(.vertical, AppStyle.Spacing.compact)
                     .background(Color.pillBackground, in: Capsule())
-                    .padding(.horizontal, 20)
-                    .padding(.bottom, 8)
+                    .padding(.horizontal, AppStyle.Spacing.page)
+                    .padding(.bottom, AppStyle.Spacing.compact)
                     .transition(.opacity)
                 }
 
@@ -263,7 +263,7 @@ struct BacklogView: View {
                     ProgressView()
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else if searchIsEmpty {
-                    VStack(spacing: 4) {
+                    VStack(spacing: AppStyle.Spacing.tiny) {
                         Text("No results")
                             .font(AppStyle.Typography.emptyTitle)
                         Text("No items match \"\(searchText)\"")
@@ -272,9 +272,9 @@ struct BacklogView: View {
                             .multilineTextAlignment(.center)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .padding(.horizontal, 20)
+                    .padding(.horizontal, AppStyle.Spacing.page)
                 } else if isAnyFilterActive && isEmpty {
-                    VStack(spacing: 4) {
+                    VStack(spacing: AppStyle.Spacing.tiny) {
                         Text("No results")
                             .font(AppStyle.Typography.emptyTitle)
                         Text("No items match the selected filters")
@@ -283,9 +283,9 @@ struct BacklogView: View {
                             .multilineTextAlignment(.center)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .padding(.horizontal, 20)
+                    .padding(.horizontal, AppStyle.Spacing.page)
                 } else if isEmpty {
-                    VStack(spacing: 4) {
+                    VStack(spacing: AppStyle.Spacing.tiny) {
                         Text("No items yet")
                             .font(AppStyle.Typography.emptyTitle)
                         Text("All your tasks, projects, and lists will appear here")
@@ -294,7 +294,7 @@ struct BacklogView: View {
                             .multilineTextAlignment(.center)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .padding(.horizontal, 20)
+                    .padding(.horizontal, AppStyle.Spacing.page)
                 } else {
                     itemList
                 }
@@ -322,13 +322,13 @@ struct BacklogView: View {
                             Image(systemName: "plus")
                                 .font(.inter(.title2, weight: .semiBold))
                                 .foregroundColor(.white)
-                                .frame(width: 56, height: 56)
+                                .frame(width: AppStyle.Layout.fab, height: AppStyle.Layout.fab)
                                 .glassEffect(.regular.tint(.charcoal).interactive(), in: .circle)
                                 .shadow(radius: 4, y: 2)
                         }
                         .accessibilityLabel("Add task")
-                        .padding(.trailing, 20)
-                        .padding(.bottom, 20)
+                        .padding(.trailing, AppStyle.Spacing.page)
+                        .padding(.bottom, AppStyle.Spacing.page)
                     }
                 }
                 .transition(.opacity)
@@ -352,7 +352,7 @@ struct BacklogView: View {
                         }
 
                     addTaskBar
-                        .padding(.bottom, 8)
+                        .padding(.bottom, AppStyle.Spacing.compact)
                         .contentShape(Rectangle())
                 }
                 .transition(.move(edge: .bottom).combined(with: .opacity))
@@ -515,7 +515,7 @@ struct BacklogView: View {
                         Image(systemName: "chevron.left")
                             .font(.inter(.body, weight: .semiBold))
                             .foregroundColor(.primary)
-                            .frame(width: 44, height: 44)
+                            .frame(width: AppStyle.Layout.touchTarget, height: AppStyle.Layout.touchTarget)
                             .contentShape(Rectangle())
                     }
                     .accessibilityLabel("Back")
@@ -581,7 +581,7 @@ struct BacklogView: View {
                         Image(systemName: "ellipsis")
                             .font(.inter(.body, weight: .semiBold))
                             .foregroundColor(.primary)
-                            .frame(width: 30, height: 30)
+                            .frame(width: AppStyle.Layout.compactButton, height: AppStyle.Layout.compactButton)
                             .background(Color.pillBackground, in: Circle())
                     }
                 }
@@ -645,7 +645,7 @@ struct BacklogView: View {
                                 }
                             }
                         )
-                        .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+                        .listRowInsets(EdgeInsets(top: 0, leading: AppStyle.Spacing.section, bottom: 0, trailing: AppStyle.Spacing.section))
                         .listRowSeparator(.hidden)
                         .listRowBackground(Color.clear)
 
@@ -661,7 +661,7 @@ struct BacklogView: View {
                             }
                         )
                         .padding(.leading, task.parentTaskId != nil ? 32 : 0)
-                        .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+                        .listRowInsets(AppStyle.Insets.row)
                         .listRowBackground(Color.clear)
                         .listRowSeparator(task.parentTaskId != nil ? .visible : .hidden)
 
@@ -671,10 +671,10 @@ struct BacklogView: View {
                             buttonLabel: "Add subtask",
                             onSubmit: { title in await taskListVM.createSubtask(title: title, parentId: parentId) },
                             isAnyAddFieldActive: $isInlineAddFocused,
-                            verticalPadding: 12
+                            verticalPadding: AppStyle.Spacing.comfortable
                         )
                         .padding(.leading, 32)
-                        .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+                        .listRowInsets(AppStyle.Insets.row)
                         .listRowBackground(Color.clear)
 
                     case .addTaskRow:
@@ -701,7 +701,7 @@ struct BacklogView: View {
                                 await refreshAllData()
                             }
                         )
-                        .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+                        .listRowInsets(AppStyle.Insets.row)
                         .listRowBackground(Color.clear)
                         .listRowSeparator(.hidden)
                     }
@@ -724,7 +724,7 @@ struct BacklogView: View {
                                 await refreshAllData()
                             }
                         )
-                        .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+                        .listRowInsets(AppStyle.Insets.row)
                         .listRowBackground(Color.clear)
                         .listRowSeparator(.hidden)
                     }
@@ -734,7 +734,7 @@ struct BacklogView: View {
             // Bottom spacer
             Color.clear
                 .frame(height: 100)
-                .listRowInsets(EdgeInsets())
+                .listRowInsets(AppStyle.Insets.zero)
                 .listRowSeparator(.hidden)
                 .listRowBackground(Color.clear)
         }
@@ -761,7 +761,7 @@ struct BacklogView: View {
 
     private var quickFilterBar: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
+            HStack(spacing: AppStyle.Spacing.compact) {
                 BacklogFilterPill(title: "Unscheduled", isSelected: $filterUnscheduled)
                 if !tasksOnly {
                     BacklogFilterPill(title: "Task", isSelected: $filterTasks)
@@ -769,9 +769,9 @@ struct BacklogView: View {
                     BacklogFilterPill(title: "Quick List", isSelected: $filterLists)
                 }
             }
-            .padding(.horizontal, 20)
+            .padding(.horizontal, AppStyle.Spacing.page)
         }
-        .padding(.bottom, 4)
+        .padding(.bottom, AppStyle.Spacing.tiny)
     }
 
     // MARK: - Section Headers
@@ -782,7 +782,7 @@ struct BacklogView: View {
                 isTasksSectionCollapsed.toggle()
             }
         } label: {
-            HStack(spacing: 8) {
+            HStack(spacing: AppStyle.Spacing.compact) {
                 Image(systemName: "checkmark.circle")
                     .font(.inter(.subheadline))
                     .foregroundColor(.appRed)
@@ -800,9 +800,9 @@ struct BacklogView: View {
             }
         }
         .buttonStyle(.plain)
-        .padding(.top, 4)
-        .padding(.bottom, 4)
-        .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+        .padding(.top, AppStyle.Spacing.tiny)
+        .padding(.bottom, AppStyle.Spacing.tiny)
+        .listRowInsets(AppStyle.Insets.row)
         .listRowSeparator(.hidden)
         .listRowBackground(Color.clear)
     }
@@ -813,7 +813,7 @@ struct BacklogView: View {
                 isProjectsSectionCollapsed.toggle()
             }
         } label: {
-            HStack(spacing: 8) {
+            HStack(spacing: AppStyle.Spacing.compact) {
                 Image(systemName: "folder")
                     .font(.system(size: 14))
                     .foregroundColor(.appRed)
@@ -831,9 +831,9 @@ struct BacklogView: View {
             }
         }
         .buttonStyle(.plain)
-        .padding(.top, 16)
-        .padding(.bottom, 4)
-        .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+        .padding(.top, AppStyle.Spacing.section)
+        .padding(.bottom, AppStyle.Spacing.tiny)
+        .listRowInsets(AppStyle.Insets.row)
         .listRowSeparator(.hidden)
         .listRowBackground(Color.clear)
     }
@@ -844,7 +844,7 @@ struct BacklogView: View {
                 isListsSectionCollapsed.toggle()
             }
         } label: {
-            HStack(spacing: 8) {
+            HStack(spacing: AppStyle.Spacing.compact) {
                 Image(systemName: "list.bullet")
                     .font(.inter(.subheadline))
                     .foregroundColor(.appRed)
@@ -862,9 +862,9 @@ struct BacklogView: View {
             }
         }
         .buttonStyle(.plain)
-        .padding(.top, 16)
-        .padding(.bottom, 4)
-        .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+        .padding(.top, AppStyle.Spacing.section)
+        .padding(.bottom, AppStyle.Spacing.tiny)
+        .listRowInsets(AppStyle.Insets.row)
         .listRowSeparator(.hidden)
         .listRowBackground(Color.clear)
     }
@@ -890,9 +890,9 @@ private extension BacklogView {
                 .focused($addBarTitleFocused)
                 .submitLabel(.return)
                 .onSubmit { saveTask() }
-                .padding(.horizontal, 14)
-                .padding(.top, 20)
-                .padding(.bottom, 10)
+                .padding(.horizontal, AppStyle.Spacing.content)
+                .padding(.top, AppStyle.Spacing.page)
+                .padding(.bottom, AppStyle.Spacing.medium)
 
             DraftSubtaskListEditor(
                 subtasks: $addTaskSubtasks,
@@ -902,9 +902,9 @@ private extension BacklogView {
 
             if addTaskScheduleExpanded {
                 Divider()
-                    .padding(.horizontal, 14)
+                    .padding(.horizontal, AppStyle.Spacing.content)
 
-                VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: AppStyle.Spacing.comfortable) {
                     Picker("Section", selection: $addTaskSection) {
                         Text("Focus").tag(Section.focus)
                         Text("To-Do").tag(Section.todo)
@@ -916,9 +916,9 @@ private extension BacklogView {
                         selectedTimeframe: $addTaskTimeframe
                     )
                 }
-                .padding(.horizontal, 14)
-                .padding(.top, 6)
-                .padding(.bottom, 14)
+                .padding(.horizontal, AppStyle.Spacing.content)
+                .padding(.top, AppStyle.Spacing.small)
+                .padding(.bottom, AppStyle.Spacing.content)
 
                 HStack {
                     Button {
@@ -930,7 +930,7 @@ private extension BacklogView {
                         Image(systemName: "xmark")
                             .font(.inter(.body, weight: .semiBold))
                             .foregroundColor(.primary)
-                            .frame(width: 36, height: 36)
+                            .frame(width: AppStyle.Layout.iconButton, height: AppStyle.Layout.iconButton)
                             .background(Color(.systemGray4), in: Circle())
                     }
                     .buttonStyle(.plain)
@@ -947,7 +947,7 @@ private extension BacklogView {
                         Image(systemName: "checkmark")
                             .font(.inter(.body, weight: .semiBold))
                             .foregroundColor(hasDateChanges ? .white : .secondary)
-                            .frame(width: 36, height: 36)
+                            .frame(width: AppStyle.Layout.iconButton, height: AppStyle.Layout.iconButton)
                             .background(
                                 hasDateChanges ? Color.appRed : Color(.systemGray4),
                                 in: Circle()
@@ -955,24 +955,24 @@ private extension BacklogView {
                     }
                     .buttonStyle(.plain)
                 }
-                .padding(.horizontal, 14)
-                .padding(.bottom, 4)
+                .padding(.horizontal, AppStyle.Spacing.content)
+                .padding(.bottom, AppStyle.Spacing.tiny)
             }
 
             if !addTaskScheduleExpanded {
-                HStack(spacing: 8) {
+                HStack(spacing: AppStyle.Spacing.compact) {
                     Button {
                         addNewSubtask()
                     } label: {
-                        HStack(spacing: 4) {
+                        HStack(spacing: AppStyle.Spacing.tiny) {
                             Image(systemName: "plus")
                                 .font(.inter(.caption))
                             Text("Sub-task")
                                 .font(.inter(.caption))
                         }
                         .foregroundColor(.white)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 8)
+                        .padding(.horizontal, AppStyle.Spacing.medium)
+                        .padding(.vertical, AppStyle.Spacing.compact)
                         .background(Color.black, in: Capsule())
                     }
                     .buttonStyle(.plain)
@@ -986,8 +986,8 @@ private extension BacklogView {
                             .font(.inter(.caption, weight: .bold))
                             .foregroundColor(.black)
                             .frame(minHeight: UIFont.preferredFont(forTextStyle: .caption1).lineHeight)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 8)
+                            .padding(.horizontal, AppStyle.Spacing.medium)
+                            .padding(.vertical, AppStyle.Spacing.compact)
                             .background(Color.white, in: Capsule())
                     }
                     .buttonStyle(.plain)
@@ -997,7 +997,7 @@ private extension BacklogView {
                     Button {
                         generateBreakdown()
                     } label: {
-                        HStack(spacing: 6) {
+                        HStack(spacing: AppStyle.Spacing.small) {
                             if isGeneratingBreakdown {
                                 ProgressView()
                                     .tint(.primary)
@@ -1010,8 +1010,8 @@ private extension BacklogView {
                                 .font(.inter(.caption, weight: .medium))
                                 .foregroundColor(.primary)
                         }
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 8)
+                        .padding(.horizontal, AppStyle.Spacing.content)
+                        .padding(.vertical, AppStyle.Spacing.compact)
                         .background(
                             !isAddTaskTitleEmpty ? Color.pillBackground : Color.clear,
                             in: Capsule()
@@ -1026,7 +1026,7 @@ private extension BacklogView {
                         Image(systemName: "checkmark")
                             .font(.inter(.body, weight: .semiBold))
                             .foregroundColor(isAddTaskTitleEmpty ? .secondary : .white)
-                            .frame(width: 36, height: 36)
+                            .frame(width: AppStyle.Layout.iconButton, height: AppStyle.Layout.iconButton)
                             .background(
                                 isAddTaskTitleEmpty ? Color(.systemGray4) : Color.focusBlue,
                                 in: Circle()
@@ -1035,12 +1035,12 @@ private extension BacklogView {
                     .buttonStyle(.plain)
                     .disabled(isAddTaskTitleEmpty)
                 }
-                .padding(.horizontal, 14)
-                .padding(.bottom, 4)
+                .padding(.horizontal, AppStyle.Spacing.content)
+                .padding(.bottom, AppStyle.Spacing.tiny)
             }
 
             if addTaskOptionsExpanded && !addTaskScheduleExpanded {
-                HStack(spacing: 8) {
+                HStack(spacing: AppStyle.Spacing.compact) {
                     Menu {
                         Button {
                             addTaskCategoryId = nil
@@ -1063,15 +1063,15 @@ private extension BacklogView {
                             }
                         }
                     } label: {
-                        HStack(spacing: 4) {
+                        HStack(spacing: AppStyle.Spacing.tiny) {
                             Image(systemName: "folder")
                                 .font(.inter(.caption))
                             Text(LocalizedStringKey(categoryPillLabel))
                                 .font(.inter(.caption))
                         }
                         .foregroundColor(.black)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 8)
+                        .padding(.horizontal, AppStyle.Spacing.medium)
+                        .padding(.vertical, AppStyle.Spacing.compact)
                         .background(Color.white, in: Capsule())
                     }
 
@@ -1083,15 +1083,15 @@ private extension BacklogView {
                             addTaskScheduleExpanded.toggle()
                         }
                     } label: {
-                        HStack(spacing: 4) {
+                        HStack(spacing: AppStyle.Spacing.tiny) {
                             Image(systemName: "arrow.right.circle")
                                 .font(.inter(.caption))
                             Text("Schedule")
                                 .font(.inter(.caption))
                         }
                         .foregroundColor(!addTaskDates.isEmpty ? .white : .black)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 8)
+                        .padding(.horizontal, AppStyle.Spacing.medium)
+                        .padding(.vertical, AppStyle.Spacing.compact)
                         .background(!addTaskDates.isEmpty ? Color.appRed : Color.white, in: Capsule())
                     }
                     .buttonStyle(.plain)
@@ -1109,26 +1109,26 @@ private extension BacklogView {
                             }
                         }
                     } label: {
-                        HStack(spacing: 4) {
+                        HStack(spacing: AppStyle.Spacing.tiny) {
                             Circle()
                                 .fill(addTaskPriority.dotColor)
-                                .frame(width: 8, height: 8)
+                                .frame(width: AppStyle.Layout.dotSize, height: AppStyle.Layout.dotSize)
                             Text(addTaskPriority.displayName)
                                 .font(.inter(.caption))
                         }
                         .foregroundColor(.black)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 8)
+                        .padding(.horizontal, AppStyle.Spacing.medium)
+                        .padding(.vertical, AppStyle.Spacing.compact)
                         .background(Color.white, in: Capsule())
                     }
 
                     Spacer()
                 }
-                .padding(.horizontal, 14)
-                .padding(.top, 6)
+                .padding(.horizontal, AppStyle.Spacing.content)
+                .padding(.top, AppStyle.Spacing.small)
             }
 
-            Spacer().frame(height: 20)
+            Spacer().frame(height: AppStyle.Spacing.page)
         }
         .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 20))
         .padding(.horizontal)
@@ -1241,7 +1241,7 @@ private struct BacklogFilterPill: View {
             Text(title)
                 .font(.inter(size: 13, weight: .medium))
                 .foregroundColor(isSelected ? .white : .secondary)
-                .padding(.horizontal, 12)
+                .padding(.horizontal, AppStyle.Spacing.comfortable)
                 .padding(.vertical, 7)
                 .background(isSelected ? Color.focusBlue : Color(.tertiarySystemFill), in: Capsule())
         }
@@ -1260,11 +1260,11 @@ private struct BacklogProjectRow: View {
     @State private var showDeleteConfirmation = false
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: AppStyle.Spacing.comfortable) {
             Image(systemName: "folder")
                 .font(.inter(.body, weight: .medium))
                 .foregroundColor(.secondary)
-                .frame(width: 24)
+                .frame(width: AppStyle.Layout.pillButton)
 
             Text(project.title)
                 .font(.inter(.body))
@@ -1277,7 +1277,7 @@ private struct BacklogProjectRow: View {
                 .font(.inter(size: 12, weight: .semiBold))
                 .foregroundColor(.secondary)
         }
-        .padding(.vertical, 8)
+        .padding(.vertical, AppStyle.Spacing.compact)
         .contentShape(Rectangle())
         .onTapGesture { onTap() }
         .contextMenu {
@@ -1311,11 +1311,11 @@ private struct BacklogListRow: View {
     @State private var showDeleteConfirmation = false
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: AppStyle.Spacing.comfortable) {
             Image(systemName: "list.bullet")
                 .font(.inter(.body, weight: .medium))
                 .foregroundColor(.secondary)
-                .frame(width: 24)
+                .frame(width: AppStyle.Layout.pillButton)
 
             Text(list.title)
                 .font(.inter(.body))
@@ -1328,7 +1328,7 @@ private struct BacklogListRow: View {
                 .font(.inter(size: 12, weight: .semiBold))
                 .foregroundColor(.secondary)
         }
-        .padding(.vertical, 8)
+        .padding(.vertical, AppStyle.Spacing.compact)
         .contentShape(Rectangle())
         .onTapGesture { onTap() }
         .contextMenu {

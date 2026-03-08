@@ -16,9 +16,9 @@ struct ArchiveView: View {
                 Text("Completed")
                     .pageTitleStyle()
                     .foregroundColor(.primary)
-                    .padding(.horizontal, 20)
-                    .padding(.top, 16)
-                    .padding(.bottom, 4)
+                    .padding(.horizontal, AppStyle.Spacing.page)
+                    .padding(.top, AppStyle.Spacing.section)
+                    .padding(.bottom, AppStyle.Spacing.tiny)
 
                 // Count + Clear
                 if viewModel.totalCount > 0 {
@@ -41,8 +41,8 @@ struct ArchiveView: View {
 
                         Spacer()
                     }
-                    .padding(.horizontal, 20)
-                    .padding(.bottom, 12)
+                    .padding(.horizontal, AppStyle.Spacing.page)
+                    .padding(.bottom, AppStyle.Spacing.comfortable)
                 }
 
                 if viewModel.isLoading {
@@ -50,7 +50,7 @@ struct ArchiveView: View {
                         .frame(maxWidth: .infinity)
                         .padding(.top, 40)
                 } else if viewModel.sections.isEmpty {
-                    VStack(spacing: 4) {
+                    VStack(spacing: AppStyle.Spacing.tiny) {
                         Text("No completed items")
                             .font(AppStyle.Typography.emptyTitle)
                         Text("Completed tasks, projects, and lists will appear here")
@@ -70,7 +70,7 @@ struct ArchiveView: View {
                                 isSelected: viewModel.selectedIds.contains(task.id),
                                 onToggleSelection: { viewModel.toggleSelection(task.id) }
                             )
-                            .padding(.horizontal, 32)
+                            .padding(.horizontal, AppStyle.Insets.nestedRow.leading)
                         }
                     }
                 }
@@ -97,7 +97,7 @@ struct ArchiveView: View {
                         Image(systemName: "chevron.left")
                             .font(.inter(.body, weight: .semiBold))
                             .foregroundColor(.primary)
-                            .frame(width: 44, height: 44)
+                            .frame(width: AppStyle.Layout.touchTarget, height: AppStyle.Layout.touchTarget)
                             .contentShape(Rectangle())
                     }
                     .accessibilityLabel("Back")
@@ -127,7 +127,7 @@ struct ArchiveView: View {
                         Image(systemName: "ellipsis")
                             .font(.inter(.body, weight: .semiBold))
                             .foregroundColor(.primary)
-                            .frame(width: 30, height: 30)
+                            .frame(width: AppStyle.Layout.compactButton, height: AppStyle.Layout.compactButton)
                             .background(Color.pillBackground, in: Circle())
                     }
                 }
@@ -138,14 +138,14 @@ struct ArchiveView: View {
                 Button {
                     viewModel.showDeleteConfirmation = true
                 } label: {
-                    HStack(spacing: 8) {
+                    HStack(spacing: AppStyle.Spacing.compact) {
                         Image(systemName: "trash")
                         Text("Delete \(viewModel.selectedIds.count)")
                     }
                     .font(.inter(.body, weight: .medium))
                     .foregroundColor(.red)
-                    .padding(.horizontal, 24)
-                    .padding(.vertical, 12)
+                    .padding(.horizontal, AppStyle.Spacing.expanded)
+                    .padding(.vertical, AppStyle.Spacing.comfortable)
                     .glassEffect(.regular, in: .capsule)
                     .shadow(radius: 4, y: 2)
                 }
@@ -194,15 +194,15 @@ private struct ArchiveSectionHeader: View {
                     .foregroundColor(.primary)
                 Spacer()
             }
-            .padding(.vertical, 6)
-            .padding(.horizontal, 12)
+            .padding(.vertical, AppStyle.Spacing.small)
+            .padding(.horizontal, AppStyle.Spacing.comfortable)
 
             Rectangle()
                 .fill(Color.secondary.opacity(0.3))
                 .frame(height: 1)
         }
-        .padding(.horizontal, 16)
-        .padding(.top, 8)
+        .padding(.horizontal, AppStyle.Spacing.section)
+        .padding(.top, AppStyle.Spacing.compact)
     }
 }
 
@@ -215,7 +215,7 @@ private struct ArchiveItemRow: View {
     let onToggleSelection: () -> Void
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: AppStyle.Spacing.comfortable) {
             if isEditMode {
                 Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
                     .font(.inter(.title3))
@@ -243,7 +243,7 @@ private struct ArchiveItemRow: View {
                     .foregroundColor(.secondary)
             }
         }
-        .padding(.vertical, 8)
+        .padding(.vertical, AppStyle.Spacing.compact)
         .contentShape(Rectangle())
         .onTapGesture {
             if isEditMode {

@@ -135,7 +135,7 @@ struct CategoryEditDrawer<VM: LogFilterable>: View {
 
     @ViewBuilder
     private func categoryRow(category: Category) -> some View {
-        HStack(spacing: 10) {
+        HStack(spacing: AppStyle.Spacing.medium) {
             // Dotted selection circle
             Button {
                 if selectedCategoryIds.contains(category.id) {
@@ -184,7 +184,7 @@ struct CategoryEditDrawer<VM: LogFilterable>: View {
         let canMerge = selectedCategoryIds.count >= 2
 
         if isAddingCategory {
-            HStack(spacing: 8) {
+            HStack(spacing: AppStyle.Spacing.compact) {
                 TextField("Category name", text: $newCategoryName)
                     .font(.inter(.body))
                     .focused($isNewCategoryFocused)
@@ -199,7 +199,7 @@ struct CategoryEditDrawer<VM: LogFilterable>: View {
                             newCategoryName.trimmingCharacters(in: .whitespaces).isEmpty
                             ? .secondary : .white
                         )
-                        .frame(width: 30, height: 30)
+                        .frame(width: AppStyle.Layout.compactButton, height: AppStyle.Layout.compactButton)
                         .background(
                             newCategoryName.trimmingCharacters(in: .whitespaces).isEmpty
                             ? Color(.systemGray4) : Color.appRed,
@@ -216,15 +216,15 @@ struct CategoryEditDrawer<VM: LogFilterable>: View {
                     Image(systemName: "xmark")
                         .font(.inter(.subheadline, weight: .semiBold))
                         .foregroundColor(.secondary)
-                        .frame(width: 30, height: 30)
+                        .frame(width: AppStyle.Layout.compactButton, height: AppStyle.Layout.compactButton)
                         .background(Color(.systemGray4), in: Circle())
                 }
                 .buttonStyle(.plain)
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 4)
+            .padding(.horizontal, AppStyle.Spacing.section)
+            .padding(.vertical, AppStyle.Spacing.tiny)
         } else {
-            HStack(spacing: 8) {
+            HStack(spacing: AppStyle.Spacing.compact) {
                 // + New Category pill
                 Button {
                     saveRenameIfNeeded()
@@ -233,7 +233,7 @@ struct CategoryEditDrawer<VM: LogFilterable>: View {
                         isNewCategoryFocused = true
                     }
                 } label: {
-                    HStack(spacing: 6) {
+                    HStack(spacing: AppStyle.Spacing.small) {
                         Image(systemName: "plus")
                             .font(.inter(.subheadline))
                         Text("New Category")
@@ -241,8 +241,8 @@ struct CategoryEditDrawer<VM: LogFilterable>: View {
                             .lineLimit(1)
                     }
                     .foregroundColor(.primary)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 10)
+                    .padding(.horizontal, AppStyle.Spacing.comfortable)
+                    .padding(.vertical, AppStyle.Spacing.medium)
                     .glassEffect(.regular.interactive(), in: .capsule)
                 }
                 .buttonStyle(.plain)
@@ -255,7 +255,7 @@ struct CategoryEditDrawer<VM: LogFilterable>: View {
                         showMergeConfirmation = true
                     }
                 } label: {
-                    HStack(spacing: 6) {
+                    HStack(spacing: AppStyle.Spacing.small) {
                         Image(systemName: "arrow.triangle.merge")
                             .font(.inter(.subheadline))
                         Text("Merge")
@@ -263,8 +263,8 @@ struct CategoryEditDrawer<VM: LogFilterable>: View {
                             .lineLimit(1)
                     }
                     .foregroundColor(canMerge ? .primary : .secondary.opacity(0.5))
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 10)
+                    .padding(.horizontal, AppStyle.Spacing.comfortable)
+                    .padding(.vertical, AppStyle.Spacing.medium)
                     .glassEffect(.regular.interactive(), in: .capsule)
                 }
                 .buttonStyle(.plain)
@@ -279,14 +279,14 @@ struct CategoryEditDrawer<VM: LogFilterable>: View {
                     Image(systemName: "trash")
                         .font(.inter(.body, weight: .semiBold))
                         .foregroundColor(hasSelection ? .red : .secondary.opacity(0.5))
-                        .frame(width: 44, height: 44)
+                        .frame(width: AppStyle.Layout.touchTarget, height: AppStyle.Layout.touchTarget)
                         .glassEffect(.regular.interactive(), in: .circle)
                 }
                 .buttonStyle(.plain)
                 .disabled(!hasSelection)
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 4)
+            .padding(.horizontal, AppStyle.Spacing.section)
+            .padding(.vertical, AppStyle.Spacing.tiny)
         }
     }
 

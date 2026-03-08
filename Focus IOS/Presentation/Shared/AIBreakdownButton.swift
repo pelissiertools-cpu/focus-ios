@@ -15,7 +15,7 @@ struct AIBreakdownButton: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 8) {
+            HStack(spacing: AppStyle.Spacing.compact) {
                 if isGenerating {
                     ProgressView()
                         .tint(.primary)
@@ -28,7 +28,7 @@ struct AIBreakdownButton: View {
             }
             .foregroundColor(.primary)
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 12)
+            .padding(.vertical, AppStyle.Spacing.comfortable)
             .glassEffect(.regular.interactive(), in: .capsule)
         }
         .buttonStyle(.plain)

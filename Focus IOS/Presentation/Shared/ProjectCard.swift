@@ -45,7 +45,7 @@ struct ProjectCard: View {
                 }
                 .frame(height: 3)
                 .padding(.horizontal)
-                .padding(.bottom, 12)
+                .padding(.bottom, AppStyle.Spacing.comfortable)
             }
         }
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
@@ -55,7 +55,7 @@ struct ProjectCard: View {
     // MARK: - Header
 
     private var projectHeader: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: AppStyle.Spacing.comfortable) {
             // Edit mode: selection circle
             if viewModel.isEditMode && !project.isCompleted {
                 Image(systemName: viewModel.selectedProjectIds.contains(project.id) ? "checkmark.circle.fill" : "circle.dashed")
@@ -71,8 +71,8 @@ struct ProjectCard: View {
                 .opacity(project.isCompleted ? 0.4 : 1.0)
 
             // Title and progress
-            VStack(alignment: .leading, spacing: 6) {
-                HStack(spacing: 8) {
+            VStack(alignment: .leading, spacing: AppStyle.Spacing.small) {
+                HStack(spacing: AppStyle.Spacing.compact) {
                     Text(project.title)
                         .font(.inter(.title3, weight: .bold))
                         .lineLimit(1)
@@ -88,8 +88,8 @@ struct ProjectCard: View {
                     }
                 }
 
-                HStack(spacing: 16) {
-                    HStack(spacing: 4) {
+                HStack(spacing: AppStyle.Spacing.section) {
+                    HStack(spacing: AppStyle.Spacing.tiny) {
                         Text("Task")
                             .font(.inter(.caption))
                         Text("\(taskProgress.completed)/\(taskProgress.total)")
@@ -97,7 +97,7 @@ struct ProjectCard: View {
                     }
                     .foregroundColor(.secondary)
 
-                    HStack(spacing: 4) {
+                    HStack(spacing: AppStyle.Spacing.tiny) {
                         Text("Sub Task")
                             .font(.inter(.caption))
                         Text("\(subtaskProgress.completed)/\(subtaskProgress.total)")
@@ -167,9 +167,9 @@ struct ProjectTaskRow: View {
     }
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: AppStyle.Spacing.comfortable) {
             // Task title + subtask count
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: AppStyle.Spacing.tiny) {
                 Text(task.title)
                     .font(AppStyle.Typography.itemTitle)
                     .strikethrough(displayCompleted)
@@ -181,7 +181,7 @@ struct ProjectTaskRow: View {
                         .foregroundColor(.secondary)
                 }
             }
-            .frame(maxWidth: .infinity, minHeight: 36, alignment: .leading)
+            .frame(maxWidth: .infinity, minHeight: AppStyle.Layout.iconButton, alignment: .leading)
 
             // Completion button
             Button {
@@ -196,7 +196,7 @@ struct ProjectTaskRow: View {
             .buttonStyle(.plain)
             .accessibilityLabel(displayCompleted ? "Completed" : "Mark complete")
         }
-        .padding(.vertical, 8)
+        .padding(.vertical, AppStyle.Spacing.compact)
         .contentShape(Rectangle())
         .onTapGesture {
             _Concurrency.Task {
@@ -244,7 +244,7 @@ struct ProjectSubtaskRow: View {
     private var displayCompleted: Bool { subtask.isCompleted || isPending }
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: AppStyle.Spacing.comfortable) {
             Text(subtask.title)
                 .font(AppStyle.Typography.itemSubtitle)
                 .strikethrough(displayCompleted)
@@ -264,7 +264,7 @@ struct ProjectSubtaskRow: View {
             .buttonStyle(.plain)
             .accessibilityLabel(displayCompleted ? "Completed" : "Mark complete")
         }
-        .padding(.vertical, 6)
+        .padding(.vertical, AppStyle.Spacing.small)
         .contentShape(Rectangle())
         .onTapGesture {
             viewModel.selectedTaskForDetails = subtask
@@ -296,7 +296,7 @@ struct ProjectSubtaskRow: View {
 struct ProjectProgressRing: View {
     let completed: Int
     let total: Int
-    var size: CGFloat = 20
+    var size: CGFloat = AppStyle.Layout.smallIcon
 
     private var progress: Double {
         guard total > 0 else { return 0 }

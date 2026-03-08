@@ -56,7 +56,7 @@ struct TasksListView: View {
                 onEdit: { showCategoryEditDrawer = true }
             ) {
                 if viewModel.isEditMode {
-                    HStack(spacing: 8) {
+                    HStack(spacing: AppStyle.Spacing.compact) {
                         Button {
                             if viewModel.allUncompletedSelected {
                                 viewModel.deselectAll()
@@ -84,13 +84,13 @@ struct TasksListView: View {
                         .buttonStyle(.plain)
                     }
                 } else {
-                    HStack(spacing: 8) {
+                    HStack(spacing: AppStyle.Spacing.compact) {
                         if let onSearchTap {
                             Button(action: onSearchTap) {
                                 Image(systemName: "magnifyingglass")
                                     .font(.inter(.body, weight: .medium))
                                     .foregroundColor(.primary)
-                                    .frame(width: 36, height: 36)
+                                    .frame(width: AppStyle.Layout.iconButton, height: AppStyle.Layout.iconButton)
                                     .glassEffect(.regular.tint(.glassTint).interactive(), in: .circle)
                             }
                             .buttonStyle(.plain)
@@ -101,7 +101,7 @@ struct TasksListView: View {
                     }
                 }
             }
-            .padding(.top, 8)
+            .padding(.top, AppStyle.Spacing.compact)
 
             ZStack {
                 if viewModel.isLoading && !initialLoadComplete {
@@ -201,7 +201,7 @@ struct TasksListView: View {
     }
 
     private var emptyState: some View {
-        VStack(spacing: 4) {
+        VStack(spacing: AppStyle.Spacing.tiny) {
             Text("No tasks yet")
                 .font(AppStyle.Typography.emptyTitle)
             Text("Tap + to create your first task")
@@ -228,7 +228,7 @@ struct TasksListView: View {
                         }
                     )
                     .moveDisabled(true)
-                    .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+                    .listRowInsets(EdgeInsets(top: 0, leading: AppStyle.Spacing.section, bottom: 0, trailing: AppStyle.Spacing.section))
                     .listRowSeparator(.hidden)
                     .listRowBackground(Color.clear)
 
@@ -242,10 +242,10 @@ struct TasksListView: View {
                     )
                     .padding(.leading, task.parentTaskId != nil ? 32 : 0)
                     .moveDisabled(task.isCompleted || viewModel.isEditMode)
-                    .listRowInsets(EdgeInsets(top: 0, leading: 32, bottom: 0, trailing: 32))
+                    .listRowInsets(AppStyle.Insets.nestedRow)
                     .listRowBackground(Color.clear)
-                    .alignmentGuide(.listRowSeparatorLeading) { d in d[.leading] - 12 }
-                    .alignmentGuide(.listRowSeparatorTrailing) { d in d[.trailing] + 12 }
+                    .alignmentGuide(.listRowSeparatorLeading) { d in d[.leading] - AppStyle.Spacing.comfortable }
+                    .alignmentGuide(.listRowSeparatorTrailing) { d in d[.trailing] + AppStyle.Spacing.comfortable }
 
                 case .addSubtaskRow(let parentId):
                     InlineAddRow(
@@ -253,11 +253,11 @@ struct TasksListView: View {
                         buttonLabel: "Add subtask",
                         onSubmit: { title in await viewModel.createSubtask(title: title, parentId: parentId) },
                         isAnyAddFieldActive: $isInlineAddFocused,
-                        verticalPadding: 12
+                        verticalPadding: AppStyle.Spacing.comfortable
                     )
                     .padding(.leading, 32)
                     .moveDisabled(true)
-                    .listRowInsets(EdgeInsets(top: 0, leading: 32, bottom: 0, trailing: 32))
+                    .listRowInsets(AppStyle.Insets.nestedRow)
                     .listRowBackground(Color.clear)
 
                 case .addTaskRow(let priority):
@@ -266,10 +266,10 @@ struct TasksListView: View {
                         buttonLabel: "Add task",
                         onSubmit: { title in await viewModel.createTask(title: title, categoryId: viewModel.selectedCategoryId, priority: priority) },
                         isAnyAddFieldActive: $isInlineAddFocused,
-                        verticalPadding: 12
+                        verticalPadding: AppStyle.Spacing.comfortable
                     )
                     .moveDisabled(true)
-                    .listRowInsets(EdgeInsets(top: 0, leading: 32, bottom: 0, trailing: 32))
+                    .listRowInsets(AppStyle.Insets.nestedRow)
                     .listRowBackground(Color.clear)
                 }
             }
@@ -280,7 +280,7 @@ struct TasksListView: View {
             // Done pill (when there are completed tasks, hidden in edit mode)
             if !viewModel.isEditMode && !viewModel.completedTasks.isEmpty {
                 LogDonePillView(completedTasks: viewModel.completedTasks, viewModel: viewModel, isInlineAddFocused: $isInlineAddFocused)
-                    .listRowInsets(EdgeInsets(top: 0, leading: 32, bottom: 0, trailing: 32))
+                    .listRowInsets(AppStyle.Insets.nestedRow)
                     .listRowSeparator(.hidden)
                     .listRowBackground(Color.clear)
             }
@@ -324,7 +324,7 @@ struct PrioritySectionHeader: View {
             Spacer(minLength: 0)
 
             HStack {
-                HStack(spacing: 8) {
+                HStack(spacing: AppStyle.Spacing.compact) {
                     RoundedRectangle(cornerRadius: 5, style: .continuous)
                         .fill(priority.dotColor)
                         .frame(width: 15, height: 15)
@@ -343,8 +343,8 @@ struct PrioritySectionHeader: View {
                         .foregroundColor(.secondary)
                         .rotationEffect(.degrees(isCollapsed ? 0 : 90))
                 }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 10)
+                .padding(.horizontal, AppStyle.Spacing.comfortable)
+                .padding(.vertical, AppStyle.Spacing.medium)
                 .background(
                     RoundedRectangle(cornerRadius: 10, style: .continuous)
                         .fill(Color.pillBackground)
@@ -366,9 +366,9 @@ struct PrioritySectionHeader: View {
                     .accessibilityLabel("Add task")
                 }
             }
-            .padding(.leading, 16)
-            .padding(.trailing, 16)
-            .padding(.bottom, 8)
+            .padding(.leading, AppStyle.Spacing.section)
+            .padding(.trailing, AppStyle.Spacing.section)
+            .padding(.bottom, AppStyle.Spacing.compact)
             .contentShape(Rectangle())
             .onTapGesture {
                 onToggle()
@@ -413,9 +413,9 @@ struct CategorySelectorHeader<TrailingContent: View>: View {
     var body: some View {
         VStack(spacing: 0) {
             // Header row
-            HStack(spacing: 8) {
+            HStack(spacing: AppStyle.Spacing.compact) {
                 // Title displayed independently (not inside Menu label to avoid clip animation)
-                HStack(alignment: .center, spacing: 8) {
+                HStack(alignment: .center, spacing: AppStyle.Spacing.compact) {
                     Text(title)
                         .pageTitleStyle()
                         .foregroundColor(.primary)
@@ -428,14 +428,14 @@ struct CategorySelectorHeader<TrailingContent: View>: View {
                 Spacer()
 
                 trailingContent
-                    .padding(.bottom, 6)
+                    .padding(.bottom, AppStyle.Spacing.small)
             }
-            .padding(.vertical, 6)
-            .padding(.leading, 16)
+            .padding(.vertical, AppStyle.Spacing.small)
+            .padding(.leading, AppStyle.Spacing.section)
             .padding(.trailing, 9)
 
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, AppStyle.Spacing.section)
     }
 }
 
@@ -454,11 +454,11 @@ struct LogDonePillView: View {
     var body: some View {
         VStack(spacing: 0) {
             // Done pill header
-            HStack(spacing: 8) {
+            HStack(spacing: AppStyle.Spacing.compact) {
                 Button {
                     viewModel.toggleDoneSubsectionCollapsed()
                 } label: {
-                    HStack(spacing: 4) {
+                    HStack(spacing: AppStyle.Spacing.tiny) {
                         Text("Completed")
                             .font(.inter(size: 12, weight: .medium))
                             .foregroundColor(.secondary)
@@ -471,8 +471,8 @@ struct LogDonePillView: View {
                             .font(AppStyle.Typography.chevron)
                             .foregroundColor(.secondary)
                     }
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
+                    .padding(.horizontal, AppStyle.Spacing.medium)
+                    .padding(.vertical, AppStyle.Spacing.small)
                     .clipShape(Capsule())
                     .glassEffect(.regular.tint(.glassTint).interactive(), in: .capsule)
                 }
@@ -487,14 +487,14 @@ struct LogDonePillView: View {
                         Text("Clear list")
                             .font(.inter(.caption))
                             .foregroundColor(.white)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 4)
+                            .padding(.horizontal, AppStyle.Spacing.medium)
+                            .padding(.vertical, AppStyle.Spacing.tiny)
                             .background(Color.darkGray, in: Capsule())
                     }
                     .buttonStyle(.plain)
                 }
             }
-            .padding(.vertical, 10)
+            .padding(.vertical, AppStyle.Spacing.medium)
 
             // Expanded completed tasks
             if isExpanded {
@@ -510,7 +510,7 @@ struct LogDonePillView: View {
                                 buttonLabel: "Add subtask",
                                 onSubmit: { title in await viewModel.createSubtask(title: title, parentId: task.id) },
                                 isAnyAddFieldActive: $isInlineAddFocused,
-                                verticalPadding: 12
+                                verticalPadding: AppStyle.Spacing.comfortable
                             )
                             .padding(.leading, 32)
                         }
@@ -552,7 +552,7 @@ struct FlatTaskRow: View {
     private var displayCompleted: Bool { appearCompleted ?? (task.isCompleted || isPending) }
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: AppStyle.Spacing.comfortable) {
             // Edit mode: selection circle (uncompleted parent tasks only)
             if isEditMode && !displayCompleted && isParent {
                 Image(systemName: isSelected ? "checkmark.circle.fill" : "circle.dashed")
@@ -562,7 +562,7 @@ struct FlatTaskRow: View {
             }
 
             // Task content
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: AppStyle.Spacing.tiny) {
                 Text(task.title)
                     .font(isParent ? AppStyle.Typography.itemTitle : AppStyle.Typography.itemSubtitle)
                     .strikethrough(displayCompleted)
@@ -570,7 +570,7 @@ struct FlatTaskRow: View {
 
                 // Subtask count + overdue date (inline when both present)
                 if isParent, let subtasks = viewModel.subtasksMap[task.id], !subtasks.isEmpty {
-                    HStack(spacing: 6) {
+                    HStack(spacing: AppStyle.Spacing.small) {
                         Text("\(subtasks.count) subtask\(subtasks.count == 1 ? "" : "s")")
                             .font(.inter(.caption))
                             .foregroundColor(.secondary)
@@ -586,7 +586,7 @@ struct FlatTaskRow: View {
                         .foregroundColor(.red)
                 }
             }
-            .frame(maxWidth: .infinity, minHeight: isParent ? 36 : nil, alignment: .leading)
+            .frame(maxWidth: .infinity, minHeight: isParent ? AppStyle.Layout.iconButton : nil, alignment: .leading)
 
             // Completion checkbox (hidden in edit mode)
             if !isEditMode {
@@ -611,7 +611,7 @@ struct FlatTaskRow: View {
                 .accessibilityLabel(displayCompleted ? "Completed" : "Mark complete")
             }
         }
-        .padding(.vertical, isParent ? 8 : 6)
+        .padding(.vertical, isParent ? AppStyle.Spacing.compact : AppStyle.Spacing.small)
         .contentShape(Rectangle())
         .onTapGesture {
             if isEditMode && !displayCompleted && isParent {
@@ -724,7 +724,7 @@ struct ExpandableTaskRow: View {
     @State private var showDeleteConfirmation = false
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: AppStyle.Spacing.comfortable) {
             // Edit mode: selection circle (uncompleted tasks only)
             if isEditMode && !task.isCompleted {
                 Image(systemName: isSelected ? "checkmark.circle.fill" : "circle.dashed")
@@ -734,7 +734,7 @@ struct ExpandableTaskRow: View {
             }
 
             // Task content
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: AppStyle.Spacing.tiny) {
                 Text(task.title)
                     .strikethrough(task.isCompleted)
                     .foregroundColor(task.isCompleted ? .secondary : .primary)
@@ -746,7 +746,7 @@ struct ExpandableTaskRow: View {
                         .foregroundColor(.secondary)
                 }
             }
-            .frame(maxWidth: .infinity, minHeight: 36, alignment: .leading)
+            .frame(maxWidth: .infinity, minHeight: AppStyle.Layout.iconButton, alignment: .leading)
 
             // Completion button (hidden in edit mode)
             if !isEditMode {
@@ -762,7 +762,7 @@ struct ExpandableTaskRow: View {
                 .accessibilityLabel(task.isCompleted ? "Completed" : "Mark complete")
             }
         }
-        .padding(.vertical, 8)
+        .padding(.vertical, AppStyle.Spacing.compact)
         .contentShape(Rectangle())
         .onTapGesture {
             if isEditMode && !task.isCompleted {
@@ -841,7 +841,7 @@ struct SubtaskRow: View {
     private var displayCompleted: Bool { subtask.isCompleted || isPending }
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: AppStyle.Spacing.comfortable) {
             Text(subtask.title)
                 .font(.inter(.subheadline))
                 .strikethrough(displayCompleted)
@@ -862,7 +862,7 @@ struct SubtaskRow: View {
             .buttonStyle(.plain)
             .accessibilityLabel(displayCompleted ? "Completed" : "Mark complete")
         }
-        .padding(.vertical, 6)
+        .padding(.vertical, AppStyle.Spacing.small)
         .contentShape(Rectangle())
         .onTapGesture {
             viewModel.selectedTaskForDetails = subtask
@@ -982,7 +982,7 @@ struct SortMenuButton<VM: LogFilterable>: View {
             }
         } label: {
             Color.clear
-                .frame(width: 36, height: 36)
+                .frame(width: AppStyle.Layout.iconButton, height: AppStyle.Layout.iconButton)
         }
         .menuIndicator(.hidden)
         .tint(.appRed)
@@ -990,7 +990,7 @@ struct SortMenuButton<VM: LogFilterable>: View {
             Image(systemName: "ellipsis")
                 .font(.inter(.body, weight: .semiBold))
                 .foregroundColor(.primary)
-                .frame(width: 36, height: 36)
+                .frame(width: AppStyle.Layout.iconButton, height: AppStyle.Layout.iconButton)
                 .glassEffect(.regular.tint(.glassTint).interactive(), in: .circle)
                 .allowsHitTesting(false)
         )

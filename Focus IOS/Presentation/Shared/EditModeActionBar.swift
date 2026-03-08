@@ -57,14 +57,14 @@ struct EditModeActionBar<VM: LogFilterable>: View {
                 Spacer()
 
                 // Floating labels + vertical icon capsule
-                HStack(alignment: .top, spacing: 14) {
+                HStack(alignment: .top, spacing: AppStyle.Spacing.content) {
                     // Floating labels column (each tappable)
                     VStack(alignment: .trailing, spacing: 0) {
                         ForEach(Array(actions.reversed().enumerated()), id: \.element.id) { _, item in
                             Text(LocalizedStringKey(item.label))
                                 .font(.inter(.subheadline, weight: .medium))
                                 .foregroundColor(item.isDestructive ? .red : .primary)
-                                .frame(height: 52)
+                                .frame(height: AppStyle.Layout.largeButton)
                                 .contentShape(Rectangle())
                                 .onTapGesture {
                                     if hasSelection { item.action() }
@@ -81,7 +81,7 @@ struct EditModeActionBar<VM: LogFilterable>: View {
                                 Image(systemName: item.icon)
                                     .font(.inter(.title3))
                                     .foregroundColor(item.isDestructive ? .red : .primary)
-                                    .frame(width: 52, height: 52)
+                                    .frame(width: AppStyle.Layout.largeButton, height: AppStyle.Layout.largeButton)
                                     .contentShape(Rectangle())
                             }
                             .buttonStyle(.plain)
@@ -94,12 +94,12 @@ struct EditModeActionBar<VM: LogFilterable>: View {
                             }
                         }
                     }
-                    .padding(.vertical, 6)
+                    .padding(.vertical, AppStyle.Spacing.small)
                     .glassEffect(.regular, in: .capsule)
                     .shadow(radius: 4, y: 2)
                 }
                 .opacity(hasSelection ? 1.0 : 0.5)
-                .padding(.trailing, 20)
+                .padding(.trailing, AppStyle.Spacing.page)
                 .padding(.top, 62)
             }
             Spacer()

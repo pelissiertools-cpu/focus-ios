@@ -27,7 +27,7 @@ struct QuickListsPage: View {
     var body: some View {
         ZStack {
             List {
-                HStack(spacing: 10) {
+                HStack(spacing: AppStyle.Spacing.medium) {
                     Image(systemName: "list.bullet")
                         .font(.inter(.title2, weight: .medium))
                         .foregroundColor(.secondary)
@@ -35,13 +35,13 @@ struct QuickListsPage: View {
                         .pageTitleStyle()
                 }
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .listRowInsets(EdgeInsets(top: 16, leading: 20, bottom: 16, trailing: 20))
+                    .listRowInsets(EdgeInsets(top: AppStyle.Spacing.section, leading: AppStyle.Spacing.page, bottom: AppStyle.Spacing.section, trailing: AppStyle.Spacing.page))
                     .listRowBackground(Color.clear)
                     .listRowSeparator(.hidden)
                     .moveDisabled(true)
 
                 if viewModel.lists.isEmpty {
-                    VStack(spacing: 4) {
+                    VStack(spacing: AppStyle.Spacing.tiny) {
                         Text("No lists yet")
                             .font(AppStyle.Typography.emptyTitle)
                         Text("Your quick lists will appear here")
@@ -50,7 +50,7 @@ struct QuickListsPage: View {
                             .multilineTextAlignment(.center)
                     }
                     .frame(maxWidth: .infinity)
-                    .listRowInsets(EdgeInsets(top: 12, leading: 20, bottom: 0, trailing: 20))
+                    .listRowInsets(EdgeInsets(top: AppStyle.Spacing.comfortable, leading: AppStyle.Spacing.page, bottom: 0, trailing: AppStyle.Spacing.page))
                     .listRowBackground(Color.clear)
                     .listRowSeparator(.hidden)
                     .moveDisabled(true)
@@ -67,7 +67,7 @@ struct QuickListsPage: View {
                                     await viewModel.deleteSection(section)
                                 }
                             )
-                            .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+                            .listRowInsets(AppStyle.Insets.row)
                             .listRowBackground(Color.clear)
                             .listRowSeparator(.hidden)
                             .swipeActions(edge: .trailing, allowsFullSwipe: true) {
@@ -81,7 +81,7 @@ struct QuickListsPage: View {
                             }
                         } else {
                             listRow(item)
-                                .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+                                .listRowInsets(AppStyle.Insets.row)
                                 .listRowBackground(Color.clear)
                                 .listRowSeparator(.hidden)
                         }
@@ -93,7 +93,7 @@ struct QuickListsPage: View {
                 }
 
                 Color.clear
-                    .frame(height: listsViewModel.isEditMode ? 100 : 20)
+                    .frame(height: listsViewModel.isEditMode ? 100 : AppStyle.Spacing.page)
                     .listRowInsets(EdgeInsets())
                     .listRowSeparator(.hidden)
                     .listRowBackground(Color.clear)
@@ -124,13 +124,13 @@ struct QuickListsPage: View {
                             Image(systemName: "plus")
                                 .font(.inter(.title2, weight: .semiBold))
                                 .foregroundColor(.white)
-                                .frame(width: 56, height: 56)
+                                .frame(width: AppStyle.Layout.fab, height: AppStyle.Layout.fab)
                                 .glassEffect(.regular.tint(.charcoal).interactive(), in: .circle)
                                 .shadow(radius: 4, y: 2)
                         }
                         .accessibilityLabel("Add list")
-                        .padding(.trailing, 20)
-                        .padding(.bottom, 20)
+                        .padding(.trailing, AppStyle.Spacing.page)
+                        .padding(.bottom, AppStyle.Spacing.page)
                     }
                 }
             }
@@ -165,7 +165,7 @@ struct QuickListsPage: View {
                             }
                         }
                     )
-                    .padding(.bottom, 8)
+                    .padding(.bottom, AppStyle.Spacing.compact)
                 }
                 .transition(.move(edge: .bottom).combined(with: .opacity))
                 .zIndex(51)
@@ -243,7 +243,7 @@ struct QuickListsPage: View {
                     Image(systemName: listsViewModel.isEditMode ? "xmark" : "chevron.left")
                         .font(.inter(.body, weight: .semiBold))
                         .foregroundColor(.primary)
-                        .frame(width: 44, height: 44)
+                        .frame(width: AppStyle.Layout.touchTarget, height: AppStyle.Layout.touchTarget)
                         .contentShape(Rectangle())
                 }
                 .accessibilityLabel(listsViewModel.isEditMode ? "Cancel" : "Back")
@@ -283,7 +283,7 @@ struct QuickListsPage: View {
                         Image(systemName: "ellipsis")
                             .font(.inter(.body, weight: .semiBold))
                             .foregroundColor(.primary)
-                            .frame(width: 30, height: 30)
+                            .frame(width: AppStyle.Layout.compactButton, height: AppStyle.Layout.compactButton)
                             .background(Color.pillBackground, in: Circle())
                     }
                 }
@@ -295,7 +295,7 @@ struct QuickListsPage: View {
 
     @ViewBuilder
     private func listRow(_ list: FocusTask) -> some View {
-        HStack(spacing: 12) {
+        HStack(spacing: AppStyle.Spacing.comfortable) {
             if listsViewModel.isEditMode {
                 Image(systemName: listsViewModel.selectedListIds.contains(list.id) ? "checkmark.circle.fill" : "circle.dashed")
                     .font(.inter(.title3))
@@ -304,7 +304,7 @@ struct QuickListsPage: View {
 
             Circle()
                 .fill(Color.secondary.opacity(0.5))
-                .frame(width: 8, height: 8)
+                .frame(width: AppStyle.Layout.dotSize, height: AppStyle.Layout.dotSize)
 
             Text(list.title)
                 .font(.inter(.body))
@@ -314,7 +314,7 @@ struct QuickListsPage: View {
             Spacer()
 
         }
-        .padding(.vertical, 10)
+        .padding(.vertical, AppStyle.Spacing.medium)
         .contentShape(Rectangle())
         .onTapGesture {
             if listsViewModel.isEditMode {

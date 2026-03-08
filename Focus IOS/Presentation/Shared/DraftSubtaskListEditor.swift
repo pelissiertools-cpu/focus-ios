@@ -27,11 +27,11 @@ struct DraftSubtaskListEditor: View {
     var body: some View {
         if !subtasks.isEmpty {
             Divider()
-                .padding(.horizontal, 14)
+                .padding(.horizontal, AppStyle.Spacing.content)
 
-            VStack(spacing: 14) {
+            VStack(spacing: AppStyle.Spacing.content) {
                 ForEach(subtasks) { subtask in
-                    HStack(spacing: 8) {
+                    HStack(spacing: AppStyle.Spacing.compact) {
                         Image(systemName: "circle")
                             .font(.inter(.caption2))
                             .foregroundColor(.secondary.opacity(0.5))
@@ -63,9 +63,9 @@ struct DraftSubtaskListEditor: View {
                     }
                 }
             }
-            .padding(.horizontal, 14)
-            .padding(.top, 10)
-            .padding(.bottom, 18)
+            .padding(.horizontal, AppStyle.Spacing.content)
+            .padding(.top, AppStyle.Spacing.medium)
+            .padding(.bottom, AppStyle.Layout.tinyIcon)
         }
     }
 

@@ -33,7 +33,7 @@ struct CreateGoalDrawer: View {
             }, highlighted: canSave)
         ) {
             ScrollView {
-                VStack(spacing: 16) {
+                VStack(spacing: AppStyle.Spacing.section) {
                     // MARK: - Goal Title
                     goalTitleCard
 
@@ -43,7 +43,7 @@ struct CreateGoalDrawer: View {
                     // MARK: - Next Steps
                     nextStepsCard
                 }
-                .padding(.bottom, 20)
+                .padding(.bottom, AppStyle.Spacing.page)
             }
             .background(.clear)
         }
@@ -53,25 +53,25 @@ struct CreateGoalDrawer: View {
 
     @ViewBuilder
     private var goalTitleCard: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: AppStyle.Spacing.tiny) {
             Text("What's the goal?")
                 .font(.inter(.subheadline, weight: .medium))
                 .foregroundColor(.secondary)
-                .padding(.horizontal, 14)
-                .padding(.top, 12)
+                .padding(.horizontal, AppStyle.Spacing.content)
+                .padding(.top, AppStyle.Spacing.comfortable)
 
             TextField("Describe your goal", text: $goalTitle, axis: .vertical)
                 .font(.inter(.title3))
                 .textFieldStyle(.plain)
                 .focused($isTitleFocused)
                 .lineLimit(1...4)
-                .padding(.horizontal, 14)
-                .padding(.bottom, 14)
+                .padding(.horizontal, AppStyle.Spacing.content)
+                .padding(.bottom, AppStyle.Spacing.content)
         }
         .background(Color(.secondarySystemGroupedBackground))
         .clipShape(RoundedRectangle(cornerRadius: 12))
-        .padding(.horizontal, 16)
-        .padding(.top, 8)
+        .padding(.horizontal, AppStyle.Spacing.section)
+        .padding(.top, AppStyle.Spacing.compact)
         .onAppear {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                 isTitleFocused = true
@@ -83,7 +83,7 @@ struct CreateGoalDrawer: View {
 
     @ViewBuilder
     private var deadlineCard: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: AppStyle.Spacing.compact) {
             HStack {
                 Text("By when?")
                     .font(.inter(.subheadline, weight: .medium))
@@ -93,8 +93,8 @@ struct CreateGoalDrawer: View {
                     .labelsHidden()
                     .tint(.focusBlue)
             }
-            .padding(.horizontal, 14)
-            .padding(.top, 12)
+            .padding(.horizontal, AppStyle.Spacing.content)
+            .padding(.top, AppStyle.Spacing.comfortable)
 
             if hasDueDate {
                 DatePicker(
@@ -104,13 +104,13 @@ struct CreateGoalDrawer: View {
                     displayedComponents: .date
                 )
                 .datePickerStyle(.graphical)
-                .padding(.horizontal, 8)
-                .padding(.bottom, 8)
+                .padding(.horizontal, AppStyle.Spacing.compact)
+                .padding(.bottom, AppStyle.Spacing.compact)
             }
         }
         .background(Color(.secondarySystemGroupedBackground))
         .clipShape(RoundedRectangle(cornerRadius: 12))
-        .padding(.horizontal, 16)
+        .padding(.horizontal, AppStyle.Spacing.section)
     }
 
     // MARK: - Next Steps Card
@@ -129,7 +129,7 @@ struct CreateGoalDrawer: View {
                     Button {
                         generateNextSteps()
                     } label: {
-                        HStack(spacing: 6) {
+                        HStack(spacing: AppStyle.Spacing.small) {
                             if isGeneratingBreakdown {
                                 ProgressView()
                                     .tint(.primary)
@@ -141,22 +141,22 @@ struct CreateGoalDrawer: View {
                                 .font(.inter(.caption, weight: .medium))
                         }
                         .foregroundColor(.primary)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 8)
+                        .padding(.horizontal, AppStyle.Spacing.content)
+                        .padding(.vertical, AppStyle.Spacing.compact)
                         .glassEffect(.regular.interactive(), in: .capsule)
                     }
                     .buttonStyle(.plain)
                     .disabled(isGeneratingBreakdown)
                 }
             }
-            .padding(.horizontal, 14)
-            .padding(.top, 12)
-            .padding(.bottom, 10)
+            .padding(.horizontal, AppStyle.Spacing.content)
+            .padding(.top, AppStyle.Spacing.comfortable)
+            .padding(.bottom, AppStyle.Spacing.medium)
 
-            VStack(spacing: 14) {
+            VStack(spacing: AppStyle.Spacing.content) {
                 // Draft steps list
                 ForEach(draftSteps) { step in
-                    HStack(spacing: 8) {
+                    HStack(spacing: AppStyle.Spacing.compact) {
                         Image(systemName: "circle")
                             .font(.inter(.caption2))
                             .foregroundColor(.secondary.opacity(0.5))
@@ -181,7 +181,7 @@ struct CreateGoalDrawer: View {
 
                 // New step entry
                 if showNewStepField || !newStepTitle.isEmpty {
-                    HStack(spacing: 8) {
+                    HStack(spacing: AppStyle.Spacing.compact) {
                         Image(systemName: "circle")
                             .font(.inter(.caption2))
                             .foregroundColor(.secondary.opacity(0.5))
@@ -215,27 +215,27 @@ struct CreateGoalDrawer: View {
                         showNewStepField = true
                         isNewStepFocused = true
                     } label: {
-                        HStack(spacing: 4) {
+                        HStack(spacing: AppStyle.Spacing.tiny) {
                             Image(systemName: "plus")
                                 .font(.inter(.caption))
                             Text("Step")
                                 .font(.inter(.caption))
                         }
                         .foregroundColor(.white)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 6)
+                        .padding(.horizontal, AppStyle.Spacing.medium)
+                        .padding(.vertical, AppStyle.Spacing.small)
                         .glassEffect(.regular.tint(.black).interactive(), in: .capsule)
                     }
                     .buttonStyle(.plain)
                     Spacer()
                 }
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 10)
+            .padding(.horizontal, AppStyle.Spacing.content)
+            .padding(.vertical, AppStyle.Spacing.medium)
         }
         .background(Color(.secondarySystemGroupedBackground))
         .clipShape(RoundedRectangle(cornerRadius: 12))
-        .padding(.horizontal, 16)
+        .padding(.horizontal, AppStyle.Spacing.section)
     }
 
     // MARK: - Actions

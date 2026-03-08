@@ -129,7 +129,7 @@ struct TodayView: View {
         ZStack {
             VStack(spacing: 0) {
                 // Header
-                HStack(alignment: .center, spacing: 8) {
+                HStack(alignment: .center, spacing: AppStyle.Spacing.compact) {
                     Image(systemName: "sun.max")
                         .font(.inter(size: 22, weight: .regular))
                         .foregroundColor(.primary)
@@ -140,9 +140,9 @@ struct TodayView: View {
 
                     Spacer()
                 }
-                .padding(.horizontal, 20)
-                .padding(.top, 16)
-                .padding(.bottom, 12)
+                .padding(.horizontal, AppStyle.Spacing.page)
+                .padding(.top, AppStyle.Spacing.section)
+                .padding(.bottom, AppStyle.Spacing.comfortable)
 
                 if isLoading && isEmpty {
                     ProgressView()
@@ -165,13 +165,13 @@ struct TodayView: View {
                             Image(systemName: "plus")
                                 .font(.inter(.title2, weight: .semiBold))
                                 .foregroundColor(.white)
-                                .frame(width: 56, height: 56)
+                                .frame(width: AppStyle.Layout.fab, height: AppStyle.Layout.fab)
                                 .glassEffect(.regular.tint(.charcoal).interactive(), in: .circle)
                                 .shadow(radius: 4, y: 2)
                         }
                         .accessibilityLabel("Add task")
-                        .padding(.trailing, 20)
-                        .padding(.bottom, 20)
+                        .padding(.trailing, AppStyle.Spacing.page)
+                        .padding(.bottom, AppStyle.Spacing.page)
                     }
                 }
             }
@@ -201,7 +201,7 @@ struct TodayView: View {
                             }
                         }
                     )
-                    .padding(.bottom, 8)
+                    .padding(.bottom, AppStyle.Spacing.compact)
                 }
                 .transition(.move(edge: .bottom).combined(with: .opacity))
                 .zIndex(51)
@@ -258,7 +258,7 @@ struct TodayView: View {
                     Image(systemName: "chevron.left")
                         .font(.inter(.body, weight: .semiBold))
                         .foregroundColor(.primary)
-                        .frame(width: 44, height: 44)
+                        .frame(width: AppStyle.Layout.touchTarget, height: AppStyle.Layout.touchTarget)
                         .contentShape(Rectangle())
                 }
                 .accessibilityLabel("Back")
@@ -404,8 +404,8 @@ struct TodayView: View {
                     Text("Main Focus")
                         .font(.inter(.headline, weight: .bold))
                         .foregroundColor(.focusBlue)
-                        .padding(.top, 16)
-                        .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+                        .padding(.top, AppStyle.Spacing.section)
+                        .listRowInsets(AppStyle.Insets.row)
                         .listRowBackground(Color.clear)
                         .listRowSeparator(.hidden)
                         .moveDisabled(true)
@@ -423,7 +423,7 @@ struct TodayView: View {
                         onToggleCompletion: nil
                     )
                     .padding(.leading, 32)
-                    .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+                    .listRowInsets(AppStyle.Insets.row)
                     .listRowBackground(Color.clear)
                     .listRowSeparator(.visible)
                     .moveDisabled(true)
@@ -434,10 +434,10 @@ struct TodayView: View {
                         buttonLabel: "Add subtask",
                         onSubmit: { title in await taskListVM.createSubtask(title: title, parentId: parentId) },
                         isAnyAddFieldActive: $isInlineAddFocused,
-                        verticalPadding: 12
+                        verticalPadding: AppStyle.Spacing.comfortable
                     )
                     .padding(.leading, 32)
-                    .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+                    .listRowInsets(AppStyle.Insets.row)
                     .listRowBackground(Color.clear)
                     .listRowSeparator(.hidden)
                     .moveDisabled(true)
@@ -448,10 +448,10 @@ struct TodayView: View {
                         buttonLabel: "Add task",
                         onSubmit: { title in await createFocusTask(title: title) },
                         isAnyAddFieldActive: $isInlineAddFocused,
-                        verticalPadding: 8,
+                        verticalPadding: AppStyle.Spacing.compact,
                         accentColor: .focusBlue
                     )
-                    .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+                    .listRowInsets(AppStyle.Insets.row)
                     .listRowBackground(Color.clear)
                     .listRowSeparator(.hidden)
                     .moveDisabled(true)
@@ -460,7 +460,7 @@ struct TodayView: View {
                     Rectangle()
                         .fill(Color.focusBlue)
                         .frame(height: 1)
-                        .listRowInsets(EdgeInsets(top: 8, leading: 20, bottom: 8, trailing: 20))
+                        .listRowInsets(EdgeInsets(top: AppStyle.Spacing.compact, leading: AppStyle.Spacing.page, bottom: AppStyle.Spacing.compact, trailing: AppStyle.Spacing.page))
                         .listRowBackground(Color.clear)
                         .listRowSeparator(.hidden)
                         .moveDisabled(true)
@@ -470,15 +470,15 @@ struct TodayView: View {
                         .font(.inter(.subheadline))
                         .foregroundColor(.secondary.opacity(0.4))
                         .frame(maxWidth: .infinity, alignment: .center)
-                        .padding(.vertical, 20)
-                        .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+                        .padding(.vertical, AppStyle.Spacing.page)
+                        .listRowInsets(AppStyle.Insets.row)
                         .listRowBackground(Color.clear)
                         .listRowSeparator(.hidden)
 
                 case .bottomSpacer:
                     Color.clear
                         .frame(height: 100)
-                        .listRowInsets(EdgeInsets())
+                        .listRowInsets(AppStyle.Insets.zero)
                         .listRowSeparator(.hidden)
                         .listRowBackground(Color.clear)
                         .moveDisabled(true)
@@ -583,7 +583,7 @@ struct TodayView: View {
                 )
             }
         }
-        .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+        .listRowInsets(AppStyle.Insets.row)
         .listRowBackground(Color.clear)
         .listRowSeparator(.hidden)
     }
@@ -677,12 +677,12 @@ private struct TodayProjectRow: View {
     var onUnschedule: () -> Void
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: AppStyle.Spacing.comfortable) {
             Image(systemName: "folder")
                 .font(.inter(.body, weight: .medium))
                 .foregroundColor(.secondary)
-                .frame(width: 24)
-            VStack(alignment: .leading, spacing: 4) {
+                .frame(width: AppStyle.Layout.pillButton)
+            VStack(alignment: .leading, spacing: AppStyle.Spacing.tiny) {
                 Text(project.title)
                     .font(.inter(.body))
                     .foregroundColor(.primary)
@@ -698,7 +698,7 @@ private struct TodayProjectRow: View {
                 .font(.inter(size: 12, weight: .semiBold))
                 .foregroundColor(.secondary)
         }
-        .padding(.vertical, 8)
+        .padding(.vertical, AppStyle.Spacing.compact)
         .contentShape(Rectangle())
         .onTapGesture { onTap() }
         .contextMenu {
@@ -722,12 +722,12 @@ private struct TodayListRow: View {
     var onUnschedule: () -> Void
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: AppStyle.Spacing.comfortable) {
             Image(systemName: "list.bullet")
                 .font(.inter(.body, weight: .medium))
                 .foregroundColor(.secondary)
-                .frame(width: 24)
-            VStack(alignment: .leading, spacing: 4) {
+                .frame(width: AppStyle.Layout.pillButton)
+            VStack(alignment: .leading, spacing: AppStyle.Spacing.tiny) {
                 Text(list.title)
                     .font(.inter(.body))
                     .foregroundColor(.primary)
@@ -743,7 +743,7 @@ private struct TodayListRow: View {
                 .font(.inter(size: 12, weight: .semiBold))
                 .foregroundColor(.secondary)
         }
-        .padding(.vertical, 8)
+        .padding(.vertical, AppStyle.Spacing.compact)
         .contentShape(Rectangle())
         .onTapGesture { onTap() }
         .contextMenu {

@@ -30,7 +30,7 @@ struct GoalsListPage: View {
                 Text("Goals")
                     .pageTitleStyle()
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .listRowInsets(EdgeInsets(top: 16, leading: 20, bottom: 16, trailing: 20))
+                    .listRowInsets(EdgeInsets(top: AppStyle.Spacing.section, leading: AppStyle.Spacing.page, bottom: AppStyle.Spacing.section, trailing: AppStyle.Spacing.page))
                     .listRowBackground(Color.clear)
                     .listRowSeparator(.hidden)
                     .moveDisabled(true)
@@ -38,12 +38,12 @@ struct GoalsListPage: View {
                 if goalsViewModel.isLoading {
                     ProgressView()
                         .frame(maxWidth: .infinity)
-                        .listRowInsets(EdgeInsets(top: 20, leading: 20, bottom: 0, trailing: 20))
+                        .listRowInsets(EdgeInsets(top: AppStyle.Spacing.page, leading: AppStyle.Spacing.page, bottom: 0, trailing: AppStyle.Spacing.page))
                         .listRowBackground(Color.clear)
                         .listRowSeparator(.hidden)
                         .moveDisabled(true)
                 } else if goalsViewModel.filteredGoals.isEmpty {
-                    VStack(spacing: 4) {
+                    VStack(spacing: AppStyle.Spacing.tiny) {
                         Text("No goals yet")
                             .font(AppStyle.Typography.emptyTitle)
                         Text("Tap + to create your first goal")
@@ -52,7 +52,7 @@ struct GoalsListPage: View {
                             .multilineTextAlignment(.center)
                     }
                     .frame(maxWidth: .infinity)
-                    .listRowInsets(EdgeInsets(top: 12, leading: 20, bottom: 0, trailing: 20))
+                    .listRowInsets(EdgeInsets(top: AppStyle.Spacing.comfortable, leading: AppStyle.Spacing.page, bottom: 0, trailing: AppStyle.Spacing.page))
                     .listRowBackground(Color.clear)
                     .listRowSeparator(.hidden)
                     .moveDisabled(true)
@@ -69,7 +69,7 @@ struct GoalsListPage: View {
                                     await viewModel.deleteSection(section)
                                 }
                             )
-                            .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+                            .listRowInsets(AppStyle.Insets.row)
                             .listRowBackground(Color.clear)
                             .listRowSeparator(.hidden)
                             .swipeActions(edge: .trailing, allowsFullSwipe: true) {
@@ -83,7 +83,7 @@ struct GoalsListPage: View {
                             }
                         } else {
                             goalRow(item)
-                                .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+                                .listRowInsets(AppStyle.Insets.row)
                                 .listRowBackground(Color.clear)
                                 .listRowSeparator(.hidden)
                         }
@@ -95,7 +95,7 @@ struct GoalsListPage: View {
                 }
 
                 Color.clear
-                    .frame(height: goalsViewModel.isEditMode ? 100 : 20)
+                    .frame(height: goalsViewModel.isEditMode ? 100 : AppStyle.Spacing.page)
                     .listRowInsets(EdgeInsets())
                     .listRowSeparator(.hidden)
                     .listRowBackground(Color.clear)
@@ -191,7 +191,7 @@ struct GoalsListPage: View {
                     Image(systemName: goalsViewModel.isEditMode ? "xmark" : "chevron.left")
                         .font(.inter(.body, weight: .semiBold))
                         .foregroundColor(.primary)
-                        .frame(width: 44, height: 44)
+                        .frame(width: AppStyle.Layout.touchTarget, height: AppStyle.Layout.touchTarget)
                         .contentShape(Rectangle())
                 }
                 .accessibilityLabel(goalsViewModel.isEditMode ? "Cancel" : "Back")
@@ -210,14 +210,14 @@ struct GoalsListPage: View {
                             .foregroundColor(.appRed)
                     }
                 } else {
-                    HStack(spacing: 8) {
+                    HStack(spacing: AppStyle.Spacing.compact) {
                         Button {
                             showingCreateGoal = true
                         } label: {
                             Image(systemName: "plus")
                                 .font(.inter(.body, weight: .semiBold))
                                 .foregroundColor(.primary)
-                                .frame(width: 30, height: 30)
+                                .frame(width: AppStyle.Layout.compactButton, height: AppStyle.Layout.compactButton)
                                 .background(Color.pillBackground, in: Circle())
                         }
                         .accessibilityLabel("Add goal")
@@ -243,7 +243,7 @@ struct GoalsListPage: View {
                             Image(systemName: "ellipsis")
                                 .font(.inter(.body, weight: .semiBold))
                                 .foregroundColor(.primary)
-                                .frame(width: 30, height: 30)
+                                .frame(width: AppStyle.Layout.compactButton, height: AppStyle.Layout.compactButton)
                                 .background(Color.pillBackground, in: Circle())
                         }
                         .accessibilityLabel("More options")
@@ -257,7 +257,7 @@ struct GoalsListPage: View {
 
     @ViewBuilder
     private func goalRow(_ goal: FocusTask) -> some View {
-        HStack(spacing: 12) {
+        HStack(spacing: AppStyle.Spacing.comfortable) {
             if goalsViewModel.isEditMode {
                 Image(systemName: goalsViewModel.selectedGoalIds.contains(goal.id) ? "checkmark.circle.fill" : "circle.dashed")
                     .font(.inter(.title3))
@@ -268,10 +268,10 @@ struct GoalsListPage: View {
                 .renderingMode(.template)
                 .resizable()
                 .scaledToFit()
-                .frame(width: 20, height: 20)
+                .frame(width: AppStyle.Layout.smallIcon, height: AppStyle.Layout.smallIcon)
                 .foregroundColor(.secondary)
 
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: AppStyle.Spacing.micro) {
                 Text(goal.title)
                     .font(.inter(.body))
                     .foregroundColor(.primary)
@@ -287,7 +287,7 @@ struct GoalsListPage: View {
             Spacer()
 
         }
-        .padding(.vertical, 10)
+        .padding(.vertical, AppStyle.Spacing.medium)
         .contentShape(Rectangle())
         .onTapGesture {
             if goalsViewModel.isEditMode {

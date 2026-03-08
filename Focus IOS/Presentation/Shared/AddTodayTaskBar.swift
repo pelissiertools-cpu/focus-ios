@@ -44,9 +44,9 @@ struct AddTodayTaskBar: View {
                 .focused($titleFocused)
                 .submitLabel(.return)
                 .onSubmit { save() }
-                .padding(.horizontal, 14)
-                .padding(.top, 20)
-                .padding(.bottom, 10)
+                .padding(.horizontal, AppStyle.Spacing.content)
+                .padding(.top, AppStyle.Spacing.page)
+                .padding(.bottom, AppStyle.Spacing.medium)
 
             // Subtasks
             DraftSubtaskListEditor(
@@ -56,19 +56,19 @@ struct AddTodayTaskBar: View {
             )
 
             // Row 1: [Sub-task] [...] Spacer [AI] [Checkmark]
-            HStack(spacing: 8) {
+            HStack(spacing: AppStyle.Spacing.compact) {
                 Button {
                     addNewSubtask()
                 } label: {
-                    HStack(spacing: 4) {
+                    HStack(spacing: AppStyle.Spacing.tiny) {
                         Image(systemName: "plus")
                             .font(.inter(.caption))
                         Text("Sub-task")
                             .font(.inter(.caption))
                     }
                     .foregroundColor(.white)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 8)
+                    .padding(.horizontal, AppStyle.Spacing.medium)
+                    .padding(.vertical, AppStyle.Spacing.compact)
                     .background(Color.black, in: Capsule())
                 }
                 .buttonStyle(.plain)
@@ -82,8 +82,8 @@ struct AddTodayTaskBar: View {
                         .font(.inter(.caption, weight: .bold))
                         .foregroundColor(.black)
                         .frame(minHeight: UIFont.preferredFont(forTextStyle: .caption1).lineHeight)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 8)
+                        .padding(.horizontal, AppStyle.Spacing.medium)
+                        .padding(.vertical, AppStyle.Spacing.compact)
                         .background(Color.white, in: Capsule())
                 }
                 .accessibilityLabel("More options")
@@ -95,7 +95,7 @@ struct AddTodayTaskBar: View {
                 Button {
                     generateBreakdown()
                 } label: {
-                    HStack(spacing: 6) {
+                    HStack(spacing: AppStyle.Spacing.small) {
                         if isGeneratingBreakdown {
                             ProgressView()
                                 .tint(.primary)
@@ -108,8 +108,8 @@ struct AddTodayTaskBar: View {
                             .font(.inter(.caption, weight: .medium))
                             .foregroundColor(.primary)
                     }
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 8)
+                    .padding(.horizontal, AppStyle.Spacing.content)
+                    .padding(.vertical, AppStyle.Spacing.compact)
                     .background(
                         !isTitleEmpty ? Color.pillBackground : Color.clear,
                         in: Capsule()
@@ -124,7 +124,7 @@ struct AddTodayTaskBar: View {
                     Image(systemName: "checkmark")
                         .font(.inter(.body, weight: .semiBold))
                         .foregroundColor(isTitleEmpty ? .secondary : .white)
-                        .frame(width: 36, height: 36)
+                        .frame(width: AppStyle.Layout.iconButton, height: AppStyle.Layout.iconButton)
                         .background(
                             isTitleEmpty ? Color(.systemGray4) : Color.focusBlue,
                             in: Circle()
@@ -134,12 +134,12 @@ struct AddTodayTaskBar: View {
                 .buttonStyle(.plain)
                 .disabled(isTitleEmpty)
             }
-            .padding(.horizontal, 14)
-            .padding(.bottom, 4)
+            .padding(.horizontal, AppStyle.Spacing.content)
+            .padding(.bottom, AppStyle.Spacing.tiny)
 
             // Row 2: [Category] [Priority]
             if optionsExpanded {
-                HStack(spacing: 8) {
+                HStack(spacing: AppStyle.Spacing.compact) {
                     Menu {
                         Button {
                             categoryId = nil
@@ -162,15 +162,15 @@ struct AddTodayTaskBar: View {
                             }
                         }
                     } label: {
-                        HStack(spacing: 4) {
+                        HStack(spacing: AppStyle.Spacing.tiny) {
                             Image(systemName: "folder")
                                 .font(.inter(.caption))
                             Text(LocalizedStringKey(categoryPillLabel))
                                 .font(.inter(.caption))
                         }
                         .foregroundColor(.black)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 8)
+                        .padding(.horizontal, AppStyle.Spacing.medium)
+                        .padding(.vertical, AppStyle.Spacing.compact)
                         .background(Color.white, in: Capsule())
                     }
 
@@ -187,26 +187,26 @@ struct AddTodayTaskBar: View {
                             }
                         }
                     } label: {
-                        HStack(spacing: 4) {
+                        HStack(spacing: AppStyle.Spacing.tiny) {
                             Circle()
                                 .fill(priority.dotColor)
-                                .frame(width: 8, height: 8)
+                                .frame(width: AppStyle.Layout.dotSize, height: AppStyle.Layout.dotSize)
                             Text(priority.displayName)
                                 .font(.inter(.caption))
                         }
                         .foregroundColor(.black)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 8)
+                        .padding(.horizontal, AppStyle.Spacing.medium)
+                        .padding(.vertical, AppStyle.Spacing.compact)
                         .background(Color.white, in: Capsule())
                     }
 
                     Spacer()
                 }
-                .padding(.horizontal, 14)
-                .padding(.top, 6)
+                .padding(.horizontal, AppStyle.Spacing.content)
+                .padding(.top, AppStyle.Spacing.small)
             }
 
-            Spacer().frame(height: 20)
+            Spacer().frame(height: AppStyle.Spacing.page)
         }
         .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 20))
         .padding(.horizontal)

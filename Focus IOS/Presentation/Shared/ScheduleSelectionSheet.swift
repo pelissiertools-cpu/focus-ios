@@ -57,9 +57,9 @@ struct ScheduleSelectionSheet: View {
             )
         ) {
             ScrollView {
-                VStack(spacing: 12) {
+                VStack(spacing: AppStyle.Spacing.comfortable) {
                     // Task title card
-                    VStack(alignment: .leading, spacing: 4) {
+                    VStack(alignment: .leading, spacing: AppStyle.Spacing.tiny) {
                         Text(task.title)
                             .font(.inter(.headline))
                         if isParentTask {
@@ -70,8 +70,8 @@ struct ScheduleSelectionSheet: View {
                         }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 12)
+                    .padding(.horizontal, AppStyle.Spacing.content)
+                    .padding(.vertical, AppStyle.Spacing.comfortable)
                     .background(Color(.secondarySystemGroupedBackground))
                     .clipShape(RoundedRectangle(cornerRadius: 12))
 
@@ -82,9 +82,9 @@ struct ScheduleSelectionSheet: View {
                             Text("To-Do").tag(Section.todo)
                         }
                         .pickerStyle(.segmented)
-                        .padding(.horizontal, 14)
-                        .padding(.top, 12)
-                        .padding(.bottom, 8)
+                        .padding(.horizontal, AppStyle.Spacing.content)
+                        .padding(.top, AppStyle.Spacing.comfortable)
+                        .padding(.bottom, AppStyle.Spacing.compact)
 
                         Divider()
 
@@ -92,8 +92,8 @@ struct ScheduleSelectionSheet: View {
                             selectedDates: $selectedDates,
                             selectedTimeframe: $selectedTimeframe
                         )
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 8)
+                        .padding(.horizontal, AppStyle.Spacing.content)
+                        .padding(.vertical, AppStyle.Spacing.compact)
                     }
                     .background(Color(.secondarySystemGroupedBackground))
                     .clipShape(RoundedRectangle(cornerRadius: 12))
@@ -105,15 +105,15 @@ struct ScheduleSelectionSheet: View {
                                 onClearSchedule?()
                                 dismiss()
                             } label: {
-                                HStack(spacing: 6) {
+                                HStack(spacing: AppStyle.Spacing.small) {
                                     Image(systemName: "xmark.circle")
                                         .font(.inter(.subheadline))
                                     Text("Clear Scheduling")
                                         .font(.inter(.subheadline, weight: .medium))
                                 }
                                 .foregroundColor(.primary)
-                                .padding(.horizontal, 14)
-                                .padding(.vertical, 10)
+                                .padding(.horizontal, AppStyle.Spacing.content)
+                                .padding(.vertical, AppStyle.Spacing.medium)
                                 .glassEffect(.regular.interactive(), in: .capsule)
                             }
                             .buttonStyle(.plain)
@@ -121,8 +121,8 @@ struct ScheduleSelectionSheet: View {
                         }
                     }
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
+                .padding(.horizontal, AppStyle.Spacing.section)
+                .padding(.vertical, AppStyle.Spacing.comfortable)
             }
             .alert("Error", isPresented: $showError) {
                 Button("OK") {}

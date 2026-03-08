@@ -740,7 +740,7 @@ struct ScheduledView: View {
                 ProgressView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if searchIsEmpty {
-                VStack(spacing: 4) {
+                VStack(spacing: AppStyle.Spacing.tiny) {
                     Text("No results")
                         .font(AppStyle.Typography.emptyTitle)
                     Text("No items match \"\(searchText)\"")
@@ -749,7 +749,7 @@ struct ScheduledView: View {
                         .multilineTextAlignment(.center)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .padding(.horizontal, 20)
+                .padding(.horizontal, AppStyle.Spacing.page)
             } else {
                 itemList
             }
@@ -758,8 +758,8 @@ struct ScheduledView: View {
 
     @ViewBuilder
     private var headerView: some View {
-        VStack(spacing: 10) {
-            HStack(alignment: .center, spacing: 8) {
+        VStack(spacing: AppStyle.Spacing.medium) {
+            HStack(alignment: .center, spacing: AppStyle.Spacing.compact) {
                 Text("Scheduled")
                     .pageTitleStyle()
                     .foregroundColor(.appRed)
@@ -768,7 +768,7 @@ struct ScheduledView: View {
                     Button {
                         showCalendarPicker = true
                     } label: {
-                        HStack(spacing: 4) {
+                        HStack(spacing: AppStyle.Spacing.tiny) {
                             Text(dateText)
                                 .font(.inter(.subheadline, weight: .medium))
                                 .foregroundColor(.primary)
@@ -781,7 +781,7 @@ struct ScheduledView: View {
                 }
             }
 
-            HStack(spacing: 6) {
+            HStack(spacing: AppStyle.Spacing.small) {
                 ForEach(ScheduleViewMode.allCases, id: \.self) { mode in
                     Button {
                         withAnimation(.easeInOut(duration: 0.2)) {
@@ -791,8 +791,8 @@ struct ScheduledView: View {
                         Text(mode.label)
                             .font(.inter(size: 13, weight: .medium))
                             .foregroundColor(viewMode == mode ? .white : .secondary)
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 6)
+                            .padding(.horizontal, AppStyle.Spacing.content)
+                            .padding(.vertical, AppStyle.Spacing.small)
                             .background(
                                 Capsule()
                                     .fill(viewMode == mode ? Color.appRed : Color.secondary.opacity(0.15))
@@ -818,14 +818,14 @@ struct ScheduledView: View {
                     Image(systemName: "magnifyingglass")
                         .font(.inter(.body, weight: .semiBold))
                         .foregroundColor(.primary)
-                        .frame(width: 30, height: 30)
+                        .frame(width: AppStyle.Layout.compactButton, height: AppStyle.Layout.compactButton)
                         .background(Color.pillBackground, in: Circle())
                 }
                 .accessibilityLabel("Search")
             }
 
             if isSearchActive {
-                HStack(spacing: 8) {
+                HStack(spacing: AppStyle.Spacing.compact) {
                     Image(systemName: "magnifyingglass")
                         .font(.inter(.subheadline))
                         .foregroundColor(.secondary)
@@ -847,15 +847,15 @@ struct ScheduledView: View {
                         .accessibilityLabel("Clear search")
                     }
                 }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
+                .padding(.horizontal, AppStyle.Spacing.comfortable)
+                .padding(.vertical, AppStyle.Spacing.compact)
                 .background(Color.pillBackground, in: Capsule())
                 .transition(.opacity)
             }
         }
-        .padding(.horizontal, 20)
-        .padding(.top, 16)
-        .padding(.bottom, 4)
+        .padding(.horizontal, AppStyle.Spacing.page)
+        .padding(.top, AppStyle.Spacing.section)
+        .padding(.bottom, AppStyle.Spacing.tiny)
         .sheet(isPresented: $showCalendarPicker) {
             SingleSelectCalendarPicker(
                 selectedDate: $selectedDate,
@@ -867,7 +867,7 @@ struct ScheduledView: View {
 
     @ViewBuilder
     private var emptyStateView: some View {
-        VStack(spacing: 4) {
+        VStack(spacing: AppStyle.Spacing.tiny) {
             Text("No scheduled items")
                 .font(AppStyle.Typography.emptyTitle)
             Text("Scheduled tasks, lists, and projects will appear here")
@@ -876,7 +876,7 @@ struct ScheduledView: View {
                 .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding(.horizontal, 20)
+        .padding(.horizontal, AppStyle.Spacing.page)
     }
 
     // MARK: - Overlay Content
@@ -911,13 +911,13 @@ struct ScheduledView: View {
                     Image(systemName: "plus")
                         .font(.inter(.title2, weight: .semiBold))
                         .foregroundColor(.white)
-                        .frame(width: 56, height: 56)
+                        .frame(width: AppStyle.Layout.fab, height: AppStyle.Layout.fab)
                         .glassEffect(.regular.tint(.charcoal).interactive(), in: .circle)
                         .shadow(radius: 4, y: 2)
                 }
                 .accessibilityLabel("Add task")
-                .padding(.trailing, 20)
-                .padding(.bottom, 20)
+                .padding(.trailing, AppStyle.Spacing.page)
+                .padding(.bottom, AppStyle.Spacing.page)
             }
         }
         .transition(.opacity)
@@ -940,7 +940,7 @@ struct ScheduledView: View {
                     }
                 }
             addTaskBar
-                .padding(.bottom, 8)
+                .padding(.bottom, AppStyle.Spacing.compact)
                 .contentShape(Rectangle())
         }
         .transition(.move(edge: .bottom).combined(with: .opacity))
@@ -970,7 +970,7 @@ struct ScheduledView: View {
                         onToggleCompletion: nil
                     )
                     .padding(.leading, 32)
-                    .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+                    .listRowInsets(AppStyle.Insets.row)
                     .listRowBackground(Color.clear)
                     .listRowSeparator(.visible)
                     .moveDisabled(true)
@@ -981,10 +981,10 @@ struct ScheduledView: View {
                         buttonLabel: "Add subtask",
                         onSubmit: { title in await taskListVM.createSubtask(title: title, parentId: parentId) },
                         isAnyAddFieldActive: $isInlineAddFocused,
-                        verticalPadding: 12
+                        verticalPadding: AppStyle.Spacing.comfortable
                     )
                     .padding(.leading, 32)
-                    .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+                    .listRowInsets(AppStyle.Insets.row)
                     .listRowBackground(Color.clear)
                     .listRowSeparator(.hidden)
                     .moveDisabled(true)
@@ -1003,7 +1003,7 @@ struct ScheduledView: View {
                             .font(.inter(.caption, weight: .light))
                             .foregroundColor(.secondary.opacity(0.3))
                     }
-                    .padding(.vertical, 8)
+                    .padding(.vertical, AppStyle.Spacing.compact)
                     .contentShape(Rectangle())
                     .onTapGesture {
                         if let date = section.date {
@@ -1014,7 +1014,7 @@ struct ScheduledView: View {
                             }
                         }
                     }
-                    .listRowInsets(EdgeInsets(top: 0, leading: 24, bottom: 0, trailing: 20))
+                    .listRowInsets(EdgeInsets(top: 0, leading: AppStyle.Spacing.expanded, bottom: 0, trailing: AppStyle.Spacing.page))
                     .listRowSeparator(.visible, edges: .bottom)
                     .listRowBackground(Color.clear)
                     // No .moveDisabled — acts as a valid drop target for empty sections
@@ -1060,15 +1060,15 @@ struct ScheduledView: View {
                         .foregroundColor(.primary)
                     Spacer()
                 }
-                .padding(.vertical, 6)
-                .padding(.horizontal, 4)
+                .padding(.vertical, AppStyle.Spacing.small)
+                .padding(.horizontal, AppStyle.Spacing.tiny)
 
                 Rectangle()
                     .fill(Color.secondary.opacity(0.3))
                     .frame(height: 1)
             }
-            .padding(.top, 16)
-            .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+            .padding(.top, AppStyle.Spacing.section)
+            .listRowInsets(AppStyle.Insets.row)
             .listRowSeparator(.hidden)
             .listRowBackground(Color.clear)
         } else if section.isSubDate {
@@ -1079,9 +1079,9 @@ struct ScheduledView: View {
                     .foregroundColor(.secondary)
                 Spacer()
             }
-            .padding(.top, 10)
-            .padding(.bottom, 2)
-            .listRowInsets(EdgeInsets(top: 0, leading: 28, bottom: 0, trailing: 20))
+            .padding(.top, AppStyle.Spacing.medium)
+            .padding(.bottom, AppStyle.Spacing.micro)
+            .listRowInsets(EdgeInsets(top: 0, leading: 28, bottom: 0, trailing: AppStyle.Spacing.page))
             .listRowSeparator(.hidden)
             .listRowBackground(Color.clear)
         } else {
@@ -1093,16 +1093,16 @@ struct ScheduledView: View {
                         .foregroundColor(.primary)
                     Spacer()
                 }
-                .padding(.vertical, 6)
-                .padding(.horizontal, 4)
+                .padding(.vertical, AppStyle.Spacing.small)
+                .padding(.horizontal, AppStyle.Spacing.tiny)
 
                 Rectangle()
                     .fill(Color.secondary.opacity(0.3))
                     .frame(height: 1)
             }
             .opacity(section.items.isEmpty && section.alwaysVisible ? 0.35 : 1.0)
-            .padding(.top, section.id.hasPrefix("day-0-") ? 0 : 8)
-            .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+            .padding(.top, section.id.hasPrefix("day-0-") ? 0 : AppStyle.Spacing.compact)
+            .listRowInsets(AppStyle.Insets.row)
             .listRowSeparator(.hidden)
             .listRowBackground(Color.clear)
         }
@@ -1117,8 +1117,8 @@ struct ScheduledView: View {
                 RoundedRectangle(cornerRadius: 1.5)
                     .fill(Color.appRed)
                     .frame(width: 3)
-                    .padding(.vertical, 6)
-                    .padding(.trailing, 8)
+                    .padding(.vertical, AppStyle.Spacing.small)
+                    .padding(.trailing, AppStyle.Spacing.compact)
             }
 
             Group {
@@ -1197,7 +1197,7 @@ struct ScheduledView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .listRowInsets(EdgeInsets(top: 0, leading: entry.isNative ? 12 : 20, bottom: 0, trailing: 20))
+        .listRowInsets(EdgeInsets(top: 0, leading: entry.isNative ? AppStyle.Spacing.comfortable : AppStyle.Spacing.page, bottom: 0, trailing: AppStyle.Spacing.page))
         .listRowBackground(Color.clear)
         .listRowSeparator(.hidden)
     }
@@ -1218,8 +1218,8 @@ struct ScheduledView: View {
         }
         .accessibilityLabel("Add task")
         .buttonStyle(.plain)
-        .padding(.vertical, 4)
-        .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+        .padding(.vertical, AppStyle.Spacing.tiny)
+        .listRowInsets(AppStyle.Insets.row)
         .listRowSeparator(.visible)
         .listRowBackground(Color.clear)
     }
@@ -1584,7 +1584,7 @@ private extension ScheduledView {
             if addTaskOptionsExpanded && !addTaskScheduleExpanded {
                 addBarOptionsRow
             }
-            Spacer().frame(height: 20)
+            Spacer().frame(height: AppStyle.Spacing.page)
         }
         .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 20))
         .padding(.horizontal)
@@ -1597,16 +1597,16 @@ private extension ScheduledView {
             .focused($addBarTitleFocused)
             .submitLabel(.return)
             .onSubmit { saveTask() }
-            .padding(.horizontal, 14)
-            .padding(.top, 20)
-            .padding(.bottom, 10)
+            .padding(.horizontal, AppStyle.Spacing.content)
+            .padding(.top, AppStyle.Spacing.page)
+            .padding(.bottom, AppStyle.Spacing.medium)
     }
 
     var addBarScheduleSection: some View {
         VStack(spacing: 0) {
-            Divider().padding(.horizontal, 14)
+            Divider().padding(.horizontal, AppStyle.Spacing.content)
 
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: AppStyle.Spacing.comfortable) {
                 Picker("Section", selection: $addTaskSection) {
                     Text("Focus").tag(Section.focus)
                     Text("To-Do").tag(Section.todo)
@@ -1618,9 +1618,9 @@ private extension ScheduledView {
                     selectedTimeframe: $addTaskTimeframe
                 )
             }
-            .padding(.horizontal, 14)
-            .padding(.top, 6)
-            .padding(.bottom, 14)
+            .padding(.horizontal, AppStyle.Spacing.content)
+            .padding(.top, AppStyle.Spacing.small)
+            .padding(.bottom, AppStyle.Spacing.content)
 
             addBarScheduleButtons
         }
@@ -1637,7 +1637,7 @@ private extension ScheduledView {
                 Image(systemName: "xmark")
                     .font(.inter(.body, weight: .semiBold))
                     .foregroundColor(.primary)
-                    .frame(width: 36, height: 36)
+                    .frame(width: AppStyle.Layout.iconButton, height: AppStyle.Layout.iconButton)
                     .background(Color(.systemGray4), in: Circle())
             }
             .accessibilityLabel("Clear schedule")
@@ -1655,26 +1655,26 @@ private extension ScheduledView {
                 Image(systemName: "checkmark")
                     .font(.inter(.body, weight: .semiBold))
                     .foregroundColor(hasDateChanges ? .white : .secondary)
-                    .frame(width: 36, height: 36)
+                    .frame(width: AppStyle.Layout.iconButton, height: AppStyle.Layout.iconButton)
                     .background(hasDateChanges ? Color.appRed : Color(.systemGray4), in: Circle())
             }
             .accessibilityLabel("Confirm schedule")
             .buttonStyle(.plain)
         }
-        .padding(.horizontal, 14)
-        .padding(.bottom, 4)
+        .padding(.horizontal, AppStyle.Spacing.content)
+        .padding(.bottom, AppStyle.Spacing.tiny)
     }
 
     var addBarButtonRow: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: AppStyle.Spacing.compact) {
             Button { addNewSubtask() } label: {
-                HStack(spacing: 4) {
+                HStack(spacing: AppStyle.Spacing.tiny) {
                     Image(systemName: "plus").font(.inter(.caption))
                     Text("Sub-task").font(.inter(.caption))
                 }
                 .foregroundColor(.white)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 8)
+                .padding(.horizontal, AppStyle.Spacing.medium)
+                .padding(.vertical, AppStyle.Spacing.compact)
                 .background(Color.black, in: Capsule())
             }
             .buttonStyle(.plain)
@@ -1686,8 +1686,8 @@ private extension ScheduledView {
                     .font(.inter(.caption, weight: .bold))
                     .foregroundColor(.black)
                     .frame(minHeight: UIFont.preferredFont(forTextStyle: .caption1).lineHeight)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 8)
+                    .padding(.horizontal, AppStyle.Spacing.medium)
+                    .padding(.vertical, AppStyle.Spacing.compact)
                     .background(Color.white, in: Capsule())
             }
             .accessibilityLabel("More options")
@@ -1696,7 +1696,7 @@ private extension ScheduledView {
             Spacer()
 
             Button { generateBreakdown() } label: {
-                HStack(spacing: 6) {
+                HStack(spacing: AppStyle.Spacing.small) {
                     if isGeneratingBreakdown {
                         ProgressView().tint(.primary)
                     } else {
@@ -1708,8 +1708,8 @@ private extension ScheduledView {
                         .font(.inter(.caption, weight: .medium))
                         .foregroundColor(.primary)
                 }
-                .padding(.horizontal, 14)
-                .padding(.vertical, 8)
+                .padding(.horizontal, AppStyle.Spacing.content)
+                .padding(.vertical, AppStyle.Spacing.compact)
                 .background(!isAddTaskTitleEmpty ? Color.pillBackground : Color.clear, in: Capsule())
             }
             .buttonStyle(.plain)
@@ -1719,19 +1719,19 @@ private extension ScheduledView {
                 Image(systemName: "checkmark")
                     .font(.inter(.body, weight: .semiBold))
                     .foregroundColor(isAddTaskTitleEmpty ? .secondary : .white)
-                    .frame(width: 36, height: 36)
+                    .frame(width: AppStyle.Layout.iconButton, height: AppStyle.Layout.iconButton)
                     .background(isAddTaskTitleEmpty ? Color(.systemGray4) : Color.focusBlue, in: Circle())
             }
             .accessibilityLabel("Save task")
             .buttonStyle(.plain)
             .disabled(isAddTaskTitleEmpty)
         }
-        .padding(.horizontal, 14)
-        .padding(.bottom, 4)
+        .padding(.horizontal, AppStyle.Spacing.content)
+        .padding(.bottom, AppStyle.Spacing.tiny)
     }
 
     var addBarOptionsRow: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: AppStyle.Spacing.compact) {
             Menu {
                 Button {
                     addTaskCategoryId = nil
@@ -1746,13 +1746,13 @@ private extension ScheduledView {
                     }
                 }
             } label: {
-                HStack(spacing: 4) {
+                HStack(spacing: AppStyle.Spacing.tiny) {
                     Image(systemName: "folder").font(.inter(.caption))
                     Text(LocalizedStringKey(categoryPillLabel)).font(.inter(.caption))
                 }
                 .foregroundColor(.black)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 8)
+                .padding(.horizontal, AppStyle.Spacing.medium)
+                .padding(.vertical, AppStyle.Spacing.compact)
                 .background(Color.white, in: Capsule())
             }
 
@@ -1760,13 +1760,13 @@ private extension ScheduledView {
                 if !addTaskScheduleExpanded { addTaskDatesSnapshot = addTaskDates }
                 withAnimation(.easeInOut(duration: 0.2)) { addTaskScheduleExpanded.toggle() }
             } label: {
-                HStack(spacing: 4) {
+                HStack(spacing: AppStyle.Spacing.tiny) {
                     Image(systemName: "arrow.right.circle").font(.inter(.caption))
                     Text("Schedule").font(.inter(.caption))
                 }
                 .foregroundColor(!addTaskDates.isEmpty ? .white : .black)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 8)
+                .padding(.horizontal, AppStyle.Spacing.medium)
+                .padding(.vertical, AppStyle.Spacing.compact)
                 .background(!addTaskDates.isEmpty ? Color.appRed : Color.white, in: Capsule())
             }
             .buttonStyle(.plain)
@@ -1780,20 +1780,20 @@ private extension ScheduledView {
                     }
                 }
             } label: {
-                HStack(spacing: 4) {
-                    Circle().fill(addTaskPriority.dotColor).frame(width: 8, height: 8)
+                HStack(spacing: AppStyle.Spacing.tiny) {
+                    Circle().fill(addTaskPriority.dotColor).frame(width: AppStyle.Layout.dotSize, height: AppStyle.Layout.dotSize)
                     Text(addTaskPriority.displayName).font(.inter(.caption))
                 }
                 .foregroundColor(.black)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 8)
+                .padding(.horizontal, AppStyle.Spacing.medium)
+                .padding(.vertical, AppStyle.Spacing.compact)
                 .background(Color.white, in: Capsule())
             }
 
             Spacer()
         }
-        .padding(.horizontal, 14)
-        .padding(.top, 6)
+        .padding(.horizontal, AppStyle.Spacing.content)
+        .padding(.top, AppStyle.Spacing.small)
     }
 }
 
@@ -1813,7 +1813,7 @@ private extension ScheduledView {
                 Image(systemName: "chevron.left")
                     .font(.inter(.body, weight: .semiBold))
                     .foregroundColor(.primary)
-                    .frame(width: 44, height: 44)
+                    .frame(width: AppStyle.Layout.touchTarget, height: AppStyle.Layout.touchTarget)
                     .contentShape(Rectangle())
             }
             .accessibilityLabel("Back")
@@ -1845,7 +1845,7 @@ private extension ScheduledView {
             Image(systemName: "ellipsis")
                 .font(.inter(.body, weight: .semiBold))
                 .foregroundColor(.primary)
-                .frame(width: 30, height: 30)
+                .frame(width: AppStyle.Layout.compactButton, height: AppStyle.Layout.compactButton)
                 .background(Color.pillBackground, in: Circle())
         }
         .accessibilityLabel("More options")
@@ -2009,7 +2009,7 @@ private struct ScheduledProjectRow: View {
     @State private var showDeleteConfirmation = false
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: AppStyle.Spacing.comfortable) {
             if isEditMode {
                 Image(systemName: isSelected ? "checkmark.circle.fill" : "circle.dashed")
                     .font(.inter(.title3))
@@ -2019,7 +2019,7 @@ private struct ScheduledProjectRow: View {
             Image(systemName: "folder")
                 .font(.inter(.body, weight: .medium))
                 .foregroundColor(.secondary)
-                .frame(width: 24)
+                .frame(width: AppStyle.Layout.pillButton)
             Text(project.title)
                 .font(.inter(.body))
                 .strikethrough(isPending)
@@ -2040,7 +2040,7 @@ private struct ScheduledProjectRow: View {
                 .buttonStyle(.plain)
             }
         }
-        .padding(.vertical, 8)
+        .padding(.vertical, AppStyle.Spacing.compact)
         .contentShape(Rectangle())
         .onTapGesture { if isEditMode { onSelectToggle() } else { onTap() } }
         .contextMenu {
@@ -2087,7 +2087,7 @@ private struct ScheduledListRow: View {
     @State private var showDeleteConfirmation = false
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: AppStyle.Spacing.comfortable) {
             if isEditMode {
                 Image(systemName: isSelected ? "checkmark.circle.fill" : "circle.dashed")
                     .font(.inter(.title3))
@@ -2097,7 +2097,7 @@ private struct ScheduledListRow: View {
             Image(systemName: "list.bullet")
                 .font(.inter(.body, weight: .medium))
                 .foregroundColor(.secondary)
-                .frame(width: 24)
+                .frame(width: AppStyle.Layout.pillButton)
             Text(list.title)
                 .font(.inter(.body))
                 .strikethrough(isPending)
@@ -2118,7 +2118,7 @@ private struct ScheduledListRow: View {
                 .buttonStyle(.plain)
             }
         }
-        .padding(.vertical, 8)
+        .padding(.vertical, AppStyle.Spacing.compact)
         .contentShape(Rectangle())
         .onTapGesture { if isEditMode { onSelectToggle() } else { onTap() } }
         .contextMenu {

@@ -47,9 +47,9 @@ struct AddListBar: View {
                 .focused($titleFocused)
                 .submitLabel(.return)
                 .onSubmit { save() }
-                .padding(.horizontal, 14)
-                .padding(.top, 20)
-                .padding(.bottom, 10)
+                .padding(.horizontal, AppStyle.Spacing.content)
+                .padding(.top, AppStyle.Spacing.page)
+                .padding(.bottom, AppStyle.Spacing.medium)
 
             DraftSubtaskListEditor(
                 subtasks: $items,
@@ -61,9 +61,9 @@ struct AddListBar: View {
             // Schedule expansion
             if scheduleExpanded {
                 Divider()
-                    .padding(.horizontal, 14)
+                    .padding(.horizontal, AppStyle.Spacing.content)
 
-                VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: AppStyle.Spacing.comfortable) {
                     Picker("Section", selection: $section) {
                         Text("Focus").tag(Section.focus)
                         Text("To-Do").tag(Section.todo)
@@ -75,9 +75,9 @@ struct AddListBar: View {
                         selectedTimeframe: $timeframe
                     )
                 }
-                .padding(.horizontal, 14)
-                .padding(.top, 6)
-                .padding(.bottom, 14)
+                .padding(.horizontal, AppStyle.Spacing.content)
+                .padding(.top, AppStyle.Spacing.small)
+                .padding(.bottom, AppStyle.Spacing.content)
 
                 HStack {
                     Button {
@@ -89,7 +89,7 @@ struct AddListBar: View {
                         Image(systemName: "xmark")
                             .font(.inter(.body, weight: .semiBold))
                             .foregroundColor(.primary)
-                            .frame(width: 36, height: 36)
+                            .frame(width: AppStyle.Layout.iconButton, height: AppStyle.Layout.iconButton)
                             .background(Color(.systemGray4), in: Circle())
                     }
                     .accessibilityLabel("Clear schedule")
@@ -107,7 +107,7 @@ struct AddListBar: View {
                         Image(systemName: "checkmark")
                             .font(.inter(.body, weight: .semiBold))
                             .foregroundColor(hasDateChanges ? .white : .secondary)
-                            .frame(width: 36, height: 36)
+                            .frame(width: AppStyle.Layout.iconButton, height: AppStyle.Layout.iconButton)
                             .background(
                                 hasDateChanges ? Color.appRed : Color(.systemGray4),
                                 in: Circle()
@@ -116,25 +116,25 @@ struct AddListBar: View {
                     .accessibilityLabel("Confirm schedule")
                     .buttonStyle(.plain)
                 }
-                .padding(.horizontal, 14)
-                .padding(.bottom, 4)
+                .padding(.horizontal, AppStyle.Spacing.content)
+                .padding(.bottom, AppStyle.Spacing.tiny)
             }
 
             // Row 1: [Item] [...] Spacer [Checkmark]
             if !scheduleExpanded {
-                HStack(spacing: 8) {
+                HStack(spacing: AppStyle.Spacing.compact) {
                     Button {
                         addNewItem()
                     } label: {
-                        HStack(spacing: 4) {
+                        HStack(spacing: AppStyle.Spacing.tiny) {
                             Image(systemName: "plus")
                                 .font(.inter(.caption))
                             Text("Item")
                                 .font(.inter(.caption))
                         }
                         .foregroundColor(.white)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 8)
+                        .padding(.horizontal, AppStyle.Spacing.medium)
+                        .padding(.vertical, AppStyle.Spacing.compact)
                         .background(Color.black, in: Capsule())
                     }
                     .buttonStyle(.plain)
@@ -148,8 +148,8 @@ struct AddListBar: View {
                             .font(.inter(.caption, weight: .bold))
                             .foregroundColor(.black)
                             .frame(minHeight: UIFont.preferredFont(forTextStyle: .caption1).lineHeight)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 8)
+                            .padding(.horizontal, AppStyle.Spacing.medium)
+                            .padding(.vertical, AppStyle.Spacing.compact)
                             .background(Color.white, in: Capsule())
                     }
                     .accessibilityLabel("More options")
@@ -163,7 +163,7 @@ struct AddListBar: View {
                         Image(systemName: "checkmark")
                             .font(.inter(.body, weight: .semiBold))
                             .foregroundColor(isTitleEmpty ? .secondary : .white)
-                            .frame(width: 36, height: 36)
+                            .frame(width: AppStyle.Layout.iconButton, height: AppStyle.Layout.iconButton)
                             .background(
                                 isTitleEmpty ? Color(.systemGray4) : Color.focusBlue,
                                 in: Circle()
@@ -173,13 +173,13 @@ struct AddListBar: View {
                     .buttonStyle(.plain)
                     .disabled(isTitleEmpty)
                 }
-                .padding(.horizontal, 14)
-                .padding(.bottom, 4)
+                .padding(.horizontal, AppStyle.Spacing.content)
+                .padding(.bottom, AppStyle.Spacing.tiny)
             }
 
             // Row 2: [Category] [Schedule] [Priority]
             if optionsExpanded && !scheduleExpanded {
-                HStack(spacing: 8) {
+                HStack(spacing: AppStyle.Spacing.compact) {
                     Menu {
                         Button {
                             categoryId = nil
@@ -202,15 +202,15 @@ struct AddListBar: View {
                             }
                         }
                     } label: {
-                        HStack(spacing: 4) {
+                        HStack(spacing: AppStyle.Spacing.tiny) {
                             Image(systemName: "folder")
                                 .font(.inter(.caption))
                             Text(LocalizedStringKey(categoryPillLabel))
                                 .font(.inter(.caption))
                         }
                         .foregroundColor(.black)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 8)
+                        .padding(.horizontal, AppStyle.Spacing.medium)
+                        .padding(.vertical, AppStyle.Spacing.compact)
                         .background(Color.white, in: Capsule())
                     }
 
@@ -220,15 +220,15 @@ struct AddListBar: View {
                             scheduleExpanded.toggle()
                         }
                     } label: {
-                        HStack(spacing: 4) {
+                        HStack(spacing: AppStyle.Spacing.tiny) {
                             Image(systemName: "arrow.right.circle")
                                 .font(.inter(.caption))
                             Text("Schedule")
                                 .font(.inter(.caption))
                         }
                         .foregroundColor(!scheduleDates.isEmpty ? .white : .black)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 8)
+                        .padding(.horizontal, AppStyle.Spacing.medium)
+                        .padding(.vertical, AppStyle.Spacing.compact)
                         .background(!scheduleDates.isEmpty ? Color.appRed : Color.white, in: Capsule())
                     }
                     .buttonStyle(.plain)
@@ -246,26 +246,26 @@ struct AddListBar: View {
                             }
                         }
                     } label: {
-                        HStack(spacing: 4) {
+                        HStack(spacing: AppStyle.Spacing.tiny) {
                             Circle()
                                 .fill(priority.dotColor)
-                                .frame(width: 8, height: 8)
+                                .frame(width: AppStyle.Layout.dotSize, height: AppStyle.Layout.dotSize)
                             Text(priority.displayName)
                                 .font(.inter(.caption))
                         }
                         .foregroundColor(.black)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 8)
+                        .padding(.horizontal, AppStyle.Spacing.medium)
+                        .padding(.vertical, AppStyle.Spacing.compact)
                         .background(Color.white, in: Capsule())
                     }
 
                     Spacer()
                 }
-                .padding(.horizontal, 14)
-                .padding(.top, 6)
+                .padding(.horizontal, AppStyle.Spacing.content)
+                .padding(.top, AppStyle.Spacing.small)
             }
 
-            Spacer().frame(height: 20)
+            Spacer().frame(height: AppStyle.Spacing.page)
         }
         .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 20))
         .padding(.horizontal)

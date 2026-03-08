@@ -114,7 +114,7 @@ struct HomeView: View {
             ZStack {
                 ScrollViewReader { scrollProxy in
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 16) {
+                    VStack(alignment: .leading, spacing: AppStyle.Spacing.section) {
                         Color.clear.frame(height: 0).id("homeScrollTop")
                         // MARK: - Top Bar (Profile + Search)
                         HStack {
@@ -136,8 +136,8 @@ struct HomeView: View {
 
                             Spacer()
                         }
-                        .padding(.horizontal, 20)
-                        .padding(.top, 8)
+                        .padding(.horizontal, AppStyle.Spacing.page)
+                        .padding(.top, AppStyle.Spacing.compact)
 
                         // MARK: - Date Header
                         HStack(alignment: .bottom) {
@@ -157,11 +157,11 @@ struct HomeView: View {
                             }
                             .buttonStyle(.plain)
                         }
-                        .padding(.horizontal, 20)
-                        .padding(.bottom, 16)
+                        .padding(.horizontal, AppStyle.Spacing.page)
+                        .padding(.bottom, AppStyle.Spacing.section)
 
                         // MARK: - Today / Inbox
-                        HStack(spacing: 12) {
+                        HStack(spacing: AppStyle.Spacing.comfortable) {
                             homeCard(title: "Today", icon: "sun.max") {
                                 viewModel.selectedMenuItem = .today
                             }
@@ -169,10 +169,10 @@ struct HomeView: View {
                                 viewModel.selectedMenuItem = .inbox
                             }
                         }
-                        .padding(.horizontal, 20)
+                        .padding(.horizontal, AppStyle.Spacing.page)
 
                         // MARK: - Schedule / Completed
-                        HStack(spacing: 12) {
+                        HStack(spacing: AppStyle.Spacing.comfortable) {
                             homeCard(title: "Scheduled", icon: "calendar") {
                                 viewModel.selectedMenuItem = .assign
                             }
@@ -180,13 +180,13 @@ struct HomeView: View {
                                 viewModel.selectedMenuItem = .archive
                             }
                         }
-                        .padding(.horizontal, 20)
+                        .padding(.horizontal, AppStyle.Spacing.page)
 
                         // MARK: - Library Divider
                         homeSectionDivider(title: "LIBRARY")
 
                         // MARK: - Projects / Quick Lists / Goals
-                        HStack(spacing: 8) {
+                        HStack(spacing: AppStyle.Spacing.compact) {
                             homeCardCompact(title: "Quick lists", icon: "list.bullet", count: viewModel.lists.filter({ !$0.isSection }).count) {
                                 viewModel.selectedMenuItem = .quickLists
                             }
@@ -198,13 +198,13 @@ struct HomeView: View {
                                     .renderingMode(.template)
                                     .resizable()
                                     .scaledToFit()
-                                    .frame(width: 18, height: 18)
+                                    .frame(width: AppStyle.Layout.tinyIcon, height: AppStyle.Layout.tinyIcon)
                                     .foregroundColor(.primary)
                             }, count: viewModel.goals.filter({ !$0.isSection }).count) {
                                 viewModel.selectedMenuItem = .goals
                             }
                         }
-                        .padding(.horizontal, 20)
+                        .padding(.horizontal, AppStyle.Spacing.page)
 
 
                         // MARK: - Categories Section
@@ -213,15 +213,15 @@ struct HomeView: View {
                         if !viewModel.categories.isEmpty {
                             GeometryReader { geo in
                                 ScrollView(.horizontal, showsIndicators: false) {
-                                    HStack(spacing: 12) {
+                                    HStack(spacing: AppStyle.Spacing.comfortable) {
                                         ForEach(viewModel.categories) { category in
                                             categoryCard(category, containerWidth: geo.size.width)
                                         }
                                     }
-                                    .padding(.horizontal, 20)
+                                    .padding(.horizontal, AppStyle.Spacing.page)
                                 }
                             }
-                            .frame(height: 44)
+                            .frame(height: AppStyle.Layout.touchTarget)
                         }
 
                         // MARK: - Pinned Section
@@ -233,7 +233,7 @@ struct HomeView: View {
                                     pinnedItemRow(item)
                                 }
                             }
-                            .padding(.horizontal, 20)
+                            .padding(.horizontal, AppStyle.Spacing.page)
                         }
                     }
                     .padding(.bottom, 120)
@@ -275,10 +275,10 @@ struct HomeView: View {
 
                         VStack(spacing: 0) {
                             addBarModeSelector
-                                .padding(.vertical, 12)
+                                .padding(.vertical, AppStyle.Spacing.comfortable)
 
                             activeAddBar
-                                .padding(.bottom, 8)
+                                .padding(.bottom, AppStyle.Spacing.compact)
                         }
                         .contentShape(Rectangle())
                     }
@@ -488,7 +488,7 @@ struct HomeView: View {
                             Image(systemName: "chevron.left")
                                 .font(.inter(.body, weight: .semiBold))
                                 .foregroundColor(.primary)
-                                .frame(width: 44, height: 44)
+                                .frame(width: AppStyle.Layout.touchTarget, height: AppStyle.Layout.touchTarget)
                                 .contentShape(Rectangle())
                         }
                         .accessibilityLabel("Back")
@@ -519,14 +519,14 @@ struct HomeView: View {
                     Image(systemName: icon)
                         .font(.helveticaNeue(size: 17.3, weight: .medium))
                         .foregroundColor(.primary)
-                        .frame(width: 24, alignment: .center)
+                        .frame(width: AppStyle.Layout.pillButton, alignment: .center)
                 } else {
                     customIcon()
-                        .frame(width: 24, alignment: .center)
+                        .frame(width: AppStyle.Layout.pillButton, alignment: .center)
                 }
             }
-            .padding(16)
-            .frame(maxWidth: .infinity, minHeight: 56)
+            .padding(AppStyle.Spacing.section)
+            .frame(maxWidth: .infinity, minHeight: AppStyle.Layout.fab)
             .contentShape(Rectangle())
             .overlay(
                 RoundedRectangle(cornerRadius: 12)
@@ -538,7 +538,7 @@ struct HomeView: View {
 
     private func homeCardCompact<Icon: View>(title: String, icon: String? = nil, @ViewBuilder customIcon: () -> Icon = { EmptyView() }, count: Int? = nil, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            VStack(spacing: 6) {
+            VStack(spacing: AppStyle.Spacing.small) {
                 if let icon {
                     Image(systemName: icon)
                         .font(.helveticaNeue(size: 17.3, weight: .medium))
@@ -559,7 +559,7 @@ struct HomeView: View {
                     }
                 }
             }
-            .frame(maxWidth: .infinity, minHeight: 56)
+            .frame(maxWidth: .infinity, minHeight: AppStyle.Layout.fab)
             .contentShape(Rectangle())
             .overlay(
                 RoundedRectangle(cornerRadius: 12)
@@ -580,9 +580,9 @@ struct HomeView: View {
                 .tracking(-0.135)
                 .foregroundColor(.primary)
                 .lineLimit(1)
-                .padding(.vertical, 12)
-                .padding(.horizontal, 8)
-                .frame(width: (containerWidth - 40 - 24) / 3)
+                .padding(.vertical, AppStyle.Spacing.comfortable)
+                .padding(.horizontal, AppStyle.Spacing.compact)
+                .frame(width: (containerWidth - AppStyle.Spacing.page * 2 - AppStyle.Spacing.comfortable * 2) / 3)
                 .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12))
                 .contentShape(RoundedRectangle(cornerRadius: 12))
         }
@@ -609,25 +609,25 @@ struct HomeView: View {
         Button {
             viewModel.selectedPinnedItem = item
         } label: {
-            HStack(spacing: 12) {
+            HStack(spacing: AppStyle.Spacing.comfortable) {
                 if item.type == .project {
                     Image(systemName: "folder")
                         .font(.inter(.body, weight: .medium))
                         .foregroundColor(.secondary)
-                        .frame(width: 24)
+                        .frame(width: AppStyle.Layout.pillButton)
                 } else if item.type == .goal {
                     Image("TargetIcon")
                         .renderingMode(.template)
                         .resizable()
                         .scaledToFit()
-                        .frame(width: 20, height: 20)
+                        .frame(width: AppStyle.Layout.smallIcon, height: AppStyle.Layout.smallIcon)
                         .foregroundColor(.secondary)
-                        .frame(width: 24)
+                        .frame(width: AppStyle.Layout.pillButton)
                 } else {
                     Image(systemName: "list.bullet")
                         .font(.inter(.body, weight: .medium))
                         .foregroundColor(.secondary)
-                        .frame(width: 24)
+                        .frame(width: AppStyle.Layout.pillButton)
                 }
 
                 Text(item.title)
@@ -637,7 +637,7 @@ struct HomeView: View {
 
                 Spacer()
             }
-            .padding(.vertical, 10)
+            .padding(.vertical, AppStyle.Spacing.medium)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -651,7 +651,7 @@ struct HomeView: View {
     // MARK: - Section Divider
 
     private func homeSectionDivider(title: String, assetIcon: String? = nil) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: AppStyle.Spacing.compact) {
             Rectangle()
                 .fill(Color.secondary.opacity(0.3))
                 .frame(height: 1)
@@ -667,13 +667,13 @@ struct HomeView: View {
                     .foregroundColor(.primary)
             }
         }
-        .padding(.horizontal, 20)
+        .padding(.horizontal, AppStyle.Spacing.page)
     }
 
     // MARK: - Categories Section Header
 
     private var categoriesSectionHeader: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: AppStyle.Spacing.compact) {
             Rectangle()
                 .fill(Color.secondary.opacity(0.3))
                 .frame(height: 1)
@@ -712,14 +712,14 @@ struct HomeView: View {
                     Image(systemName: "ellipsis")
                         .font(.inter(.subheadline, weight: .semiBold))
                         .foregroundColor(.secondary)
-                        .padding(14)
+                        .padding(AppStyle.Spacing.content)
                         .contentShape(Rectangle())
-                        .offset(x: 14, y: 0)
+                        .offset(x: AppStyle.Spacing.content, y: 0)
                 }
             }
             .frame(minHeight: 17.56)
         }
-        .padding(.horizontal, 20)
+        .padding(.horizontal, AppStyle.Spacing.page)
     }
 
     // MARK: - Date Helpers
@@ -787,13 +787,13 @@ struct HomeView: View {
                     Image(systemName: "plus")
                         .font(.inter(.title2, weight: .semiBold))
                         .foregroundColor(.white)
-                        .frame(width: 56, height: 56)
+                        .frame(width: AppStyle.Layout.fab, height: AppStyle.Layout.fab)
                         .glassEffect(.regular.tint(.charcoal).interactive(), in: .circle)
                         .shadow(radius: 4, y: 2)
                 }
                 .accessibilityLabel("Add")
-                .padding(.trailing, 20)
-                .padding(.bottom, 20)
+                .padding(.trailing, AppStyle.Spacing.page)
+                .padding(.bottom, AppStyle.Spacing.page)
             }
         }
     }
@@ -801,7 +801,7 @@ struct HomeView: View {
     // MARK: - Add Bar Mode Selector
 
     private var addBarModeSelector: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: AppStyle.Spacing.comfortable) {
             addBarModeCircle(mode: .task, icon: "checklist")
             addBarModeCircle(mode: .list, icon: "list.bullet")
             addBarModeCircle(mode: .project, icon: "folder")
@@ -820,7 +820,7 @@ struct HomeView: View {
             Image(systemName: isActive && mode == .project ? "folder.fill" : icon)
                 .font(.inter(.body, weight: .medium))
                 .foregroundColor(isActive ? .white : .primary)
-                .frame(width: 36, height: 36)
+                .frame(width: AppStyle.Layout.iconButton, height: AppStyle.Layout.iconButton)
                 .glassEffect(
                     isActive
                         ? .regular.tint(.black).interactive()
@@ -855,9 +855,9 @@ struct HomeView: View {
                 .onSubmit {
                     saveTask()
                 }
-                .padding(.horizontal, 14)
-                .padding(.top, 20)
-                .padding(.bottom, 10)
+                .padding(.horizontal, AppStyle.Spacing.content)
+                .padding(.top, AppStyle.Spacing.page)
+                .padding(.bottom, AppStyle.Spacing.medium)
 
             // Subtasks
             DraftSubtaskListEditor(
@@ -869,9 +869,9 @@ struct HomeView: View {
             // Schedule expansion (calendar section)
             if addTaskScheduleExpanded {
                 Divider()
-                    .padding(.horizontal, 14)
+                    .padding(.horizontal, AppStyle.Spacing.content)
 
-                VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: AppStyle.Spacing.comfortable) {
                     Picker("Section", selection: $addTaskSection) {
                         Text("Focus").tag(Section.focus)
                         Text("To-Do").tag(Section.todo)
@@ -883,9 +883,9 @@ struct HomeView: View {
                         selectedTimeframe: $addTaskTimeframe
                     )
                 }
-                .padding(.horizontal, 14)
-                .padding(.top, 6)
-                .padding(.bottom, 14)
+                .padding(.horizontal, AppStyle.Spacing.content)
+                .padding(.top, AppStyle.Spacing.small)
+                .padding(.bottom, AppStyle.Spacing.content)
 
                 // Schedule mode action row
                 HStack {
@@ -898,7 +898,7 @@ struct HomeView: View {
                         Image(systemName: "xmark")
                             .font(.inter(.body, weight: .semiBold))
                             .foregroundColor(.primary)
-                            .frame(width: 36, height: 36)
+                            .frame(width: AppStyle.Layout.iconButton, height: AppStyle.Layout.iconButton)
                             .background(Color(.systemGray4), in: Circle())
                     }
                     .buttonStyle(.plain)
@@ -916,7 +916,7 @@ struct HomeView: View {
                         Image(systemName: "checkmark")
                             .font(.inter(.body, weight: .semiBold))
                             .foregroundColor(hasDateChanges ? .white : .secondary)
-                            .frame(width: 36, height: 36)
+                            .frame(width: AppStyle.Layout.iconButton, height: AppStyle.Layout.iconButton)
                             .background(
                                 hasDateChanges ? Color.appRed : Color(.systemGray4),
                                 in: Circle()
@@ -924,25 +924,25 @@ struct HomeView: View {
                     }
                     .buttonStyle(.plain)
                 }
-                .padding(.horizontal, 14)
-                .padding(.bottom, 4)
+                .padding(.horizontal, AppStyle.Spacing.content)
+                .padding(.bottom, AppStyle.Spacing.tiny)
             }
 
             // Sub-task row: [Sub-task] ... [AI Breakdown] [Checkmark]
             if !addTaskScheduleExpanded {
-            HStack(spacing: 8) {
+            HStack(spacing: AppStyle.Spacing.compact) {
                 Button {
                     addNewSubtask()
                 } label: {
-                    HStack(spacing: 4) {
+                    HStack(spacing: AppStyle.Spacing.tiny) {
                         Image(systemName: "plus")
                             .font(.inter(.caption))
                         Text("Sub-task")
                             .font(.inter(.caption))
                     }
                     .foregroundColor(.white)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 8)
+                    .padding(.horizontal, AppStyle.Spacing.medium)
+                    .padding(.vertical, AppStyle.Spacing.compact)
                     .background(Color.black, in: Capsule())
                 }
                 .buttonStyle(.plain)
@@ -957,8 +957,8 @@ struct HomeView: View {
                         .font(.inter(.caption, weight: .bold))
                         .foregroundColor(.black)
                         .frame(minHeight: UIFont.preferredFont(forTextStyle: .caption1).lineHeight)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 8)
+                        .padding(.horizontal, AppStyle.Spacing.medium)
+                        .padding(.vertical, AppStyle.Spacing.compact)
                         .background(Color.white, in: Capsule())
                 }
                 .buttonStyle(.plain)
@@ -969,7 +969,7 @@ struct HomeView: View {
                 Button {
                     generateBreakdown()
                 } label: {
-                    HStack(spacing: 6) {
+                    HStack(spacing: AppStyle.Spacing.small) {
                         if isGeneratingBreakdown {
                             ProgressView()
                                 .tint(.primary)
@@ -982,8 +982,8 @@ struct HomeView: View {
                             .font(.inter(.caption, weight: .medium))
                             .foregroundColor(.primary)
                     }
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 8)
+                    .padding(.horizontal, AppStyle.Spacing.content)
+                    .padding(.vertical, AppStyle.Spacing.compact)
                     .background(
                         !isAddTaskTitleEmpty ? Color.pillBackground : Color.clear,
                         in: Capsule()
@@ -999,7 +999,7 @@ struct HomeView: View {
                     Image(systemName: "checkmark")
                         .font(.inter(.body, weight: .semiBold))
                         .foregroundColor(isAddTaskTitleEmpty ? .secondary : .white)
-                        .frame(width: 36, height: 36)
+                        .frame(width: AppStyle.Layout.iconButton, height: AppStyle.Layout.iconButton)
                         .background(
                             isAddTaskTitleEmpty ? Color(.systemGray4) : Color.focusBlue,
                             in: Circle()
@@ -1008,13 +1008,13 @@ struct HomeView: View {
                 .buttonStyle(.plain)
                 .disabled(isAddTaskTitleEmpty)
             }
-            .padding(.horizontal, 14)
-            .padding(.bottom, 4)
+            .padding(.horizontal, AppStyle.Spacing.content)
+            .padding(.bottom, AppStyle.Spacing.tiny)
             }
 
             // Bottom row: [Category] [Schedule] [Priority]
             if addTaskOptionsExpanded && !addTaskScheduleExpanded {
-            HStack(spacing: 8) {
+            HStack(spacing: AppStyle.Spacing.compact) {
                 Menu {
                     Button {
                         addTaskCategoryId = nil
@@ -1037,15 +1037,15 @@ struct HomeView: View {
                         }
                     }
                 } label: {
-                    HStack(spacing: 4) {
+                    HStack(spacing: AppStyle.Spacing.tiny) {
                         Image(systemName: "folder")
                             .font(.inter(.caption))
                         Text(LocalizedStringKey(taskCategoryPillLabel))
                             .font(.inter(.caption))
                     }
                     .foregroundColor(.black)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 8)
+                    .padding(.horizontal, AppStyle.Spacing.medium)
+                    .padding(.vertical, AppStyle.Spacing.compact)
                     .background(Color.white, in: Capsule())
                 }
 
@@ -1057,15 +1057,15 @@ struct HomeView: View {
                         addTaskScheduleExpanded.toggle()
                     }
                 } label: {
-                    HStack(spacing: 4) {
+                    HStack(spacing: AppStyle.Spacing.tiny) {
                         Image(systemName: "arrow.right.circle")
                             .font(.inter(.caption))
                         Text("Schedule")
                             .font(.inter(.caption))
                     }
                     .foregroundColor(!addTaskDates.isEmpty ? .white : .black)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 8)
+                    .padding(.horizontal, AppStyle.Spacing.medium)
+                    .padding(.vertical, AppStyle.Spacing.compact)
                     .background(!addTaskDates.isEmpty ? Color.appRed : Color.white, in: Capsule())
                 }
                 .buttonStyle(.plain)
@@ -1083,26 +1083,26 @@ struct HomeView: View {
                         }
                     }
                 } label: {
-                    HStack(spacing: 4) {
+                    HStack(spacing: AppStyle.Spacing.tiny) {
                         Circle()
                             .fill(addTaskPriority.dotColor)
-                            .frame(width: 8, height: 8)
+                            .frame(width: AppStyle.Layout.dotSize, height: AppStyle.Layout.dotSize)
                         Text(addTaskPriority.displayName)
                             .font(.inter(.caption))
                     }
                     .foregroundColor(.black)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 8)
+                    .padding(.horizontal, AppStyle.Spacing.medium)
+                    .padding(.vertical, AppStyle.Spacing.compact)
                     .background(Color.white, in: Capsule())
                 }
 
                 Spacer()
             }
-            .padding(.horizontal, 14)
-            .padding(.top, 6)
+            .padding(.horizontal, AppStyle.Spacing.content)
+            .padding(.top, AppStyle.Spacing.small)
             }
 
-            Spacer().frame(height: 20)
+            Spacer().frame(height: AppStyle.Spacing.page)
         }
         .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 20))
         .padding(.horizontal)
@@ -1120,9 +1120,9 @@ struct HomeView: View {
                 .onSubmit {
                     saveList()
                 }
-                .padding(.horizontal, 14)
-                .padding(.top, 20)
-                .padding(.bottom, 10)
+                .padding(.horizontal, AppStyle.Spacing.content)
+                .padding(.top, AppStyle.Spacing.page)
+                .padding(.bottom, AppStyle.Spacing.medium)
 
             DraftSubtaskListEditor(
                 subtasks: $addListItems,
@@ -1134,9 +1134,9 @@ struct HomeView: View {
             // Schedule expansion
             if addListScheduleExpanded {
                 Divider()
-                    .padding(.horizontal, 14)
+                    .padding(.horizontal, AppStyle.Spacing.content)
 
-                VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: AppStyle.Spacing.comfortable) {
                     Picker("Section", selection: $addListSection) {
                         Text("Focus").tag(Section.focus)
                         Text("To-Do").tag(Section.todo)
@@ -1148,9 +1148,9 @@ struct HomeView: View {
                         selectedTimeframe: $addListTimeframe
                     )
                 }
-                .padding(.horizontal, 14)
-                .padding(.top, 6)
-                .padding(.bottom, 14)
+                .padding(.horizontal, AppStyle.Spacing.content)
+                .padding(.top, AppStyle.Spacing.small)
+                .padding(.bottom, AppStyle.Spacing.content)
 
                 HStack {
                     Button {
@@ -1162,7 +1162,7 @@ struct HomeView: View {
                         Image(systemName: "xmark")
                             .font(.inter(.body, weight: .semiBold))
                             .foregroundColor(.primary)
-                            .frame(width: 36, height: 36)
+                            .frame(width: AppStyle.Layout.iconButton, height: AppStyle.Layout.iconButton)
                             .background(Color(.systemGray4), in: Circle())
                     }
                     .buttonStyle(.plain)
@@ -1180,7 +1180,7 @@ struct HomeView: View {
                         Image(systemName: "checkmark")
                             .font(.inter(.body, weight: .semiBold))
                             .foregroundColor(hasDateChanges ? .white : .secondary)
-                            .frame(width: 36, height: 36)
+                            .frame(width: AppStyle.Layout.iconButton, height: AppStyle.Layout.iconButton)
                             .background(
                                 hasDateChanges ? Color.appRed : Color(.systemGray4),
                                 in: Circle()
@@ -1188,25 +1188,25 @@ struct HomeView: View {
                     }
                     .buttonStyle(.plain)
                 }
-                .padding(.horizontal, 14)
-                .padding(.bottom, 4)
+                .padding(.horizontal, AppStyle.Spacing.content)
+                .padding(.bottom, AppStyle.Spacing.tiny)
             }
 
             // Row 1: [Item] [...] Spacer [Checkmark]
             if !addListScheduleExpanded {
-            HStack(spacing: 8) {
+            HStack(spacing: AppStyle.Spacing.compact) {
                 Button {
                     addNewListItem()
                 } label: {
-                    HStack(spacing: 4) {
+                    HStack(spacing: AppStyle.Spacing.tiny) {
                         Image(systemName: "plus")
                             .font(.inter(.caption))
                         Text("Item")
                             .font(.inter(.caption))
                     }
                     .foregroundColor(.white)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 8)
+                    .padding(.horizontal, AppStyle.Spacing.medium)
+                    .padding(.vertical, AppStyle.Spacing.compact)
                     .background(Color.black, in: Capsule())
                 }
                 .buttonStyle(.plain)
@@ -1220,8 +1220,8 @@ struct HomeView: View {
                         .font(.inter(.caption, weight: .bold))
                         .foregroundColor(.black)
                         .frame(minHeight: UIFont.preferredFont(forTextStyle: .caption1).lineHeight)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 8)
+                        .padding(.horizontal, AppStyle.Spacing.medium)
+                        .padding(.vertical, AppStyle.Spacing.compact)
                         .background(Color.white, in: Capsule())
                 }
                 .buttonStyle(.plain)
@@ -1234,7 +1234,7 @@ struct HomeView: View {
                     Image(systemName: "checkmark")
                         .font(.inter(.body, weight: .semiBold))
                         .foregroundColor(isAddListTitleEmpty ? .secondary : .white)
-                        .frame(width: 36, height: 36)
+                        .frame(width: AppStyle.Layout.iconButton, height: AppStyle.Layout.iconButton)
                         .background(
                             isAddListTitleEmpty ? Color(.systemGray4) : Color.focusBlue,
                             in: Circle()
@@ -1243,13 +1243,13 @@ struct HomeView: View {
                 .buttonStyle(.plain)
                 .disabled(isAddListTitleEmpty)
             }
-            .padding(.horizontal, 14)
-            .padding(.bottom, 4)
+            .padding(.horizontal, AppStyle.Spacing.content)
+            .padding(.bottom, AppStyle.Spacing.tiny)
             }
 
             // Row 2: [Category] [Schedule] [Priority]
             if addListOptionsExpanded && !addListScheduleExpanded {
-            HStack(spacing: 8) {
+            HStack(spacing: AppStyle.Spacing.compact) {
                 Menu {
                     Button {
                         addListCategoryId = nil
@@ -1272,15 +1272,15 @@ struct HomeView: View {
                         }
                     }
                 } label: {
-                    HStack(spacing: 4) {
+                    HStack(spacing: AppStyle.Spacing.tiny) {
                         Image(systemName: "folder")
                             .font(.inter(.caption))
                         Text(LocalizedStringKey(listCategoryPillLabel))
                             .font(.inter(.caption))
                     }
                     .foregroundColor(.black)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 8)
+                    .padding(.horizontal, AppStyle.Spacing.medium)
+                    .padding(.vertical, AppStyle.Spacing.compact)
                     .background(Color.white, in: Capsule())
                 }
 
@@ -1290,15 +1290,15 @@ struct HomeView: View {
                         addListScheduleExpanded.toggle()
                     }
                 } label: {
-                    HStack(spacing: 4) {
+                    HStack(spacing: AppStyle.Spacing.tiny) {
                         Image(systemName: "arrow.right.circle")
                             .font(.inter(.caption))
                         Text("Schedule")
                             .font(.inter(.caption))
                     }
                     .foregroundColor(!addListDates.isEmpty ? .white : .black)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 8)
+                    .padding(.horizontal, AppStyle.Spacing.medium)
+                    .padding(.vertical, AppStyle.Spacing.compact)
                     .background(!addListDates.isEmpty ? Color.appRed : Color.white, in: Capsule())
                 }
                 .buttonStyle(.plain)
@@ -1316,26 +1316,26 @@ struct HomeView: View {
                         }
                     }
                 } label: {
-                    HStack(spacing: 4) {
+                    HStack(spacing: AppStyle.Spacing.tiny) {
                         Circle()
                             .fill(addListPriority.dotColor)
-                            .frame(width: 8, height: 8)
+                            .frame(width: AppStyle.Layout.dotSize, height: AppStyle.Layout.dotSize)
                         Text(addListPriority.displayName)
                             .font(.inter(.caption))
                     }
                     .foregroundColor(.black)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 8)
+                    .padding(.horizontal, AppStyle.Spacing.medium)
+                    .padding(.vertical, AppStyle.Spacing.compact)
                     .background(Color.white, in: Capsule())
                 }
 
                 Spacer()
             }
-            .padding(.horizontal, 14)
-            .padding(.top, 6)
+            .padding(.horizontal, AppStyle.Spacing.content)
+            .padding(.top, AppStyle.Spacing.small)
             }
 
-            Spacer().frame(height: 20)
+            Spacer().frame(height: AppStyle.Spacing.page)
         }
         .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 20))
         .padding(.horizontal)
@@ -1353,31 +1353,31 @@ struct HomeView: View {
                 .onSubmit {
                     saveProject()
                 }
-                .padding(.horizontal, 14)
-                .padding(.top, 20)
-                .padding(.bottom, 10)
+                .padding(.horizontal, AppStyle.Spacing.content)
+                .padding(.top, AppStyle.Spacing.page)
+                .padding(.bottom, AppStyle.Spacing.medium)
 
             // Tasks + subtasks area
             if !addProjectDraftTasks.isEmpty {
                 Divider()
-                    .padding(.horizontal, 14)
+                    .padding(.horizontal, AppStyle.Spacing.content)
 
-                VStack(alignment: .leading, spacing: 6) {
+                VStack(alignment: .leading, spacing: AppStyle.Spacing.small) {
                     ForEach(addProjectDraftTasks) { task in
                         projectTaskDraftRow(task: task)
                     }
                 }
-                .padding(.horizontal, 14)
-                .padding(.top, 8)
-                .padding(.bottom, 6)
+                .padding(.horizontal, AppStyle.Spacing.content)
+                .padding(.top, AppStyle.Spacing.compact)
+                .padding(.bottom, AppStyle.Spacing.small)
             }
 
             // Schedule expansion
             if addProjectScheduleExpanded {
                 Divider()
-                    .padding(.horizontal, 14)
+                    .padding(.horizontal, AppStyle.Spacing.content)
 
-                VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: AppStyle.Spacing.comfortable) {
                     Picker("Section", selection: $addProjectSection) {
                         Text("Focus").tag(Section.focus)
                         Text("To-Do").tag(Section.todo)
@@ -1389,9 +1389,9 @@ struct HomeView: View {
                         selectedTimeframe: $addProjectTimeframe
                     )
                 }
-                .padding(.horizontal, 14)
-                .padding(.top, 6)
-                .padding(.bottom, 14)
+                .padding(.horizontal, AppStyle.Spacing.content)
+                .padding(.top, AppStyle.Spacing.small)
+                .padding(.bottom, AppStyle.Spacing.content)
 
                 HStack {
                     Button {
@@ -1403,7 +1403,7 @@ struct HomeView: View {
                         Image(systemName: "xmark")
                             .font(.inter(.body, weight: .semiBold))
                             .foregroundColor(.primary)
-                            .frame(width: 36, height: 36)
+                            .frame(width: AppStyle.Layout.iconButton, height: AppStyle.Layout.iconButton)
                             .background(Color(.systemGray4), in: Circle())
                     }
                     .buttonStyle(.plain)
@@ -1421,7 +1421,7 @@ struct HomeView: View {
                         Image(systemName: "checkmark")
                             .font(.inter(.body, weight: .semiBold))
                             .foregroundColor(hasDateChanges ? .white : .secondary)
-                            .frame(width: 36, height: 36)
+                            .frame(width: AppStyle.Layout.iconButton, height: AppStyle.Layout.iconButton)
                             .background(
                                 hasDateChanges ? Color.appRed : Color(.systemGray4),
                                 in: Circle()
@@ -1429,25 +1429,25 @@ struct HomeView: View {
                     }
                     .buttonStyle(.plain)
                 }
-                .padding(.horizontal, 14)
-                .padding(.bottom, 4)
+                .padding(.horizontal, AppStyle.Spacing.content)
+                .padding(.bottom, AppStyle.Spacing.tiny)
             }
 
             // Row 1: [Task] [...] Spacer [Checkmark]
             if !addProjectScheduleExpanded {
-            HStack(spacing: 8) {
+            HStack(spacing: AppStyle.Spacing.compact) {
                 Button {
                     addNewProjectTask()
                 } label: {
-                    HStack(spacing: 4) {
+                    HStack(spacing: AppStyle.Spacing.tiny) {
                         Image(systemName: "plus")
                             .font(.inter(.caption))
                         Text("Task")
                             .font(.inter(.caption))
                     }
                     .foregroundColor(.white)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 8)
+                    .padding(.horizontal, AppStyle.Spacing.medium)
+                    .padding(.vertical, AppStyle.Spacing.compact)
                     .background(Color.black, in: Capsule())
                 }
                 .buttonStyle(.plain)
@@ -1461,8 +1461,8 @@ struct HomeView: View {
                         .font(.inter(.caption, weight: .bold))
                         .foregroundColor(.black)
                         .frame(minHeight: UIFont.preferredFont(forTextStyle: .caption1).lineHeight)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 8)
+                        .padding(.horizontal, AppStyle.Spacing.medium)
+                        .padding(.vertical, AppStyle.Spacing.compact)
                         .background(Color.white, in: Capsule())
                 }
                 .buttonStyle(.plain)
@@ -1475,7 +1475,7 @@ struct HomeView: View {
                     Image(systemName: "checkmark")
                         .font(.inter(.body, weight: .semiBold))
                         .foregroundColor(isAddProjectTitleEmpty ? .secondary : .white)
-                        .frame(width: 36, height: 36)
+                        .frame(width: AppStyle.Layout.iconButton, height: AppStyle.Layout.iconButton)
                         .background(
                             isAddProjectTitleEmpty ? Color(.systemGray4) : Color.focusBlue,
                             in: Circle()
@@ -1484,13 +1484,13 @@ struct HomeView: View {
                 .buttonStyle(.plain)
                 .disabled(isAddProjectTitleEmpty)
             }
-            .padding(.horizontal, 14)
-            .padding(.bottom, 4)
+            .padding(.horizontal, AppStyle.Spacing.content)
+            .padding(.bottom, AppStyle.Spacing.tiny)
             }
 
             // Row 2: [Category] [Schedule] [Priority]
             if addProjectOptionsExpanded && !addProjectScheduleExpanded {
-            HStack(spacing: 8) {
+            HStack(spacing: AppStyle.Spacing.compact) {
                 Menu {
                     Button {
                         addProjectCategoryId = nil
@@ -1513,15 +1513,15 @@ struct HomeView: View {
                         }
                     }
                 } label: {
-                    HStack(spacing: 4) {
+                    HStack(spacing: AppStyle.Spacing.tiny) {
                         Image(systemName: "folder")
                             .font(.inter(.caption))
                         Text(LocalizedStringKey(projectCategoryPillLabel))
                             .font(.inter(.caption))
                     }
                     .foregroundColor(.black)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 8)
+                    .padding(.horizontal, AppStyle.Spacing.medium)
+                    .padding(.vertical, AppStyle.Spacing.compact)
                     .background(Color.white, in: Capsule())
                 }
 
@@ -1531,15 +1531,15 @@ struct HomeView: View {
                         addProjectScheduleExpanded.toggle()
                     }
                 } label: {
-                    HStack(spacing: 4) {
+                    HStack(spacing: AppStyle.Spacing.tiny) {
                         Image(systemName: "arrow.right.circle")
                             .font(.inter(.caption))
                         Text("Schedule")
                             .font(.inter(.caption))
                     }
                     .foregroundColor(!addProjectDates.isEmpty ? .white : .black)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 8)
+                    .padding(.horizontal, AppStyle.Spacing.medium)
+                    .padding(.vertical, AppStyle.Spacing.compact)
                     .background(!addProjectDates.isEmpty ? Color.appRed : Color.white, in: Capsule())
                 }
                 .buttonStyle(.plain)
@@ -1557,26 +1557,26 @@ struct HomeView: View {
                         }
                     }
                 } label: {
-                    HStack(spacing: 4) {
+                    HStack(spacing: AppStyle.Spacing.tiny) {
                         Circle()
                             .fill(addProjectPriority.dotColor)
-                            .frame(width: 8, height: 8)
+                            .frame(width: AppStyle.Layout.dotSize, height: AppStyle.Layout.dotSize)
                         Text(addProjectPriority.displayName)
                             .font(.inter(.caption))
                     }
                     .foregroundColor(.black)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 8)
+                    .padding(.horizontal, AppStyle.Spacing.medium)
+                    .padding(.vertical, AppStyle.Spacing.compact)
                     .background(Color.white, in: Capsule())
                 }
 
                 Spacer()
             }
-            .padding(.horizontal, 14)
-            .padding(.top, 6)
+            .padding(.horizontal, AppStyle.Spacing.content)
+            .padding(.top, AppStyle.Spacing.small)
             }
 
-            Spacer().frame(height: 20)
+            Spacer().frame(height: AppStyle.Spacing.page)
         }
         .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 20))
         .padding(.horizontal)
@@ -1586,7 +1586,7 @@ struct HomeView: View {
 
     @ViewBuilder
     private func projectTaskDraftRow(task: DraftTask) -> some View {
-        HStack(spacing: 8) {
+        HStack(spacing: AppStyle.Spacing.compact) {
             Image(systemName: "circle")
                 .font(.inter(.caption2))
                 .foregroundColor(.secondary.opacity(0.5))
@@ -1617,7 +1617,7 @@ struct HomeView: View {
 
         // Subtask rows
         ForEach(task.subtasks) { subtask in
-            HStack(spacing: 8) {
+            HStack(spacing: AppStyle.Spacing.compact) {
                 Image(systemName: "circle")
                     .font(.inter(.caption2))
                     .foregroundColor(.secondary.opacity(0.5))
@@ -1647,28 +1647,28 @@ struct HomeView: View {
                 .buttonStyle(.plain)
             }
             .padding(.leading, 28)
-            .padding(.trailing, 8)
-            .padding(.vertical, 6)
+            .padding(.trailing, AppStyle.Spacing.compact)
+            .padding(.vertical, AppStyle.Spacing.small)
         }
-        .padding(.top, 12)
+        .padding(.top, AppStyle.Spacing.comfortable)
 
         // "+ Sub-task" button
         Button {
             addNewProjectSubtask(toTask: task.id)
         } label: {
-            HStack(spacing: 4) {
+            HStack(spacing: AppStyle.Spacing.tiny) {
                 Image(systemName: "plus")
                     .font(.inter(.subheadline))
                 Text("Sub-task")
                     .font(.inter(.subheadline))
             }
             .foregroundColor(.secondary)
-            .padding(.vertical, 4)
+            .padding(.vertical, AppStyle.Spacing.tiny)
         }
         .buttonStyle(.plain)
         .padding(.leading, 28)
-        .padding(.top, 8)
-        .padding(.bottom, 6)
+        .padding(.top, AppStyle.Spacing.compact)
+        .padding(.bottom, AppStyle.Spacing.small)
     }
 
     // MARK: - Add Task Helpers
@@ -2051,11 +2051,11 @@ struct HomeProjectRow: View {
     let onRequestDelete: () -> Void
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: AppStyle.Spacing.comfortable) {
             Image(systemName: "folder")
                 .font(.inter(.body, weight: .medium))
                 .foregroundColor(.secondary)
-                .frame(width: 24)
+                .frame(width: AppStyle.Layout.pillButton)
 
             Text(project.title)
                 .font(.inter(.body))
@@ -2068,7 +2068,7 @@ struct HomeProjectRow: View {
                 .font(.inter(size: 12, weight: .semiBold))
                 .foregroundColor(.secondary)
         }
-        .padding(.vertical, 10)
+        .padding(.vertical, AppStyle.Spacing.medium)
         .contentShape(Rectangle())
         .onTapGesture { onTap() }
         .contextMenu {
@@ -2097,11 +2097,11 @@ struct HomeListRow: View {
     let onRequestDelete: () -> Void
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: AppStyle.Spacing.comfortable) {
             Image(systemName: "list.bullet")
                 .font(.inter(.body, weight: .medium))
                 .foregroundColor(.secondary)
-                .frame(width: 24)
+                .frame(width: AppStyle.Layout.pillButton)
 
             Text(list.title)
                 .font(.inter(.body))
@@ -2114,7 +2114,7 @@ struct HomeListRow: View {
                 .font(.inter(size: 12, weight: .semiBold))
                 .foregroundColor(.secondary)
         }
-        .padding(.vertical, 10)
+        .padding(.vertical, AppStyle.Spacing.medium)
         .contentShape(Rectangle())
         .onTapGesture { onTap() }
         .contextMenu {
@@ -2144,8 +2144,8 @@ private struct HomePlaceholderPage: View {
             Text(title)
                 .font(.inter(.title2, weight: .bold))
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 20)
-                .padding(.top, 16)
+                .padding(.horizontal, AppStyle.Spacing.page)
+                .padding(.top, AppStyle.Spacing.section)
             Spacer()
         }
         .navigationBarTitleDisplayMode(.inline)
@@ -2159,7 +2159,7 @@ private struct HomePlaceholderPage: View {
                     Image(systemName: "chevron.left")
                         .font(.inter(.body, weight: .semiBold))
                         .foregroundColor(.primary)
-                        .frame(width: 44, height: 44)
+                        .frame(width: AppStyle.Layout.touchTarget, height: AppStyle.Layout.touchTarget)
                         .contentShape(Rectangle())
                 }
                 .accessibilityLabel("Back")

@@ -39,15 +39,15 @@ struct RescheduleSheet: View {
             )
         ) {
             ScrollView {
-                VStack(spacing: 12) {
+                VStack(spacing: AppStyle.Spacing.comfortable) {
                     // Current schedule card
                     VStack(alignment: .leading, spacing: 0) {
                         Text("Current Schedule")
                             .font(.inter(.footnote, weight: .medium))
                             .foregroundColor(.secondary)
-                            .padding(.horizontal, 14)
-                            .padding(.top, 12)
-                            .padding(.bottom, 8)
+                            .padding(.horizontal, AppStyle.Spacing.content)
+                            .padding(.top, AppStyle.Spacing.comfortable)
+                            .padding(.bottom, AppStyle.Spacing.compact)
 
                         Divider()
 
@@ -57,8 +57,8 @@ struct RescheduleSheet: View {
                             Text(schedule.timeframe.displayName)
                                 .foregroundColor(.secondary)
                         }
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 12)
+                        .padding(.horizontal, AppStyle.Spacing.content)
+                        .padding(.vertical, AppStyle.Spacing.comfortable)
 
                         Divider()
 
@@ -68,8 +68,8 @@ struct RescheduleSheet: View {
                             Text(formatDate(schedule.scheduleDate, for: schedule.timeframe))
                                 .foregroundColor(.secondary)
                         }
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 12)
+                        .padding(.horizontal, AppStyle.Spacing.content)
+                        .padding(.vertical, AppStyle.Spacing.comfortable)
                     }
                     .background(Color(.secondarySystemGroupedBackground))
                     .clipShape(RoundedRectangle(cornerRadius: 12))
@@ -79,9 +79,9 @@ struct RescheduleSheet: View {
                         Text("New Schedule")
                             .font(.inter(.footnote, weight: .medium))
                             .foregroundColor(.secondary)
-                            .padding(.horizontal, 14)
-                            .padding(.top, 12)
-                            .padding(.bottom, 8)
+                            .padding(.horizontal, AppStyle.Spacing.content)
+                            .padding(.top, AppStyle.Spacing.comfortable)
+                            .padding(.bottom, AppStyle.Spacing.compact)
 
                         Divider()
 
@@ -92,9 +92,9 @@ struct RescheduleSheet: View {
                             Text("Year").tag(Timeframe.yearly)
                         }
                         .pickerStyle(.segmented)
-                        .padding(.horizontal, 14)
-                        .padding(.top, 8)
-                        .padding(.bottom, 8)
+                        .padding(.horizontal, AppStyle.Spacing.content)
+                        .padding(.top, AppStyle.Spacing.compact)
+                        .padding(.bottom, AppStyle.Spacing.compact)
 
                         Divider()
 
@@ -102,8 +102,8 @@ struct RescheduleSheet: View {
                             selectedDate: $selectedDate,
                             timeframe: selectedTimeframe
                         )
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 8)
+                        .padding(.horizontal, AppStyle.Spacing.content)
+                        .padding(.vertical, AppStyle.Spacing.compact)
                     }
                     .background(Color(.secondarySystemGroupedBackground))
                     .clipShape(RoundedRectangle(cornerRadius: 12))
@@ -111,15 +111,15 @@ struct RescheduleSheet: View {
                     if let error = errorMessage {
                         Label(error, systemImage: "exclamationmark.triangle")
                             .foregroundColor(.red)
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 12)
+                            .padding(.horizontal, AppStyle.Spacing.content)
+                            .padding(.vertical, AppStyle.Spacing.comfortable)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .background(Color(.secondarySystemGroupedBackground))
                             .clipShape(RoundedRectangle(cornerRadius: 12))
                     }
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
+                .padding(.horizontal, AppStyle.Spacing.section)
+                .padding(.vertical, AppStyle.Spacing.comfortable)
             }
         }
     }

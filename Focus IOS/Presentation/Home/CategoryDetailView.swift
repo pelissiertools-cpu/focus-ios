@@ -72,7 +72,7 @@ struct CategoryDetailView: View {
     var body: some View {
         VStack(spacing: 0) {
             // Header
-            HStack(alignment: .center, spacing: 8) {
+            HStack(alignment: .center, spacing: AppStyle.Spacing.compact) {
                 Group {
                     if category.isSystem {
                         HourglassIcon()
@@ -101,9 +101,9 @@ struct CategoryDetailView: View {
 
                 Spacer()
             }
-            .padding(.horizontal, 20)
-            .padding(.top, 16)
-            .padding(.bottom, 8)
+            .padding(.horizontal, AppStyle.Spacing.page)
+            .padding(.top, AppStyle.Spacing.section)
+            .padding(.bottom, AppStyle.Spacing.compact)
 
             if isLoading && isEmpty {
                 ProgressView()
@@ -111,7 +111,7 @@ struct CategoryDetailView: View {
                     .contentShape(Rectangle())
                     .onTapGesture { isNameFocused = false }
             } else if isEmpty {
-                VStack(spacing: 4) {
+                VStack(spacing: AppStyle.Spacing.tiny) {
                     Text("No items yet")
                         .font(AppStyle.Typography.emptyTitle)
                     Text("Tasks, projects, and lists in \"\(category.name)\" will appear here")
@@ -120,7 +120,7 @@ struct CategoryDetailView: View {
                         .multilineTextAlignment(.center)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .padding(.horizontal, 20)
+                .padding(.horizontal, AppStyle.Spacing.page)
                 .contentShape(Rectangle())
                 .onTapGesture { isNameFocused = false }
             } else {
@@ -181,7 +181,7 @@ struct CategoryDetailView: View {
                     Image(systemName: "chevron.left")
                         .font(.inter(.body, weight: .semiBold))
                         .foregroundColor(.primary)
-                        .frame(width: 44, height: 44)
+                        .frame(width: AppStyle.Layout.touchTarget, height: AppStyle.Layout.touchTarget)
                         .contentShape(Rectangle())
                 }
                 .accessibilityLabel("Back")
@@ -227,7 +227,7 @@ struct CategoryDetailView: View {
                                     }
                                 }
                             )
-                            .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+                            .listRowInsets(EdgeInsets(top: 0, leading: AppStyle.Spacing.section, bottom: 0, trailing: AppStyle.Spacing.section))
                             .listRowSeparator(.hidden)
                             .listRowBackground(Color.clear)
 
@@ -241,8 +241,8 @@ struct CategoryDetailView: View {
                                     taskListVM.requestToggleCompletion(t)
                                 }
                             )
-                            .padding(.leading, task.parentTaskId != nil ? 32 : 0)
-                            .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+                            .padding(.leading, task.parentTaskId != nil ? AppStyle.Insets.nestedRow.leading : 0)
+                            .listRowInsets(AppStyle.Insets.row)
                             .listRowBackground(Color.clear)
                             .listRowSeparator(task.parentTaskId != nil ? .visible : .hidden)
 
@@ -276,7 +276,7 @@ struct CategoryDetailView: View {
                                 await refreshData()
                             }
                         )
-                        .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+                        .listRowInsets(AppStyle.Insets.row)
                         .listRowBackground(Color.clear)
                         .listRowSeparator(.hidden)
                     }
@@ -299,7 +299,7 @@ struct CategoryDetailView: View {
                                 await refreshData()
                             }
                         )
-                        .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+                        .listRowInsets(AppStyle.Insets.row)
                         .listRowBackground(Color.clear)
                         .listRowSeparator(.hidden)
                     }
@@ -309,7 +309,7 @@ struct CategoryDetailView: View {
             // Bottom spacer
             Color.clear
                 .frame(height: 100)
-                .listRowInsets(EdgeInsets())
+                .listRowInsets(AppStyle.Insets.zero)
                 .listRowSeparator(.hidden)
                 .listRowBackground(Color.clear)
         }
@@ -360,7 +360,7 @@ struct CategoryDetailView: View {
                 isTasksSectionCollapsed.toggle()
             }
         } label: {
-            HStack(spacing: 8) {
+            HStack(spacing: AppStyle.Spacing.compact) {
                 Image(systemName: "checkmark.circle")
                     .font(.inter(.subheadline))
                     .foregroundColor(.appRed)
@@ -378,9 +378,9 @@ struct CategoryDetailView: View {
             }
         }
         .buttonStyle(.plain)
-        .padding(.top, 4)
-        .padding(.bottom, 4)
-        .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+        .padding(.top, AppStyle.Spacing.tiny)
+        .padding(.bottom, AppStyle.Spacing.tiny)
+        .listRowInsets(AppStyle.Insets.row)
         .listRowSeparator(.hidden)
         .listRowBackground(Color.clear)
     }
@@ -391,7 +391,7 @@ struct CategoryDetailView: View {
                 isProjectsSectionCollapsed.toggle()
             }
         } label: {
-            HStack(spacing: 8) {
+            HStack(spacing: AppStyle.Spacing.compact) {
                 Image(systemName: "folder")
                     .font(.system(size: 14))
                     .foregroundColor(.appRed)
@@ -409,9 +409,9 @@ struct CategoryDetailView: View {
             }
         }
         .buttonStyle(.plain)
-        .padding(.top, 16)
-        .padding(.bottom, 4)
-        .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+        .padding(.top, AppStyle.Spacing.section)
+        .padding(.bottom, AppStyle.Spacing.tiny)
+        .listRowInsets(AppStyle.Insets.row)
         .listRowSeparator(.hidden)
         .listRowBackground(Color.clear)
     }
@@ -422,7 +422,7 @@ struct CategoryDetailView: View {
                 isListsSectionCollapsed.toggle()
             }
         } label: {
-            HStack(spacing: 8) {
+            HStack(spacing: AppStyle.Spacing.compact) {
                 Image(systemName: "list.bullet")
                     .font(.inter(.subheadline))
                     .foregroundColor(.appRed)
@@ -440,9 +440,9 @@ struct CategoryDetailView: View {
             }
         }
         .buttonStyle(.plain)
-        .padding(.top, 16)
-        .padding(.bottom, 4)
-        .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+        .padding(.top, AppStyle.Spacing.section)
+        .padding(.bottom, AppStyle.Spacing.tiny)
+        .listRowInsets(AppStyle.Insets.row)
         .listRowSeparator(.hidden)
         .listRowBackground(Color.clear)
     }
@@ -459,11 +459,11 @@ private struct CategoryProjectRow: View {
     @State private var showDeleteConfirmation = false
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: AppStyle.Spacing.comfortable) {
             Image(systemName: "folder")
                 .font(.inter(.body, weight: .medium))
                 .foregroundColor(.secondary)
-                .frame(width: 24)
+                .frame(width: AppStyle.Layout.pillButton)
 
             Text(project.title)
                 .font(.inter(.body))
@@ -476,7 +476,7 @@ private struct CategoryProjectRow: View {
                 .font(.inter(size: 12, weight: .semiBold))
                 .foregroundColor(.secondary)
         }
-        .padding(.vertical, 8)
+        .padding(.vertical, AppStyle.Spacing.compact)
         .contentShape(Rectangle())
         .onTapGesture { onTap() }
         .contextMenu {
@@ -510,11 +510,11 @@ private struct CategoryListRow: View {
     @State private var showDeleteConfirmation = false
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: AppStyle.Spacing.comfortable) {
             Image(systemName: "list.bullet")
                 .font(.inter(.body, weight: .medium))
                 .foregroundColor(.secondary)
-                .frame(width: 24)
+                .frame(width: AppStyle.Layout.pillButton)
 
             Text(list.title)
                 .font(.inter(.body))
@@ -527,7 +527,7 @@ private struct CategoryListRow: View {
                 .font(.inter(size: 12, weight: .semiBold))
                 .foregroundColor(.secondary)
         }
-        .padding(.vertical, 8)
+        .padding(.vertical, AppStyle.Spacing.compact)
         .contentShape(Rectangle())
         .onTapGesture { onTap() }
         .contextMenu {

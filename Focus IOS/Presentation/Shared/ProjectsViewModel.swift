@@ -470,6 +470,27 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
         return Double(completed) / Double(total)
     }
 
+    func sectionTaskCount(sectionId: UUID, projectId: UUID) -> Int {
+        let allTasks = projectTasksMap[projectId] ?? []
+        let uncompleted = allTasks.filter { !$0.isCompleted && $0.parentTaskId == nil }.sorted { $0.sortOrder < $1.sortOrder }
+
+        var count = 0
+        var inSection = false
+
+        for task in uncompleted {
+            if task.isSection {
+                if task.id == sectionId {
+                    inSection = true
+                } else if inSection {
+                    break
+                }
+            } else if inSection {
+                count += 1
+            }
+        }
+        return count
+    }
+
     // MARK: - Project CRUD
 
     @discardableResult

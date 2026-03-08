@@ -283,11 +283,6 @@ struct GoalsListPage: View {
 
             Spacer()
 
-            if !goalsViewModel.isEditMode {
-                Image(systemName: "chevron.right")
-                    .font(.inter(size: 12, weight: .semiBold))
-                    .foregroundColor(.secondary)
-            }
         }
         .padding(.vertical, 10)
         .contentShape(Rectangle())

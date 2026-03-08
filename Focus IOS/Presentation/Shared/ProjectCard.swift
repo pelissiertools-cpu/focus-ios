@@ -71,11 +71,21 @@ struct ProjectCard: View {
 
             // Title and progress
             VStack(alignment: .leading, spacing: 6) {
-                Text(project.title)
-                    .font(.inter(.title3, weight: .bold))
-                    .lineLimit(1)
-                    .strikethrough(project.isCompleted)
-                    .foregroundColor(project.isCompleted ? .secondary : .primary)
+                HStack(spacing: 8) {
+                    Text(project.title)
+                        .font(.inter(.title3, weight: .bold))
+                        .lineLimit(1)
+                        .strikethrough(project.isCompleted)
+                        .foregroundColor(project.isCompleted ? .secondary : .primary)
+
+                    if !project.isCompleted && taskProgress.total > 0 {
+                        ProjectProgressRing(
+                            completed: taskProgress.completed,
+                            total: taskProgress.total,
+                            size: 22
+                        )
+                    }
+                }
 
                 HStack(spacing: 16) {
                     HStack(spacing: 4) {
@@ -275,6 +285,32 @@ struct ProjectSubtaskRow: View {
                 }
             }
         }
+    }
+}
+
+// MARK: - Project Progress Ring
+
+struct ProjectProgressRing: View {
+    let completed: Int
+    let total: Int
+    var size: CGFloat = 20
+
+    private var progress: Double {
+        guard total > 0 else { return 0 }
+        return Double(completed) / Double(total)
+    }
+
+    var body: some View {
+        ZStack {
+            Circle()
+                .stroke(Color(.systemGray4), lineWidth: 2.5)
+
+            Circle()
+                .trim(from: 0, to: progress)
+                .stroke(Color.appRed, style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
+                .rotationEffect(.degrees(-90))
+        }
+        .frame(width: size, height: size)
     }
 }
 

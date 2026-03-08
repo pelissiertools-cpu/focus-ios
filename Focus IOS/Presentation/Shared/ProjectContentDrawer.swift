@@ -29,17 +29,28 @@ struct ProjectContentView: View {
             ScrollViewReader { proxy in
                 List {
                     // Project title — editable inline
-                    TextField("Project name", text: $projectTitle, axis: .vertical)
-                        .font(.inter(.title2, weight: .bold))
-                        .foregroundColor(.primary)
-                        .textFieldStyle(.plain)
-                        .focused($isTitleFocused)
-                        .onSubmit { saveProjectTitle() }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .listRowInsets(EdgeInsets(top: 16, leading: 20, bottom: 4, trailing: 20))
-                        .listRowBackground(Color.clear)
-                        .listRowSeparator(.hidden)
-                        .moveDisabled(true)
+                    HStack(spacing: 10) {
+                        TextField("Project name", text: $projectTitle, axis: .vertical)
+                            .font(.inter(.title2, weight: .bold))
+                            .foregroundColor(.primary)
+                            .textFieldStyle(.plain)
+                            .focused($isTitleFocused)
+                            .onSubmit { saveProjectTitle() }
+
+                        let progress = viewModel.taskProgress(for: project.id)
+                        if progress.total > 0 {
+                            ProjectProgressRing(
+                                completed: progress.completed,
+                                total: progress.total,
+                                size: 28
+                            )
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .listRowInsets(EdgeInsets(top: 16, leading: 20, bottom: 4, trailing: 20))
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+                    .moveDisabled(true)
 
                     // Notes
                     Group {
@@ -605,15 +616,29 @@ struct ProjectSectionRow: View {
         _sectionTitle = State(initialValue: section.title)
     }
 
+    private var taskCount: Int {
+        viewModel.sectionTaskCount(sectionId: section.id, projectId: projectId)
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            TextField("Section name", text: $sectionTitle)
-                .font(.inter(.headline, weight: .bold))
-                .foregroundColor(.appRed)
-                .textFieldStyle(.plain)
-                .focused($isEditing)
-                .onSubmit { saveSectionTitle() }
-                .padding(.top, 16)
+            HStack {
+                TextField("Section name", text: $sectionTitle)
+                    .font(.inter(.headline, weight: .bold))
+                    .foregroundColor(.appRed)
+                    .textFieldStyle(.plain)
+                    .focused($isEditing)
+                    .onSubmit { saveSectionTitle() }
+
+                Spacer()
+
+                if taskCount > 0 {
+                    Text("\(taskCount)")
+                        .font(.inter(.caption, weight: .medium))
+                        .foregroundColor(.secondary)
+                }
+            }
+            .padding(.top, 16)
 
             Rectangle()
                 .fill(Color.secondary.opacity(0.3))

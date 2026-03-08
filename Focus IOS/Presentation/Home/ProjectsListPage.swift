@@ -26,8 +26,13 @@ struct ProjectsListPage: View {
     var body: some View {
         ZStack {
             List {
-                Text("Projects")
-                    .pageTitleStyle()
+                HStack(spacing: 10) {
+                    Image(systemName: "folder")
+                        .font(.inter(.title2, weight: .medium))
+                        .foregroundColor(.secondary)
+                    Text("Projects")
+                        .pageTitleStyle()
+                }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .listRowInsets(EdgeInsets(top: 16, leading: 20, bottom: 16, trailing: 20))
                     .listRowBackground(Color.clear)
@@ -242,10 +247,11 @@ struct ProjectsListPage: View {
                     .foregroundColor(projectsViewModel.selectedProjectIds.contains(project.id) ? .appRed : .secondary)
             }
 
-            Image(systemName: "folder")
-                .font(.inter(.body, weight: .medium))
-                .foregroundColor(.secondary)
-                .frame(width: 24)
+            ProjectProgressRing(
+                completed: projectsViewModel.taskProgress(for: project.id).completed,
+                total: projectsViewModel.taskProgress(for: project.id).total,
+                size: 24
+            )
 
             Text(project.title)
                 .font(.inter(.body))
@@ -254,11 +260,6 @@ struct ProjectsListPage: View {
 
             Spacer()
 
-            if !projectsViewModel.isEditMode {
-                Image(systemName: "chevron.right")
-                    .font(.inter(size: 12, weight: .semiBold))
-                    .foregroundColor(.secondary)
-            }
         }
         .padding(.vertical, 10)
         .contentShape(Rectangle())

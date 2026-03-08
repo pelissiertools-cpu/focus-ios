@@ -26,8 +26,13 @@ struct QuickListsPage: View {
     var body: some View {
         ZStack {
             List {
-                Text("Quick Lists")
-                    .pageTitleStyle()
+                HStack(spacing: 10) {
+                    Image(systemName: "list.bullet")
+                        .font(.inter(.title2, weight: .medium))
+                        .foregroundColor(.secondary)
+                    Text("Quick Lists")
+                        .pageTitleStyle()
+                }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .listRowInsets(EdgeInsets(top: 16, leading: 20, bottom: 16, trailing: 20))
                     .listRowBackground(Color.clear)
@@ -235,10 +240,9 @@ struct QuickListsPage: View {
                     .foregroundColor(listsViewModel.selectedListIds.contains(list.id) ? .appRed : .secondary)
             }
 
-            Image(systemName: "list.bullet")
-                .font(.inter(.body, weight: .medium))
-                .foregroundColor(.secondary)
-                .frame(width: 24)
+            Circle()
+                .fill(Color.secondary.opacity(0.5))
+                .frame(width: 8, height: 8)
 
             Text(list.title)
                 .font(.inter(.body))
@@ -247,11 +251,6 @@ struct QuickListsPage: View {
 
             Spacer()
 
-            if !listsViewModel.isEditMode {
-                Image(systemName: "chevron.right")
-                    .font(.inter(size: 12, weight: .semiBold))
-                    .foregroundColor(.secondary)
-            }
         }
         .padding(.vertical, 10)
         .contentShape(Rectangle())

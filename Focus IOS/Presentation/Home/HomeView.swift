@@ -141,25 +141,27 @@ struct HomeView: View {
                             .buttonStyle(.plain)
 
                             Spacer()
+                        }
+                        .padding(.horizontal, 20)
+                        .padding(.top, 8)
 
+                        // MARK: - Date Header
+                        HStack(alignment: .bottom) {
+                            VStack(alignment: .leading, spacing: 0) {
+                                Text(currentDayName)
+                                    .pageTitleStyle()
+                                    .lineSpacing(31.6 - 26.14)
+                                    .foregroundColor(.primary)
+                                formattedDateView
+                                    .foregroundColor(.secondary)
+                            }
+                            Spacer()
                             Button(action: { showSearch = true }) {
                                 Image(systemName: "magnifyingglass")
                                     .font(.inter(.body, weight: .medium))
                                     .foregroundColor(.secondary)
                             }
                             .buttonStyle(.plain)
-                        }
-                        .padding(.horizontal, 20)
-                        .padding(.top, 8)
-
-                        // MARK: - Date Header
-                        VStack(alignment: .leading, spacing: 0) {
-                            Text(currentDayName)
-                                .pageTitleStyle()
-                                .lineSpacing(31.6 - 26.14)
-                                .foregroundColor(.primary)
-                            formattedDateView
-                                .foregroundColor(.secondary)
                         }
                         .padding(.horizontal, 20)
                         .padding(.bottom, 16)
@@ -517,12 +519,12 @@ struct HomeView: View {
             HStack {
                 if centered { Spacer() }
                 Text(title)
-                    .font(.helveticaNeue(size: 15.22))
+                    .font(.helveticaNeue(size: 15.22, weight: .medium))
                     .tracking(-0.158)
                     .foregroundColor(.primary)
                 if let count, count > 0 {
                     Text("(\(count))")
-                        .font(.helveticaNeue(size: 11.08))
+                        .font(.helveticaNeue(size: 11.08, weight: .medium))
                         .tracking(-0.11)
                         .lineSpacing(13.4 - 11.08)
                         .foregroundColor(.secondary)
@@ -530,7 +532,7 @@ struct HomeView: View {
                 Spacer()
                 if let icon {
                     Image(systemName: icon)
-                        .font(.helveticaNeue(size: 17.3))
+                        .font(.helveticaNeue(size: 17.3, weight: .medium))
                         .foregroundColor(.primary)
                         .frame(width: 24, alignment: .center)
                 } else {
@@ -554,20 +556,20 @@ struct HomeView: View {
             VStack(spacing: 6) {
                 if let icon {
                     Image(systemName: icon)
-                        .font(.helveticaNeue(size: 17.3))
+                        .font(.helveticaNeue(size: 17.3, weight: .medium))
                         .foregroundColor(.primary)
                 } else {
                     customIcon()
                 }
                 HStack(spacing: 3) {
                     Text(title)
-                        .font(.helveticaNeue(size: 13))
+                        .font(.helveticaNeue(size: 13, weight: .medium))
                         .tracking(-0.135)
                         .foregroundColor(.primary)
                         .lineLimit(1)
                     if let count, count > 0 {
                         Text("(\(count))")
-                            .font(.helveticaNeue(size: 10))
+                            .font(.helveticaNeue(size: 10, weight: .medium))
                             .foregroundColor(.secondary)
                     }
                 }
@@ -636,7 +638,7 @@ struct HomeView: View {
                 }
 
                 Text(item.title)
-                    .font(.helveticaNeue(.body, weight: .medium))
+                    .font(.helveticaNeue(.body, weight: .bold))
                     .foregroundColor(.primary)
                     .lineLimit(1)
 
@@ -722,7 +724,7 @@ struct HomeView: View {
                         .offset(x: 14, y: 0)
                 }
             }
-            .frame(height: 17.56)
+            .frame(minHeight: 17.56)
         }
         .padding(.horizontal, 20)
     }

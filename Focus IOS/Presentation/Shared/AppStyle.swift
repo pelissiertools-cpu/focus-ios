@@ -42,6 +42,34 @@ enum AppStyle {
         /// Small collapse / expand chevrons
         static let chevron: Font = .inter(size: 8, weight: .semiBold)
 
+        /// Home card title (Inbox, Today, Scheduled, All, Completed, Someday)
+        static let homeCardTitle: Font = .helveticaNeue(size: 15.22, weight: .medium)
+        static let homeCardTitleTracking: CGFloat = -0.158
+
+        /// Home card count badge
+        static let homeCardCount: Font = .helveticaNeue(size: 11.08, weight: .medium)
+        static let homeCardCountTracking: CGFloat = -0.11
+        static let homeCardCountLineSpacing: CGFloat = 13.4 - 11.08
+
+        /// Home card icon
+        static let homeCardIcon: Font = .helveticaNeue(size: 17.3, weight: .medium)
+
+        /// Home compact card title (Quick lists, Projects, Goals)
+        static let homeCardCompactTitle: Font = .helveticaNeue(size: 13, weight: .medium)
+        static let homeCardCompactTitleTracking: CGFloat = -0.135
+
+        /// Home compact card count badge
+        static let homeCardCompactCount: Font = .helveticaNeue(size: 10, weight: .medium)
+
+        /// Home compact card icon
+        static let homeCardCompactIcon: Font = .helveticaNeue(size: 17.3, weight: .medium)
+
+        /// Pinned item row title
+        static let pinnedItemTitle: Font = .helveticaNeue(.body, weight: .bold)
+
+        /// Pinned item row icon
+        static let pinnedItemIcon: Font = .inter(.body, weight: .medium)
+
     }
 
     // MARK: - Opacity

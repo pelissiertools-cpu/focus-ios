@@ -665,7 +665,7 @@ struct ProjectSectionRow: View {
             HStack {
                 TextField("Section name", text: $sectionTitle)
                     .font(.inter(.headline, weight: .bold))
-                    .foregroundColor(.accentOrange)
+                    .foregroundColor(.focusBlue)
                     .textFieldStyle(.plain)
                     .focused($isEditing)
                     .onSubmit { saveSectionTitle() }

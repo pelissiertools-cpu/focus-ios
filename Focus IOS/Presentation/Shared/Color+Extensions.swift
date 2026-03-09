@@ -101,4 +101,6 @@ extension Color {
     static let inboxGreen = Color(red: 0x02/255.0, green: 0x7B/255.0, blue: 0x3A/255.0)
     /// Accent orange (#FF8D00)
     static let accentOrange = Color(red: 0xFF/255.0, green: 0x8D/255.0, blue: 0x00/255.0)
+    /// Section divider title blue (#D5DAEC)
+    static let sectionBlue = Color(red: 0xD5/255.0, green: 0xDA/255.0, blue: 0xEC/255.0)
 }

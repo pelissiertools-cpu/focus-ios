@@ -485,6 +485,8 @@ struct CategoryDetailView: View {
                     ForEach(categoryProjects) { project in
                         CategoryProjectRow(
                             project: project,
+                            completed: projectsVM.taskProgress(for: project.id).completed,
+                            total: projectsVM.taskProgress(for: project.id).total,
                             onTap: { selectedProjectForNavigation = project },
                             onEdit: { projectsVM.selectedProjectForDetails = project },
                             onSchedule: { projectsVM.selectedTaskForSchedule = project },
@@ -677,6 +679,8 @@ struct CategoryDetailView: View {
 
 private struct CategoryProjectRow: View {
     let project: FocusTask
+    let completed: Int
+    let total: Int
     var onTap: () -> Void
     var onEdit: () -> Void
     var onSchedule: () -> Void
@@ -685,12 +689,11 @@ private struct CategoryProjectRow: View {
 
     var body: some View {
         HStack(spacing: AppStyle.Spacing.comfortable) {
-            Image("ProjectIcon")
-                .renderingMode(.template)
-                .resizable().scaledToFit()
-                .frame(width: 16, height: 16)
-                .foregroundColor(.secondary)
-                .frame(width: AppStyle.Layout.pillButton)
+            ProjectProgressRing(
+                completed: completed,
+                total: total,
+                size: AppStyle.Layout.pillButton
+            )
 
             Text(project.title)
                 .font(.inter(.body))
@@ -738,10 +741,9 @@ private struct CategoryListRow: View {
 
     var body: some View {
         HStack(spacing: AppStyle.Spacing.comfortable) {
-            Image(systemName: "checklist")
-                .font(.inter(.body, weight: .medium))
-                .foregroundColor(.secondary)
-                .frame(width: AppStyle.Layout.pillButton)
+            Circle()
+                .fill(Color.todayBadge)
+                .frame(width: AppStyle.Layout.dotSize, height: AppStyle.Layout.dotSize)
 
             Text(list.title)
                 .font(.inter(.body))

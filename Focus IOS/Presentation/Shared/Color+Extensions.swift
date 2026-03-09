@@ -67,4 +67,38 @@ extension Color {
             ? UIColor(white: 0.5, alpha: 0.01)
             : UIColor(white: 0.5, alpha: 0.12)
     })
+
+    // MARK: - Icon Badge Colors
+
+    /// Today badge background — #CDD6F8 light, focusBlue@20% dark
+    static let todayBadge = Color(UIColor { traits in
+        traits.userInterfaceStyle == .dark
+            ? UIColor(red: 0x2E/255.0, green: 0x59/255.0, blue: 0xF4/255.0, alpha: 0.2)
+            : UIColor(red: 0xCD/255.0, green: 0xD6/255.0, blue: 0xF8/255.0, alpha: 1)
+    })
+    /// Inbox badge background — #EBF6EC light, green@20% dark
+    static let inboxBadge = Color(UIColor { traits in
+        traits.userInterfaceStyle == .dark
+            ? UIColor(red: 0x02/255.0, green: 0x7B/255.0, blue: 0x3A/255.0, alpha: 0.2)
+            : UIColor(red: 0xEB/255.0, green: 0xF6/255.0, blue: 0xEC/255.0, alpha: 1)
+    })
+    /// Scheduled badge background — #F6EBEB light, appRed@20% dark
+    static let scheduledBadge = Color(UIColor { traits in
+        traits.userInterfaceStyle == .dark
+            ? UIColor(red: 0xF8/255.0, green: 0x1E/255.0, blue: 0x1D/255.0, alpha: 0.2)
+            : UIColor(red: 0xF6/255.0, green: 0xEB/255.0, blue: 0xEB/255.0, alpha: 1)
+    })
+    /// Section divider badge background — #F3E9E1 light, orange@20% dark
+    static let dividerBadge = Color(UIColor { traits in
+        traits.userInterfaceStyle == .dark
+            ? UIColor(red: 0xFF/255.0, green: 0x8D/255.0, blue: 0x00/255.0, alpha: 0.2)
+            : UIColor(red: 0xF3/255.0, green: 0xE9/255.0, blue: 0xE1/255.0, alpha: 1)
+    })
+
+    // MARK: - Named Foreground Colors
+
+    /// Inbox green (#027B3A)
+    static let inboxGreen = Color(red: 0x02/255.0, green: 0x7B/255.0, blue: 0x3A/255.0)
+    /// Accent orange (#FF8D00)
+    static let accentOrange = Color(red: 0xFF/255.0, green: 0x8D/255.0, blue: 0x00/255.0)
 }

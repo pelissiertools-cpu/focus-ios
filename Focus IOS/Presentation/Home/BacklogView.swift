@@ -193,8 +193,13 @@ struct BacklogView: View {
                 // Header
                 HStack(alignment: .center, spacing: AppStyle.Spacing.compact) {
                     Image(systemName: tasksOnly ? "tray.and.arrow.down" : "tray")
-                        .font(.inter(size: 22, weight: .regular))
-                        .foregroundColor(.primary)
+                        .font(.helveticaNeue(size: 15, weight: .medium))
+                        .foregroundColor(tasksOnly ? .inboxGreen : .primary)
+                        .frame(width: AppStyle.Layout.iconBadge, height: AppStyle.Layout.iconBadge)
+                        .background(
+                            tasksOnly ? Color.inboxBadge : Color.iconBadgeBackground,
+                            in: RoundedRectangle(cornerRadius: AppStyle.CornerRadius.iconBadge)
+                        )
 
                     Text(tasksOnly ? "Inbox" : "Backlog")
                         .pageTitleStyle()
@@ -203,7 +208,7 @@ struct BacklogView: View {
                     Spacer()
 
                     Button {
-                        withAnimation(.easeInOut(duration: 0.25)) {
+                        withAnimation(AppStyle.Anim.expand) {
                             isSearchActive.toggle()
                             if !isSearchActive {
                                 searchText = ""
@@ -315,16 +320,20 @@ struct BacklogView: View {
                     HStack {
                         Spacer()
                         Button {
-                            withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                            withAnimation(AppStyle.Anim.modeSwitch) {
                                 showingAddBar = true
                             }
                         } label: {
                             Image(systemName: "plus")
                                 .font(.inter(.title2, weight: .semiBold))
-                                .foregroundColor(.white)
+                                .foregroundColor(.appText)
                                 .frame(width: AppStyle.Layout.fab, height: AppStyle.Layout.fab)
-                                .glassEffect(.regular.tint(.charcoal).interactive(), in: .circle)
-                                .shadow(radius: 4, y: 2)
+                                .background(Color.cardBackground, in: Circle())
+                                .overlay(
+                                    Circle()
+                                        .stroke(Color.cardBorder, lineWidth: AppStyle.Border.thin)
+                                )
+                                .fabShadow()
                         }
                         .accessibilityLabel("Add task")
                         .padding(.trailing, AppStyle.Spacing.page)
@@ -336,7 +345,7 @@ struct BacklogView: View {
 
             // Add bar overlay
             if showingAddBar {
-                Color.black.opacity(0.15)
+                Color.black.opacity(AppStyle.Opacity.scrim)
                     .ignoresSafeArea()
                     .allowsHitTesting(false)
                     .transition(.opacity)
@@ -346,7 +355,7 @@ struct BacklogView: View {
                     Color.clear
                         .contentShape(Rectangle())
                         .onTapGesture {
-                            withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                            withAnimation(AppStyle.Anim.modeSwitch) {
                                 dismissAddBar()
                             }
                         }
@@ -366,7 +375,7 @@ struct BacklogView: View {
         }
         .onChange(of: searchFieldFocused) { _, focused in
             if !focused && searchText.trimmingCharacters(in: .whitespaces).isEmpty {
-                withAnimation(.easeInOut(duration: 0.25)) {
+                withAnimation(AppStyle.Anim.expand) {
                     isSearchActive = false
                 }
             }
@@ -539,7 +548,7 @@ struct BacklogView: View {
                         Menu {
                             ForEach(SortOption.allCases, id: \.self) { option in
                                 Button {
-                                    withAnimation(.easeInOut(duration: 0.2)) {
+                                    withAnimation(AppStyle.Anim.toggle) {
                                         taskListVM.sortOption = option
                                     }
                                 } label: {
@@ -555,7 +564,7 @@ struct BacklogView: View {
 
                             ForEach(taskListVM.sortOption.directionOrder, id: \.self) { direction in
                                 Button {
-                                    withAnimation(.easeInOut(duration: 0.2)) {
+                                    withAnimation(AppStyle.Anim.toggle) {
                                         taskListVM.sortDirection = direction
                                     }
                                 } label: {
@@ -647,7 +656,7 @@ struct BacklogView: View {
                             count: filteredTasks.filter { $0.priority == priority }.count,
                             isCollapsed: taskListVM.isPriorityCollapsed(priority),
                             onToggle: {
-                                withAnimation(.easeInOut(duration: 0.2)) {
+                                withAnimation(AppStyle.Anim.toggle) {
                                     taskListVM.togglePriorityCollapsed(priority)
                                 }
                             }
@@ -785,7 +794,7 @@ struct BacklogView: View {
 
     private var tasksSectionHeader: some View {
         Button {
-            withAnimation(.easeInOut(duration: 0.2)) {
+            withAnimation(AppStyle.Anim.toggle) {
                 isTasksSectionCollapsed.toggle()
             }
         } label: {
@@ -816,7 +825,7 @@ struct BacklogView: View {
 
     private var projectsSectionHeader: some View {
         Button {
-            withAnimation(.easeInOut(duration: 0.2)) {
+            withAnimation(AppStyle.Anim.toggle) {
                 isProjectsSectionCollapsed.toggle()
             }
         } label: {
@@ -847,7 +856,7 @@ struct BacklogView: View {
 
     private var listsSectionHeader: some View {
         Button {
-            withAnimation(.easeInOut(duration: 0.2)) {
+            withAnimation(AppStyle.Anim.toggle) {
                 isListsSectionCollapsed.toggle()
             }
         } label: {
@@ -929,7 +938,7 @@ private extension BacklogView {
 
                 HStack {
                     Button {
-                        withAnimation(.easeInOut(duration: 0.2)) {
+                        withAnimation(AppStyle.Anim.toggle) {
                             addTaskDates.removeAll()
                             addTaskScheduleExpanded = false
                         }
@@ -947,7 +956,7 @@ private extension BacklogView {
                     let hasDateChanges = addTaskDates != addTaskDatesSnapshot
                     Button {
                         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                        withAnimation(.easeInOut(duration: 0.2)) {
+                        withAnimation(AppStyle.Anim.toggle) {
                             addTaskScheduleExpanded = false
                         }
                     } label: {
@@ -985,7 +994,7 @@ private extension BacklogView {
                     .buttonStyle(.plain)
 
                     Button {
-                        withAnimation(.easeInOut(duration: 0.2)) {
+                        withAnimation(AppStyle.Anim.toggle) {
                             addTaskOptionsExpanded.toggle()
                         }
                     } label: {
@@ -1086,7 +1095,7 @@ private extension BacklogView {
                         if !addTaskScheduleExpanded {
                             addTaskDatesSnapshot = addTaskDates
                         }
-                        withAnimation(.easeInOut(duration: 0.2)) {
+                        withAnimation(AppStyle.Anim.toggle) {
                             addTaskScheduleExpanded.toggle()
                         }
                     } label: {
@@ -1193,7 +1202,7 @@ private extension BacklogView {
     func addNewSubtask() {
         addBarTitleFocused = true
         let newEntry = DraftSubtaskEntry()
-        withAnimation(.easeInOut(duration: 0.15)) {
+        withAnimation(AppStyle.Anim.quick) {
             addTaskSubtasks.append(newEntry)
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
@@ -1209,7 +1218,7 @@ private extension BacklogView {
             do {
                 let aiService = AIService()
                 let suggestions = try await aiService.generateSubtasks(title: title, description: nil)
-                withAnimation(.easeInOut(duration: 0.2)) {
+                withAnimation(AppStyle.Anim.toggle) {
                     addTaskSubtasks.append(contentsOf: suggestions.map { DraftSubtaskEntry(title: $0) })
                 }
                 hasGeneratedBreakdown = true
@@ -1241,16 +1250,24 @@ private struct BacklogFilterPill: View {
 
     var body: some View {
         Button {
-            withAnimation(.easeInOut(duration: 0.2)) {
+            withAnimation(AppStyle.Anim.toggle) {
                 isSelected.toggle()
             }
         } label: {
             Text(title)
-                .font(.inter(size: 13, weight: .medium))
-                .foregroundColor(isSelected ? .white : .secondary)
+                .font(.helveticaNeue(size: 13, weight: .medium))
+                .tracking(-0.135)
+                .foregroundColor(isSelected ? .white : .appText)
                 .padding(.horizontal, AppStyle.Spacing.comfortable)
                 .padding(.vertical, 7)
-                .background(isSelected ? Color.focusBlue : Color(.tertiarySystemFill), in: Capsule())
+                .background(
+                    isSelected ? Color.focusBlue : Color.categoryBackground,
+                    in: RoundedRectangle(cornerRadius: AppStyle.CornerRadius.card)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: AppStyle.CornerRadius.card)
+                        .stroke(isSelected ? Color.clear : Color.cardBorder, lineWidth: AppStyle.Border.thin)
+                )
         }
         .buttonStyle(.plain)
     }

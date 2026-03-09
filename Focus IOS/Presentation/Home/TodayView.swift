@@ -131,8 +131,10 @@ struct TodayView: View {
                 // Header
                 HStack(alignment: .center, spacing: AppStyle.Spacing.compact) {
                     Image(systemName: "sun.max")
-                        .font(.inter(size: 22, weight: .regular))
-                        .foregroundColor(.primary)
+                        .font(.helveticaNeue(size: 15, weight: .medium))
+                        .foregroundColor(.focusBlue)
+                        .frame(width: AppStyle.Layout.iconBadge, height: AppStyle.Layout.iconBadge)
+                        .background(Color.todayBadge, in: RoundedRectangle(cornerRadius: AppStyle.CornerRadius.iconBadge))
 
                     Text("Today")
                         .pageTitleStyle()
@@ -158,16 +160,20 @@ struct TodayView: View {
                     HStack {
                         Spacer()
                         Button {
-                            withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                            withAnimation(AppStyle.Anim.modeSwitch) {
                                 showingAddBar = true
                             }
                         } label: {
                             Image(systemName: "plus")
                                 .font(.inter(.title2, weight: .semiBold))
-                                .foregroundColor(.white)
+                                .foregroundColor(.appText)
                                 .frame(width: AppStyle.Layout.fab, height: AppStyle.Layout.fab)
-                                .glassEffect(.regular.tint(.charcoal).interactive(), in: .circle)
-                                .shadow(radius: 4, y: 2)
+                                .background(Color.cardBackground, in: Circle())
+                                .overlay(
+                                    Circle()
+                                        .stroke(Color.cardBorder, lineWidth: AppStyle.Border.thin)
+                                )
+                                .fabShadow()
                         }
                         .accessibilityLabel("Add task")
                         .padding(.trailing, AppStyle.Spacing.page)
@@ -177,7 +183,7 @@ struct TodayView: View {
             }
 
             if showingAddBar {
-                Color.black.opacity(0.15)
+                Color.black.opacity(AppStyle.Opacity.scrim)
                     .ignoresSafeArea()
                     .allowsHitTesting(false)
                     .transition(.opacity)
@@ -187,7 +193,7 @@ struct TodayView: View {
                     Color.clear
                         .contentShape(Rectangle())
                         .onTapGesture {
-                            withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                            withAnimation(AppStyle.Anim.modeSwitch) {
                                 showingAddBar = false
                             }
                         }

@@ -133,7 +133,7 @@ struct HomeView: View {
                         startPoint: .top,
                         endPoint: .bottom
                     )
-                    .frame(height: 280)
+                    .frame(height: AppStyle.Layout.gradientMistHeight)
                     .ignoresSafeArea(edges: .top)
                     Spacer()
                 }
@@ -146,7 +146,7 @@ struct HomeView: View {
                             Image("AppLogo")
                                 .resizable()
                                 .aspectRatio(contentMode: .fit)
-                                .frame(height: 40)
+                                .frame(height: AppStyle.Layout.logoHeight)
                             VStack(alignment: .leading, spacing: 0) {
                                 Text(currentDayName)
                                     .font(.helveticaNeue(size: 23.5))
@@ -167,25 +167,17 @@ struct HomeView: View {
                                 Image(systemName: "sun.max")
                                     .font(.helveticaNeue(size: 15, weight: .medium))
                                     .foregroundColor(.focusBlue)
-                                    .frame(width: 28, height: 28)
-                                    .background(Color(UIColor { traits in
-                                        traits.userInterfaceStyle == .dark
-                                            ? UIColor(red: 0x2E/255.0, green: 0x59/255.0, blue: 0xF4/255.0, alpha: 0.2)
-                                            : UIColor(red: 0xCD/255.0, green: 0xD6/255.0, blue: 0xF8/255.0, alpha: 1)
-                                    }), in: RoundedRectangle(cornerRadius: 7))
+                                    .frame(width: AppStyle.Layout.iconBadge, height: AppStyle.Layout.iconBadge)
+                                    .background(Color.todayBadge, in: RoundedRectangle(cornerRadius: AppStyle.CornerRadius.iconBadge))
                             }) {
                                 viewModel.selectedMenuItem = .today
                             }
                             homeCard(title: "Inbox", customIcon: {
                                 Image(systemName: "tray.and.arrow.down")
                                     .font(.helveticaNeue(size: 15, weight: .medium))
-                                    .foregroundColor(Color(red: 0x02/255.0, green: 0x7B/255.0, blue: 0x3A/255.0))
-                                    .frame(width: 28, height: 28)
-                                    .background(Color(UIColor { traits in
-                                        traits.userInterfaceStyle == .dark
-                                            ? UIColor(red: 0x02/255.0, green: 0x7B/255.0, blue: 0x3A/255.0, alpha: 0.2)
-                                            : UIColor(red: 0xEB/255.0, green: 0xF6/255.0, blue: 0xEC/255.0, alpha: 1)
-                                    }), in: RoundedRectangle(cornerRadius: 7))
+                                    .foregroundColor(.inboxGreen)
+                                    .frame(width: AppStyle.Layout.iconBadge, height: AppStyle.Layout.iconBadge)
+                                    .background(Color.inboxBadge, in: RoundedRectangle(cornerRadius: AppStyle.CornerRadius.iconBadge))
                             }, count: inboxCount) {
                                 viewModel.selectedMenuItem = .inbox
                             }
@@ -198,12 +190,8 @@ struct HomeView: View {
                                 Image(systemName: "calendar")
                                     .font(.helveticaNeue(size: 15, weight: .medium))
                                     .foregroundColor(.appRed)
-                                    .frame(width: 28, height: 28)
-                                    .background(Color(UIColor { traits in
-                                        traits.userInterfaceStyle == .dark
-                                            ? UIColor(red: 0xF8/255.0, green: 0x1E/255.0, blue: 0x1D/255.0, alpha: 0.2)
-                                            : UIColor(red: 0xF6/255.0, green: 0xEB/255.0, blue: 0xEB/255.0, alpha: 1)
-                                    }), in: RoundedRectangle(cornerRadius: 7))
+                                    .frame(width: AppStyle.Layout.iconBadge, height: AppStyle.Layout.iconBadge)
+                                    .background(Color.scheduledBadge, in: RoundedRectangle(cornerRadius: AppStyle.CornerRadius.iconBadge))
                             }) {
                                 viewModel.selectedMenuItem = .assign
                             }
@@ -211,8 +199,8 @@ struct HomeView: View {
                                 Image(systemName: "archivebox")
                                     .font(.helveticaNeue(size: 15, weight: .medium))
                                     .foregroundColor(.appText)
-                                    .frame(width: 28, height: 28)
-                                    .background(Color.iconBadgeBackground, in: RoundedRectangle(cornerRadius: 7))
+                                    .frame(width: AppStyle.Layout.iconBadge, height: AppStyle.Layout.iconBadge)
+                                    .background(Color.iconBadgeBackground, in: RoundedRectangle(cornerRadius: AppStyle.CornerRadius.iconBadge))
                             }) {
                                 viewModel.selectedMenuItem = .archive
                             }
@@ -286,7 +274,7 @@ struct HomeView: View {
                 // MARK: - Bottom Bar
                 if !showingAddBar {
                     homeBottomBar {
-                        withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                        withAnimation(AppStyle.Anim.modeSwitch) {
                             addBarMode = .task
                             showingAddBar = true
                         }
@@ -297,7 +285,7 @@ struct HomeView: View {
                 // MARK: - Add Bar Overlay
                 if showingAddBar {
                     // Scrim
-                    Color.black.opacity(0.15)
+                    Color.black.opacity(AppStyle.Opacity.scrim)
                         .ignoresSafeArea()
                         .allowsHitTesting(false)
                         .transition(.opacity)
@@ -308,7 +296,7 @@ struct HomeView: View {
                         Color.clear
                             .contentShape(Rectangle())
                             .onTapGesture {
-                                withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                                withAnimation(AppStyle.Anim.modeSwitch) {
                                     dismissActiveAddBar()
                                 }
                             }
@@ -464,14 +452,14 @@ struct HomeView: View {
             }
             .onChange(of: addBarTitleFocus) { _, focus in
                 if focus == .task && addTaskScheduleExpanded {
-                    withAnimation(.easeInOut(duration: 0.2)) {
+                    withAnimation(AppStyle.Anim.toggle) {
                         addTaskScheduleExpanded = false
                     }
                 }
             }
             .onChange(of: focusedSubtaskId) { _, subtaskId in
                 if subtaskId != nil && addTaskScheduleExpanded {
-                    withAnimation(.easeInOut(duration: 0.2)) {
+                    withAnimation(AppStyle.Anim.toggle) {
                         addTaskScheduleExpanded = false
                     }
                 }
@@ -485,7 +473,7 @@ struct HomeView: View {
             }
             .onChange(of: focusedListItemId) { _, itemId in
                 if itemId != nil && addListScheduleExpanded {
-                    withAnimation(.easeInOut(duration: 0.2)) {
+                    withAnimation(AppStyle.Anim.toggle) {
                         addListScheduleExpanded = false
                     }
                 }
@@ -499,7 +487,7 @@ struct HomeView: View {
             }
             .onChange(of: focusedProjectTaskId) { _, taskId in
                 if taskId != nil && addProjectScheduleExpanded {
-                    withAnimation(.easeInOut(duration: 0.2)) {
+                    withAnimation(AppStyle.Anim.toggle) {
                         addProjectScheduleExpanded = false
                     }
                 }
@@ -521,7 +509,7 @@ struct HomeView: View {
                 .toolbar {
                     ToolbarItem(placement: .navigationBarLeading) {
                         Button {
-                            withAnimation(.easeInOut(duration: 0.3)) {
+                            withAnimation(AppStyle.Anim.expand) {
                                 showSettings = false
                             }
                         } label: {
@@ -571,12 +559,9 @@ struct HomeView: View {
             .padding(AppStyle.Spacing.section)
             .frame(maxWidth: .infinity, minHeight: AppStyle.Layout.fab)
             .contentShape(Rectangle())
-            .background(Color.cardBackground, in: RoundedRectangle(cornerRadius: 12))
-            .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(Color.cardBorder, lineWidth: 0.33)
-            )
-            .shadow(color: .black.opacity(0.04), radius: 4, x: 0, y: 1)
+            .background(Color.cardBackground, in: RoundedRectangle(cornerRadius: AppStyle.CornerRadius.card))
+            .cardBorderOverlay()
+            .cardShadow()
         }
         .buttonStyle(.plain)
     }
@@ -602,12 +587,9 @@ struct HomeView: View {
             }
             .frame(maxWidth: .infinity, minHeight: AppStyle.Layout.fab)
             .contentShape(Rectangle())
-            .background(Color.cardBackground, in: RoundedRectangle(cornerRadius: 12))
-            .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(Color.cardBorder, lineWidth: 0.33)
-            )
-            .shadow(color: .black.opacity(0.04), radius: 4, x: 0, y: 1)
+            .background(Color.cardBackground, in: RoundedRectangle(cornerRadius: AppStyle.CornerRadius.card))
+            .cardBorderOverlay()
+            .cardShadow()
         }
         .buttonStyle(.plain)
     }
@@ -627,13 +609,10 @@ struct HomeView: View {
                 .padding(.vertical, AppStyle.Spacing.comfortable)
                 .padding(.horizontal, AppStyle.Spacing.compact)
                 .frame(width: (containerWidth - AppStyle.Spacing.page * 2 - AppStyle.Spacing.comfortable * 2) / 3)
-                .background(Color.categoryBackground, in: RoundedRectangle(cornerRadius: 12))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12)
-                        .stroke(Color.cardBorder, lineWidth: 0.33)
-                )
-                .shadow(color: .black.opacity(0.04), radius: 4, x: 0, y: 1)
-                .contentShape(RoundedRectangle(cornerRadius: 12))
+                .background(Color.categoryBackground, in: RoundedRectangle(cornerRadius: AppStyle.CornerRadius.card))
+                .cardBorderOverlay()
+                .cardShadow()
+                .contentShape(RoundedRectangle(cornerRadius: AppStyle.CornerRadius.card))
         }
         .buttonStyle(.plain)
         .contextMenu {
@@ -703,19 +682,15 @@ struct HomeView: View {
         VStack(alignment: .leading, spacing: AppStyle.Spacing.compact) {
             Rectangle()
                 .fill(Color.cardBorder)
-                .frame(height: 0.33)
+                .frame(height: AppStyle.Border.thin)
             if let assetIcon = assetIcon {
                 Image(assetIcon)
                     .resizable()
                     .scaledToFit()
-                    .frame(width: 14, height: 14)
-                    .foregroundColor(Color(red: 0xFF/255.0, green: 0x8D/255.0, blue: 0x00/255.0))
-                    .frame(width: 28, height: 28)
-                    .background(Color(UIColor { traits in
-                        traits.userInterfaceStyle == .dark
-                            ? UIColor(red: 0xFF/255.0, green: 0x8D/255.0, blue: 0x00/255.0, alpha: 0.2)
-                            : UIColor(red: 0xF3/255.0, green: 0xE9/255.0, blue: 0xE1/255.0, alpha: 1)
-                    }), in: RoundedRectangle(cornerRadius: 7))
+                    .frame(width: AppStyle.Layout.sectionDividerIcon, height: AppStyle.Layout.sectionDividerIcon)
+                    .foregroundColor(.accentOrange)
+                    .frame(width: AppStyle.Layout.iconBadge, height: AppStyle.Layout.iconBadge)
+                    .background(Color.dividerBadge, in: RoundedRectangle(cornerRadius: AppStyle.CornerRadius.iconBadge))
             } else {
                 Text(title)
                     .homeSectionLabelStyle()
@@ -731,7 +706,7 @@ struct HomeView: View {
         VStack(alignment: .leading, spacing: AppStyle.Spacing.compact) {
             Rectangle()
                 .fill(Color.cardBorder)
-                .frame(height: 0.33)
+                .frame(height: AppStyle.Border.thin)
             HStack {
                 Text("CATEGORIES")
                     .homeSectionLabelStyle()
@@ -874,7 +849,7 @@ struct HomeView: View {
                     HStack {
                         // Profile button
                         Button(action: {
-                            withAnimation(.easeInOut(duration: 0.3)) {
+                            withAnimation(AppStyle.Anim.expand) {
                                 showSettings = true
                             }
                         }) {
@@ -904,11 +879,11 @@ struct HomeView: View {
                 .background(
                     NotchedBarShape(notchRadius: notchRadius)
                         .fill(Color.cardBackground)
-                        .shadow(color: .black.opacity(0.06), radius: 4, x: 0, y: -2)
+                        .barShadow()
                 )
                 .overlay(
                     NotchedBarShape(notchRadius: notchRadius)
-                        .stroke(Color.cardBorder, lineWidth: 0.33)
+                        .stroke(Color.cardBorder, lineWidth: AppStyle.Border.thin)
                 )
 
                 // Plus button (centered in notch)
@@ -923,9 +898,9 @@ struct HomeView: View {
                         .background(Color.cardBackground, in: Circle())
                         .overlay(
                             Circle()
-                                .stroke(Color.cardBorder, lineWidth: 0.33)
+                                .stroke(Color.cardBorder, lineWidth: AppStyle.Border.thin)
                         )
-                        .shadow(color: .black.opacity(0.06), radius: 6, x: 0, y: 2)
+                        .fabShadow()
                 }
                 .accessibilityLabel("Add")
                 .offset(y: -(AppStyle.Layout.fab / 2))
@@ -949,7 +924,7 @@ struct HomeView: View {
     private func addBarModeCircle(mode: TaskType, icon: String) -> some View {
         let isActive = addBarMode == mode
         return Button {
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+            withAnimation(AppStyle.Anim.buttonTap) {
                 addBarMode = mode
             }
         } label: {
@@ -1026,7 +1001,7 @@ struct HomeView: View {
                 // Schedule mode action row
                 HStack {
                     Button {
-                        withAnimation(.easeInOut(duration: 0.2)) {
+                        withAnimation(AppStyle.Anim.toggle) {
                             addTaskDates.removeAll()
                             addTaskScheduleExpanded = false
                         }
@@ -1045,7 +1020,7 @@ struct HomeView: View {
                     Button {
                         let generator = UIImpactFeedbackGenerator(style: .medium)
                         generator.impactOccurred()
-                        withAnimation(.easeInOut(duration: 0.2)) {
+                        withAnimation(AppStyle.Anim.toggle) {
                             addTaskScheduleExpanded = false
                         }
                     } label: {
@@ -1085,7 +1060,7 @@ struct HomeView: View {
 
                 // More options pill
                 Button {
-                    withAnimation(.easeInOut(duration: 0.2)) {
+                    withAnimation(AppStyle.Anim.toggle) {
                         addTaskOptionsExpanded.toggle()
                     }
                 } label: {
@@ -1189,7 +1164,7 @@ struct HomeView: View {
                     if !addTaskScheduleExpanded {
                         addTaskDatesSnapshot = addTaskDates
                     }
-                    withAnimation(.easeInOut(duration: 0.2)) {
+                    withAnimation(AppStyle.Anim.toggle) {
                         addTaskScheduleExpanded.toggle()
                     }
                 } label: {
@@ -1290,7 +1265,7 @@ struct HomeView: View {
 
                 HStack {
                     Button {
-                        withAnimation(.easeInOut(duration: 0.2)) {
+                        withAnimation(AppStyle.Anim.toggle) {
                             addListDates.removeAll()
                             addListScheduleExpanded = false
                         }
@@ -1309,7 +1284,7 @@ struct HomeView: View {
                     Button {
                         let generator = UIImpactFeedbackGenerator(style: .medium)
                         generator.impactOccurred()
-                        withAnimation(.easeInOut(duration: 0.2)) {
+                        withAnimation(AppStyle.Anim.toggle) {
                             addListScheduleExpanded = false
                         }
                     } label: {
@@ -1348,7 +1323,7 @@ struct HomeView: View {
                 .buttonStyle(.plain)
 
                 Button {
-                    withAnimation(.easeInOut(duration: 0.2)) {
+                    withAnimation(AppStyle.Anim.toggle) {
                         addListOptionsExpanded.toggle()
                     }
                 } label: {
@@ -1422,7 +1397,7 @@ struct HomeView: View {
 
                 Button {
                     addListDatesSnapshot = addListDates
-                    withAnimation(.easeInOut(duration: 0.2)) {
+                    withAnimation(AppStyle.Anim.toggle) {
                         addListScheduleExpanded.toggle()
                     }
                 } label: {
@@ -1531,7 +1506,7 @@ struct HomeView: View {
 
                 HStack {
                     Button {
-                        withAnimation(.easeInOut(duration: 0.2)) {
+                        withAnimation(AppStyle.Anim.toggle) {
                             addProjectDates.removeAll()
                             addProjectScheduleExpanded = false
                         }
@@ -1550,7 +1525,7 @@ struct HomeView: View {
                     Button {
                         let generator = UIImpactFeedbackGenerator(style: .medium)
                         generator.impactOccurred()
-                        withAnimation(.easeInOut(duration: 0.2)) {
+                        withAnimation(AppStyle.Anim.toggle) {
                             addProjectScheduleExpanded = false
                         }
                     } label: {
@@ -1589,7 +1564,7 @@ struct HomeView: View {
                 .buttonStyle(.plain)
 
                 Button {
-                    withAnimation(.easeInOut(duration: 0.2)) {
+                    withAnimation(AppStyle.Anim.toggle) {
                         addProjectOptionsExpanded.toggle()
                     }
                 } label: {
@@ -1663,7 +1638,7 @@ struct HomeView: View {
 
                 Button {
                     addProjectDatesSnapshot = addProjectDates
-                    withAnimation(.easeInOut(duration: 0.2)) {
+                    withAnimation(AppStyle.Anim.toggle) {
                         addProjectScheduleExpanded.toggle()
                     }
                 } label: {
@@ -1825,7 +1800,7 @@ struct HomeView: View {
             do {
                 let aiService = AIService()
                 let suggestions = try await aiService.generateSubtasks(title: title, description: nil)
-                withAnimation(.easeInOut(duration: 0.2)) {
+                withAnimation(AppStyle.Anim.toggle) {
                     addTaskSubtasks.append(contentsOf: suggestions.map { DraftSubtaskEntry(title: $0) })
                 }
                 hasGeneratedBreakdown = true
@@ -1886,7 +1861,7 @@ struct HomeView: View {
     private func addNewSubtask() {
         addBarTitleFocus = .task
         let newEntry = DraftSubtaskEntry()
-        withAnimation(.easeInOut(duration: 0.15)) {
+        withAnimation(AppStyle.Anim.quick) {
             addTaskSubtasks.append(newEntry)
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
@@ -1981,7 +1956,7 @@ struct HomeView: View {
     private func addNewListItem() {
         addBarTitleFocus = .list
         let newEntry = DraftSubtaskEntry()
-        withAnimation(.easeInOut(duration: 0.15)) {
+        withAnimation(AppStyle.Anim.quick) {
             addListItems.append(newEntry)
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
@@ -2099,7 +2074,7 @@ struct HomeView: View {
 
     private func addNewProjectTask() {
         let newTask = DraftTask()
-        withAnimation(.easeInOut(duration: 0.15)) {
+        withAnimation(AppStyle.Anim.quick) {
             addProjectDraftTasks.append(newTask)
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
@@ -2110,7 +2085,7 @@ struct HomeView: View {
     private func addNewProjectSubtask(toTask taskId: UUID) {
         guard let tIdx = addProjectDraftTasks.firstIndex(where: { $0.id == taskId }) else { return }
         let newSubtask = DraftSubtask(title: "")
-        withAnimation(.easeInOut(duration: 0.15)) {
+        withAnimation(AppStyle.Anim.quick) {
             addProjectDraftTasks[tIdx].subtasks.append(newSubtask)
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
@@ -2119,14 +2094,14 @@ struct HomeView: View {
     }
 
     private func removeProjectTask(id: UUID) {
-        withAnimation(.easeInOut(duration: 0.15)) {
+        withAnimation(AppStyle.Anim.quick) {
             addProjectDraftTasks.removeAll { $0.id == id }
         }
     }
 
     private func removeProjectSubtask(id: UUID, fromTask taskId: UUID) {
         guard let tIdx = addProjectDraftTasks.firstIndex(where: { $0.id == taskId }) else { return }
-        withAnimation(.easeInOut(duration: 0.15)) {
+        withAnimation(AppStyle.Anim.quick) {
             addProjectDraftTasks[tIdx].subtasks.removeAll { $0.id == id }
         }
     }

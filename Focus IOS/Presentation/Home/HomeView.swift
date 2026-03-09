@@ -135,9 +135,13 @@ struct HomeView: View {
                             homeCard(title: "Today", customIcon: {
                                 Image(systemName: "sun.max")
                                     .font(.helveticaNeue(size: 15, weight: .medium))
-                                    .foregroundColor(Color(red: 0xFC/255.0, green: 0xFC/255.0, blue: 0xFC/255.0))
+                                    .foregroundColor(.focusBlue)
                                     .frame(width: 28, height: 28)
-                                    .background(Color.focusBlue, in: RoundedRectangle(cornerRadius: 7))
+                                    .background(Color(UIColor { traits in
+                                        traits.userInterfaceStyle == .dark
+                                            ? UIColor(red: 0x2E/255.0, green: 0x59/255.0, blue: 0xF4/255.0, alpha: 0.2)
+                                            : UIColor(red: 0xCD/255.0, green: 0xD6/255.0, blue: 0xF8/255.0, alpha: 1)
+                                    }), in: RoundedRectangle(cornerRadius: 7))
                             }) {
                                 viewModel.selectedMenuItem = .today
                             }
@@ -725,7 +729,8 @@ struct HomeView: View {
                     Image(systemName: "ellipsis")
                         .font(.inter(.subheadline, weight: .semiBold))
                         .foregroundColor(.secondary)
-                        .padding(AppStyle.Spacing.content)
+                        .padding(.horizontal, AppStyle.Spacing.content)
+                        .padding(.vertical, AppStyle.Spacing.tiny)
                         .contentShape(Rectangle())
                         .offset(x: AppStyle.Spacing.content, y: 0)
                 }

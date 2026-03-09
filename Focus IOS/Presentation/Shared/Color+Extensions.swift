@@ -23,13 +23,25 @@ extension Color {
     static let appBackground = Color(UIColor { traits in
         traits.userInterfaceStyle == .dark
             ? UIColor.systemBackground
-            : UIColor(red: 0xF1/255.0, green: 0xF1/255.0, blue: 0xF1/255.0, alpha: 1)
+            : UIColor(red: 0xFC/255.0, green: 0xFC/255.0, blue: 0xFC/255.0, alpha: 1)
     })
     /// Pill background for section headers — visible in light, subtle in dark
     static let pillBackground = Color(UIColor { traits in
         traits.userInterfaceStyle == .dark
             ? UIColor.white.withAlphaComponent(0.1)
             : UIColor.white.withAlphaComponent(0.6)
+    })
+    /// Card border color (#EBEBEB light, subtle white in dark)
+    static let cardBorder = Color(UIColor { traits in
+        traits.userInterfaceStyle == .dark
+            ? UIColor.white.withAlphaComponent(0.12)
+            : UIColor(red: 0xD8/255.0, green: 0xD8/255.0, blue: 0xD8/255.0, alpha: 1)
+    })
+    /// Primary text color (#32312F light, primary dark)
+    static let appText = Color(UIColor { traits in
+        traits.userInterfaceStyle == .dark
+            ? UIColor.label
+            : UIColor(red: 0x32/255.0, green: 0x31/255.0, blue: 0x2F/255.0, alpha: 1)
     })
     /// Subtle glass tint — reduces white glare in light mode, invisible in dark
     static let glassTint = Color(UIColor { traits in

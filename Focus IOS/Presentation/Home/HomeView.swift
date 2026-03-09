@@ -112,35 +112,30 @@ struct HomeView: View {
     var body: some View {
         NavigationStack {
             ZStack {
+                Color.appBackground.ignoresSafeArea()
                 ScrollViewReader { scrollProxy in
                 ScrollView {
                     VStack(alignment: .leading, spacing: AppStyle.Spacing.section) {
                         Color.clear.frame(height: 0).id("homeScrollTop")
-                        // MARK: - Top Bar (Profile + Search)
-                        HStack {
+                        // MARK: - Top Bar (Profile + Date + Search)
+                        HStack(alignment: .center) {
                             Button(action: {
                                 withAnimation(.easeInOut(duration: 0.3)) {
                                     showSettings = true
                                 }
                             }) {
-                                Circle()
-                                    .stroke(Color.secondary.opacity(0.3), lineWidth: 1)
+                                Image(systemName: "person")
+                                    .font(.inter(.title3, weight: .medium))
+                                    .foregroundColor(.appText)
                                     .frame(width: 41, height: 41)
+                                    .background(Color(red: 0xF5/255.0, green: 0xF4/255.0, blue: 0xF4/255.0), in: RoundedRectangle(cornerRadius: 10))
                                     .overlay(
-                                        Image(systemName: "person")
-                                            .font(.inter(.title3, weight: .medium))
-                                            .foregroundColor(.primary)
+                                        RoundedRectangle(cornerRadius: 10)
+                                            .stroke(Color.cardBorder, lineWidth: 0.33)
                                     )
                             }
                             .buttonStyle(.plain)
 
-                            Spacer()
-                        }
-                        .padding(.horizontal, AppStyle.Spacing.page)
-                        .padding(.top, AppStyle.Spacing.compact)
-
-                        // MARK: - Date Header
-                        HStack(alignment: .bottom) {
                             VStack(alignment: .leading, spacing: 0) {
                                 Text(currentDayName)
                                     .pageTitleStyle()
@@ -149,7 +144,9 @@ struct HomeView: View {
                                 formattedDateView
                                     .foregroundColor(.secondary)
                             }
+
                             Spacer()
+
                             Button(action: { showSearch = true }) {
                                 Image(systemName: "magnifyingglass")
                                     .font(.inter(.body, weight: .medium))
@@ -158,14 +155,27 @@ struct HomeView: View {
                             .buttonStyle(.plain)
                         }
                         .padding(.horizontal, AppStyle.Spacing.page)
-                        .padding(.bottom, AppStyle.Spacing.section)
+                        .padding(.top, AppStyle.Spacing.compact)
+                        .padding(.bottom, 60)
 
                         // MARK: - Today / Inbox
                         HStack(spacing: AppStyle.Spacing.comfortable) {
-                            homeCard(title: "Today", icon: "sun.max") {
+                            homeCard(title: "Today", customIcon: {
+                                Image(systemName: "sun.max")
+                                    .font(.helveticaNeue(size: 15, weight: .medium))
+                                    .foregroundColor(Color(red: 0xFC/255.0, green: 0xFC/255.0, blue: 0xFC/255.0))
+                                    .frame(width: 28, height: 28)
+                                    .background(Color.focusBlue, in: RoundedRectangle(cornerRadius: 7))
+                            }) {
                                 viewModel.selectedMenuItem = .today
                             }
-                            homeCard(title: "Inbox", icon: "tray.and.arrow.down", count: inboxCount) {
+                            homeCard(title: "Inbox", customIcon: {
+                                Image(systemName: "tray.and.arrow.down")
+                                    .font(.helveticaNeue(size: 15, weight: .medium))
+                                    .foregroundColor(Color(red: 0x02/255.0, green: 0x7B/255.0, blue: 0x3A/255.0))
+                                    .frame(width: 28, height: 28)
+                                    .background(Color(red: 0xEB/255.0, green: 0xF6/255.0, blue: 0xEC/255.0), in: RoundedRectangle(cornerRadius: 7))
+                            }, count: inboxCount) {
                                 viewModel.selectedMenuItem = .inbox
                             }
                         }
@@ -173,10 +183,22 @@ struct HomeView: View {
 
                         // MARK: - Schedule / Completed
                         HStack(spacing: AppStyle.Spacing.comfortable) {
-                            homeCard(title: "Scheduled", icon: "calendar") {
+                            homeCard(title: "Scheduled", customIcon: {
+                                Image(systemName: "calendar")
+                                    .font(.helveticaNeue(size: 15, weight: .medium))
+                                    .foregroundColor(.appRed)
+                                    .frame(width: 28, height: 28)
+                                    .background(Color(red: 0xF6/255.0, green: 0xEB/255.0, blue: 0xEB/255.0), in: RoundedRectangle(cornerRadius: 7))
+                            }) {
                                 viewModel.selectedMenuItem = .assign
                             }
-                            homeCard(title: "Completed", icon: "archivebox") {
+                            homeCard(title: "Completed", customIcon: {
+                                Image(systemName: "archivebox")
+                                    .font(.helveticaNeue(size: 15, weight: .medium))
+                                    .foregroundColor(.appText)
+                                    .frame(width: 28, height: 28)
+                                    .background(Color(red: 0xF5/255.0, green: 0xF4/255.0, blue: 0xF4/255.0), in: RoundedRectangle(cornerRadius: 7))
+                            }) {
                                 viewModel.selectedMenuItem = .archive
                             }
                         }
@@ -187,10 +209,10 @@ struct HomeView: View {
 
                         // MARK: - Projects / Quick Lists / Goals
                         HStack(spacing: AppStyle.Spacing.compact) {
-                            homeCardCompact(title: "Quick lists", icon: "list.bullet", count: viewModel.lists.filter({ !$0.isSection }).count) {
+                            homeCardCompact(title: "Quick lists", icon: "list.bullet") {
                                 viewModel.selectedMenuItem = .quickLists
                             }
-                            homeCardCompact(title: "Projects", icon: "folder", count: viewModel.projects.filter({ !$0.isSection }).count) {
+                            homeCardCompact(title: "Projects", icon: "folder") {
                                 viewModel.selectedMenuItem = .projects
                             }
                             homeCardCompact(title: "Goals", customIcon: {
@@ -199,8 +221,8 @@ struct HomeView: View {
                                     .resizable()
                                     .scaledToFit()
                                     .frame(width: AppStyle.Layout.tinyIcon, height: AppStyle.Layout.tinyIcon)
-                                    .foregroundColor(.primary)
-                            }, count: viewModel.goals.filter({ !$0.isSection }).count) {
+                                    .foregroundColor(.appText)
+                            }) {
                                 viewModel.selectedMenuItem = .goals
                             }
                         }
@@ -219,9 +241,12 @@ struct HomeView: View {
                                         }
                                     }
                                     .padding(.horizontal, AppStyle.Spacing.page)
+                                    .padding(.vertical, 3)
                                 }
                             }
-                            .frame(height: AppStyle.Layout.touchTarget)
+                            .frame(height: AppStyle.Layout.touchTarget + 6)
+                            .padding(.top, -AppStyle.Spacing.compact)
+                            .padding(.bottom, -AppStyle.Spacing.compact)
                         }
 
                         // MARK: - Pinned Section
@@ -506,7 +531,7 @@ struct HomeView: View {
                 Text(title)
                     .font(.helveticaNeue(size: 15.22, weight: .medium))
                     .tracking(-0.158)
-                    .foregroundColor(.primary)
+                    .foregroundColor(.appText)
                 if let count, count > 0 {
                     Text("(\(count))")
                         .font(.helveticaNeue(size: 11.08, weight: .medium))
@@ -518,7 +543,7 @@ struct HomeView: View {
                 if let icon {
                     Image(systemName: icon)
                         .font(.helveticaNeue(size: 17.3, weight: .medium))
-                        .foregroundColor(.primary)
+                        .foregroundColor(.appText)
                         .frame(width: AppStyle.Layout.pillButton, alignment: .center)
                 } else {
                     customIcon()
@@ -528,43 +553,40 @@ struct HomeView: View {
             .padding(AppStyle.Spacing.section)
             .frame(maxWidth: .infinity, minHeight: AppStyle.Layout.fab)
             .contentShape(Rectangle())
+            .background(Color.white, in: RoundedRectangle(cornerRadius: 12))
             .overlay(
                 RoundedRectangle(cornerRadius: 12)
-                    .stroke(Color.secondary.opacity(0.3), lineWidth: 1)
+                    .stroke(Color.cardBorder, lineWidth: 0.33)
             )
+            .shadow(color: .black.opacity(0.04), radius: 4, x: 0, y: 1)
         }
         .buttonStyle(.plain)
     }
 
-    private func homeCardCompact<Icon: View>(title: String, icon: String? = nil, @ViewBuilder customIcon: () -> Icon = { EmptyView() }, count: Int? = nil, action: @escaping () -> Void) -> some View {
+    private func homeCardCompact<Icon: View>(title: String, icon: String? = nil, @ViewBuilder customIcon: () -> Icon = { EmptyView() }, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            VStack(spacing: AppStyle.Spacing.small) {
+            HStack(spacing: AppStyle.Spacing.small) {
+                Text(title)
+                    .font(.helveticaNeue(size: 13, weight: .medium))
+                    .tracking(-0.135)
+                    .foregroundColor(.appText)
+                    .lineLimit(1)
                 if let icon {
                     Image(systemName: icon)
-                        .font(.helveticaNeue(size: 17.3, weight: .medium))
-                        .foregroundColor(.primary)
+                        .font(.helveticaNeue(size: 15, weight: .medium))
+                        .foregroundColor(.appText)
                 } else {
                     customIcon()
-                }
-                HStack(spacing: 3) {
-                    Text(title)
-                        .font(.helveticaNeue(size: 13, weight: .medium))
-                        .tracking(-0.135)
-                        .foregroundColor(.primary)
-                        .lineLimit(1)
-                    if let count, count > 0 {
-                        Text("(\(count))")
-                            .font(.helveticaNeue(size: 10, weight: .medium))
-                            .foregroundColor(.secondary)
-                    }
                 }
             }
             .frame(maxWidth: .infinity, minHeight: AppStyle.Layout.fab)
             .contentShape(Rectangle())
+            .background(Color.white, in: RoundedRectangle(cornerRadius: 12))
             .overlay(
                 RoundedRectangle(cornerRadius: 12)
-                    .stroke(Color.secondary.opacity(0.3), lineWidth: 1)
+                    .stroke(Color.cardBorder, lineWidth: 0.33)
             )
+            .shadow(color: .black.opacity(0.04), radius: 4, x: 0, y: 1)
         }
         .buttonStyle(.plain)
     }
@@ -578,12 +600,17 @@ struct HomeView: View {
             Text(category.name)
                 .font(.helveticaNeue(size: 13, weight: .medium))
                 .tracking(-0.135)
-                .foregroundColor(.primary)
+                .foregroundColor(.appText)
                 .lineLimit(1)
                 .padding(.vertical, AppStyle.Spacing.comfortable)
                 .padding(.horizontal, AppStyle.Spacing.compact)
                 .frame(width: (containerWidth - AppStyle.Spacing.page * 2 - AppStyle.Spacing.comfortable * 2) / 3)
-                .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12))
+                .background(Color(red: 0xF5/255.0, green: 0xF4/255.0, blue: 0xF4/255.0), in: RoundedRectangle(cornerRadius: 12))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(Color.cardBorder, lineWidth: 0.33)
+                )
+                .shadow(color: .black.opacity(0.04), radius: 4, x: 0, y: 1)
                 .contentShape(RoundedRectangle(cornerRadius: 12))
         }
         .buttonStyle(.plain)
@@ -632,7 +659,7 @@ struct HomeView: View {
 
                 Text(item.title)
                     .font(.helveticaNeue(.body, weight: .bold))
-                    .foregroundColor(.primary)
+                    .foregroundColor(.appText)
                     .lineLimit(1)
 
                 Spacer()
@@ -653,14 +680,16 @@ struct HomeView: View {
     private func homeSectionDivider(title: String, assetIcon: String? = nil) -> some View {
         VStack(alignment: .leading, spacing: AppStyle.Spacing.compact) {
             Rectangle()
-                .fill(Color.secondary.opacity(0.3))
-                .frame(height: 1)
+                .fill(Color.cardBorder)
+                .frame(height: 0.33)
             if let assetIcon = assetIcon {
                 Image(assetIcon)
                     .resizable()
                     .scaledToFit()
-                    .frame(width: 21, height: 21)
-                    .foregroundColor(.primary)
+                    .frame(width: 14, height: 14)
+                    .foregroundColor(Color(red: 0xFF/255.0, green: 0x8D/255.0, blue: 0x00/255.0))
+                    .frame(width: 28, height: 28)
+                    .background(Color(red: 0xF3/255.0, green: 0xE9/255.0, blue: 0xE1/255.0), in: RoundedRectangle(cornerRadius: 7))
             } else {
                 Text(title)
                     .homeSectionLabelStyle()
@@ -675,8 +704,8 @@ struct HomeView: View {
     private var categoriesSectionHeader: some View {
         VStack(alignment: .leading, spacing: AppStyle.Spacing.compact) {
             Rectangle()
-                .fill(Color.secondary.opacity(0.3))
-                .frame(height: 1)
+                .fill(Color.cardBorder)
+                .frame(height: 0.33)
             HStack {
                 Text("CATEGORIES")
                     .homeSectionLabelStyle()

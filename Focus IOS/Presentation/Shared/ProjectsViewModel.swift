@@ -1405,68 +1405,64 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
     func updateTask(_ task: FocusTask, newTitle: String) async {
         guard !newTitle.trimmingCharacters(in: .whitespaces).isEmpty else { return }
 
+        let now = Date()
+
+        // Optimistic local update — instant UI feedback
+        if let projectId = task.projectId,
+           var tasks = projectTasksMap[projectId],
+           let index = tasks.firstIndex(where: { $0.id == task.id }) {
+            tasks[index].title = newTitle
+            tasks[index].modifiedDate = now
+            projectTasksMap[projectId] = tasks
+        }
+        if let parentId = task.parentTaskId,
+           var subtasks = subtasksMap[parentId],
+           let index = subtasks.firstIndex(where: { $0.id == task.id }) {
+            subtasks[index].title = newTitle
+            subtasks[index].modifiedDate = now
+            subtasksMap[parentId] = subtasks
+        }
+
+        // Persist to backend
         do {
             var updatedTask = task
             updatedTask.title = newTitle
-            updatedTask.modifiedDate = Date()
+            updatedTask.modifiedDate = now
             try await repository.updateTask(updatedTask)
-
-            // Update local state in projectTasksMap
-            if let projectId = task.projectId,
-               var tasks = projectTasksMap[projectId],
-               let index = tasks.firstIndex(where: { $0.id == task.id }) {
-                tasks[index].title = newTitle
-                tasks[index].modifiedDate = Date()
-                projectTasksMap[projectId] = tasks
-            }
-
-            // Update local state in subtasksMap
-            if let parentId = task.parentTaskId,
-               var subtasks = subtasksMap[parentId],
-               let index = subtasks.firstIndex(where: { $0.id == task.id }) {
-                subtasks[index].title = newTitle
-                subtasks[index].modifiedDate = Date()
-                subtasksMap[parentId] = subtasks
-            }
-
-            NotificationCenter.default.post(name: .projectListChanged, object: nil)
         } catch {
             errorMessage = error.localizedDescription
         }
     }
 
     func updateTaskNote(_ task: FocusTask, newNote: String?) async {
+        let now = Date()
+
+        // Optimistic local update — instant UI feedback
+        if let index = projects.firstIndex(where: { $0.id == task.id }) {
+            projects[index].description = newNote
+            projects[index].modifiedDate = now
+        }
+        if let projectId = task.projectId,
+           var tasks = projectTasksMap[projectId],
+           let index = tasks.firstIndex(where: { $0.id == task.id }) {
+            tasks[index].description = newNote
+            tasks[index].modifiedDate = now
+            projectTasksMap[projectId] = tasks
+        }
+        if let parentId = task.parentTaskId,
+           var subtasks = subtasksMap[parentId],
+           let index = subtasks.firstIndex(where: { $0.id == task.id }) {
+            subtasks[index].description = newNote
+            subtasks[index].modifiedDate = now
+            subtasksMap[parentId] = subtasks
+        }
+
+        // Persist to backend
         do {
             var updatedTask = task
             updatedTask.description = newNote
-            updatedTask.modifiedDate = Date()
+            updatedTask.modifiedDate = now
             try await repository.updateTask(updatedTask)
-
-            // Update in projects array (for project-level notes)
-            if let index = projects.firstIndex(where: { $0.id == task.id }) {
-                projects[index].description = newNote
-                projects[index].modifiedDate = Date()
-            }
-
-            // Update in projectTasksMap
-            if let projectId = task.projectId,
-               var tasks = projectTasksMap[projectId],
-               let index = tasks.firstIndex(where: { $0.id == task.id }) {
-                tasks[index].description = newNote
-                tasks[index].modifiedDate = Date()
-                projectTasksMap[projectId] = tasks
-            }
-
-            // Update in subtasksMap
-            if let parentId = task.parentTaskId,
-               var subtasks = subtasksMap[parentId],
-               let index = subtasks.firstIndex(where: { $0.id == task.id }) {
-                subtasks[index].description = newNote
-                subtasks[index].modifiedDate = Date()
-                subtasksMap[parentId] = subtasks
-            }
-
-            NotificationCenter.default.post(name: .projectListChanged, object: nil)
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -1478,35 +1474,64 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
     }
 
     func updateTaskPriority(_ task: FocusTask, priority: Priority) async {
+        let now = Date()
+
+        // Optimistic local update — instant UI feedback
+        if let index = projects.firstIndex(where: { $0.id == task.id }) {
+            projects[index].priority = priority
+            projects[index].modifiedDate = now
+        }
+        if let projectId = task.projectId,
+           var tasks = projectTasksMap[projectId],
+           let index = tasks.firstIndex(where: { $0.id == task.id }) {
+            tasks[index].priority = priority
+            tasks[index].modifiedDate = now
+            projectTasksMap[projectId] = tasks
+        }
+        if let parentId = task.parentTaskId,
+           var subtasks = subtasksMap[parentId],
+           let index = subtasks.firstIndex(where: { $0.id == task.id }) {
+            subtasks[index].priority = priority
+            subtasks[index].modifiedDate = now
+            subtasksMap[parentId] = subtasks
+        }
+
+        // Persist to backend
         do {
             var updated = task
             updated.priority = priority
-            updated.modifiedDate = Date()
+            updated.modifiedDate = now
             try await repository.updateTask(updated)
-
-            if let index = projects.firstIndex(where: { $0.id == task.id }) {
-                projects[index].priority = priority
-                projects[index].modifiedDate = Date()
-            }
         } catch {
             errorMessage = error.localizedDescription
         }
     }
 
     func moveTaskToCategory(_ task: FocusTask, categoryId: UUID?) async {
+        let now = Date()
+
+        // Optimistic local update — instant UI feedback
+        if let projectId = task.projectId,
+           var tasks = projectTasksMap[projectId],
+           let index = tasks.firstIndex(where: { $0.id == task.id }) {
+            tasks[index].categoryId = categoryId
+            tasks[index].modifiedDate = now
+            projectTasksMap[projectId] = tasks
+        }
+        if let parentId = task.parentTaskId,
+           var subtasks = subtasksMap[parentId],
+           let index = subtasks.firstIndex(where: { $0.id == task.id }) {
+            subtasks[index].categoryId = categoryId
+            subtasks[index].modifiedDate = now
+            subtasksMap[parentId] = subtasks
+        }
+
+        // Persist to backend
         do {
             var updated = task
             updated.categoryId = categoryId
-            updated.modifiedDate = Date()
+            updated.modifiedDate = now
             try await repository.updateTask(updated)
-
-            if let projectId = task.projectId,
-               var tasks = projectTasksMap[projectId],
-               let index = tasks.firstIndex(where: { $0.id == task.id }) {
-                tasks[index].categoryId = categoryId
-                tasks[index].modifiedDate = Date()
-                projectTasksMap[projectId] = tasks
-            }
         } catch {
             errorMessage = error.localizedDescription
         }

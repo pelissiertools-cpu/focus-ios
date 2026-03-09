@@ -49,6 +49,7 @@ protocol TaskEditingViewModel: ObservableObject {
 
     /// Update a task's note (description)
     func updateTaskNote(_ task: FocusTask, newNote: String?) async
+
 }
 
 // Default empty implementations for category operations.

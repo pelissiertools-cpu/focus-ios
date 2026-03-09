@@ -9,8 +9,7 @@ import Foundation
 
 /// Represents a task, project, or list in the Focus app
 /// Maps to the tasks table in Supabase
-struct FocusTask: Codable, Identifiable, Hashable {
-    static func == (lhs: FocusTask, rhs: FocusTask) -> Bool { lhs.id == rhs.id }
+struct FocusTask: Codable, Identifiable, Hashable, Equatable {
     func hash(into hasher: inout Hasher) { hasher.combine(id) }
     let id: UUID
     let userId: UUID

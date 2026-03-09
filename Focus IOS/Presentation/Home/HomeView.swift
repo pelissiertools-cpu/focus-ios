@@ -113,18 +113,49 @@ struct HomeView: View {
         NavigationStack {
             ZStack {
                 Color.appBackground.ignoresSafeArea()
+
+                // Top gradient mist
+                VStack {
+                    LinearGradient(
+                        colors: [
+                            Color(UIColor { traits in
+                                traits.userInterfaceStyle == .dark
+                                    ? UIColor(red: 0x2E/255.0, green: 0x59/255.0, blue: 0xF4/255.0, alpha: 0.08)
+                                    : UIColor(red: 0xFF/255.0, green: 0x8D/255.0, blue: 0x00/255.0, alpha: 0.08)
+                            }),
+                            Color(UIColor { traits in
+                                traits.userInterfaceStyle == .dark
+                                    ? UIColor(red: 0x2E/255.0, green: 0x59/255.0, blue: 0xF4/255.0, alpha: 0.03)
+                                    : UIColor(red: 0xFF/255.0, green: 0x8D/255.0, blue: 0x00/255.0, alpha: 0.03)
+                            }),
+                            Color.clear
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                    .frame(height: 280)
+                    .ignoresSafeArea(edges: .top)
+                    Spacer()
+                }
                 ScrollViewReader { scrollProxy in
                 ScrollView {
                     VStack(alignment: .leading, spacing: AppStyle.Spacing.section) {
                         Color.clear.frame(height: 0).id("homeScrollTop")
                         // MARK: - Date Header
-                        VStack(alignment: .leading, spacing: 0) {
-                            Text(currentDayName)
-                                .pageTitleStyle()
-                                .lineSpacing(31.6 - 26.14)
-                                .foregroundColor(.primary)
-                            formattedDateView
-                                .foregroundColor(.secondary)
+                        HStack(alignment: .center, spacing: 10) {
+                            Image("AppLogo")
+                                .resizable()
+                                .aspectRatio(contentMode: .fit)
+                                .frame(height: 40)
+                            VStack(alignment: .leading, spacing: 0) {
+                                Text(currentDayName)
+                                    .font(.helveticaNeue(size: 23.5))
+                                    .tracking(-0.245)
+                                    .foregroundColor(.secondary)
+                                formattedDateView
+                                    .foregroundColor(.secondary)
+                            }
+                            Spacer()
                         }
                         .padding(.horizontal, AppStyle.Spacing.page)
                         .padding(.top, AppStyle.Spacing.compact)
@@ -772,8 +803,8 @@ struct HomeView: View {
         default:        suffix = "th"
         }
 
-        let baseSize: CGFloat = 15.22
-        let smallSize: CGFloat = baseSize - 2
+        let baseSize: CGFloat = 13.7
+        let smallSize: CGFloat = baseSize - 1.8
         let yearStr = String(format: "%d", year)
 
         return HStack(alignment: .firstTextBaseline, spacing: 0) {

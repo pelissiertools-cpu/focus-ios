@@ -121,12 +121,12 @@ struct HomeView: View {
                             Color(UIColor { traits in
                                 traits.userInterfaceStyle == .dark
                                     ? UIColor(red: 0x2E/255.0, green: 0x59/255.0, blue: 0xF4/255.0, alpha: 0.08)
-                                    : UIColor(red: 0xFF/255.0, green: 0x8D/255.0, blue: 0x00/255.0, alpha: 0.08)
+                                    : UIColor(red: 0xFF/255.0, green: 0x8D/255.0, blue: 0x00/255.0, alpha: 0.064)
                             }),
                             Color(UIColor { traits in
                                 traits.userInterfaceStyle == .dark
                                     ? UIColor(red: 0x2E/255.0, green: 0x59/255.0, blue: 0xF4/255.0, alpha: 0.03)
-                                    : UIColor(red: 0xFF/255.0, green: 0x8D/255.0, blue: 0x00/255.0, alpha: 0.03)
+                                    : UIColor(red: 0xFF/255.0, green: 0x8D/255.0, blue: 0x00/255.0, alpha: 0.024)
                             }),
                             Color.clear
                         ],
@@ -540,7 +540,10 @@ struct HomeView: View {
     // MARK: - Home Card
 
     private func homeCard<Icon: View>(title: String, icon: String? = nil, @ViewBuilder customIcon: () -> Icon = { EmptyView() }, count: Int? = nil, centered: Bool = false, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
+        Button(action: {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            action()
+        }) {
             HStack {
                 if centered { Spacer() }
                 Text(title)
@@ -579,7 +582,10 @@ struct HomeView: View {
     }
 
     private func homeCardCompact<Icon: View>(title: String, icon: String? = nil, @ViewBuilder customIcon: () -> Icon = { EmptyView() }, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
+        Button(action: {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            action()
+        }) {
             HStack(spacing: AppStyle.Spacing.small) {
                 Text(title)
                     .font(.helveticaNeue(size: 13, weight: .medium))
@@ -610,6 +616,7 @@ struct HomeView: View {
 
     private func categoryCard(_ category: Category, containerWidth: CGFloat) -> some View {
         Button {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
             viewModel.selectedCategory = category
         } label: {
             Text(category.name)
@@ -880,7 +887,10 @@ struct HomeView: View {
                         Spacer()
 
                         // Search button
-                        Button(action: { showSearch = true }) {
+                        Button(action: {
+                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                            showSearch = true
+                        }) {
                             Image(systemName: "magnifyingglass")
                                 .font(.inter(.body, weight: .medium))
                                 .foregroundColor(.appText)
@@ -903,6 +913,7 @@ struct HomeView: View {
 
                 // Plus button (centered in notch)
                 Button {
+                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                     action()
                 } label: {
                     Image(systemName: "plus")

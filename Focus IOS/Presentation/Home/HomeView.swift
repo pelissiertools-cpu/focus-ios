@@ -117,42 +117,14 @@ struct HomeView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: AppStyle.Spacing.section) {
                         Color.clear.frame(height: 0).id("homeScrollTop")
-                        // MARK: - Top Bar (Profile + Date + Search)
-                        HStack(alignment: .center) {
-                            Button(action: {
-                                withAnimation(.easeInOut(duration: 0.3)) {
-                                    showSettings = true
-                                }
-                            }) {
-                                Image(systemName: "person")
-                                    .font(.inter(.title3, weight: .medium))
-                                    .foregroundColor(.appText)
-                                    .frame(width: 41, height: 41)
-                                    .background(Color(red: 0xF5/255.0, green: 0xF4/255.0, blue: 0xF4/255.0), in: RoundedRectangle(cornerRadius: 10))
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 10)
-                                            .stroke(Color.cardBorder, lineWidth: 0.33)
-                                    )
-                            }
-                            .buttonStyle(.plain)
-
-                            VStack(alignment: .leading, spacing: 0) {
-                                Text(currentDayName)
-                                    .pageTitleStyle()
-                                    .lineSpacing(31.6 - 26.14)
-                                    .foregroundColor(.primary)
-                                formattedDateView
-                                    .foregroundColor(.secondary)
-                            }
-
-                            Spacer()
-
-                            Button(action: { showSearch = true }) {
-                                Image(systemName: "magnifyingglass")
-                                    .font(.inter(.body, weight: .medium))
-                                    .foregroundColor(.secondary)
-                            }
-                            .buttonStyle(.plain)
+                        // MARK: - Date Header
+                        VStack(alignment: .leading, spacing: 0) {
+                            Text(currentDayName)
+                                .pageTitleStyle()
+                                .lineSpacing(31.6 - 26.14)
+                                .foregroundColor(.primary)
+                            formattedDateView
+                                .foregroundColor(.secondary)
                         }
                         .padding(.horizontal, AppStyle.Spacing.page)
                         .padding(.top, AppStyle.Spacing.compact)
@@ -268,9 +240,9 @@ struct HomeView: View {
                 }
                 } // ScrollViewReader
 
-                // MARK: - FAB Button
+                // MARK: - Bottom Bar
                 if !showingAddBar {
-                    fabButton {
+                    homeBottomBar {
                         withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
                             addBarMode = .task
                             showingAddBar = true
@@ -493,7 +465,7 @@ struct HomeView: View {
         .overlay {
             if showSettings {
                 settingsPanel
-                    .transition(.move(edge: .leading))
+                    .transition(.move(edge: .trailing))
             }
         }
     }
@@ -803,28 +775,104 @@ struct HomeView: View {
     }
 
 
-    // MARK: - FAB Button
+    // MARK: - Bottom Bar
 
-    private func fabButton(action: @escaping () -> Void) -> some View {
-        VStack {
+    /// Bar shape with circular notch cut out of the top center
+    private struct NotchedBarShape: Shape {
+        let notchRadius: CGFloat
+
+        func path(in rect: CGRect) -> Path {
+            let notchCenter = CGPoint(x: rect.midX, y: 0)
+            let notchR = notchRadius
+            // Angle where the notch arc meets the top edge
+            let startAngle = Angle.degrees(180)
+            let endAngle = Angle.degrees(0)
+
+            var path = Path()
+            // Start top-left
+            path.move(to: CGPoint(x: 0, y: 0))
+            // Line to left edge of notch
+            path.addLine(to: CGPoint(x: notchCenter.x - notchR, y: 0))
+            // Semicircular notch (downward arc)
+            path.addArc(center: notchCenter, radius: notchR,
+                        startAngle: startAngle, endAngle: endAngle,
+                        clockwise: true)
+            // Line to top-right
+            path.addLine(to: CGPoint(x: rect.maxX, y: 0))
+            // Down to bottom-right
+            path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY))
+            // Across bottom
+            path.addLine(to: CGPoint(x: 0, y: rect.maxY))
+            // Close
+            path.closeSubpath()
+            return path
+        }
+    }
+
+    private func homeBottomBar(action: @escaping () -> Void) -> some View {
+        let notchRadius: CGFloat = (AppStyle.Layout.fab / 2) + 4
+        return VStack(spacing: 0) {
             Spacer()
-            HStack {
-                Spacer()
+            ZStack(alignment: .top) {
+                // Bar background with notch
+                VStack(spacing: 0) {
+                    HStack {
+                        // Profile button
+                        Button(action: {
+                            withAnimation(.easeInOut(duration: 0.3)) {
+                                showSettings = true
+                            }
+                        }) {
+                            Image(systemName: "person")
+                                .font(.inter(.body, weight: .medium))
+                                .foregroundColor(.appText)
+                        }
+                        .buttonStyle(.plain)
+
+                        Spacer()
+
+                        // Search button
+                        Button(action: { showSearch = true }) {
+                            Image(systemName: "magnifyingglass")
+                                .font(.inter(.body, weight: .medium))
+                                .foregroundColor(.appText)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .padding(.horizontal, 32)
+                    .padding(.top, 20)
+                    .padding(.bottom, 44)
+                }
+                .background(
+                    NotchedBarShape(notchRadius: notchRadius)
+                        .fill(Color.white)
+                        .shadow(color: .black.opacity(0.06), radius: 4, x: 0, y: -2)
+                )
+                .overlay(
+                    NotchedBarShape(notchRadius: notchRadius)
+                        .stroke(Color.cardBorder, lineWidth: 0.33)
+                )
+
+                // Plus button (centered in notch)
                 Button {
                     action()
                 } label: {
                     Image(systemName: "plus")
                         .font(.inter(.title2, weight: .semiBold))
-                        .foregroundColor(.white)
+                        .foregroundColor(.appText)
                         .frame(width: AppStyle.Layout.fab, height: AppStyle.Layout.fab)
-                        .glassEffect(.regular.tint(.charcoal).interactive(), in: .circle)
-                        .shadow(radius: 4, y: 2)
+                        .background(Color.white, in: Circle())
+                        .overlay(
+                            Circle()
+                                .stroke(Color.cardBorder, lineWidth: 0.33)
+                        )
+                        .shadow(color: .black.opacity(0.06), radius: 6, x: 0, y: 2)
                 }
                 .accessibilityLabel("Add")
-                .padding(.trailing, AppStyle.Spacing.page)
-                .padding(.bottom, AppStyle.Spacing.page)
+                .offset(y: -(AppStyle.Layout.fab / 2))
             }
         }
+        .ignoresSafeArea(edges: .bottom)
     }
 
     // MARK: - Add Bar Mode Selector

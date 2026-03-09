@@ -576,6 +576,7 @@ struct ScheduledView: View {
 
     var body: some View {
         ZStack {
+            Color.appBackground.ignoresSafeArea()
             mainContent
             overlayContent
         }
@@ -1690,7 +1691,7 @@ private extension ScheduledView {
                 .foregroundColor(.white)
                 .padding(.horizontal, AppStyle.Spacing.medium)
                 .padding(.vertical, AppStyle.Spacing.compact)
-                .background(Color.black, in: Capsule())
+                .background(Color.charcoal, in: Capsule())
             }
             .buttonStyle(.plain)
 
@@ -1699,11 +1700,11 @@ private extension ScheduledView {
             } label: {
                 Image(systemName: "ellipsis")
                     .font(.inter(.caption, weight: .bold))
-                    .foregroundColor(.black)
+                    .foregroundColor(.appText)
                     .frame(minHeight: UIFont.preferredFont(forTextStyle: .caption1).lineHeight)
                     .padding(.horizontal, AppStyle.Spacing.medium)
                     .padding(.vertical, AppStyle.Spacing.compact)
-                    .background(Color.white, in: Capsule())
+                    .background(Color.cardBackground, in: Capsule())
             }
             .accessibilityLabel("More options")
             .buttonStyle(.plain)
@@ -1717,7 +1718,7 @@ private extension ScheduledView {
                     } else {
                         Image(systemName: hasGeneratedBreakdown ? "arrow.clockwise" : "sparkles")
                             .font(.inter(.subheadline, weight: .semiBold))
-                            .foregroundColor(!isAddTaskTitleEmpty ? .blue : .primary)
+                            .foregroundColor(!isAddTaskTitleEmpty ? .focusBlue : .primary)
                     }
                     Text(LocalizedStringKey(hasGeneratedBreakdown ? "Regenerate" : "Suggest Breakdown"))
                         .font(.inter(.caption, weight: .medium))
@@ -1765,10 +1766,10 @@ private extension ScheduledView {
                     Image(systemName: "folder").font(.inter(.caption))
                     Text(LocalizedStringKey(categoryPillLabel)).font(.inter(.caption))
                 }
-                .foregroundColor(.black)
+                .foregroundColor(.appText)
                 .padding(.horizontal, AppStyle.Spacing.medium)
                 .padding(.vertical, AppStyle.Spacing.compact)
-                .background(Color.white, in: Capsule())
+                .background(Color.cardBackground, in: Capsule())
             }
 
             Button {
@@ -1779,10 +1780,10 @@ private extension ScheduledView {
                     Image(systemName: "arrow.right.circle").font(.inter(.caption))
                     Text("Schedule").font(.inter(.caption))
                 }
-                .foregroundColor(!addTaskDates.isEmpty ? .white : .black)
+                .foregroundColor(!addTaskDates.isEmpty ? .white : .appText)
                 .padding(.horizontal, AppStyle.Spacing.medium)
                 .padding(.vertical, AppStyle.Spacing.compact)
-                .background(!addTaskDates.isEmpty ? Color.appRed : Color.white, in: Capsule())
+                .background(!addTaskDates.isEmpty ? Color.appRed : Color.cardBackground, in: Capsule())
             }
             .buttonStyle(.plain)
 
@@ -1799,10 +1800,10 @@ private extension ScheduledView {
                     Circle().fill(addTaskPriority.dotColor).frame(width: AppStyle.Layout.dotSize, height: AppStyle.Layout.dotSize)
                     Text(addTaskPriority.displayName).font(.inter(.caption))
                 }
-                .foregroundColor(.black)
+                .foregroundColor(.appText)
                 .padding(.horizontal, AppStyle.Spacing.medium)
                 .padding(.vertical, AppStyle.Spacing.compact)
-                .background(Color.white, in: Capsule())
+                .background(Color.cardBackground, in: Capsule())
             }
 
             Spacer()
@@ -2031,8 +2032,10 @@ private struct ScheduledProjectRow: View {
                     .foregroundColor(isSelected ? .appRed : .secondary)
                     .accessibilityLabel(isSelected ? "Selected" : "Select")
             }
-            Image(systemName: "folder")
-                .font(.inter(.body, weight: .medium))
+            Image("ProjectIcon")
+                .renderingMode(.template)
+                .resizable().scaledToFit()
+                .frame(width: 16, height: 16)
                 .foregroundColor(.secondary)
                 .frame(width: AppStyle.Layout.pillButton)
             Text(project.title)
@@ -2109,7 +2112,7 @@ private struct ScheduledListRow: View {
                     .foregroundColor(isSelected ? .appRed : .secondary)
                     .accessibilityLabel(isSelected ? "Selected" : "Select")
             }
-            Image(systemName: "list.bullet")
+            Image(systemName: "checklist")
                 .font(.inter(.body, weight: .medium))
                 .foregroundColor(.secondary)
                 .frame(width: AppStyle.Layout.pillButton)

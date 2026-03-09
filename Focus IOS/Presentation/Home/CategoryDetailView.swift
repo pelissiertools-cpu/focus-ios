@@ -77,20 +77,24 @@ struct CategoryDetailView: View {
 
     var body: some View {
         ZStack {
+            Color.appBackground.ignoresSafeArea()
+
             VStack(spacing: 0) {
                 // Header
                 HStack(alignment: .center, spacing: AppStyle.Spacing.compact) {
                     Group {
                         if category.isSystem {
                             HourglassIcon()
-                                .fill(.primary, style: FillStyle(eoFill: true))
-                                .frame(width: 22, height: 22)
+                                .fill(Color.appText, style: FillStyle(eoFill: true))
+                                .frame(width: 15, height: 15)
                         } else {
                             Image(systemName: "folder")
-                                .font(.inter(size: 22, weight: .regular))
-                                .foregroundColor(.primary)
+                                .font(.helveticaNeue(size: 15, weight: .medium))
+                                .foregroundColor(.appText)
                         }
                     }
+                    .frame(width: AppStyle.Layout.iconBadge, height: AppStyle.Layout.iconBadge)
+                    .background(Color.iconBadgeBackground, in: RoundedRectangle(cornerRadius: AppStyle.CornerRadius.iconBadge))
 
                     if category.isSystem {
                         Text(category.name)
@@ -142,17 +146,21 @@ struct CategoryDetailView: View {
                     HStack {
                         Spacer()
                         Button {
-                            withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                            withAnimation(AppStyle.Anim.modeSwitch) {
                                 addBarMode = .task
                                 showingAddBar = true
                             }
                         } label: {
                             Image(systemName: "plus")
                                 .font(.inter(.title2, weight: .semiBold))
-                                .foregroundColor(.white)
+                                .foregroundColor(.appText)
                                 .frame(width: AppStyle.Layout.fab, height: AppStyle.Layout.fab)
-                                .glassEffect(.regular.tint(.charcoal).interactive(), in: .circle)
-                                .shadow(radius: 4, y: 2)
+                                .background(Color.cardBackground, in: Circle())
+                                .overlay(
+                                    Circle()
+                                        .stroke(Color.cardBorder, lineWidth: AppStyle.Border.thin)
+                                )
+                                .fabShadow()
                         }
                         .accessibilityLabel("Add item")
                         .padding(.trailing, AppStyle.Spacing.page)
@@ -164,7 +172,7 @@ struct CategoryDetailView: View {
 
             // MARK: - Add Bar Overlay
             if showingAddBar {
-                Color.black.opacity(0.15)
+                Color.black.opacity(AppStyle.Opacity.scrim)
                     .ignoresSafeArea()
                     .allowsHitTesting(false)
                     .transition(.opacity)
@@ -174,7 +182,7 @@ struct CategoryDetailView: View {
                     Color.clear
                         .contentShape(Rectangle())
                         .onTapGesture {
-                            withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                            withAnimation(AppStyle.Anim.modeSwitch) {
                                 showingAddBar = false
                             }
                         }
@@ -256,7 +264,7 @@ struct CategoryDetailView: View {
                     Menu {
                         ForEach(SortOption.allCases, id: \.self) { option in
                             Button {
-                                withAnimation(.easeInOut(duration: 0.2)) {
+                                withAnimation(AppStyle.Anim.toggle) {
                                     taskListVM.sortOption = option
                                 }
                             } label: {
@@ -272,7 +280,7 @@ struct CategoryDetailView: View {
 
                         ForEach(taskListVM.sortOption.directionOrder, id: \.self) { direction in
                             Button {
-                                withAnimation(.easeInOut(duration: 0.2)) {
+                                withAnimation(AppStyle.Anim.toggle) {
                                     taskListVM.sortDirection = direction
                                 }
                             } label: {
@@ -326,31 +334,41 @@ struct CategoryDetailView: View {
 
     private var addBarModeSelector: some View {
         HStack(spacing: AppStyle.Spacing.comfortable) {
-            addBarModeCircle(mode: .task, icon: "checklist")
-            addBarModeCircle(mode: .list, icon: "list.bullet")
-            addBarModeCircle(mode: .project, icon: "folder")
+            addBarModeCircle(mode: .task, icon: "checkmark.circle")
+            addBarModeCircle(mode: .list, icon: "checklist")
+            addBarModeCircle(mode: .project, icon: "folder", customImage: "ProjectIcon")
             Spacer()
         }
         .padding(.horizontal)
     }
 
-    private func addBarModeCircle(mode: TaskType, icon: String) -> some View {
+    private func addBarModeCircle(mode: TaskType, icon: String, customImage: String? = nil) -> some View {
         let isActive = addBarMode == mode
         return Button {
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+            withAnimation(AppStyle.Anim.buttonTap) {
                 addBarMode = mode
             }
         } label: {
-            Image(systemName: isActive && mode == .project ? "folder.fill" : icon)
-                .font(.inter(.body, weight: .medium))
-                .foregroundColor(isActive ? .white : .primary)
-                .frame(width: AppStyle.Layout.iconButton, height: AppStyle.Layout.iconButton)
-                .glassEffect(
-                    isActive
-                        ? .regular.tint(.black).interactive()
-                        : .regular.interactive(),
-                    in: .circle
-                )
+            Group {
+                if let customImage {
+                    Image(customImage)
+                        .renderingMode(.template)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 16, height: 16)
+                } else {
+                    Image(systemName: icon)
+                }
+            }
+            .font(.inter(.body, weight: .medium))
+            .foregroundColor(isActive ? .white : .primary)
+            .frame(width: AppStyle.Layout.iconButton, height: AppStyle.Layout.iconButton)
+            .glassEffect(
+                isActive
+                    ? .regular.tint(.black).interactive()
+                    : .regular.interactive(),
+                in: .circle
+            )
         }
         .buttonStyle(.plain)
     }
@@ -369,7 +387,7 @@ struct CategoryDetailView: View {
                     _Concurrency.Task { await refreshData() }
                 },
                 onDismiss: {
-                    withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                    withAnimation(AppStyle.Anim.modeSwitch) {
                         showingAddBar = false
                     }
                 }
@@ -382,7 +400,7 @@ struct CategoryDetailView: View {
                     _Concurrency.Task { await refreshData() }
                 },
                 onDismiss: {
-                    withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                    withAnimation(AppStyle.Anim.modeSwitch) {
                         showingAddBar = false
                     }
                 }
@@ -395,7 +413,7 @@ struct CategoryDetailView: View {
                     _Concurrency.Task { await refreshData() }
                 },
                 onDismiss: {
-                    withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                    withAnimation(AppStyle.Anim.modeSwitch) {
                         showingAddBar = false
                     }
                 }
@@ -420,7 +438,7 @@ struct CategoryDetailView: View {
                                 count: categoryTasks.filter { $0.priority == priority }.count,
                                 isCollapsed: taskListVM.isPriorityCollapsed(priority),
                                 onToggle: {
-                                    withAnimation(.easeInOut(duration: 0.2)) {
+                                    withAnimation(AppStyle.Anim.toggle) {
                                         taskListVM.togglePriorityCollapsed(priority)
                                     }
                                 }
@@ -555,14 +573,16 @@ struct CategoryDetailView: View {
 
     private var tasksSectionHeader: some View {
         Button {
-            withAnimation(.easeInOut(duration: 0.2)) {
+            withAnimation(AppStyle.Anim.toggle) {
                 isTasksSectionCollapsed.toggle()
             }
         } label: {
             HStack(spacing: AppStyle.Spacing.compact) {
                 Image(systemName: "checkmark.circle")
                     .font(.inter(.subheadline))
-                    .foregroundColor(.appRed)
+                    .foregroundColor(.appText)
+                    .frame(width: AppStyle.Layout.iconBadge, height: AppStyle.Layout.iconBadge)
+                    .background(Color.iconBadgeBackground, in: RoundedRectangle(cornerRadius: AppStyle.CornerRadius.iconBadge))
                 Text("Tasks")
                     .font(AppStyle.Typography.sectionHeader)
                     .foregroundColor(.primary)
@@ -586,14 +606,18 @@ struct CategoryDetailView: View {
 
     private var projectsSectionHeader: some View {
         Button {
-            withAnimation(.easeInOut(duration: 0.2)) {
+            withAnimation(AppStyle.Anim.toggle) {
                 isProjectsSectionCollapsed.toggle()
             }
         } label: {
             HStack(spacing: AppStyle.Spacing.compact) {
-                Image(systemName: "folder")
-                    .font(.system(size: 14))
-                    .foregroundColor(.appRed)
+                Image("ProjectIcon")
+                    .renderingMode(.template)
+                    .resizable().scaledToFit()
+                    .frame(width: 14, height: 14)
+                    .foregroundColor(.appText)
+                    .frame(width: AppStyle.Layout.iconBadge, height: AppStyle.Layout.iconBadge)
+                    .background(Color.iconBadgeBackground, in: RoundedRectangle(cornerRadius: AppStyle.CornerRadius.iconBadge))
                 Text("Projects")
                     .font(AppStyle.Typography.sectionHeader)
                     .foregroundColor(.primary)
@@ -617,14 +641,16 @@ struct CategoryDetailView: View {
 
     private var listsSectionHeader: some View {
         Button {
-            withAnimation(.easeInOut(duration: 0.2)) {
+            withAnimation(AppStyle.Anim.toggle) {
                 isListsSectionCollapsed.toggle()
             }
         } label: {
             HStack(spacing: AppStyle.Spacing.compact) {
-                Image(systemName: "list.bullet")
+                Image(systemName: "checklist")
                     .font(.inter(.subheadline))
-                    .foregroundColor(.appRed)
+                    .foregroundColor(.appText)
+                    .frame(width: AppStyle.Layout.iconBadge, height: AppStyle.Layout.iconBadge)
+                    .background(Color.iconBadgeBackground, in: RoundedRectangle(cornerRadius: AppStyle.CornerRadius.iconBadge))
                 Text("Quick Lists")
                     .font(AppStyle.Typography.sectionHeader)
                     .foregroundColor(.primary)
@@ -659,8 +685,10 @@ private struct CategoryProjectRow: View {
 
     var body: some View {
         HStack(spacing: AppStyle.Spacing.comfortable) {
-            Image(systemName: "folder")
-                .font(.inter(.body, weight: .medium))
+            Image("ProjectIcon")
+                .renderingMode(.template)
+                .resizable().scaledToFit()
+                .frame(width: 16, height: 16)
                 .foregroundColor(.secondary)
                 .frame(width: AppStyle.Layout.pillButton)
 
@@ -710,7 +738,7 @@ private struct CategoryListRow: View {
 
     var body: some View {
         HStack(spacing: AppStyle.Spacing.comfortable) {
-            Image(systemName: "list.bullet")
+            Image(systemName: "checklist")
                 .font(.inter(.body, weight: .medium))
                 .foregroundColor(.secondary)
                 .frame(width: AppStyle.Layout.pillButton)

@@ -43,7 +43,7 @@ struct EditModeActionBar<VM: LogFilterable>: View {
         }
 
         if let listBinding = showCreateListAlert {
-            items.append(ActionItem(icon: "list.bullet", label: "List", isDestructive: false) {
+            items.append(ActionItem(icon: "checklist", label: "List", isDestructive: false) {
                 listBinding.wrappedValue = true
             })
         }

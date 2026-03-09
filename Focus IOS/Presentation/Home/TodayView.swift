@@ -150,6 +150,8 @@ struct TodayView: View {
 
     var body: some View {
         ZStack {
+            Color.appBackground.ignoresSafeArea()
+
             VStack(spacing: 0) {
                 // Header
                 HStack(alignment: .center, spacing: AppStyle.Spacing.compact) {
@@ -699,8 +701,10 @@ private struct TodayProjectRow: View {
 
     var body: some View {
         HStack(spacing: AppStyle.Spacing.comfortable) {
-            Image(systemName: "folder")
-                .font(.inter(.body, weight: .medium))
+            Image("ProjectIcon")
+                .renderingMode(.template)
+                .resizable().scaledToFit()
+                .frame(width: 16, height: 16)
                 .foregroundColor(.secondary)
                 .frame(width: AppStyle.Layout.pillButton)
             VStack(alignment: .leading, spacing: AppStyle.Spacing.tiny) {
@@ -744,7 +748,7 @@ private struct TodayListRow: View {
 
     var body: some View {
         HStack(spacing: AppStyle.Spacing.comfortable) {
-            Image(systemName: "list.bullet")
+            Image(systemName: "checklist")
                 .font(.inter(.body, weight: .medium))
                 .foregroundColor(.secondary)
                 .frame(width: AppStyle.Layout.pillButton)

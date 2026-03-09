@@ -189,6 +189,8 @@ struct BacklogView: View {
 
     var body: some View {
         ZStack {
+            Color.appBackground.ignoresSafeArea()
+
             VStack(spacing: 0) {
                 // Header
                 HStack(alignment: .center, spacing: AppStyle.Spacing.compact) {
@@ -801,7 +803,9 @@ struct BacklogView: View {
             HStack(spacing: AppStyle.Spacing.compact) {
                 Image(systemName: "checkmark.circle")
                     .font(.inter(.subheadline))
-                    .foregroundColor(.appRed)
+                    .foregroundColor(.appText)
+                    .frame(width: AppStyle.Layout.iconBadge, height: AppStyle.Layout.iconBadge)
+                    .background(Color.iconBadgeBackground, in: RoundedRectangle(cornerRadius: AppStyle.CornerRadius.iconBadge))
                 Text("Tasks")
                     .font(AppStyle.Typography.sectionHeader)
                     .foregroundColor(.primary)
@@ -830,9 +834,13 @@ struct BacklogView: View {
             }
         } label: {
             HStack(spacing: AppStyle.Spacing.compact) {
-                Image(systemName: "folder")
-                    .font(.system(size: 14))
-                    .foregroundColor(.appRed)
+                Image("ProjectIcon")
+                    .renderingMode(.template)
+                    .resizable().scaledToFit()
+                    .frame(width: 14, height: 14)
+                    .foregroundColor(.appText)
+                    .frame(width: AppStyle.Layout.iconBadge, height: AppStyle.Layout.iconBadge)
+                    .background(Color.iconBadgeBackground, in: RoundedRectangle(cornerRadius: AppStyle.CornerRadius.iconBadge))
                 Text("Projects")
                     .font(AppStyle.Typography.sectionHeader)
                     .foregroundColor(.primary)
@@ -861,9 +869,11 @@ struct BacklogView: View {
             }
         } label: {
             HStack(spacing: AppStyle.Spacing.compact) {
-                Image(systemName: "list.bullet")
+                Image(systemName: "checklist")
                     .font(.inter(.subheadline))
-                    .foregroundColor(.appRed)
+                    .foregroundColor(.appText)
+                    .frame(width: AppStyle.Layout.iconBadge, height: AppStyle.Layout.iconBadge)
+                    .background(Color.iconBadgeBackground, in: RoundedRectangle(cornerRadius: AppStyle.CornerRadius.iconBadge))
                 Text("Quick Lists")
                     .font(AppStyle.Typography.sectionHeader)
                     .foregroundColor(.primary)
@@ -989,7 +999,7 @@ private extension BacklogView {
                         .foregroundColor(.white)
                         .padding(.horizontal, AppStyle.Spacing.medium)
                         .padding(.vertical, AppStyle.Spacing.compact)
-                        .background(Color.black, in: Capsule())
+                        .background(Color.charcoal, in: Capsule())
                     }
                     .buttonStyle(.plain)
 
@@ -1000,11 +1010,11 @@ private extension BacklogView {
                     } label: {
                         Image(systemName: "ellipsis")
                             .font(.inter(.caption, weight: .bold))
-                            .foregroundColor(.black)
+                            .foregroundColor(.appText)
                             .frame(minHeight: UIFont.preferredFont(forTextStyle: .caption1).lineHeight)
                             .padding(.horizontal, AppStyle.Spacing.medium)
                             .padding(.vertical, AppStyle.Spacing.compact)
-                            .background(Color.white, in: Capsule())
+                            .background(Color.cardBackground, in: Capsule())
                     }
                     .buttonStyle(.plain)
 
@@ -1020,7 +1030,7 @@ private extension BacklogView {
                             } else {
                                 Image(systemName: hasGeneratedBreakdown ? "arrow.clockwise" : "sparkles")
                                     .font(.inter(.subheadline, weight: .semiBold))
-                                    .foregroundColor(!isAddTaskTitleEmpty ? .blue : .primary)
+                                    .foregroundColor(!isAddTaskTitleEmpty ? .focusBlue : .primary)
                             }
                             Text(LocalizedStringKey(hasGeneratedBreakdown ? "Regenerate" : "Suggest Breakdown"))
                                 .font(.inter(.caption, weight: .medium))
@@ -1085,10 +1095,10 @@ private extension BacklogView {
                             Text(LocalizedStringKey(categoryPillLabel))
                                 .font(.inter(.caption))
                         }
-                        .foregroundColor(.black)
+                        .foregroundColor(.appText)
                         .padding(.horizontal, AppStyle.Spacing.medium)
                         .padding(.vertical, AppStyle.Spacing.compact)
-                        .background(Color.white, in: Capsule())
+                        .background(Color.cardBackground, in: Capsule())
                     }
 
                     Button {
@@ -1105,10 +1115,10 @@ private extension BacklogView {
                             Text("Schedule")
                                 .font(.inter(.caption))
                         }
-                        .foregroundColor(!addTaskDates.isEmpty ? .white : .black)
+                        .foregroundColor(!addTaskDates.isEmpty ? .white : .appText)
                         .padding(.horizontal, AppStyle.Spacing.medium)
                         .padding(.vertical, AppStyle.Spacing.compact)
-                        .background(!addTaskDates.isEmpty ? Color.appRed : Color.white, in: Capsule())
+                        .background(!addTaskDates.isEmpty ? Color.appRed : Color.cardBackground, in: Capsule())
                     }
                     .buttonStyle(.plain)
 
@@ -1132,10 +1142,10 @@ private extension BacklogView {
                             Text(addTaskPriority.displayName)
                                 .font(.inter(.caption))
                         }
-                        .foregroundColor(.black)
+                        .foregroundColor(.appText)
                         .padding(.horizontal, AppStyle.Spacing.medium)
                         .padding(.vertical, AppStyle.Spacing.compact)
-                        .background(Color.white, in: Capsule())
+                        .background(Color.cardBackground, in: Capsule())
                     }
 
                     Spacer()
@@ -1285,8 +1295,10 @@ private struct BacklogProjectRow: View {
 
     var body: some View {
         HStack(spacing: AppStyle.Spacing.comfortable) {
-            Image(systemName: "folder")
-                .font(.inter(.body, weight: .medium))
+            Image("ProjectIcon")
+                .renderingMode(.template)
+                .resizable().scaledToFit()
+                .frame(width: 16, height: 16)
                 .foregroundColor(.secondary)
                 .frame(width: AppStyle.Layout.pillButton)
 
@@ -1336,7 +1348,7 @@ private struct BacklogListRow: View {
 
     var body: some View {
         HStack(spacing: AppStyle.Spacing.comfortable) {
-            Image(systemName: "list.bullet")
+            Image(systemName: "checklist")
                 .font(.inter(.body, weight: .medium))
                 .foregroundColor(.secondary)
                 .frame(width: AppStyle.Layout.pillButton)

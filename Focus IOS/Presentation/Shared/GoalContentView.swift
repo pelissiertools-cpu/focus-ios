@@ -655,7 +655,7 @@ struct GoalSectionRow: View {
         VStack(alignment: .leading, spacing: AppStyle.Spacing.small) {
             TextField("Section name", text: $sectionTitle)
                 .font(.inter(.headline, weight: .bold))
-                .foregroundColor(.appRed)
+                .foregroundColor(.accentOrange)
                 .textFieldStyle(.plain)
                 .focused($isEditing)
                 .onSubmit { saveSectionTitle() }

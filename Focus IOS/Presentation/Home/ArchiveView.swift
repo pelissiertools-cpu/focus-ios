@@ -16,6 +16,8 @@ struct ArchiveView: View {
     }
 
     var body: some View {
+        ZStack {
+        Color.appBackground.ignoresSafeArea()
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 0) {
                 // Title
@@ -200,6 +202,7 @@ struct ArchiveView: View {
         .task {
             await viewModel.fetchCompletedItems()
         }
+        } // ZStack
     }
 
     private func navigateToProject(_ project: FocusTask) {
@@ -274,11 +277,13 @@ private struct ArchiveItemRow: View {
             Spacer()
 
             if task.type == .project {
-                Image(systemName: "folder")
-                    .font(.system(size: 14))
+                Image("ProjectIcon")
+                    .renderingMode(.template)
+                    .resizable().scaledToFit()
+                    .frame(width: 14, height: 14)
                     .foregroundColor(.secondary)
             } else if task.type == .list {
-                Image(systemName: "list.bullet")
+                Image(systemName: "checklist")
                     .font(.inter(.caption))
                     .foregroundColor(.secondary)
             }

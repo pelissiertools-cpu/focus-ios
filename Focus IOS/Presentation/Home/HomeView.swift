@@ -142,20 +142,13 @@ struct HomeView: View {
                     VStack(alignment: .leading, spacing: AppStyle.Spacing.section) {
                         Color.clear.frame(height: 0).id("homeScrollTop")
                         // MARK: - Date Header
-                        HStack(alignment: .center, spacing: 10) {
-                            Image("AppLogo")
-                                .resizable()
-                                .aspectRatio(contentMode: .fit)
-                                .frame(height: AppStyle.Layout.logoHeight)
-                            VStack(alignment: .leading, spacing: 0) {
-                                Text(currentDayName)
-                                    .font(.helveticaNeue(size: 23.5))
-                                    .tracking(-0.245)
-                                    .foregroundColor(.secondary)
-                                formattedDateView
-                                    .foregroundColor(.secondary)
-                            }
-                            Spacer()
+                        VStack(alignment: .leading, spacing: 0) {
+                            Text(currentDayName)
+                                .font(.helveticaNeue(size: 23.5))
+                                .tracking(-0.245)
+                                .foregroundColor(.secondary)
+                            formattedDateView
+                                .foregroundColor(.secondary)
                         }
                         .padding(.horizontal, AppStyle.Spacing.page)
                         .padding(.top, AppStyle.Spacing.compact)
@@ -212,10 +205,17 @@ struct HomeView: View {
 
                         // MARK: - Projects / Quick Lists / Goals
                         HStack(spacing: AppStyle.Spacing.compact) {
-                            homeCardCompact(title: "Quick lists", icon: "list.bullet") {
+                            homeCardCompact(title: "Quick lists", icon: "checklist") {
                                 viewModel.selectedMenuItem = .quickLists
                             }
-                            homeCardCompact(title: "Projects", icon: "folder") {
+                            homeCardCompact(title: "Projects", customIcon: {
+                                Image("ProjectIcon")
+                                    .renderingMode(.template)
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(width: 15, height: 15)
+                                    .foregroundColor(.appText)
+                            }) {
                                 viewModel.selectedMenuItem = .projects
                             }
                             homeCardCompact(title: "Goals", customIcon: {
@@ -639,8 +639,10 @@ struct HomeView: View {
         } label: {
             HStack(spacing: AppStyle.Spacing.comfortable) {
                 if item.type == .project {
-                    Image(systemName: "folder")
-                        .font(.inter(.body, weight: .medium))
+                    Image("ProjectIcon")
+                        .renderingMode(.template)
+                        .resizable().scaledToFit()
+                        .frame(width: 16, height: 16)
                         .foregroundColor(.secondary)
                         .frame(width: AppStyle.Layout.pillButton)
                 } else if item.type == .goal {
@@ -652,14 +654,14 @@ struct HomeView: View {
                         .foregroundColor(.secondary)
                         .frame(width: AppStyle.Layout.pillButton)
                 } else {
-                    Image(systemName: "list.bullet")
+                    Image(systemName: "checklist")
                         .font(.inter(.body, weight: .medium))
                         .foregroundColor(.secondary)
                         .frame(width: AppStyle.Layout.pillButton)
                 }
 
                 Text(item.title)
-                    .font(.helveticaNeue(.body, weight: .bold))
+                    .font(.helveticaNeue(.body, weight: .regular))
                     .foregroundColor(.appText)
                     .lineLimit(1)
 
@@ -913,31 +915,41 @@ struct HomeView: View {
 
     private var addBarModeSelector: some View {
         HStack(spacing: AppStyle.Spacing.comfortable) {
-            addBarModeCircle(mode: .task, icon: "checklist")
-            addBarModeCircle(mode: .list, icon: "list.bullet")
-            addBarModeCircle(mode: .project, icon: "folder")
+            addBarModeCircle(mode: .task, icon: "checkmark.circle")
+            addBarModeCircle(mode: .list, icon: "checklist")
+            addBarModeCircle(mode: .project, icon: "folder", customImage: "ProjectIcon")
             Spacer()
         }
         .padding(.horizontal)
     }
 
-    private func addBarModeCircle(mode: TaskType, icon: String) -> some View {
+    private func addBarModeCircle(mode: TaskType, icon: String, customImage: String? = nil) -> some View {
         let isActive = addBarMode == mode
         return Button {
             withAnimation(AppStyle.Anim.buttonTap) {
                 addBarMode = mode
             }
         } label: {
-            Image(systemName: isActive && mode == .project ? "folder.fill" : icon)
-                .font(.inter(.body, weight: .medium))
-                .foregroundColor(isActive ? .white : .primary)
-                .frame(width: AppStyle.Layout.iconButton, height: AppStyle.Layout.iconButton)
-                .glassEffect(
-                    isActive
-                        ? .regular.tint(.black).interactive()
-                        : .regular.interactive(),
-                    in: .circle
-                )
+            Group {
+                if let customImage {
+                    Image(customImage)
+                        .renderingMode(.template)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 16, height: 16)
+                } else {
+                    Image(systemName: icon)
+                }
+            }
+            .font(.inter(.body, weight: .medium))
+            .foregroundColor(isActive ? .white : .primary)
+            .frame(width: AppStyle.Layout.iconButton, height: AppStyle.Layout.iconButton)
+            .glassEffect(
+                isActive
+                    ? .regular.tint(.black).interactive()
+                    : .regular.interactive(),
+                in: .circle
+            )
         }
         .buttonStyle(.plain)
     }
@@ -2163,8 +2175,10 @@ struct HomeProjectRow: View {
 
     var body: some View {
         HStack(spacing: AppStyle.Spacing.comfortable) {
-            Image(systemName: "folder")
-                .font(.inter(.body, weight: .medium))
+            Image("ProjectIcon")
+                .renderingMode(.template)
+                .resizable().scaledToFit()
+                .frame(width: 16, height: 16)
                 .foregroundColor(.secondary)
                 .frame(width: AppStyle.Layout.pillButton)
 
@@ -2209,7 +2223,7 @@ struct HomeListRow: View {
 
     var body: some View {
         HStack(spacing: AppStyle.Spacing.comfortable) {
-            Image(systemName: "list.bullet")
+            Image(systemName: "checklist")
                 .font(.inter(.body, weight: .medium))
                 .foregroundColor(.secondary)
                 .frame(width: AppStyle.Layout.pillButton)

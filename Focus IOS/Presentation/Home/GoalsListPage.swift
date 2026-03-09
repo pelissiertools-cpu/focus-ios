@@ -27,8 +27,15 @@ struct GoalsListPage: View {
     var body: some View {
         ZStack {
             List {
-                Text("Goals")
-                    .pageTitleStyle()
+                HStack(spacing: AppStyle.Spacing.medium) {
+                    Image(systemName: "target")
+                        .font(.helveticaNeue(size: 15, weight: .medium))
+                        .foregroundColor(.appText)
+                        .frame(width: AppStyle.Layout.iconBadge, height: AppStyle.Layout.iconBadge)
+                        .background(Color.iconBadgeBackground, in: RoundedRectangle(cornerRadius: AppStyle.CornerRadius.iconBadge))
+                    Text("Goals")
+                        .pageTitleStyle()
+                }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .listRowInsets(EdgeInsets(top: AppStyle.Spacing.section, leading: AppStyle.Spacing.page, bottom: AppStyle.Spacing.section, trailing: AppStyle.Spacing.page))
                     .listRowBackground(Color.clear)

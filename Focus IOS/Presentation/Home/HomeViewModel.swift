@@ -27,7 +27,7 @@ enum HomeMenuItem: String, CaseIterable, Identifiable, Hashable {
         case .backlog:    return "tray"
         case .archive:    return "archivebox"
         case .projects:   return "folder"
-        case .quickLists: return "list.bullet"
+        case .quickLists: return "checklist"
         case .goals:      return "target"
         }
     }

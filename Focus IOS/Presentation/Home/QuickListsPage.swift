@@ -28,9 +28,11 @@ struct QuickListsPage: View {
         ZStack {
             List {
                 HStack(spacing: AppStyle.Spacing.medium) {
-                    Image(systemName: "list.bullet")
-                        .font(.inter(.title2, weight: .medium))
-                        .foregroundColor(.secondary)
+                    Image(systemName: "checklist")
+                        .font(.helveticaNeue(size: 15, weight: .medium))
+                        .foregroundColor(.appText)
+                        .frame(width: AppStyle.Layout.iconBadge, height: AppStyle.Layout.iconBadge)
+                        .background(Color.iconBadgeBackground, in: RoundedRectangle(cornerRadius: AppStyle.CornerRadius.iconBadge))
                     Text("Quick Lists")
                         .pageTitleStyle()
                 }
@@ -117,16 +119,17 @@ struct QuickListsPage: View {
                     HStack {
                         Spacer()
                         Button {
-                            withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                            withAnimation(AppStyle.Anim.modeSwitch) {
                                 showingAddBar = true
                             }
                         } label: {
                             Image(systemName: "plus")
                                 .font(.inter(.title2, weight: .semiBold))
-                                .foregroundColor(.white)
+                                .foregroundColor(.appText)
                                 .frame(width: AppStyle.Layout.fab, height: AppStyle.Layout.fab)
-                                .glassEffect(.regular.tint(.charcoal).interactive(), in: .circle)
-                                .shadow(radius: 4, y: 2)
+                                .background(Color.cardBackground, in: Circle())
+                                .overlay(Circle().stroke(Color.cardBorder, lineWidth: AppStyle.Border.thin))
+                                .fabShadow()
                         }
                         .accessibilityLabel("Add list")
                         .padding(.trailing, AppStyle.Spacing.page)
@@ -303,7 +306,7 @@ struct QuickListsPage: View {
             }
 
             Circle()
-                .fill(Color.secondary.opacity(0.5))
+                .fill(Color.todayBadge)
                 .frame(width: AppStyle.Layout.dotSize, height: AppStyle.Layout.dotSize)
 
             Text(list.title)

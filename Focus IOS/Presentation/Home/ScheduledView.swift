@@ -760,9 +760,15 @@ struct ScheduledView: View {
     private var headerView: some View {
         VStack(spacing: AppStyle.Spacing.medium) {
             HStack(alignment: .center, spacing: AppStyle.Spacing.compact) {
+                Image(systemName: "calendar")
+                    .font(.helveticaNeue(size: 15, weight: .medium))
+                    .foregroundColor(.appRed)
+                    .frame(width: AppStyle.Layout.iconBadge, height: AppStyle.Layout.iconBadge)
+                    .background(Color.scheduledBadge, in: RoundedRectangle(cornerRadius: AppStyle.CornerRadius.iconBadge))
+
                 Text("Scheduled")
                     .pageTitleStyle()
-                    .foregroundColor(.appRed)
+                    .foregroundColor(.primary)
                 Spacer()
                 if let dateText = scheduleDateText {
                     Button {
@@ -771,10 +777,10 @@ struct ScheduledView: View {
                         HStack(spacing: AppStyle.Spacing.tiny) {
                             Text(dateText)
                                 .font(.inter(.subheadline, weight: .medium))
-                                .foregroundColor(.primary)
+                                .foregroundColor(.secondary)
                             Image(systemName: "chevron.right")
                                 .font(AppStyle.Typography.chevron)
-                                .foregroundColor(.primary)
+                                .foregroundColor(.secondary)
                         }
                     }
                     .buttonStyle(.plain)
@@ -789,13 +795,18 @@ struct ScheduledView: View {
                         }
                     } label: {
                         Text(mode.label)
-                            .font(.inter(size: 13, weight: .medium))
-                            .foregroundColor(viewMode == mode ? .white : .secondary)
+                            .font(.helveticaNeue(size: 13, weight: .medium))
+                            .tracking(-0.135)
+                            .foregroundColor(viewMode == mode ? .white : .appText)
                             .padding(.horizontal, AppStyle.Spacing.content)
                             .padding(.vertical, AppStyle.Spacing.small)
                             .background(
-                                Capsule()
-                                    .fill(viewMode == mode ? Color.appRed : Color.secondary.opacity(0.15))
+                                viewMode == mode ? Color.appRed : Color.categoryBackground,
+                                in: RoundedRectangle(cornerRadius: AppStyle.CornerRadius.card)
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: AppStyle.CornerRadius.card)
+                                    .stroke(viewMode == mode ? Color.clear : Color.cardBorder, lineWidth: AppStyle.Border.thin)
                             )
                     }
                     .buttonStyle(.plain)
@@ -904,16 +915,20 @@ struct ScheduledView: View {
             HStack {
                 Spacer()
                 Button {
-                    withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                    withAnimation(AppStyle.Anim.modeSwitch) {
                         showingAddBar = true
                     }
                 } label: {
                     Image(systemName: "plus")
                         .font(.inter(.title2, weight: .semiBold))
-                        .foregroundColor(.white)
+                        .foregroundColor(.appText)
                         .frame(width: AppStyle.Layout.fab, height: AppStyle.Layout.fab)
-                        .glassEffect(.regular.tint(.charcoal).interactive(), in: .circle)
-                        .shadow(radius: 4, y: 2)
+                        .background(Color.cardBackground, in: Circle())
+                        .overlay(
+                            Circle()
+                                .stroke(Color.cardBorder, lineWidth: AppStyle.Border.thin)
+                        )
+                        .fabShadow()
                 }
                 .accessibilityLabel("Add task")
                 .padding(.trailing, AppStyle.Spacing.page)
@@ -925,7 +940,7 @@ struct ScheduledView: View {
 
     @ViewBuilder
     private var addBarOverlay: some View {
-        Color.black.opacity(0.15)
+        Color.black.opacity(AppStyle.Opacity.scrim)
             .ignoresSafeArea()
             .allowsHitTesting(false)
             .transition(.opacity)
@@ -935,7 +950,7 @@ struct ScheduledView: View {
             Color.clear
                 .contentShape(Rectangle())
                 .onTapGesture {
-                    withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                    withAnimation(AppStyle.Anim.modeSwitch) {
                         dismissAddBar()
                     }
                 }

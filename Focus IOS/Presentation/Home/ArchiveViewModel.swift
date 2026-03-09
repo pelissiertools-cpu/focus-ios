@@ -171,7 +171,7 @@ class ArchiveViewModel: ObservableObject {
                 title = "Yesterday"
             } else {
                 let formatter = DateFormatter()
-                formatter.dateFormat = "EEEE"
+                formatter.dateFormat = "EEEE, MMM d"
                 title = formatter.string(from: date)
             }
             result.append(ArchiveSection(

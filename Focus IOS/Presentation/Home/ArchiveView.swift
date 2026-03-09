@@ -19,12 +19,22 @@ struct ArchiveView: View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 0) {
                 // Title
-                Text("Completed")
-                    .pageTitleStyle()
-                    .foregroundColor(.primary)
-                    .padding(.horizontal, AppStyle.Spacing.page)
-                    .padding(.top, AppStyle.Spacing.section)
-                    .padding(.bottom, AppStyle.Spacing.tiny)
+                HStack(spacing: AppStyle.Spacing.compact) {
+                    Image(systemName: "archivebox")
+                        .font(.helveticaNeue(size: 15, weight: .medium))
+                        .foregroundColor(.appText)
+                        .frame(width: AppStyle.Layout.iconBadge, height: AppStyle.Layout.iconBadge)
+                        .background(Color.iconBadgeBackground, in: RoundedRectangle(cornerRadius: AppStyle.CornerRadius.iconBadge))
+
+                    Text("Completed")
+                        .pageTitleStyle()
+                        .foregroundColor(.primary)
+
+                    Spacer()
+                }
+                .padding(.horizontal, AppStyle.Spacing.page)
+                .padding(.top, AppStyle.Spacing.section)
+                .padding(.bottom, AppStyle.Spacing.tiny)
 
                 // Count + Clear
                 if viewModel.totalCount > 0 {
@@ -159,7 +169,7 @@ struct ArchiveView: View {
                     .padding(.horizontal, AppStyle.Spacing.expanded)
                     .padding(.vertical, AppStyle.Spacing.comfortable)
                     .glassEffect(.regular, in: .capsule)
-                    .shadow(radius: 4, y: 2)
+                    .fabShadow()
                 }
                 .buttonStyle(.plain)
                 .padding(.bottom, 40)
@@ -246,9 +256,14 @@ private struct ArchiveItemRow: View {
                     .font(.inter(.title3))
                     .foregroundColor(isSelected ? .appRed : .secondary)
             } else {
-                Image(systemName: "checkmark.circle.fill")
-                    .font(.inter(.title3))
-                    .foregroundColor(.focusBlue)
+                ZStack {
+                    Circle()
+                        .fill(Color.todayBadge)
+                        .frame(width: 24, height: 24)
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundColor(.focusBlue)
+                }
             }
 
             Text(task.title)

@@ -14,7 +14,7 @@ struct TodayView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var isInlineAddFocused = false
     @State private var showingAddBar = false
-    @State private var isLoading = false
+    @State private var isLoading = true
     @State private var todaySchedules: [UUID: (scheduleId: UUID, sortOrder: Int)] = [:]
     @State private var scheduleById: [UUID: Schedule] = [:]
     @State private var selectedScheduleForReschedule: Schedule?
@@ -33,6 +33,27 @@ struct TodayView: View {
         _taskListVM = StateObject(wrappedValue: TaskListViewModel(authService: authService))
         _listsVM = StateObject(wrappedValue: ListsViewModel(authService: authService))
         _projectsVM = StateObject(wrappedValue: ProjectsViewModel(authService: authService))
+
+        // Pre-populate schedule state from cache so the first render
+        // already knows which items are in focus (prevents flash).
+        let cache = AppDataCache.shared
+        if let cachedDate = cache.todayScheduleDate,
+           Calendar.current.isDateInToday(cachedDate) {
+            let allSchedules = cache.todayFocusSchedules + cache.todayTodoSchedules
+            var schedules: [UUID: (scheduleId: UUID, sortOrder: Int)] = [:]
+            var byId: [UUID: Schedule] = [:]
+            var focusIds: Set<UUID> = []
+            for s in allSchedules {
+                schedules[s.taskId] = (scheduleId: s.id, sortOrder: s.sortOrder)
+                byId[s.id] = s
+            }
+            for s in cache.todayFocusSchedules {
+                focusIds.insert(s.taskId)
+            }
+            _todaySchedules = State(initialValue: schedules)
+            _scheduleById = State(initialValue: byId)
+            _focusTaskIds = State(initialValue: focusIds)
+        }
     }
 
     private var todayScheduledIds: Set<UUID> {
@@ -92,7 +113,9 @@ struct TodayView: View {
             result.append(.item(entry))
             appendExpandedSubtasks(for: entry, into: &result)
         }
-        result.append(.focusInlineAdd)
+        if focusEntries.isEmpty {
+            result.append(.focusEmptyPlaceholder)
+        }
         result.append(.focusDivider)
 
         // Rest of items
@@ -271,22 +294,6 @@ struct TodayView: View {
             }
         }
         .task {
-            // Populate from cache for instant display
-            let cache = AppDataCache.shared
-            if let cachedDate = cache.todayScheduleDate,
-               Calendar.current.isDateInToday(cachedDate) {
-                populateScheduleState(
-                    focusSchedules: cache.todayFocusSchedules,
-                    todoSchedules: cache.todayTodoSchedules,
-                    overdueSchedules: cache.overdueSchedules
-                )
-            }
-
-            // Only show loading if no cached data available
-            if isEmpty {
-                isLoading = true
-            }
-
             await fetchTodayData()
             isLoading = false
         }
@@ -462,17 +469,28 @@ struct TodayView: View {
                     .listRowSeparator(.hidden)
                     .moveDisabled(true)
 
+                case .focusEmptyPlaceholder:
+                    Text("Drag and drop tasks that you want to focus on here")
+                        .font(.inter(.subheadline))
+                        .foregroundColor(.secondary.opacity(0.4))
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: .infinity, minHeight: 60, alignment: .center)
+                        .contentShape(Rectangle())
+                        .listRowInsets(AppStyle.Insets.row)
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+
                 case .focusDivider:
                     Rectangle()
-                        .fill(Color.focusBlue)
-                        .frame(height: 1)
+                        .fill(Color.todayBadge)
+                        .frame(height: 2)
                         .listRowInsets(EdgeInsets(top: AppStyle.Spacing.compact, leading: AppStyle.Spacing.page, bottom: AppStyle.Spacing.compact, trailing: AppStyle.Spacing.page))
                         .listRowBackground(Color.clear)
                         .listRowSeparator(.hidden)
                         .moveDisabled(true)
 
                 case .todoDropPlaceholder:
-                    Text("Drop items here")
+                    Text("No tasks scheduled yet")
                         .font(.inter(.subheadline))
                         .foregroundColor(.secondary.opacity(0.4))
                         .frame(maxWidth: .infinity, alignment: .center)
@@ -629,18 +647,15 @@ struct TodayView: View {
         }
         if itemTo > itemFrom { itemTo = min(itemTo, itemEntries.count) }
 
-        guard itemFrom != itemTo && itemFrom + 1 != itemTo else { return }
+        let movedFromFocus = focusTaskIds.contains(movedEntry.id)
+        let movedToFocus = destination <= dividerIdx
+        let crossedDivider = movedFromFocus != movedToFocus
+
+        // Skip if neither reordering nor crossing the divider
+        guard crossedDivider || (itemFrom != itemTo && itemFrom + 1 != itemTo) else { return }
 
         var items = itemEntries.map { $0.entry }
         items.move(fromOffsets: IndexSet(integer: itemFrom), toOffset: itemTo)
-
-        // Determine which items land in focus vs todo based on divider position
-        // Focus items: those whose flatIdx is before the divider
-        let focusItemCount = itemEntries.filter { $0.flatIdx < dividerIdx }.count
-        // After the move, the first focusItemCount items are focus, rest are todo
-        // But if destination crosses the divider, the count shifts by 1
-        let movedFromFocus = focusTaskIds.contains(movedEntry.id)
-        let movedToFocus = destination <= dividerIdx
 
         // Update focusTaskIds for the moved item
         if movedFromFocus && !movedToFocus {
@@ -769,6 +784,7 @@ private enum TodayFlatItem: Identifiable {
     case inlineAddSubtask(parentId: UUID)
     case focusSectionHeader
     case focusInlineAdd
+    case focusEmptyPlaceholder
     case focusDivider
     case todoDropPlaceholder
     case bottomSpacer
@@ -780,6 +796,7 @@ private enum TodayFlatItem: Identifiable {
         case .inlineAddSubtask(let pid): return "add-subtask-\(pid.uuidString)"
         case .focusSectionHeader: return "focus-section-header"
         case .focusInlineAdd: return "focus-inline-add"
+        case .focusEmptyPlaceholder: return "focus-empty-placeholder"
         case .focusDivider: return "focus-divider"
         case .todoDropPlaceholder: return "todo-drop-placeholder"
         case .bottomSpacer: return "bottom-spacer"

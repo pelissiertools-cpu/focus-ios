@@ -146,7 +146,11 @@ struct HomeView: View {
                                     .font(.helveticaNeue(size: 15, weight: .medium))
                                     .foregroundColor(Color(red: 0x02/255.0, green: 0x7B/255.0, blue: 0x3A/255.0))
                                     .frame(width: 28, height: 28)
-                                    .background(Color(red: 0xEB/255.0, green: 0xF6/255.0, blue: 0xEC/255.0), in: RoundedRectangle(cornerRadius: 7))
+                                    .background(Color(UIColor { traits in
+                                        traits.userInterfaceStyle == .dark
+                                            ? UIColor(red: 0x02/255.0, green: 0x7B/255.0, blue: 0x3A/255.0, alpha: 0.2)
+                                            : UIColor(red: 0xEB/255.0, green: 0xF6/255.0, blue: 0xEC/255.0, alpha: 1)
+                                    }), in: RoundedRectangle(cornerRadius: 7))
                             }, count: inboxCount) {
                                 viewModel.selectedMenuItem = .inbox
                             }
@@ -160,7 +164,11 @@ struct HomeView: View {
                                     .font(.helveticaNeue(size: 15, weight: .medium))
                                     .foregroundColor(.appRed)
                                     .frame(width: 28, height: 28)
-                                    .background(Color(red: 0xF6/255.0, green: 0xEB/255.0, blue: 0xEB/255.0), in: RoundedRectangle(cornerRadius: 7))
+                                    .background(Color(UIColor { traits in
+                                        traits.userInterfaceStyle == .dark
+                                            ? UIColor(red: 0xF8/255.0, green: 0x1E/255.0, blue: 0x1D/255.0, alpha: 0.2)
+                                            : UIColor(red: 0xF6/255.0, green: 0xEB/255.0, blue: 0xEB/255.0, alpha: 1)
+                                    }), in: RoundedRectangle(cornerRadius: 7))
                             }) {
                                 viewModel.selectedMenuItem = .assign
                             }
@@ -169,7 +177,7 @@ struct HomeView: View {
                                     .font(.helveticaNeue(size: 15, weight: .medium))
                                     .foregroundColor(.appText)
                                     .frame(width: 28, height: 28)
-                                    .background(Color(red: 0xF5/255.0, green: 0xF4/255.0, blue: 0xF4/255.0), in: RoundedRectangle(cornerRadius: 7))
+                                    .background(Color.iconBadgeBackground, in: RoundedRectangle(cornerRadius: 7))
                             }) {
                                 viewModel.selectedMenuItem = .archive
                             }
@@ -525,7 +533,7 @@ struct HomeView: View {
             .padding(AppStyle.Spacing.section)
             .frame(maxWidth: .infinity, minHeight: AppStyle.Layout.fab)
             .contentShape(Rectangle())
-            .background(Color.white, in: RoundedRectangle(cornerRadius: 12))
+            .background(Color.cardBackground, in: RoundedRectangle(cornerRadius: 12))
             .overlay(
                 RoundedRectangle(cornerRadius: 12)
                     .stroke(Color.cardBorder, lineWidth: 0.33)
@@ -553,7 +561,7 @@ struct HomeView: View {
             }
             .frame(maxWidth: .infinity, minHeight: AppStyle.Layout.fab)
             .contentShape(Rectangle())
-            .background(Color.white, in: RoundedRectangle(cornerRadius: 12))
+            .background(Color.cardBackground, in: RoundedRectangle(cornerRadius: 12))
             .overlay(
                 RoundedRectangle(cornerRadius: 12)
                     .stroke(Color.cardBorder, lineWidth: 0.33)
@@ -577,7 +585,7 @@ struct HomeView: View {
                 .padding(.vertical, AppStyle.Spacing.comfortable)
                 .padding(.horizontal, AppStyle.Spacing.compact)
                 .frame(width: (containerWidth - AppStyle.Spacing.page * 2 - AppStyle.Spacing.comfortable * 2) / 3)
-                .background(Color(red: 0xF5/255.0, green: 0xF4/255.0, blue: 0xF4/255.0), in: RoundedRectangle(cornerRadius: 12))
+                .background(Color.categoryBackground, in: RoundedRectangle(cornerRadius: 12))
                 .overlay(
                     RoundedRectangle(cornerRadius: 12)
                         .stroke(Color.cardBorder, lineWidth: 0.33)
@@ -661,7 +669,11 @@ struct HomeView: View {
                     .frame(width: 14, height: 14)
                     .foregroundColor(Color(red: 0xFF/255.0, green: 0x8D/255.0, blue: 0x00/255.0))
                     .frame(width: 28, height: 28)
-                    .background(Color(red: 0xF3/255.0, green: 0xE9/255.0, blue: 0xE1/255.0), in: RoundedRectangle(cornerRadius: 7))
+                    .background(Color(UIColor { traits in
+                        traits.userInterfaceStyle == .dark
+                            ? UIColor(red: 0xFF/255.0, green: 0x8D/255.0, blue: 0x00/255.0, alpha: 0.2)
+                            : UIColor(red: 0xF3/255.0, green: 0xE9/255.0, blue: 0xE1/255.0, alpha: 1)
+                    }), in: RoundedRectangle(cornerRadius: 7))
             } else {
                 Text(title)
                     .homeSectionLabelStyle()
@@ -845,7 +857,7 @@ struct HomeView: View {
                 }
                 .background(
                     NotchedBarShape(notchRadius: notchRadius)
-                        .fill(Color.white)
+                        .fill(Color.cardBackground)
                         .shadow(color: .black.opacity(0.06), radius: 4, x: 0, y: -2)
                 )
                 .overlay(
@@ -861,7 +873,7 @@ struct HomeView: View {
                         .font(.inter(.title2, weight: .semiBold))
                         .foregroundColor(.appText)
                         .frame(width: AppStyle.Layout.fab, height: AppStyle.Layout.fab)
-                        .background(Color.white, in: Circle())
+                        .background(Color.cardBackground, in: Circle())
                         .overlay(
                             Circle()
                                 .stroke(Color.cardBorder, lineWidth: 0.33)

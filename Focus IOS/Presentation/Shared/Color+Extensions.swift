@@ -22,7 +22,7 @@ extension Color {
     /// App-wide page background — single source of truth for all screens (#ECECEE light, systemBackground dark)
     static let appBackground = Color(UIColor { traits in
         traits.userInterfaceStyle == .dark
-            ? UIColor.systemBackground
+            ? UIColor(red: 0x18/255.0, green: 0x17/255.0, blue: 0x16/255.0, alpha: 1)
             : UIColor(red: 0xFC/255.0, green: 0xFC/255.0, blue: 0xFC/255.0, alpha: 1)
     })
     /// Pill background for section headers — visible in light, subtle in dark
@@ -42,6 +42,24 @@ extension Color {
         traits.userInterfaceStyle == .dark
             ? UIColor.label
             : UIColor(red: 0x32/255.0, green: 0x31/255.0, blue: 0x2F/255.0, alpha: 1)
+    })
+    /// Card / bottom bar surface — white in light, elevated dark in dark
+    static let cardBackground = Color(UIColor { traits in
+        traits.userInterfaceStyle == .dark
+            ? UIColor(red: 0x22/255.0, green: 0x21/255.0, blue: 0x20/255.0, alpha: 1)
+            : UIColor.white
+    })
+    /// Category pill background — #F5F4F4 light, #32302F dark
+    static let categoryBackground = Color(UIColor { traits in
+        traits.userInterfaceStyle == .dark
+            ? UIColor(red: 0x32/255.0, green: 0x30/255.0, blue: 0x2F/255.0, alpha: 1)
+            : UIColor(red: 0xF5/255.0, green: 0xF4/255.0, blue: 0xF4/255.0, alpha: 1)
+    })
+    /// Icon badge neutral background — #F5F4F4 light, subtle in dark
+    static let iconBadgeBackground = Color(UIColor { traits in
+        traits.userInterfaceStyle == .dark
+            ? UIColor.tertiarySystemBackground
+            : UIColor(red: 0xF5/255.0, green: 0xF4/255.0, blue: 0xF4/255.0, alpha: 1)
     })
     /// Subtle glass tint — reduces white glare in light mode, invisible in dark
     static let glassTint = Color(UIColor { traits in

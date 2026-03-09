@@ -18,6 +18,10 @@ struct ProjectContentView: View {
     @FocusState private var isTitleFocused: Bool
     @FocusState private var isNotesFocused: Bool
 
+    private var isProjectCompleted: Bool {
+        viewModel.projects.first(where: { $0.id == project.id })?.isCompleted ?? project.isCompleted
+    }
+
     init(project: FocusTask, viewModel: ProjectsViewModel) {
         self.project = project
         self.viewModel = viewModel
@@ -29,14 +33,21 @@ struct ProjectContentView: View {
         ZStack {
             ScrollViewReader { proxy in
                 List {
-                    // Project title — editable inline
+                    // Project title
                     HStack(spacing: AppStyle.Spacing.medium) {
-                        TextField("Project name", text: $projectTitle, axis: .vertical)
-                            .font(.inter(.title2, weight: .bold))
-                            .foregroundColor(.primary)
-                            .textFieldStyle(.plain)
-                            .focused($isTitleFocused)
-                            .onSubmit { saveProjectTitle() }
+                        if isProjectCompleted {
+                            Text(projectTitle)
+                                .font(.inter(.title2, weight: .bold))
+                                .foregroundColor(.primary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        } else {
+                            TextField("Project name", text: $projectTitle, axis: .vertical)
+                                .font(.inter(.title2, weight: .bold))
+                                .foregroundColor(.primary)
+                                .textFieldStyle(.plain)
+                                .focused($isTitleFocused)
+                                .onSubmit { saveProjectTitle() }
+                        }
 
                         let progress = viewModel.taskProgress(for: project.id)
                         if progress.total > 0 {
@@ -55,7 +66,15 @@ struct ProjectContentView: View {
 
                     // Notes
                     Group {
-                        if isNotesFocused || projectNotes.isEmpty {
+                        if isProjectCompleted {
+                            if !projectNotes.isEmpty {
+                                Text(linkifiedText(projectNotes))
+                                    .font(.inter(.body))
+                                    .foregroundColor(.secondary)
+                                    .tint(.blue.opacity(0.5))
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                            }
+                        } else if isNotesFocused || projectNotes.isEmpty {
                             TextField("Notes", text: $projectNotes, axis: .vertical)
                                 .font(.inter(.body))
                                 .foregroundColor(.secondary)
@@ -95,7 +114,7 @@ struct ProjectContentView: View {
                     } else {
                         let items = viewModel.flattenedProjectItems(for: project.id)
 
-                        if items.count <= 1 {
+                        if items.isEmpty || (items.count <= 1 && !isProjectCompleted) {
                             Text("No tasks yet")
                                 .font(AppStyle.Typography.emptyTitle)
                                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -104,24 +123,26 @@ struct ProjectContentView: View {
                                 .listRowSeparator(.hidden)
                                 .moveDisabled(true)
 
-                            InlineAddRow(
-                                placeholder: "Task title",
-                                buttonLabel: "Add task",
-                                onSubmit: { title in await viewModel.createProjectTask(title: title, projectId: project.id) },
-                                isAnyAddFieldActive: Binding(
-                                    get: { isInlineAddFocused },
-                                    set: { newValue in
-                                        isInlineAddFocused = newValue
-                                        if newValue { activeAddRowId = "empty-add-task" }
-                                    }
-                                ),
-                                verticalPadding: AppStyle.Spacing.compact
-                            )
-                            .id("empty-add-task")
-                            .listRowInsets(AppStyle.Insets.row)
-                            .listRowBackground(Color.clear)
-                            .listRowSeparator(.hidden)
-                            .moveDisabled(true)
+                            if !isProjectCompleted {
+                                InlineAddRow(
+                                    placeholder: "Task title",
+                                    buttonLabel: "Add task",
+                                    onSubmit: { title in await viewModel.createProjectTask(title: title, projectId: project.id) },
+                                    isAnyAddFieldActive: Binding(
+                                        get: { isInlineAddFocused },
+                                        set: { newValue in
+                                            isInlineAddFocused = newValue
+                                            if newValue { activeAddRowId = "empty-add-task" }
+                                        }
+                                    ),
+                                    verticalPadding: AppStyle.Spacing.compact
+                                )
+                                .id("empty-add-task")
+                                .listRowInsets(AppStyle.Insets.row)
+                                .listRowBackground(Color.clear)
+                                .listRowSeparator(.hidden)
+                                .moveDisabled(true)
+                            }
                         } else {
                             ForEach(items) { item in
                                 switch item {
@@ -290,7 +311,9 @@ struct ProjectContentView: View {
                     }
             }
             ToolbarItem(placement: .navigationBarTrailing) {
-                if viewModel.contentEditMode {
+                if isProjectCompleted {
+                    EmptyView()
+                } else if viewModel.contentEditMode {
                     Button {
                         if viewModel.allContentTasksSelected {
                             viewModel.deselectAllContentTasks()

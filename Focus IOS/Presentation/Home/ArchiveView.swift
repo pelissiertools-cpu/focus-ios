@@ -7,7 +7,13 @@ import SwiftUI
 
 struct ArchiveView: View {
     @StateObject private var viewModel = ArchiveViewModel()
+    @StateObject private var projectsViewModel: ProjectsViewModel
     @Environment(\.dismiss) private var dismiss
+    @State private var selectedProject: FocusTask?
+
+    init(authService: AuthService) {
+        _projectsViewModel = StateObject(wrappedValue: ProjectsViewModel(authService: authService))
+    }
 
     var body: some View {
         ScrollView {
@@ -68,7 +74,10 @@ struct ArchiveView: View {
                                 task: task,
                                 isEditMode: viewModel.isEditMode,
                                 isSelected: viewModel.selectedIds.contains(task.id),
-                                onToggleSelection: { viewModel.toggleSelection(task.id) }
+                                onToggleSelection: { viewModel.toggleSelection(task.id) },
+                                onNavigate: task.type == .project ? {
+                                    navigateToProject(task)
+                                } : nil
                             )
                             .padding(.horizontal, AppStyle.Insets.nestedRow.leading)
                         }
@@ -76,6 +85,9 @@ struct ArchiveView: View {
                 }
             }
             .padding(.bottom, 120)
+        }
+        .navigationDestination(item: $selectedProject) { project in
+            ProjectContentView(project: project, viewModel: projectsViewModel)
         }
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(true)
@@ -179,6 +191,18 @@ struct ArchiveView: View {
             await viewModel.fetchCompletedItems()
         }
     }
+
+    private func navigateToProject(_ project: FocusTask) {
+        _Concurrency.Task {
+            await projectsViewModel.fetchProjects()
+            // Ensure cleared projects are findable for content display
+            if !projectsViewModel.projects.contains(where: { $0.id == project.id }) {
+                projectsViewModel.projects.append(project)
+            }
+            await projectsViewModel.fetchProjectTasks(for: project.id)
+            selectedProject = project
+        }
+    }
 }
 
 // MARK: - Archive Section Header
@@ -213,6 +237,7 @@ private struct ArchiveItemRow: View {
     let isEditMode: Bool
     let isSelected: Bool
     let onToggleSelection: () -> Void
+    let onNavigate: (() -> Void)?
 
     var body: some View {
         HStack(spacing: AppStyle.Spacing.comfortable) {
@@ -248,6 +273,8 @@ private struct ArchiveItemRow: View {
         .onTapGesture {
             if isEditMode {
                 onToggleSelection()
+            } else if let onNavigate {
+                onNavigate()
             }
         }
     }

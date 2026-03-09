@@ -80,7 +80,7 @@ class HomeViewModel: ObservableObject {
     func fetchProjects(showLoading: Bool = false) async {
         if showLoading { isLoading = true }
         do {
-            projects = try await repository.fetchProjects(isCompleted: false)
+            projects = try await repository.fetchProjects(isCleared: false, isCompleted: false)
         } catch {
             errorMessage = error.localizedDescription
         }

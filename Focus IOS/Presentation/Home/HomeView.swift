@@ -288,7 +288,7 @@ struct HomeView: View {
             }
             .navigationDestination(item: $viewModel.selectedMenuItem) { menuItem in
                 if menuItem == .archive {
-                    ArchiveView()
+                    ArchiveView(authService: authService)
                 } else if menuItem == .inbox {
                     BacklogView(authService: authService, tasksOnly: true)
                 } else if menuItem == .assign {

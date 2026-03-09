@@ -15,6 +15,7 @@ struct ProjectsListPage: View {
     @State private var selectedProject: FocusTask?
     @State private var editingSectionId: UUID?
     @State private var showingAddBar = false
+    @State private var showArchiveConfirmation = false
 
     private let authService: AuthService
 
@@ -97,6 +98,60 @@ struct ProjectsListPage: View {
                         viewModel.reorderProjects(from: from, to: to)
                     }
 
+                }
+
+                // Completed projects section
+                if !projectsViewModel.completedProjects.isEmpty {
+                    HStack {
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                projectsViewModel.toggleDoneCollapsed()
+                            }
+                        } label: {
+                            HStack(spacing: AppStyle.Spacing.tiny) {
+                                Text("Completed")
+                                    .font(.inter(.headline, weight: .bold))
+                                    .foregroundColor(.secondary)
+
+                                Text("\(projectsViewModel.completedProjects.count)")
+                                    .font(.inter(.subheadline))
+                                    .foregroundColor(.secondary)
+
+                                Image(systemName: projectsViewModel.isDoneCollapsed ? "chevron.right" : "chevron.down")
+                                    .font(AppStyle.Typography.chevron)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        .buttonStyle(.plain)
+
+                        Spacer()
+
+                        if !projectsViewModel.isDoneCollapsed {
+                            Button {
+                                showArchiveConfirmation = true
+                            } label: {
+                                Text("Archive")
+                                    .font(.inter(.subheadline, weight: .medium))
+                                    .foregroundColor(.focusBlue)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(.vertical, AppStyle.Spacing.medium)
+                    .listRowInsets(AppStyle.Insets.row)
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+                    .moveDisabled(true)
+
+                    if !projectsViewModel.isDoneCollapsed {
+                        ForEach(projectsViewModel.completedProjects) { project in
+                            completedProjectRow(project)
+                                .listRowInsets(AppStyle.Insets.row)
+                                .listRowBackground(Color.clear)
+                                .listRowSeparator(.hidden)
+                                .moveDisabled(true)
+                        }
+                    }
                 }
 
                 Color.clear
@@ -206,6 +261,14 @@ struct ProjectsListPage: View {
             }
             await projectsViewModel.fetchProjects()
         }
+        .onChange(of: selectedProject) { _, newValue in
+            if newValue == nil {
+                _Concurrency.Task {
+                    await viewModel.fetchProjects()
+                    await projectsViewModel.fetchProjects()
+                }
+            }
+        }
         .onChange(of: projectsViewModel.selectedProjectForDetails) { _, newValue in
             if newValue == nil {
                 _Concurrency.Task { await viewModel.fetchProjects() }
@@ -223,6 +286,17 @@ struct ProjectsListPage: View {
             Button("Cancel", role: .cancel) { projectToDelete = nil }
         } message: {
             Text("Are you sure you want to delete \"\(projectToDelete?.title ?? "")\"?")
+        }
+        .alert("Archive Completed", isPresented: $showArchiveConfirmation) {
+            Button("Archive", role: .destructive) {
+                _Concurrency.Task {
+                    await projectsViewModel.clearCompletedProjects()
+                    await viewModel.fetchProjects()
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Archive \(projectsViewModel.completedProjects.count) completed project\(projectsViewModel.completedProjects.count == 1 ? "" : "s")?")
         }
         .alert("Delete Selected", isPresented: $projectsViewModel.showBatchDeleteConfirmation) {
             Button("Delete", role: .destructive) {
@@ -343,6 +417,32 @@ struct ProjectsListPage: View {
                 Divider()
                 ContextMenuItems.deleteButton { projectToDelete = project }
             }
+        }
+    }
+
+    // MARK: - Completed Project Row
+
+    @ViewBuilder
+    private func completedProjectRow(_ project: FocusTask) -> some View {
+        let progress = projectsViewModel.taskProgress(for: project.id)
+        HStack(spacing: AppStyle.Spacing.comfortable) {
+            ProjectProgressRing(
+                completed: max(progress.total, 1),
+                total: max(progress.total, 1),
+                size: AppStyle.Layout.pillButton
+            )
+
+            Text(project.title)
+                .font(.inter(.body))
+                .foregroundColor(.primary)
+                .lineLimit(1)
+
+            Spacer()
+        }
+        .padding(.vertical, AppStyle.Spacing.medium)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            selectedProject = project
         }
     }
 }

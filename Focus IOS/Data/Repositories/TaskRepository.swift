@@ -242,6 +242,16 @@ class TaskRepository {
             .execute()
     }
 
+    /// Restore a cleared task back to active
+    func unclearTask(id: UUID) async throws {
+        let update = ClearUpdate(isCleared: false, modifiedDate: Date())
+        try await supabase
+            .from("tasks")
+            .update(update)
+            .eq("id", value: id.uuidString)
+            .execute()
+    }
+
     /// Complete a task
     func completeTask(id: UUID) async throws {
         let update = TaskUpdate(

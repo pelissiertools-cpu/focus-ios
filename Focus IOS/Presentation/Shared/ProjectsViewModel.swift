@@ -232,7 +232,7 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
     }
 
     var completedProjects: [FocusTask] {
-        baseFilteredProjects.filter { $0.isCompleted }
+        baseFilteredProjects.filter { $0.isCompleted && !$0.isSection }
     }
 
     private func applySorting(to items: [FocusTask]) -> [FocusTask] {
@@ -278,6 +278,27 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
     /// Flat display array for a project's expanded content: tasks interleaved with their subtasks and add rows.
     func flattenedProjectItems(for projectId: UUID) -> [ProjectCardDisplayItem] {
         let allTasks = projectTasksMap[projectId] ?? []
+        let projectCompleted = projects.first(where: { $0.id == projectId })?.isCompleted ?? false
+
+        // Completed projects: show all tasks in their sections, no done pill, no add rows
+        if projectCompleted {
+            let allTopLevel = allTasks.filter { $0.parentTaskId == nil }.sorted { $0.sortOrder < $1.sortOrder }
+            var result: [ProjectCardDisplayItem] = []
+            for task in allTopLevel {
+                if task.isSection {
+                    result.append(.section(task))
+                } else {
+                    result.append(.task(task))
+                    if expandedTasks.contains(task.id) {
+                        for sub in (subtasksMap[task.id] ?? []).sorted(by: { $0.sortOrder < $1.sortOrder }) {
+                            result.append(.task(sub))
+                        }
+                    }
+                }
+            }
+            return result
+        }
+
         let uncompleted = allTasks.filter { !$0.isCompleted && $0.parentTaskId == nil }.sorted { $0.sortOrder < $1.sortOrder }
         let completed = allTasks.filter { $0.isCompleted && $0.parentTaskId == nil }.sorted { $0.sortOrder < $1.sortOrder }
 
@@ -377,11 +398,23 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
 
     // MARK: - Data Fetching
 
+    private var hasRepairedStuckProjects = false
+
     func fetchProjects() async {
         if projects.isEmpty { isLoading = true }
         errorMessage = nil
 
         do {
+            // One-time repair: fix any projects that are uncompleted but still cleared
+            if !hasRepairedStuckProjects {
+                hasRepairedStuckProjects = true
+                let allProjects = try await repository.fetchProjects()
+                let stuckProjects = allProjects.filter { !$0.isCompleted && $0.isCleared && !$0.isSection }
+                for stuck in stuckProjects {
+                    try? await repository.unclearTask(id: stuck.id)
+                }
+            }
+
             let fetchedProjects = try await repository.fetchProjects(isCleared: false)
             self.projects = fetchedProjects
             self.categories = try await categoryRepository.fetchCategories()
@@ -884,6 +917,11 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
             try await repository.uncompleteTask(id: projectId)
             projects[projectIndex].isCompleted = false
             projects[projectIndex].completedDate = nil
+            // If it was archived, restore it to active
+            if projects[projectIndex].isCleared {
+                try await repository.unclearTask(id: projectId)
+                projects[projectIndex].isCleared = false
+            }
         }
     }
 

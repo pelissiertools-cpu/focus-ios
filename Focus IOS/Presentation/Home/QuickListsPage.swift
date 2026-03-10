@@ -26,6 +26,8 @@ struct QuickListsPage: View {
 
     var body: some View {
         ZStack {
+            Color.appBackground.ignoresSafeArea()
+
             List {
                 HStack(spacing: AppStyle.Spacing.medium) {
                     Image(systemName: "checklist")

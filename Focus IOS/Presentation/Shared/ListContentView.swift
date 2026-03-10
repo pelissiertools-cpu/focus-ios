@@ -170,6 +170,7 @@ struct ListContentView: View {
             }
             .listStyle(.plain)
             .scrollContentBackground(.hidden)
+            .background(Color.appBackground.ignoresSafeArea())
             .scrollDismissesKeyboard(.immediately)
             .onChange(of: isInlineAddFocused) { _, focused in
                 if focused {

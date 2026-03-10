@@ -26,6 +26,8 @@ struct GoalContentView: View {
 
     var body: some View {
         ZStack {
+            Color.appBackground.ignoresSafeArea()
+
             ScrollViewReader { proxy in
                 List {
                     // Goal title — editable inline

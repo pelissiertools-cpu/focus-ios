@@ -268,13 +268,12 @@ struct HomeView: View {
                                             .font(.helveticaNeue(size: AppStyle.Layout.sectionDividerIcon, weight: .medium))
                                             .foregroundColor(.focusBlue)
                                             .frame(width: AppStyle.Layout.iconBadge, height: AppStyle.Layout.iconBadge)
+                                            .background(Color.todayBadge, in: RoundedRectangle(cornerRadius: AppStyle.CornerRadius.iconBadge))
 
                                         Text("Main Focus")
                                             .font(.inter(size: 14, weight: .bold))
                                             .foregroundColor(.focusBlue)
-                                            .padding(.trailing, AppStyle.Spacing.compact)
                                     }
-                                    .background(Color.todayBadge, in: RoundedRectangle(cornerRadius: AppStyle.CornerRadius.iconBadge))
                                 }
                                 .buttonStyle(.plain)
                             }

@@ -25,6 +25,12 @@ struct TodayView: View {
     @State private var selectedListForNavigation: FocusTask?
     @State private var selectedProjectForNavigation: FocusTask?
 
+    // Batch create alerts
+    @State private var showCreateProjectAlert = false
+    @State private var showCreateListAlert = false
+    @State private var newProjectTitle = ""
+    @State private var newListTitle = ""
+
     private let authService: AuthService
     private let scheduleRepository = ScheduleRepository()
 
@@ -179,7 +185,15 @@ struct TodayView: View {
                 }
             }
 
-            if !showingAddBar {
+            // Edit mode action bar
+            if taskListVM.isEditMode {
+                EditModeActionBar(
+                    viewModel: taskListVM,
+                    showCreateProjectAlert: $showCreateProjectAlert,
+                    showCreateListAlert: $showCreateListAlert
+                )
+                .transition(.scale.combined(with: .opacity))
+            } else if !showingAddBar {
                 VStack {
                     Spacer()
                     HStack {
@@ -272,6 +286,79 @@ struct TodayView: View {
             RescheduleSheet(schedule: schedule, focusViewModel: focusViewModel)
                 .drawerStyle()
         }
+        // Batch operations
+        .sheet(isPresented: $taskListVM.showBatchMovePicker) {
+            BatchMoveCategorySheet(
+                viewModel: taskListVM,
+                onMoveToProject: { projectId in
+                    await taskListVM.batchMoveToProject(projectId)
+                    await fetchTodayData()
+                }
+            )
+            .drawerStyle()
+        }
+        .sheet(isPresented: $taskListVM.showBatchScheduleSheet) {
+            BatchScheduleSheet(
+                viewModel: taskListVM,
+                onBatchSchedule: { tasks, timeframe, section, dates in
+                    guard !dates.isEmpty else { return }
+                    let repo = ScheduleRepository()
+                    for task in tasks {
+                        for date in dates {
+                            let c = Schedule(
+                                userId: task.userId, taskId: task.id,
+                                timeframe: timeframe, section: section,
+                                scheduleDate: Calendar.current.startOfDay(for: date),
+                                sortOrder: 0
+                            )
+                            _Concurrency.Task { _ = try? await repo.createSchedule(c) }
+                        }
+                    }
+                    _Concurrency.Task { @MainActor in await fetchTodayData() }
+                }
+            )
+            .drawerStyle()
+        }
+        .alert("Delete \(taskListVM.selectedCount) item\(taskListVM.selectedCount == 1 ? "" : "s")?",
+               isPresented: $taskListVM.showBatchDeleteConfirmation) {
+            Button("Cancel", role: .cancel) { }
+            Button("Delete", role: .destructive) {
+                _Concurrency.Task {
+                    await taskListVM.batchDeleteTasks()
+                    await fetchTodayData()
+                }
+            }
+        } message: {
+            Text("This will permanently delete the selected items and their schedules.")
+        }
+        .alert("Create Project", isPresented: $showCreateProjectAlert) {
+            TextField("Project title", text: $newProjectTitle)
+            Button("Cancel", role: .cancel) { newProjectTitle = "" }
+            Button("Create") {
+                let title = newProjectTitle
+                newProjectTitle = ""
+                _Concurrency.Task { @MainActor in
+                    await taskListVM.createProjectFromSelected(title: title)
+                    await fetchTodayData()
+                }
+            }
+        } message: {
+            Text("Enter a name for the new project")
+        }
+        .alert("Create List", isPresented: $showCreateListAlert) {
+            TextField("List title", text: $newListTitle)
+            Button("Cancel", role: .cancel) { newListTitle = "" }
+            Button("Create") {
+                let title = newListTitle
+                newListTitle = ""
+                _Concurrency.Task { @MainActor in
+                    await taskListVM.createListFromSelected(title: title)
+                    await fetchTodayData()
+                }
+            }
+        } message: {
+            Text("Enter a name for the new list")
+        }
         .navigationDestination(item: $selectedListForNavigation) { list in
             ListContentView(list: list, viewModel: listsVM)
         }
@@ -283,16 +370,91 @@ struct TodayView: View {
         .toolbarBackground(.hidden, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .navigationBarLeading) {
-                Button {
-                    dismiss()
-                } label: {
-                    Image(systemName: "chevron.left")
-                        .font(.inter(.body, weight: .semiBold))
-                        .foregroundColor(.primary)
-                        .frame(width: AppStyle.Layout.touchTarget, height: AppStyle.Layout.touchTarget)
-                        .contentShape(Rectangle())
+                if taskListVM.isEditMode {
+                    Button {
+                        taskListVM.exitEditMode()
+                    } label: {
+                        Text("Done")
+                            .font(.inter(.body, weight: .medium))
+                            .foregroundColor(.appRed)
+                    }
+                } else {
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "chevron.left")
+                            .font(.inter(.body, weight: .semiBold))
+                            .foregroundColor(.primary)
+                            .frame(width: AppStyle.Layout.touchTarget, height: AppStyle.Layout.touchTarget)
+                            .contentShape(Rectangle())
+                    }
+                    .accessibilityLabel("Back")
                 }
-                .accessibilityLabel("Back")
+            }
+            ToolbarItem(placement: .navigationBarTrailing) {
+                if taskListVM.isEditMode {
+                    Button {
+                        if taskListVM.allUncompletedSelected {
+                            taskListVM.deselectAll()
+                        } else {
+                            taskListVM.selectAllUncompleted()
+                        }
+                    } label: {
+                        Text(taskListVM.allUncompletedSelected ? "Deselect All" : "Select All")
+                            .font(.inter(.body, weight: .medium))
+                            .foregroundColor(.appRed)
+                    }
+                } else {
+                    Menu {
+                        Menu {
+                            ForEach(SortOption.allCases, id: \.self) { option in
+                                Button {
+                                    withAnimation(AppStyle.Anim.toggle) {
+                                        taskListVM.sortOption = option
+                                    }
+                                } label: {
+                                    if taskListVM.sortOption == option {
+                                        Label(option.displayName, systemImage: "checkmark")
+                                    } else {
+                                        Text(option.displayName)
+                                    }
+                                }
+                            }
+
+                            Divider()
+
+                            ForEach(taskListVM.sortOption.directionOrder, id: \.self) { direction in
+                                Button {
+                                    withAnimation(AppStyle.Anim.toggle) {
+                                        taskListVM.sortDirection = direction
+                                    }
+                                } label: {
+                                    if taskListVM.sortDirection == direction {
+                                        Label(direction.displayName(for: taskListVM.sortOption), systemImage: "checkmark")
+                                    } else {
+                                        Text(direction.displayName(for: taskListVM.sortOption))
+                                    }
+                                }
+                            }
+                        } label: {
+                            Label("Sort By", systemImage: "arrow.up.arrow.down")
+                        }
+
+                        Divider()
+
+                        Button {
+                            taskListVM.enterEditMode()
+                        } label: {
+                            Label("Select", systemImage: "checkmark.circle")
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis")
+                            .font(.inter(.body, weight: .semiBold))
+                            .foregroundColor(.primary)
+                            .frame(width: AppStyle.Layout.compactButton, height: AppStyle.Layout.compactButton)
+                            .background(Color.pillBackground, in: Circle())
+                    }
+                }
             }
         }
         .task {
@@ -583,9 +745,9 @@ struct TodayView: View {
                 FlatTaskRow(
                     task: task,
                     viewModel: taskListVM,
-                    isEditMode: false,
-                    isSelected: false,
-                    onSelectToggle: nil,
+                    isEditMode: taskListVM.isEditMode,
+                    isSelected: taskListVM.selectedTaskIds.contains(task.id),
+                    onSelectToggle: { taskListVM.toggleTaskSelection(task.id) },
                     onToggleCompletion: { t in
                         taskListVM.requestToggleCompletion(t)
                     },

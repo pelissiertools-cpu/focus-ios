@@ -1280,11 +1280,11 @@ private struct BacklogFilterPill: View {
             Text(title)
                 .font(.helveticaNeue(size: 13, weight: .medium))
                 .tracking(-0.135)
-                .foregroundColor(isSelected ? .white : .appText)
+                .foregroundColor(isSelected ? selectedColor : .appText)
                 .padding(.horizontal, AppStyle.Spacing.comfortable)
                 .padding(.vertical, 7)
                 .background(
-                    isSelected ? selectedColor : Color.categoryBackground,
+                    isSelected ? Color.inboxBadge : Color.categoryBackground,
                     in: RoundedRectangle(cornerRadius: AppStyle.CornerRadius.card)
                 )
                 .overlay(

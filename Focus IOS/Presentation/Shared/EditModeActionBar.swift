@@ -18,9 +18,18 @@ struct EditModeActionBar<VM: LogFilterable>: View {
     private struct ActionItem: Identifiable {
         let id = UUID()
         let icon: String
+        let customImage: String?
         let label: String
         let isDestructive: Bool
         let action: () -> Void
+
+        init(icon: String, label: String, isDestructive: Bool, customImage: String? = nil, action: @escaping () -> Void) {
+            self.icon = icon
+            self.label = label
+            self.isDestructive = isDestructive
+            self.customImage = customImage
+            self.action = action
+        }
     }
 
     private var actions: [ActionItem] {
@@ -37,7 +46,7 @@ struct EditModeActionBar<VM: LogFilterable>: View {
         ]
 
         if let projectBinding = showCreateProjectAlert {
-            items.append(ActionItem(icon: "folder.badge.plus", label: "Project", isDestructive: false) {
+            items.append(ActionItem(icon: "folder.badge.plus", label: "Project", isDestructive: false, customImage: "ProjectIcon") {
                 projectBinding.wrappedValue = true
             })
         }
@@ -78,11 +87,21 @@ struct EditModeActionBar<VM: LogFilterable>: View {
                             Button {
                                 item.action()
                             } label: {
-                                Image(systemName: item.icon)
-                                    .font(.inter(.title3))
-                                    .foregroundColor(item.isDestructive ? .red : .primary)
-                                    .frame(width: AppStyle.Layout.largeButton, height: AppStyle.Layout.largeButton)
-                                    .contentShape(Rectangle())
+                                Group {
+                                    if let customImage = item.customImage {
+                                        Image(customImage)
+                                            .renderingMode(.template)
+                                            .resizable()
+                                            .scaledToFit()
+                                            .frame(width: 20, height: 20)
+                                    } else {
+                                        Image(systemName: item.icon)
+                                            .font(.inter(.title3))
+                                    }
+                                }
+                                .foregroundColor(item.isDestructive ? .red : .primary)
+                                .frame(width: AppStyle.Layout.largeButton, height: AppStyle.Layout.largeButton)
+                                .contentShape(Rectangle())
                             }
                             .buttonStyle(.plain)
                             .disabled(!hasSelection)

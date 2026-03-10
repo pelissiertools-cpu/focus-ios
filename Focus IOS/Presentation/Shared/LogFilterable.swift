@@ -26,6 +26,7 @@ protocol LogFilterable: ObservableObject {
     var scheduleFilter: ScheduleFilter? { get set }
     var scheduledTaskIds: Set<UUID> { get set }
     var taskDueDates: [UUID: Date] { get set }
+    var taskScheduleDates: [UUID: Date] { get set }
     var scheduleRepository: ScheduleRepository { get }
     func toggleScheduleFilter(_ filter: ScheduleFilter)
     func fetchScheduledTaskIds() async
@@ -71,12 +72,14 @@ extension LogFilterable {
         if scheduledTaskIds.isEmpty && cache.hasLoadedScheduleSummaries {
             scheduledTaskIds = cache.scheduledTaskIds
             taskDueDates = Self.buildDueDates(from: cache.scheduleSummaries)
+            taskScheduleDates = Self.buildScheduleDates(from: cache.scheduleSummaries)
         }
 
         do {
             let summaries = try await scheduleRepository.fetchScheduleSummaries()
             scheduledTaskIds = Set(summaries.map { $0.taskId })
             taskDueDates = Self.buildDueDates(from: summaries)
+            taskScheduleDates = Self.buildScheduleDates(from: summaries)
 
             // Update cache
             cache.scheduleSummaries = summaries
@@ -101,5 +104,19 @@ extension LogFilterable {
             }
         }
         return bestByTask.mapValues { $0.endDate }
+    }
+
+    /// Earliest schedule date per task (for inline display)
+    private static func buildScheduleDates(from summaries: [ScheduleRepository.ScheduleSummary]) -> [UUID: Date] {
+        var earliest: [UUID: Date] = [:]
+        for s in summaries {
+            let date = Calendar.current.startOfDay(for: s.scheduleDate)
+            if let existing = earliest[s.taskId] {
+                if date < existing { earliest[s.taskId] = date }
+            } else {
+                earliest[s.taskId] = date
+            }
+        }
+        return earliest
     }
 }

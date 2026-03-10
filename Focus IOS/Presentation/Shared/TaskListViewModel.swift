@@ -62,6 +62,7 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
     @Published var scheduleFilter: ScheduleFilter? = nil
     @Published var scheduledTaskIds: Set<UUID> = []
     @Published var taskDueDates: [UUID: Date] = [:]
+    @Published var taskScheduleDates: [UUID: Date] = [:]
 
     // Sort (persisted via UserDefaults)
     @Published var sortOption: SortOption {

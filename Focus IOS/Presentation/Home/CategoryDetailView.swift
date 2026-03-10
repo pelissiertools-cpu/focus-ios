@@ -458,7 +458,8 @@ struct CategoryDetailView: View {
                                 onSelectToggle: { taskListVM.toggleTaskSelection(task.id) },
                                 onToggleCompletion: { t in
                                     taskListVM.requestToggleCompletion(t)
-                                }
+                                },
+                                scheduleDate: taskListVM.taskScheduleDates[task.id]
                             )
                             .padding(.leading, task.parentTaskId != nil ? AppStyle.Insets.nestedRow.leading : 0)
                             .listRowInsets(AppStyle.Insets.row)

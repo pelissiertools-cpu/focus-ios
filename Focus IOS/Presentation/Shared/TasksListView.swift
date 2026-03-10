@@ -238,7 +238,8 @@ struct TasksListView: View {
                         viewModel: viewModel,
                         isEditMode: viewModel.isEditMode,
                         isSelected: viewModel.selectedTaskIds.contains(task.id),
-                        onSelectToggle: { viewModel.toggleTaskSelection(task.id) }
+                        onSelectToggle: { viewModel.toggleTaskSelection(task.id) },
+                        scheduleDate: viewModel.taskScheduleDates[task.id]
                     )
                     .padding(.leading, task.parentTaskId != nil ? 32 : 0)
                     .moveDisabled(task.isCompleted || viewModel.isEditMode)
@@ -545,11 +546,28 @@ struct FlatTaskRow: View {
     var onUnschedule: (() -> Void)? = nil
     var appearCompleted: Bool? = nil
     var overdueDate: Date? = nil
+    var scheduleDate: Date? = nil
     @State private var showDeleteConfirmation = false
 
     private var isParent: Bool { task.parentTaskId == nil }
     private var isPending: Bool { viewModel.isPendingCompletion(task.id) }
     private var displayCompleted: Bool { appearCompleted ?? (task.isCompleted || isPending) }
+
+    private var scheduleDateDisplay: (text: String, color: Color)? {
+        // Priority: notification date > overdue date > schedule date
+        if let notifDate = task.notificationDate, task.notificationEnabled {
+            let isOverdue = notifDate < Date()
+            return (OverdueDateFormatter.formatWithTime(notifDate), isOverdue ? .red : .secondary.opacity(0.8))
+        }
+        if let overdueDate {
+            return (OverdueDateFormatter.format(overdueDate), .red)
+        }
+        if let scheduleDate {
+            let isOverdue = scheduleDate < Calendar.current.startOfDay(for: Date())
+            return (OverdueDateFormatter.format(scheduleDate), isOverdue ? .red : .secondary.opacity(0.8))
+        }
+        return nil
+    }
 
     var body: some View {
         HStack(spacing: AppStyle.Spacing.comfortable) {
@@ -568,32 +586,22 @@ struct FlatTaskRow: View {
                     .strikethrough(displayCompleted)
                     .foregroundColor(displayCompleted ? .secondary : .primary)
 
-                // Subtask count + overdue/notification date (inline when both present)
+                // Subtask count + schedule/notification/overdue date
                 if isParent, let subtasks = viewModel.subtasksMap[task.id], !subtasks.isEmpty {
                     HStack(spacing: AppStyle.Spacing.small) {
                         Text("\(subtasks.count) subtask\(subtasks.count == 1 ? "" : "s")")
                             .font(.inter(.caption))
                             .foregroundColor(.secondary)
-                        if let notifDate = task.notificationDate, task.notificationEnabled {
-                            let isOverdue = notifDate < Date()
-                            Text(OverdueDateFormatter.formatWithTime(notifDate))
+                        if let display = scheduleDateDisplay {
+                            Text(display.text)
                                 .font(.inter(.caption))
-                                .foregroundColor(isOverdue ? .red : .secondary.opacity(0.8))
-                        } else if let overdueDate {
-                            Text(OverdueDateFormatter.format(overdueDate))
-                                .font(.inter(.caption))
-                                .foregroundColor(.red)
+                                .foregroundColor(display.color)
                         }
                     }
-                } else if let notifDate = task.notificationDate, task.notificationEnabled {
-                    let isOverdue = notifDate < Date()
-                    Text(OverdueDateFormatter.formatWithTime(notifDate))
+                } else if let display = scheduleDateDisplay {
+                    Text(display.text)
                         .font(.inter(.caption))
-                        .foregroundColor(isOverdue ? .red : .secondary.opacity(0.8))
-                } else if let overdueDate {
-                    Text(OverdueDateFormatter.format(overdueDate))
-                        .font(.inter(.caption))
-                        .foregroundColor(.red)
+                        .foregroundColor(display.color)
                 }
             }
             .frame(maxWidth: .infinity, minHeight: isParent ? AppStyle.Layout.iconButton : nil, alignment: .leading)

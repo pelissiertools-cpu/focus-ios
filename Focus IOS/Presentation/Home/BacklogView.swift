@@ -152,7 +152,9 @@ struct BacklogView: View {
         let filteredTaskIds = Set(filteredTasks.map { $0.id })
         return standaloneTaskDisplayItems.filter { item in
             switch item {
-            case .task(let task): return filteredTaskIds.contains(task.id)
+            case .task(let task):
+                return filteredTaskIds.contains(task.id) ||
+                       (task.parentTaskId != nil && filteredTaskIds.contains(task.parentTaskId!))
             case .priorityHeader(let priority):
                 return filteredTasks.contains { $0.priority == priority }
             case .addSubtaskRow(let parentId): return filteredTaskIds.contains(parentId)
@@ -676,7 +678,8 @@ struct BacklogView: View {
                             onSelectToggle: { taskListVM.toggleTaskSelection(task.id) },
                             onToggleCompletion: { t in
                                 taskListVM.requestToggleCompletion(t)
-                            }
+                            },
+                            scheduleDate: taskListVM.taskScheduleDates[task.id]
                         )
                         .padding(.leading, task.parentTaskId != nil ? 32 : 0)
                         .listRowInsets(AppStyle.Insets.row)

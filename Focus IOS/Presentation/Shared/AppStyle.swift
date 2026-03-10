@@ -13,62 +13,62 @@ enum AppStyle {
 
     enum Typography {
         /// Page/screen titles (Home, Inbox, Today, Backlog, Archive, Scheduled, etc.)
-        nonisolated static let pageTitle: Font = .helveticaNeue(size: 26.14)
+        static let pageTitle: Font = .helveticaNeue(size: 26.14)
         nonisolated static let pageTitleTracking: CGFloat = -0.272
 
         /// Section headers — collapsible sections in Backlog, CategoryDetail, Scheduled, Archive, etc.
-        nonisolated static let sectionHeader: Font = .roboto(size: 22, weight: .semiBold)
+        static let sectionHeader: Font = .roboto(size: 22, weight: .semiBold)
 
         /// Home screen section labels (PINNED, CATEGORIES) — smaller uppercase style, distinct from sectionHeader
-        nonisolated static let homeSectionLabel: Font = .roboto(size: 14.63, weight: .regular)
+        static let homeSectionLabel: Font = .roboto(size: 14.63, weight: .regular)
         nonisolated static let homeSectionLabelTracking: CGFloat = 0.686
         nonisolated static let homeSectionLabelLineSpacing: CGFloat = 17.56 - 14.63
 
         /// Task / item row titles
-        nonisolated static let itemTitle: Font = .helveticaNeue(.body)
+        static let itemTitle: Font = .helveticaNeue(.body)
 
         /// Subtask / sub-item row titles
-        nonisolated static let itemSubtitle: Font = .helveticaNeue(.subheadline)
+        static let itemSubtitle: Font = .helveticaNeue(.subheadline)
 
         /// Empty-state primary text
-        nonisolated static let emptyTitle: Font = .helveticaNeue(.headline, weight: .bold)
+        static let emptyTitle: Font = .helveticaNeue(.headline, weight: .bold)
 
         /// Empty-state secondary text
-        nonisolated static let emptySubtitle: Font = .helveticaNeue(.subheadline)
+        static let emptySubtitle: Font = .helveticaNeue(.subheadline)
 
         /// Count badges next to section headers
-        nonisolated static let countBadge: Font = .inter(.caption)
+        static let countBadge: Font = .inter(.caption)
 
         /// Small collapse / expand chevrons
-        nonisolated static let chevron: Font = .inter(size: 8, weight: .semiBold)
+        static let chevron: Font = .inter(size: 8, weight: .semiBold)
 
         /// Home card title (Inbox, Today, Scheduled, All, Completed, Someday)
-        nonisolated static let homeCardTitle: Font = .helveticaNeue(size: 15.22, weight: .medium)
+        static let homeCardTitle: Font = .helveticaNeue(size: 15.22, weight: .medium)
         nonisolated static let homeCardTitleTracking: CGFloat = -0.158
 
         /// Home card count badge
-        nonisolated static let homeCardCount: Font = .helveticaNeue(size: 11.08, weight: .medium)
+        static let homeCardCount: Font = .helveticaNeue(size: 11.08, weight: .medium)
         nonisolated static let homeCardCountTracking: CGFloat = -0.11
         nonisolated static let homeCardCountLineSpacing: CGFloat = 13.4 - 11.08
 
         /// Home card icon
-        nonisolated static let homeCardIcon: Font = .helveticaNeue(size: 17.3, weight: .medium)
+        static let homeCardIcon: Font = .helveticaNeue(size: 17.3, weight: .medium)
 
         /// Home compact card title (Quick lists, Projects, Goals)
-        nonisolated static let homeCardCompactTitle: Font = .helveticaNeue(size: 13, weight: .medium)
+        static let homeCardCompactTitle: Font = .helveticaNeue(size: 13, weight: .medium)
         nonisolated static let homeCardCompactTitleTracking: CGFloat = -0.135
 
         /// Home compact card count badge
-        nonisolated static let homeCardCompactCount: Font = .helveticaNeue(size: 10, weight: .medium)
+        static let homeCardCompactCount: Font = .helveticaNeue(size: 10, weight: .medium)
 
         /// Home compact card icon
-        nonisolated static let homeCardCompactIcon: Font = .helveticaNeue(size: 17.3, weight: .medium)
+        static let homeCardCompactIcon: Font = .helveticaNeue(size: 17.3, weight: .medium)
 
         /// Pinned item row title
-        nonisolated static let pinnedItemTitle: Font = .helveticaNeue(.body, weight: .bold)
+        static let pinnedItemTitle: Font = .helveticaNeue(.body, weight: .bold)
 
         /// Pinned item row icon
-        nonisolated static let pinnedItemIcon: Font = .inter(.body, weight: .medium)
+        static let pinnedItemIcon: Font = .inter(.body, weight: .medium)
 
     }
 
@@ -201,15 +201,15 @@ enum AppStyle {
 
     enum Anim {
         /// 0.2s ease — toggle, state changes
-        nonisolated static let toggle: Animation = .easeInOut(duration: 0.2)
+        static let toggle: Animation = .easeInOut(duration: 0.2)
         /// 0.3s ease — expand/collapse sections
-        nonisolated static let expand: Animation = .easeInOut(duration: 0.3)
+        static let expand: Animation = .easeInOut(duration: 0.3)
         /// 0.15s ease — quick dismissals
-        nonisolated static let quick: Animation = .easeInOut(duration: 0.15)
+        static let quick: Animation = .easeInOut(duration: 0.15)
         /// Spring — mode/selection switches
-        nonisolated static let modeSwitch: Animation = .spring(response: 0.35, dampingFraction: 0.85)
+        static let modeSwitch: Animation = .spring(response: 0.35, dampingFraction: 0.85)
         /// Spring — button press feedback
-        nonisolated static let buttonTap: Animation = .spring(response: 0.3, dampingFraction: 0.8)
+        static let buttonTap: Animation = .spring(response: 0.3, dampingFraction: 0.8)
     }
 }
 

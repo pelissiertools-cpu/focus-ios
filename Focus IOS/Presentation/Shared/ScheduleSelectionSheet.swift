@@ -181,6 +181,14 @@ struct ScheduleSelectionSheet: View {
             .onChange(of: selectedSection) {
                 if !isPendingMode { fetchTaskSchedules() }
             }
+            .onChange(of: selectedDates) { oldValue, newValue in
+                // Enforce single-date selection — selecting a new date replaces the previous one
+                if newValue.count > 1 {
+                    if let newest = newValue.first(where: { !oldValue.contains($0) }) {
+                        selectedDates = [newest]
+                    }
+                }
+            }
         }
     }
 

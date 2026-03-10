@@ -356,6 +356,7 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
                     result.append(.addSubtaskRow(parentId: task.id))
                 }
             }
+            result.append(.addTaskRow(priority: .low))
         }
 
         return result

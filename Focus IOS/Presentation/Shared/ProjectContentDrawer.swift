@@ -254,7 +254,7 @@ struct ProjectContentView: View {
                 }
                 .listStyle(.plain)
                 .scrollContentBackground(.hidden)
-                .scrollDismissesKeyboard(.immediately)
+                .scrollDismissesKeyboard(.interactively)
                 .onChange(of: isInlineAddFocused) { _, focused in
                     if focused, let targetId = activeAddRowId {
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
@@ -681,8 +681,8 @@ struct ProjectSectionRow: View {
             .padding(.top, AppStyle.Spacing.section)
 
             Rectangle()
-                .fill(Color.secondary.opacity(0.3))
-                .frame(height: 1)
+                .fill(Color.cardBorder)
+                .frame(height: AppStyle.Border.thin)
         }
         .contentShape(Rectangle())
         .onTapGesture {

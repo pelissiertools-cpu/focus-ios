@@ -26,10 +26,15 @@ struct InlineAddRow: View {
     var body: some View {
         HStack(spacing: AppStyle.Spacing.comfortable) {
             if isEditing {
-                TextField(placeholder, text: $title)
+                // Use axis: .vertical so Return inserts a newline (intercepted below)
+                // instead of triggering .onSubmit which dismisses the keyboard.
+                TextField(placeholder, text: $title, axis: .vertical)
+                    .lineLimit(1)
                     .font(textFont)
                     .focused($isFocused)
-                    .onSubmit {
+                    .onChange(of: title) { _, newValue in
+                        guard newValue.contains("\n") else { return }
+                        title = newValue.replacingOccurrences(of: "\n", with: "")
                         submit()
                     }
 
@@ -78,11 +83,12 @@ struct InlineAddRow: View {
             return
         }
 
+        let submittedTitle = trimmed
         isSubmitting = true
+        title = ""
+
         _Concurrency.Task {
-            await onSubmit(trimmed)
-            title = ""
-            isFocused = true
+            await onSubmit(submittedTitle)
             isSubmitting = false
         }
     }

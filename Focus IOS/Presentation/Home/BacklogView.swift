@@ -156,7 +156,7 @@ struct BacklogView: View {
             case .priorityHeader(let priority):
                 return filteredTasks.contains { $0.priority == priority }
             case .addSubtaskRow(let parentId): return filteredTaskIds.contains(parentId)
-            case .addTaskRow: return false
+            case .addTaskRow: return true
             }
         }
     }
@@ -695,10 +695,17 @@ struct BacklogView: View {
                         .listRowInsets(AppStyle.Insets.row)
                         .listRowBackground(Color.clear)
 
-                    case .addTaskRow:
-                        EmptyView()
-                            .listRowSeparator(.hidden)
-                            .listRowBackground(Color.clear)
+                    case .addTaskRow(let priority):
+                        InlineAddRow(
+                            placeholder: "Task title",
+                            buttonLabel: "Add task",
+                            onSubmit: { title in await taskListVM.createTask(title: title, categoryId: taskListVM.selectedCategoryId, priority: priority) },
+                            isAnyAddFieldActive: $isInlineAddFocused,
+                            verticalPadding: AppStyle.Spacing.comfortable
+                        )
+                        .listRowInsets(AppStyle.Insets.row)
+                        .listRowSeparator(.hidden)
+                        .listRowBackground(Color.clear)
                     }
                 }
             }

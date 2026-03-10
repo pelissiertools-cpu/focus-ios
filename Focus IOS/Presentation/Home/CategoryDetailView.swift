@@ -22,6 +22,9 @@ struct CategoryDetailView: View {
     @FocusState private var isNameFocused: Bool
     private let categoryRepository = CategoryRepository()
 
+    // Inline add
+    @State private var isInlineAddFocused = false
+
     // Section collapse states
     @State private var isTasksSectionCollapsed = false
     @State private var isProjectsSectionCollapsed = false
@@ -426,10 +429,9 @@ struct CategoryDetailView: View {
     private var itemList: some View {
         List {
             // MARK: Tasks Section
-            if !categoryTasks.isEmpty {
-                tasksSectionHeader
+            tasksSectionHeader
 
-                if !isTasksSectionCollapsed {
+            if !isTasksSectionCollapsed {
                     ForEach(categoryTaskDisplayItems) { item in
                         switch item {
                         case .priorityHeader(let priority):
@@ -463,19 +465,33 @@ struct CategoryDetailView: View {
                             .listRowBackground(Color.clear)
                             .listRowSeparator(task.parentTaskId != nil ? .visible : .hidden)
 
-                        case .addSubtaskRow:
-                            EmptyView()
-                                .listRowSeparator(.hidden)
-                                .listRowBackground(Color.clear)
+                        case .addSubtaskRow(let parentId):
+                            InlineAddRow(
+                                placeholder: "Subtask title",
+                                buttonLabel: "Add subtask",
+                                onSubmit: { title in await taskListVM.createSubtask(title: title, parentId: parentId) },
+                                isAnyAddFieldActive: $isInlineAddFocused,
+                                verticalPadding: AppStyle.Spacing.comfortable
+                            )
+                            .padding(.leading, AppStyle.Insets.nestedRow.leading)
+                            .listRowInsets(AppStyle.Insets.row)
+                            .listRowSeparator(.hidden)
+                            .listRowBackground(Color.clear)
 
-                        case .addTaskRow:
-                            EmptyView()
-                                .listRowSeparator(.hidden)
-                                .listRowBackground(Color.clear)
+                        case .addTaskRow(let priority):
+                            InlineAddRow(
+                                placeholder: "Task title",
+                                buttonLabel: "Add task",
+                                onSubmit: { title in await taskListVM.createTask(title: title, categoryId: category.id, priority: priority) },
+                                isAnyAddFieldActive: $isInlineAddFocused,
+                                verticalPadding: AppStyle.Spacing.comfortable
+                            )
+                            .listRowInsets(AppStyle.Insets.row)
+                            .listRowSeparator(.hidden)
+                            .listRowBackground(Color.clear)
                         }
                     }
                 }
-            }
 
             // MARK: Projects Section
             if !categoryProjects.isEmpty {

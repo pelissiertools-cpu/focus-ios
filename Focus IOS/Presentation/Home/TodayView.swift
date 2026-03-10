@@ -127,7 +127,7 @@ struct TodayView: View {
         if todoEntries.isEmpty {
             result.append(.todoDropPlaceholder)
         }
-
+        result.append(.todoInlineAdd)
         result.append(.bottomSpacer)
         return result
     }
@@ -409,6 +409,41 @@ struct TodayView: View {
         }
     }
 
+    // MARK: - Todo Task Creation
+
+    private func createTodoTask(title: String) async {
+        guard let userId = authService.currentUser?.id else { return }
+        let taskRepo = TaskRepository()
+        do {
+            let newTask = FocusTask(
+                userId: userId,
+                title: title,
+                type: .task,
+                isCompleted: false,
+                isInLibrary: true
+            )
+            let created = try await taskRepo.createTask(newTask)
+
+            let maxSort = todoEntries.map { $0.sortOrder }.max() ?? -1
+            let schedule = Schedule(
+                userId: userId,
+                taskId: created.id,
+                timeframe: .daily,
+                section: .todo,
+                scheduleDate: Date(),
+                sortOrder: maxSort + 1
+            )
+            let createdSchedule = try await scheduleRepository.createSchedule(schedule)
+
+            todaySchedules[created.id] = (scheduleId: createdSchedule.id, sortOrder: createdSchedule.sortOrder)
+            scheduleById[createdSchedule.id] = createdSchedule
+            taskListVM.scheduledTaskIds.insert(created.id)
+            await taskListVM.fetchTasks()
+        } catch {
+            // silently fail
+        }
+    }
+
     // MARK: - Item List
 
     private var itemList: some View {
@@ -491,15 +526,27 @@ struct TodayView: View {
                         .listRowSeparator(.hidden)
                         .moveDisabled(true)
 
+                case .todoInlineAdd:
+                    InlineAddRow(
+                        placeholder: "Task title",
+                        buttonLabel: "Add task",
+                        onSubmit: { title in await createTodoTask(title: title) },
+                        isAnyAddFieldActive: $isInlineAddFocused,
+                        verticalPadding: AppStyle.Spacing.comfortable
+                    )
+                    .listRowInsets(AppStyle.Insets.row)
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+                    .moveDisabled(true)
+
                 case .todoDropPlaceholder:
-                    Text("No tasks scheduled yet")
-                        .font(.inter(.subheadline))
-                        .foregroundColor(.secondary.opacity(0.4))
-                        .frame(maxWidth: .infinity, alignment: .center)
-                        .padding(.vertical, AppStyle.Spacing.page)
+                    Text("No tasks yet")
+                        .font(.inter(.subheadline, weight: .semiBold))
+                        .foregroundColor(.primary)
                         .listRowInsets(AppStyle.Insets.row)
                         .listRowBackground(Color.clear)
                         .listRowSeparator(.hidden)
+                        .moveDisabled(true)
 
                 case .bottomSpacer:
                     Color.clear
@@ -790,6 +837,7 @@ private enum TodayFlatItem: Identifiable {
     case focusInlineAdd
     case focusEmptyPlaceholder
     case focusDivider
+    case todoInlineAdd
     case todoDropPlaceholder
     case bottomSpacer
 
@@ -802,6 +850,7 @@ private enum TodayFlatItem: Identifiable {
         case .focusInlineAdd: return "focus-inline-add"
         case .focusEmptyPlaceholder: return "focus-empty-placeholder"
         case .focusDivider: return "focus-divider"
+        case .todoInlineAdd: return "todo-inline-add"
         case .todoDropPlaceholder: return "todo-drop-placeholder"
         case .bottomSpacer: return "bottom-spacer"
         }

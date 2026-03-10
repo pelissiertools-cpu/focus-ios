@@ -792,7 +792,7 @@ struct BacklogView: View {
     private var quickFilterBar: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: AppStyle.Spacing.compact) {
-                BacklogFilterPill(title: "Unscheduled", isSelected: $filterUnscheduled)
+                BacklogFilterPill(title: "Unscheduled", isSelected: $filterUnscheduled, selectedColor: .inboxGreen)
                 if !tasksOnly {
                     BacklogFilterPill(title: "Task", isSelected: $filterTasks)
                     BacklogFilterPill(title: "Project", isSelected: $filterProjects)
@@ -1269,6 +1269,7 @@ private extension BacklogView {
 private struct BacklogFilterPill: View {
     let title: String
     @Binding var isSelected: Bool
+    var selectedColor: Color = .inboxGreen
 
     var body: some View {
         Button {
@@ -1283,7 +1284,7 @@ private struct BacklogFilterPill: View {
                 .padding(.horizontal, AppStyle.Spacing.comfortable)
                 .padding(.vertical, 7)
                 .background(
-                    isSelected ? Color.focusBlue : Color.categoryBackground,
+                    isSelected ? selectedColor : Color.categoryBackground,
                     in: RoundedRectangle(cornerRadius: AppStyle.CornerRadius.card)
                 )
                 .overlay(

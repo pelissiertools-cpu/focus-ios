@@ -310,7 +310,7 @@ struct ProjectProgressRing: View {
 
             Circle()
                 .trim(from: 0, to: progress)
-                .stroke(Color.appRed, style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
+                .stroke(Color.focusBlue, style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
                 .rotationEffect(.degrees(-90))
         }
         .frame(width: size, height: size)

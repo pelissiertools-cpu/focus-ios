@@ -31,6 +31,10 @@ struct FocusTask: Codable, Identifiable, Hashable, Equatable {
     // Due date
     var dueDate: Date?
 
+    // Notification
+    var notificationEnabled: Bool
+    var notificationDate: Date?
+
     // Foreign keys
     var categoryId: UUID?
     var projectId: UUID?
@@ -55,6 +59,8 @@ struct FocusTask: Codable, Identifiable, Hashable, Equatable {
         case isCleared = "is_cleared"
         case isPinned = "is_pinned"
         case dueDate = "due_date"
+        case notificationEnabled = "notification_enabled"
+        case notificationDate = "notification_date"
         case categoryId = "category_id"
         case projectId = "project_id"
         case parentTaskId = "parent_task_id"
@@ -79,6 +85,8 @@ struct FocusTask: Codable, Identifiable, Hashable, Equatable {
         isCleared: Bool = false,
         isPinned: Bool = false,
         dueDate: Date? = nil,
+        notificationEnabled: Bool = false,
+        notificationDate: Date? = nil,
         categoryId: UUID? = nil,
         projectId: UUID? = nil,
         parentTaskId: UUID? = nil
@@ -100,6 +108,8 @@ struct FocusTask: Codable, Identifiable, Hashable, Equatable {
         self.isCleared = isCleared
         self.isPinned = isPinned
         self.dueDate = dueDate
+        self.notificationEnabled = notificationEnabled
+        self.notificationDate = notificationDate
         self.categoryId = categoryId
         self.projectId = projectId
         self.parentTaskId = parentTaskId
@@ -124,6 +134,8 @@ struct FocusTask: Codable, Identifiable, Hashable, Equatable {
         isCleared = try container.decodeIfPresent(Bool.self, forKey: .isCleared) ?? false
         isPinned = try container.decodeIfPresent(Bool.self, forKey: .isPinned) ?? false
         dueDate = try container.decodeIfPresent(Date.self, forKey: .dueDate)
+        notificationEnabled = try container.decodeIfPresent(Bool.self, forKey: .notificationEnabled) ?? false
+        notificationDate = try container.decodeIfPresent(Date.self, forKey: .notificationDate)
         categoryId = try container.decodeIfPresent(UUID.self, forKey: .categoryId)
         projectId = try container.decodeIfPresent(UUID.self, forKey: .projectId)
         parentTaskId = try container.decodeIfPresent(UUID.self, forKey: .parentTaskId)

@@ -568,18 +568,28 @@ struct FlatTaskRow: View {
                     .strikethrough(displayCompleted)
                     .foregroundColor(displayCompleted ? .secondary : .primary)
 
-                // Subtask count + overdue date (inline when both present)
+                // Subtask count + overdue/notification date (inline when both present)
                 if isParent, let subtasks = viewModel.subtasksMap[task.id], !subtasks.isEmpty {
                     HStack(spacing: AppStyle.Spacing.small) {
                         Text("\(subtasks.count) subtask\(subtasks.count == 1 ? "" : "s")")
                             .font(.inter(.caption))
                             .foregroundColor(.secondary)
-                        if let overdueDate {
+                        if let notifDate = task.notificationDate, task.notificationEnabled {
+                            let isOverdue = notifDate < Date()
+                            Text(OverdueDateFormatter.formatWithTime(notifDate))
+                                .font(.inter(.caption))
+                                .foregroundColor(isOverdue ? .red : .secondary.opacity(0.8))
+                        } else if let overdueDate {
                             Text(OverdueDateFormatter.format(overdueDate))
                                 .font(.inter(.caption))
                                 .foregroundColor(.red)
                         }
                     }
+                } else if let notifDate = task.notificationDate, task.notificationEnabled {
+                    let isOverdue = notifDate < Date()
+                    Text(OverdueDateFormatter.formatWithTime(notifDate))
+                        .font(.inter(.caption))
+                        .foregroundColor(isOverdue ? .red : .secondary.opacity(0.8))
                 } else if let overdueDate {
                     Text(OverdueDateFormatter.format(overdueDate))
                         .font(.inter(.caption))

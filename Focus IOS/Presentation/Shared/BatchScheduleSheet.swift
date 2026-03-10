@@ -26,6 +26,15 @@ struct BatchScheduleSheet<VM: LogFilterable>: View {
     @State private var showError = false
     @State private var errorMessage = ""
 
+    // Notification
+    @State private var notificationEnabled = false
+    @State private var notificationTime: Date = {
+        var components = Calendar.current.dateComponents([.year, .month, .day], from: Date())
+        components.hour = 9
+        components.minute = 0
+        return Calendar.current.date(from: components) ?? Date()
+    }()
+
     private var itemCount: Int { tasks?.count ?? viewModel.selectedCount }
 
     var body: some View {
@@ -37,31 +46,49 @@ struct BatchScheduleSheet<VM: LogFilterable>: View {
                 disabled: selectedDates.isEmpty || isSaving
             )
         ) {
-            Form {
-                SwiftUI.Section("Items") {
-                    Text("\(itemCount) item\(itemCount == 1 ? "" : "s") selected")
-                        .font(.inter(.headline))
-                }
-
-                SwiftUI.Section("Section") {
-                    Picker("Section", selection: $selectedSection) {
-                        Text("Focus").tag(Section.focus)
-                        Text("To-Do").tag(Section.todo)
+            ScrollViewReader { proxy in
+                Form {
+                    SwiftUI.Section("Items") {
+                        Text("\(itemCount) item\(itemCount == 1 ? "" : "s") selected")
+                            .font(.inter(.headline))
                     }
-                    .pickerStyle(.segmented)
-                }
 
-                SwiftUI.Section("Select Dates") {
-                    UnifiedCalendarPicker(
-                        selectedDates: $selectedDates,
-                        selectedTimeframe: $selectedTimeframe
-                    )
+                    SwiftUI.Section("Section") {
+                        Picker("Section", selection: $selectedSection) {
+                            Text("Focus").tag(Section.focus)
+                            Text("To-Do").tag(Section.todo)
+                        }
+                        .pickerStyle(.segmented)
+                    }
+
+                    SwiftUI.Section("Select Dates") {
+                        UnifiedCalendarPicker(
+                            selectedDates: $selectedDates,
+                            selectedTimeframe: $selectedTimeframe
+                        )
+                    }
+
+                    SwiftUI.Section {
+                        NotificationToggleRow(
+                            isEnabled: $notificationEnabled,
+                            selectedTime: $notificationTime
+                        )
+                    }
                 }
-            }
-            .alert("Error", isPresented: $showError) {
-                Button("OK") {}
-            } message: {
-                Text(errorMessage)
+                .alert("Error", isPresented: $showError) {
+                    Button("OK") {}
+                } message: {
+                    Text(errorMessage)
+                }
+                .onChange(of: notificationEnabled) { _, enabled in
+                    if enabled {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                proxy.scrollTo("notificationTimePicker", anchor: .center)
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -100,6 +127,24 @@ struct BatchScheduleSheet<VM: LogFilterable>: View {
                 }
             }
 
+            // Save notifications for all items
+            if notificationEnabled, let firstDate = selectedDates.sorted().first {
+                let taskRepo = TaskRepository()
+                for item in items {
+                    let notifDate = combineDateTime(date: firstDate, time: notificationTime)
+                    try await taskRepo.updateTaskNotification(
+                        id: item.id,
+                        enabled: true,
+                        date: notifDate
+                    )
+                    NotificationService.shared.scheduleNotification(
+                        taskId: item.id,
+                        title: item.title,
+                        date: notifDate
+                    )
+                }
+            }
+
             await focusViewModel.fetchSchedules()
             await viewModel.fetchScheduledTaskIds()
 
@@ -115,5 +160,14 @@ struct BatchScheduleSheet<VM: LogFilterable>: View {
         }
 
         isSaving = false
+    }
+
+    private func combineDateTime(date: Date, time: Date) -> Date {
+        let cal = Calendar.current
+        var components = cal.dateComponents([.year, .month, .day], from: date)
+        let timeComponents = cal.dateComponents([.hour, .minute], from: time)
+        components.hour = timeComponents.hour
+        components.minute = timeComponents.minute
+        return cal.date(from: components) ?? date
     }
 }

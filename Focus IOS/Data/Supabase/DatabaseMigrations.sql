@@ -344,3 +344,11 @@ CREATE INDEX IF NOT EXISTS idx_tasks_goals ON tasks(user_id, type) WHERE type = 
 
 -- 4. Index for due date queries
 CREATE INDEX IF NOT EXISTS idx_tasks_due_date ON tasks(due_date) WHERE due_date IS NOT NULL;
+
+-- ==============================================
+-- NOTIFICATION SUPPORT
+-- Local notification scheduling for tasks
+-- ==============================================
+
+ALTER TABLE tasks ADD COLUMN IF NOT EXISTS notification_enabled BOOLEAN DEFAULT false;
+ALTER TABLE tasks ADD COLUMN IF NOT EXISTS notification_date TIMESTAMPTZ;

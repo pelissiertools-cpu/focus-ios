@@ -764,7 +764,12 @@ private struct TodayProjectRow: View {
                     .font(.inter(.body))
                     .foregroundColor(.primary)
                     .lineLimit(1)
-                if let overdueDate {
+                if let notifDate = project.notificationDate, project.notificationEnabled {
+                    let isOverdue = notifDate < Date()
+                    Text(OverdueDateFormatter.formatWithTime(notifDate))
+                        .font(.inter(.caption))
+                        .foregroundColor(isOverdue ? .red : .secondary.opacity(0.8))
+                } else if let overdueDate {
                     Text(OverdueDateFormatter.format(overdueDate))
                         .font(.inter(.caption))
                         .foregroundColor(.red)
@@ -809,7 +814,12 @@ private struct TodayListRow: View {
                     .font(.inter(.body))
                     .foregroundColor(.primary)
                     .lineLimit(1)
-                if let overdueDate {
+                if let notifDate = list.notificationDate, list.notificationEnabled {
+                    let isOverdue = notifDate < Date()
+                    Text(OverdueDateFormatter.formatWithTime(notifDate))
+                        .font(.inter(.caption))
+                        .foregroundColor(isOverdue ? .red : .secondary.opacity(0.8))
+                } else if let overdueDate {
                     Text(OverdueDateFormatter.format(overdueDate))
                         .font(.inter(.caption))
                         .foregroundColor(.red)
@@ -938,6 +948,25 @@ enum OverdueDateFormatter {
             let formatter = DateFormatter()
             formatter.dateFormat = "yyyy-MM-dd"
             return formatter.string(from: date)
+        }
+    }
+
+    static func formatWithTime(_ date: Date) -> String {
+        let calendar = Calendar.current
+        let timeFormatter = DateFormatter()
+        timeFormatter.dateFormat = "h:mm a"
+        let timeString = timeFormatter.string(from: date)
+
+        if calendar.isDateInToday(date) {
+            return "Today, \(timeString)"
+        } else if calendar.isDateInTomorrow(date) {
+            return "Tomorrow, \(timeString)"
+        } else if calendar.isDateInYesterday(date) {
+            return "Yesterday, \(timeString)"
+        } else {
+            let dateFormatter = DateFormatter()
+            dateFormatter.dateFormat = "MMM d"
+            return "\(dateFormatter.string(from: date)), \(timeString)"
         }
     }
 }

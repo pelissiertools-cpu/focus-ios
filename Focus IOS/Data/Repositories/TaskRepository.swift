@@ -62,6 +62,19 @@ class TaskRepository {
         }
     }
 
+    /// Helper struct for notification updates
+    private struct NotificationUpdate: Encodable {
+        let notificationEnabled: Bool
+        let notificationDate: Date?
+        let modifiedDate: Date
+
+        enum CodingKeys: String, CodingKey {
+            case notificationEnabled = "notification_enabled"
+            case notificationDate = "notification_date"
+            case modifiedDate = "modified_date"
+        }
+    }
+
     /// Helper struct for assigning a task to a project/list
     private struct ProjectAssignmentUpdate: Encodable {
         let projectId: UUID
@@ -209,6 +222,20 @@ class TaskRepository {
             .from("tasks")
             .update(task)
             .eq("id", value: task.id.uuidString)
+            .execute()
+    }
+
+    /// Update notification settings for a task
+    func updateTaskNotification(id: UUID, enabled: Bool, date: Date?) async throws {
+        let update = NotificationUpdate(
+            notificationEnabled: enabled,
+            notificationDate: date,
+            modifiedDate: Date()
+        )
+        try await supabase
+            .from("tasks")
+            .update(update)
+            .eq("id", value: id.uuidString)
             .execute()
     }
 

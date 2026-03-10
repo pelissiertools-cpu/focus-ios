@@ -249,17 +249,17 @@ struct ScheduledView: View {
         let showNative = viewMode != .day
         var result: [Date: [ScheduledItemEntry]] = [:]
 
-        func addEntries(for item: FocusTask, as type: (FocusTask, Bool, UUID, Int) -> ScheduledItemEntry) {
+        func addEntries(for item: FocusTask, as type: (FocusTask, Bool, UUID, Int, Date) -> ScheduledItemEntry) {
             guard let itemEntries = itemSchedules[item.id] else { return }
             for entry in itemEntries where allowed.contains(entry.timeframe) {
                 let isNative = showNative && entry.timeframe == nativeTimeframe
-                result[entry.date, default: []].append(type(item, isNative, entry.scheduleId, entry.sortOrder))
+                result[entry.date, default: []].append(type(item, isNative, entry.scheduleId, entry.sortOrder, entry.date))
             }
         }
 
-        for task in allScheduledTasks { addEntries(for: task) { .task($0, isNative: $1, scheduleId: $2, sortOrder: $3) } }
-        for list in allScheduledLists { addEntries(for: list) { .list($0, isNative: $1, scheduleId: $2, sortOrder: $3) } }
-        for project in allScheduledProjects { addEntries(for: project) { .project($0, isNative: $1, scheduleId: $2, sortOrder: $3) } }
+        for task in allScheduledTasks { addEntries(for: task) { .task($0, isNative: $1, scheduleId: $2, sortOrder: $3, scheduleDate: $4) } }
+        for list in allScheduledLists { addEntries(for: list) { .list($0, isNative: $1, scheduleId: $2, sortOrder: $3, scheduleDate: $4) } }
+        for project in allScheduledProjects { addEntries(for: project) { .project($0, isNative: $1, scheduleId: $2, sortOrder: $3, scheduleDate: $4) } }
 
         // Deduplicate per date (same item, multiple timeframes) — prefer native
         for key in result.keys {
@@ -520,7 +520,7 @@ struct ScheduledView: View {
                     result.append(.item(entry))
 
                     // Expanded subtasks
-                    if case .task(let task, _, _, _) = entry,
+                    if case .task(let task, _, _, _, _) = entry,
                        taskListVM.expandedTasks.contains(task.id) {
                         let subtasks = taskListVM.getUncompletedSubtasks(for: task.id)
                             + taskListVM.getCompletedSubtasks(for: task.id)
@@ -1126,6 +1126,11 @@ struct ScheduledView: View {
 
     // MARK: - Unified Item Row
 
+    private func overdueDate(for entry: ScheduledItemEntry) -> Date? {
+        guard let schedDate = entry.scheduleDate else { return nil }
+        return schedDate < Calendar.current.startOfDay(for: Date()) ? schedDate : nil
+    }
+
     @ViewBuilder
     private func scheduledItemRow(_ entry: ScheduledItemEntry) -> some View {
         HStack(spacing: 0) {
@@ -1139,7 +1144,7 @@ struct ScheduledView: View {
 
             Group {
                 switch entry {
-                case .task(let task, _, let scheduleId, _):
+                case .task(let task, _, let scheduleId, _, _):
                     FlatTaskRow(
                         task: task,
                         viewModel: taskListVM,
@@ -1155,10 +1160,11 @@ struct ScheduledView: View {
                         },
                         onUnschedule: {
                             unscheduleItem(scheduleId: scheduleId)
-                        }
+                        },
+                        overdueDate: overdueDate(for: entry)
                     )
 
-                case .project(let project, _, let scheduleId, _):
+                case .project(let project, _, let scheduleId, _, _):
                     ScheduledProjectRow(
                         project: project,
                         isPending: taskListVM.isPendingCompletion(project.id),
@@ -1181,10 +1187,11 @@ struct ScheduledView: View {
                         onDelete: {
                             await projectsVM.deleteProject(project)
                             await refreshAllData()
-                        }
+                        },
+                        overdueDate: overdueDate(for: entry)
                     )
 
-                case .list(let list, _, let scheduleId, _):
+                case .list(let list, _, let scheduleId, _, _):
                     ScheduledListRow(
                         list: list,
                         isPending: taskListVM.isPendingCompletion(list.id),
@@ -1207,7 +1214,8 @@ struct ScheduledView: View {
                         onDelete: {
                             await listsVM.deleteList(list)
                             await refreshAllData()
-                        }
+                        },
+                        overdueDate: overdueDate(for: entry)
                     )
                 }
             }
@@ -1871,41 +1879,47 @@ private extension ScheduledView {
 // MARK: - Data Models
 
 private enum ScheduledItemEntry: Identifiable {
-    case task(FocusTask, isNative: Bool, scheduleId: UUID, sortOrder: Int)
-    case project(FocusTask, isNative: Bool, scheduleId: UUID, sortOrder: Int)
-    case list(FocusTask, isNative: Bool, scheduleId: UUID, sortOrder: Int)
+    case task(FocusTask, isNative: Bool, scheduleId: UUID, sortOrder: Int, scheduleDate: Date? = nil)
+    case project(FocusTask, isNative: Bool, scheduleId: UUID, sortOrder: Int, scheduleDate: Date? = nil)
+    case list(FocusTask, isNative: Bool, scheduleId: UUID, sortOrder: Int, scheduleDate: Date? = nil)
 
     var id: UUID {
         switch self {
-        case .task(let t, _, _, _): return t.id
-        case .project(let p, _, _, _): return p.id
-        case .list(let l, _, _, _): return l.id
+        case .task(let t, _, _, _, _): return t.id
+        case .project(let p, _, _, _, _): return p.id
+        case .list(let l, _, _, _, _): return l.id
         }
     }
 
     var isNative: Bool {
         switch self {
-        case .task(_, let n, _, _), .project(_, let n, _, _), .list(_, let n, _, _): return n
+        case .task(_, let n, _, _, _), .project(_, let n, _, _, _), .list(_, let n, _, _, _): return n
         }
     }
 
     var scheduleId: UUID {
         switch self {
-        case .task(_, _, let sid, _), .project(_, _, let sid, _), .list(_, _, let sid, _): return sid
+        case .task(_, _, let sid, _, _), .project(_, _, let sid, _, _), .list(_, _, let sid, _, _): return sid
         }
     }
 
     var sortOrder: Int {
         switch self {
-        case .task(_, _, _, let so), .project(_, _, _, let so), .list(_, _, _, let so): return so
+        case .task(_, _, _, let so, _), .project(_, _, _, let so, _), .list(_, _, _, let so, _): return so
+        }
+    }
+
+    var scheduleDate: Date? {
+        switch self {
+        case .task(_, _, _, _, let d), .project(_, _, _, _, let d), .list(_, _, _, _, let d): return d
         }
     }
 
     var createdDate: Date {
         switch self {
-        case .task(let t, _, _, _): return t.createdDate
-        case .project(let p, _, _, _): return p.createdDate
-        case .list(let l, _, _, _): return l.createdDate
+        case .task(let t, _, _, _, _): return t.createdDate
+        case .project(let p, _, _, _, _): return p.createdDate
+        case .list(let l, _, _, _, _): return l.createdDate
         }
     }
 
@@ -2022,6 +2036,7 @@ private struct ScheduledProjectRow: View {
     var onPushToTomorrow: () -> Void
     var onUnschedule: () -> Void
     var onDelete: () async -> Void
+    var overdueDate: Date? = nil
     @State private var showDeleteConfirmation = false
 
     var body: some View {
@@ -2038,11 +2053,23 @@ private struct ScheduledProjectRow: View {
                 .frame(width: 16, height: 16)
                 .foregroundColor(.secondary)
                 .frame(width: AppStyle.Layout.pillButton)
-            Text(project.title)
-                .font(.inter(.body))
-                .strikethrough(isPending)
-                .foregroundColor(isPending ? .secondary : .primary)
-                .lineLimit(1)
+            VStack(alignment: .leading, spacing: AppStyle.Spacing.tiny) {
+                Text(project.title)
+                    .font(.inter(.body))
+                    .strikethrough(isPending)
+                    .foregroundColor(isPending ? .secondary : .primary)
+                    .lineLimit(1)
+                if let notifDate = project.notificationDate, project.notificationEnabled {
+                    let isOverdue = notifDate < Date()
+                    Text(OverdueDateFormatter.formatWithTime(notifDate))
+                        .font(.inter(.caption))
+                        .foregroundColor(isOverdue ? .red : .secondary.opacity(0.8))
+                } else if let overdueDate {
+                    Text(OverdueDateFormatter.format(overdueDate))
+                        .font(.inter(.caption))
+                        .foregroundColor(.red)
+                }
+            }
             Spacer()
             if !isEditMode {
                 Button {
@@ -2102,6 +2129,7 @@ private struct ScheduledListRow: View {
     var onPushToTomorrow: () -> Void
     var onUnschedule: () -> Void
     var onDelete: () async -> Void
+    var overdueDate: Date? = nil
     @State private var showDeleteConfirmation = false
 
     var body: some View {
@@ -2116,11 +2144,23 @@ private struct ScheduledListRow: View {
                 .font(.inter(.body, weight: .medium))
                 .foregroundColor(.secondary)
                 .frame(width: AppStyle.Layout.pillButton)
-            Text(list.title)
-                .font(.inter(.body))
-                .strikethrough(isPending)
-                .foregroundColor(isPending ? .secondary : .primary)
-                .lineLimit(1)
+            VStack(alignment: .leading, spacing: AppStyle.Spacing.tiny) {
+                Text(list.title)
+                    .font(.inter(.body))
+                    .strikethrough(isPending)
+                    .foregroundColor(isPending ? .secondary : .primary)
+                    .lineLimit(1)
+                if let notifDate = list.notificationDate, list.notificationEnabled {
+                    let isOverdue = notifDate < Date()
+                    Text(OverdueDateFormatter.formatWithTime(notifDate))
+                        .font(.inter(.caption))
+                        .foregroundColor(isOverdue ? .red : .secondary.opacity(0.8))
+                } else if let overdueDate {
+                    Text(OverdueDateFormatter.format(overdueDate))
+                        .font(.inter(.caption))
+                        .foregroundColor(.red)
+                }
+            }
             Spacer()
             if !isEditMode {
                 Button {

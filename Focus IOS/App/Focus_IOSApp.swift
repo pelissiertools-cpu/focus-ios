@@ -20,6 +20,8 @@ struct Focus_IOSApp: App {
         _authService = StateObject(wrappedValue: auth)
         _focusViewModel = StateObject(wrappedValue: FocusTabViewModel(authService: auth))
 
+        NotificationService.shared.requestPermission()
+
         #if DEBUG
         for family in UIFont.familyNames.sorted() where family.contains("Inter") {
             print("Family: \(family)")

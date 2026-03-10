@@ -41,6 +41,14 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
     @State private var hasGeneratedBreakdown = false
     @State private var draftSuggestions: [DraftSubtaskEntry] = []
     @State private var pendingDeletions: Set<UUID> = []
+    // Notification
+    @State private var notificationEnabled: Bool = false
+    @State private var notificationTime: Date = {
+        var components = Calendar.current.dateComponents([.year, .month, .day], from: Date())
+        components.hour = 9
+        components.minute = 0
+        return Calendar.current.date(from: components) ?? Date()
+    }()
     @FocusState private var isTitleFocused: Bool
     @FocusState private var focusedSubtaskId: UUID?
     @FocusState private var isNewSubtaskFocused: Bool
@@ -75,6 +83,10 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
         _noteText = State(initialValue: task.description ?? "")
         _selectedCategoryId = State(initialValue: task.categoryId)
         _selectedPriority = State(initialValue: task.priority)
+        _notificationEnabled = State(initialValue: task.notificationEnabled)
+        if let notifDate = task.notificationDate {
+            _notificationTime = State(initialValue: notifDate)
+        }
     }
 
     private var schedulePillIsActive: Bool {
@@ -90,8 +102,13 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
         noteText != (task.description ?? "")
     }
 
+    private var hasNotificationChanges: Bool {
+        notificationEnabled != task.notificationEnabled ||
+        (notificationEnabled && !Calendar.current.isDate(notificationTime, equalTo: task.notificationDate ?? Date.distantPast, toGranularity: .minute))
+    }
+
     private var hasChanges: Bool {
-        taskTitle != task.title || selectedCategoryId != task.categoryId || selectedPriority != task.priority || !pendingDeletions.isEmpty || !newSubtaskTitle.trimmingCharacters(in: .whitespaces).isEmpty || !draftSuggestions.isEmpty || hasScheduleChanges || hasNoteChanges
+        taskTitle != task.title || selectedCategoryId != task.categoryId || selectedPriority != task.priority || !pendingDeletions.isEmpty || !newSubtaskTitle.trimmingCharacters(in: .whitespaces).isEmpty || !draftSuggestions.isEmpty || hasScheduleChanges || hasNoteChanges || hasNotificationChanges
     }
 
     var body: some View {
@@ -107,6 +124,7 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                 saveDraftSuggestions()
                 savePendingDeletions()
                 saveScheduleChanges()
+                saveNotification()
                 dismiss()
             }, highlighted: hasChanges)
         ) {
@@ -145,6 +163,15 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
                             withAnimation(.easeInOut(duration: 0.2)) {
                                 proxy.scrollTo("scheduleCard", anchor: .bottom)
+                            }
+                        }
+                    }
+                }
+                .onChange(of: notificationEnabled) { _, enabled in
+                    if enabled {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                proxy.scrollTo("notificationTimePicker", anchor: .center)
                             }
                         }
                     }
@@ -700,6 +727,11 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                 .padding(.vertical, AppStyle.Spacing.medium)
             }
             .frame(maxHeight: 350)
+
+            NotificationToggleRow(
+                isEnabled: $notificationEnabled,
+                selectedTime: $notificationTime
+            )
         }
         .background(Color(.secondarySystemGroupedBackground))
         .clipShape(RoundedRectangle(cornerRadius: AppStyle.Spacing.comfortable))
@@ -856,6 +888,49 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
         _Concurrency.Task {
             await viewModel.updateTaskPriority(task, priority: selectedPriority)
         }
+    }
+
+    private func saveNotification() {
+        guard notificationEnabled != task.notificationEnabled || notificationEnabled else { return }
+
+        let notificationDate: Date? = if notificationEnabled, let firstDate = scheduleDates.sorted().first {
+            combineDateTime(date: firstDate, time: notificationTime)
+        } else if notificationEnabled, let scheduleDate = schedule?.scheduleDate {
+            combineDateTime(date: scheduleDate, time: notificationTime)
+        } else {
+            nil
+        }
+
+        _Concurrency.Task {
+            do {
+                try await TaskRepository().updateTaskNotification(
+                    id: task.id,
+                    enabled: notificationEnabled,
+                    date: notificationDate
+                )
+            } catch {
+                // Silently fail
+            }
+
+            if notificationEnabled, let date = notificationDate {
+                NotificationService.shared.scheduleNotification(
+                    taskId: task.id,
+                    title: task.title,
+                    date: date
+                )
+            } else {
+                NotificationService.shared.cancelNotification(taskId: task.id)
+            }
+        }
+    }
+
+    private func combineDateTime(date: Date, time: Date) -> Date {
+        let cal = Calendar.current
+        var components = cal.dateComponents([.year, .month, .day], from: date)
+        let timeComponents = cal.dateComponents([.hour, .minute], from: time)
+        components.hour = timeComponents.hour
+        components.minute = timeComponents.minute
+        return cal.date(from: components) ?? date
     }
 
     private func savePendingDeletions() {

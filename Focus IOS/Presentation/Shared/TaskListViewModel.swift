@@ -17,6 +17,7 @@ enum FlatDisplayItem: Identifiable {
     case addSubtaskRow(parentId: UUID)
     case priorityHeader(Priority)
     case addTaskRow(priority: Priority)
+    case priorityDropPlaceholder(Priority)
 
     var id: String {
         switch self {
@@ -24,6 +25,7 @@ enum FlatDisplayItem: Identifiable {
         case .addSubtaskRow(let parentId): return "add-\(parentId.uuidString)"
         case .priorityHeader(let priority): return "priority-\(priority.rawValue)"
         case .addTaskRow(let priority): return "addTask-\(priority.rawValue)"
+        case .priorityDropPlaceholder(let priority): return "dropPlaceholder-\(priority.rawValue)"
         }
     }
 }
@@ -64,13 +66,14 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
     @Published var taskDueDates: [UUID: Date] = [:]
     @Published var taskScheduleDates: [UUID: Date] = [:]
 
-    // Sort (persisted via UserDefaults)
+    // Sort (persisted via UserDefaults, scoped by persistenceKey)
+    let persistenceKey: String
     @Published var sortOption: SortOption {
         didSet {
-            UserDefaults.standard.set(sortOption.rawValue, forKey: "taskList.sortOption")
+            UserDefaults.standard.set(sortOption.rawValue, forKey: "\(persistenceKey).sortOption")
             if sortOption == .priority {
-                // Collapse all priority sections by default when switching to priority sort
-                collapsedPriorities = Set(Priority.allCases)
+                // Expand all priority sections by default when switching to priority sort
+                collapsedPriorities = []
             }
             // Apply the default direction for the newly selected sort option
             sortDirection = sortOption.defaultDirection
@@ -78,7 +81,7 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
     }
     @Published var sortDirection: SortDirection {
         didSet {
-            UserDefaults.standard.set(sortDirection.rawValue, forKey: "taskList.sortDirection")
+            UserDefaults.standard.set(sortDirection.rawValue, forKey: "\(persistenceKey).sortDirection")
         }
     }
 
@@ -104,29 +107,31 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
     init(repository: TaskRepository = TaskRepository(),
          scheduleRepository: ScheduleRepository = ScheduleRepository(),
          categoryRepository: CategoryRepository = CategoryRepository(),
-         authService: AuthService) {
+         authService: AuthService,
+         persistenceKey: String = "taskList") {
         self.repository = repository
         self.scheduleRepository = scheduleRepository
         self.categoryRepository = categoryRepository
         self.authService = authService
+        self.persistenceKey = persistenceKey
 
         // Restore persisted sort preferences (default: creationDate, highestFirst)
-        if let savedSort = UserDefaults.standard.string(forKey: "taskList.sortOption"),
+        if let savedSort = UserDefaults.standard.string(forKey: "\(persistenceKey).sortOption"),
            let option = SortOption(rawValue: savedSort) {
             self.sortOption = option
         } else {
             self.sortOption = .creationDate
         }
-        if let savedDirection = UserDefaults.standard.string(forKey: "taskList.sortDirection"),
+        if let savedDirection = UserDefaults.standard.string(forKey: "\(persistenceKey).sortDirection"),
            let direction = SortDirection(rawValue: savedDirection) {
             self.sortDirection = direction
         } else {
             self.sortDirection = .highestFirst
         }
 
-        // If restored sort is priority, start with sections collapsed
+        // If restored sort is priority, start with sections expanded
         if self.sortOption == .priority {
-            self.collapsedPriorities = Set(Priority.allCases)
+            self.collapsedPriorities = []
         }
 
         // Pre-populate from cache for instant display
@@ -328,16 +333,20 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
                 result.append(.priorityHeader(priority))
 
                 if !collapsedPriorities.contains(priority) {
-                    for task in tasksForPriority {
-                        result.append(.task(task))
-                        if expandedTasks.contains(task.id) {
-                            for subtask in getUncompletedSubtasks(for: task.id) {
-                                result.append(.task(subtask))
+                    if tasksForPriority.isEmpty {
+                        result.append(.priorityDropPlaceholder(priority))
+                    } else {
+                        for task in tasksForPriority {
+                            result.append(.task(task))
+                            if expandedTasks.contains(task.id) {
+                                for subtask in getUncompletedSubtasks(for: task.id) {
+                                    result.append(.task(subtask))
+                                }
+                                for subtask in getCompletedSubtasks(for: task.id) {
+                                    result.append(.task(subtask))
+                                }
+                                result.append(.addSubtaskRow(parentId: task.id))
                             }
-                            for subtask in getCompletedSubtasks(for: task.id) {
-                                result.append(.task(subtask))
-                            }
-                            result.append(.addSubtaskRow(parentId: task.id))
                         }
                     }
                     result.append(.addTaskRow(priority: priority))
@@ -834,6 +843,58 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
             try await repository.updateSortOrders(updates)
         } catch {
             errorMessage = "Failed to save order: \(error.localizedDescription)"
+        }
+    }
+
+    // MARK: - Cross-Section Priority Move
+
+    /// Move a task to a different priority section, appending at the end.
+    /// Used by views that filter the flat list and cannot reliably map indices back.
+    func moveTaskToPriority(_ taskId: UUID, to newPriority: Priority, insertAt: Int? = nil) {
+        guard let taskIndex = tasks.firstIndex(where: { $0.id == taskId }),
+              tasks[taskIndex].priority != newPriority else { return }
+
+        let oldPriority = tasks[taskIndex].priority
+        tasks[taskIndex].priority = newPriority
+        tasks[taskIndex].modifiedDate = Date()
+
+        // Build destination section and insert at position
+        var destTasks = uncompletedTasks
+            .filter { $0.priority == newPriority && $0.id != taskId }
+        let position = min(insertAt ?? destTasks.count, destTasks.count)
+        if let updatedTask = tasks.first(where: { $0.id == taskId }) {
+            destTasks.insert(updatedTask, at: position)
+        }
+
+        // Reassign sort orders in destination section
+        var updates: [(id: UUID, sortOrder: Int)] = []
+        for (index, task) in destTasks.enumerated() {
+            if let ti = tasks.firstIndex(where: { $0.id == task.id }) {
+                tasks[ti].sortOrder = index
+            }
+            updates.append((id: task.id, sortOrder: index))
+        }
+
+        // Reassign sort orders in source section
+        let sourceTasks = uncompletedTasks.filter { $0.priority == oldPriority }
+        for (index, task) in sourceTasks.enumerated() {
+            if let ti = tasks.firstIndex(where: { $0.id == task.id }) {
+                tasks[ti].sortOrder = index
+            }
+            updates.append((id: task.id, sortOrder: index))
+        }
+
+        // Persist
+        _Concurrency.Task {
+            if let updatedTask = self.tasks.first(where: { $0.id == taskId }) {
+                do {
+                    try await self.repository.updateTask(updatedTask)
+                } catch {
+                    self.errorMessage = "Failed to update priority: \(error.localizedDescription)"
+                }
+            }
+            let otherUpdates = updates.filter { $0.id != taskId }
+            await self.persistSortOrders(otherUpdates)
         }
     }
 

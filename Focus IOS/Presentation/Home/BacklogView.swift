@@ -150,17 +150,39 @@ struct BacklogView: View {
 
     private var filteredTaskDisplayItems: [FlatDisplayItem] {
         let filteredTaskIds = Set(filteredTasks.map { $0.id })
-        return standaloneTaskDisplayItems.filter { item in
+        // Count visible tasks per priority
+        let standaloneFiltered = standaloneTaskDisplayItems.filter { item in
             switch item {
             case .task(let task):
                 return filteredTaskIds.contains(task.id) ||
                        (task.parentTaskId != nil && filteredTaskIds.contains(task.parentTaskId!))
-            case .priorityHeader(let priority):
-                return filteredTasks.contains { $0.priority == priority }
+            case .priorityHeader:
+                return true
             case .addSubtaskRow(let parentId): return filteredTaskIds.contains(parentId)
             case .addTaskRow: return true
+            case .priorityDropPlaceholder: return false // Remove ViewModel placeholders; we add our own below
             }
         }
+
+        // Determine which priorities have visible parent tasks
+        var prioritiesWithTasks = Set<Priority>()
+        for item in standaloneFiltered {
+            if case .task(let t) = item, t.parentTaskId == nil {
+                prioritiesWithTasks.insert(t.priority)
+            }
+        }
+
+        // Insert placeholders for priority sections that have no visible parent tasks
+        var result: [FlatDisplayItem] = []
+        for item in standaloneFiltered {
+            result.append(item)
+            if case .priorityHeader(let priority) = item,
+               !prioritiesWithTasks.contains(priority),
+               !taskListVM.isPriorityCollapsed(priority) {
+                result.append(.priorityDropPlaceholder(priority))
+            }
+        }
+        return result
     }
 
     private var filteredProjects: [FocusTask] {
@@ -198,12 +220,9 @@ struct BacklogView: View {
                 HStack(alignment: .center, spacing: AppStyle.Spacing.compact) {
                     Image(systemName: tasksOnly ? "tray.and.arrow.down" : "tray")
                         .font(.helveticaNeue(size: 15, weight: .medium))
-                        .foregroundColor(tasksOnly ? .inboxGreen : .primary)
+                        .foregroundColor(.inboxGreen)
                         .frame(width: AppStyle.Layout.iconBadge, height: AppStyle.Layout.iconBadge)
-                        .background(
-                            tasksOnly ? Color.inboxBadge : Color.iconBadgeBackground,
-                            in: RoundedRectangle(cornerRadius: AppStyle.CornerRadius.iconBadge)
-                        )
+                        .background(Color.inboxBadge, in: RoundedRectangle(cornerRadius: AppStyle.CornerRadius.iconBadge))
 
                     Text(tasksOnly ? "Inbox" : "Backlog")
                         .pageTitleStyle()
@@ -642,6 +661,63 @@ struct BacklogView: View {
         await loadAllData()
     }
 
+    // MARK: - Drag & Drop
+
+    private func handleFilteredMove(from source: IndexSet, to destination: Int) {
+        let filtered = filteredTaskDisplayItems
+        guard let fromIdx = source.first,
+              fromIdx < filtered.count,
+              case .task(let movedTask) = filtered[fromIdx],
+              movedTask.parentTaskId == nil else { return }
+
+        // Resolve destination priority by walking backwards from destination
+        let lookupIdx = max(0, min(destination - 1, filtered.count - 1))
+        var destPriority: Priority = .low
+        for i in stride(from: lookupIdx, through: 0, by: -1) {
+            if case .priorityHeader(let p) = filtered[i] {
+                destPriority = p
+                break
+            }
+        }
+
+        if destPriority == movedTask.priority {
+            // Same-section reorder: map indices back to ViewModel flat list
+            let flat = taskListVM.flattenedDisplayItems
+            func flatIndex(for filteredIdx: Int) -> Int? {
+                let itemId = filtered[filteredIdx].id
+                return flat.firstIndex { $0.id == itemId }
+            }
+            guard let flatFrom = flatIndex(for: fromIdx) else { return }
+            let flatTo: Int
+            if destination >= filtered.count {
+                if let lastFlat = flatIndex(for: filtered.count - 1) {
+                    flatTo = lastFlat + 1
+                } else {
+                    flatTo = flat.count
+                }
+            } else if let destFlat = flatIndex(for: destination) {
+                flatTo = destFlat
+            } else {
+                return
+            }
+            taskListVM.handleFlatMove(from: IndexSet(integer: flatFrom), to: flatTo)
+        } else {
+            // Cross-section move: find insertion position within destination section
+            let destParents = filtered.enumerated().compactMap { (i, item) -> (idx: Int, task: FocusTask)? in
+                if case .task(let t) = item, t.parentTaskId == nil, t.priority == destPriority, t.id != movedTask.id { return (i, t) }
+                return nil
+            }
+            var insertAt = destParents.count
+            for (pi, entry) in destParents.enumerated() {
+                if destination <= entry.idx {
+                    insertAt = pi
+                    break
+                }
+            }
+            taskListVM.moveTaskToPriority(movedTask.id, to: destPriority, insertAt: insertAt)
+        }
+    }
+
     // MARK: - Item List
 
     private var itemList: some View {
@@ -665,7 +741,8 @@ struct BacklogView: View {
                                 }
                             }
                         )
-                        .listRowInsets(EdgeInsets(top: 0, leading: AppStyle.Spacing.section, bottom: 0, trailing: AppStyle.Spacing.section))
+                        .moveDisabled(true)
+                        .listRowInsets(AppStyle.Insets.row)
                         .listRowSeparator(.hidden)
                         .listRowBackground(Color.clear)
 
@@ -682,6 +759,7 @@ struct BacklogView: View {
                             scheduleDate: taskListVM.taskScheduleDates[task.id]
                         )
                         .padding(.leading, task.parentTaskId != nil ? 32 : 0)
+                        .moveDisabled(task.isCompleted || taskListVM.isEditMode)
                         .listRowInsets(AppStyle.Insets.row)
                         .listRowBackground(Color.clear)
                         .listRowSeparator(task.parentTaskId != nil ? .visible : .hidden)
@@ -695,8 +773,19 @@ struct BacklogView: View {
                             verticalPadding: AppStyle.Spacing.comfortable
                         )
                         .padding(.leading, 32)
+                        .moveDisabled(true)
                         .listRowInsets(AppStyle.Insets.row)
                         .listRowBackground(Color.clear)
+
+                    case .priorityDropPlaceholder:
+                        Text("No tasks")
+                            .font(.inter(.subheadline))
+                            .foregroundColor(.secondary.opacity(0.4))
+                            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                            .contentShape(Rectangle())
+                            .listRowInsets(AppStyle.Insets.row)
+                            .listRowBackground(Color.clear)
+                            .listRowSeparator(.hidden)
 
                     case .addTaskRow(let priority):
                         InlineAddRow(
@@ -706,10 +795,14 @@ struct BacklogView: View {
                             isAnyAddFieldActive: $isInlineAddFocused,
                             verticalPadding: AppStyle.Spacing.comfortable
                         )
+                        .moveDisabled(true)
                         .listRowInsets(AppStyle.Insets.row)
                         .listRowSeparator(.hidden)
                         .listRowBackground(Color.clear)
                     }
+                }
+                .onMove { from, to in
+                    handleFilteredMove(from: from, to: to)
                 }
             }
 

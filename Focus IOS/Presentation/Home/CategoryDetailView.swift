@@ -55,13 +55,34 @@ struct CategoryDetailView: View {
 
     private var categoryTaskDisplayItems: [FlatDisplayItem] {
         let projectTaskIds = Set(taskListVM.uncompletedTasks.filter { $0.projectId != nil }.map { $0.id })
-        return taskListVM.flattenedDisplayItems.filter { item in
+        let filtered = taskListVM.flattenedDisplayItems.filter { item in
             switch item {
             case .task(let task): return task.projectId == nil
             case .addSubtaskRow(let parentId): return !projectTaskIds.contains(parentId)
+            case .priorityDropPlaceholder: return false // Remove ViewModel placeholders; we add our own below
             default: return true
             }
         }
+
+        // Determine which priorities have visible parent tasks
+        var prioritiesWithTasks = Set<Priority>()
+        for item in filtered {
+            if case .task(let t) = item, t.parentTaskId == nil {
+                prioritiesWithTasks.insert(t.priority)
+            }
+        }
+
+        // Insert placeholders for priority sections that have no visible parent tasks
+        var result: [FlatDisplayItem] = []
+        for item in filtered {
+            result.append(item)
+            if case .priorityHeader(let priority) = item,
+               !prioritiesWithTasks.contains(priority),
+               !taskListVM.isPriorityCollapsed(priority) {
+                result.append(.priorityDropPlaceholder(priority))
+            }
+        }
+        return result
     }
 
     private var categoryProjects: [FocusTask] {
@@ -424,6 +445,63 @@ struct CategoryDetailView: View {
         }
     }
 
+    // MARK: - Drag & Drop
+
+    private func handleCategoryMove(from source: IndexSet, to destination: Int) {
+        let filtered = categoryTaskDisplayItems
+        guard let fromIdx = source.first,
+              fromIdx < filtered.count,
+              case .task(let movedTask) = filtered[fromIdx],
+              movedTask.parentTaskId == nil else { return }
+
+        // Resolve destination priority by walking backwards from destination
+        let lookupIdx = max(0, min(destination - 1, filtered.count - 1))
+        var destPriority: Priority = .low
+        for i in stride(from: lookupIdx, through: 0, by: -1) {
+            if case .priorityHeader(let p) = filtered[i] {
+                destPriority = p
+                break
+            }
+        }
+
+        if destPriority == movedTask.priority {
+            // Same-section reorder: map indices back to ViewModel flat list
+            let flat = taskListVM.flattenedDisplayItems
+            func flatIndex(for filteredIdx: Int) -> Int? {
+                let itemId = filtered[filteredIdx].id
+                return flat.firstIndex { $0.id == itemId }
+            }
+            guard let flatFrom = flatIndex(for: fromIdx) else { return }
+            let flatTo: Int
+            if destination >= filtered.count {
+                if let lastFlat = flatIndex(for: filtered.count - 1) {
+                    flatTo = lastFlat + 1
+                } else {
+                    flatTo = flat.count
+                }
+            } else if let destFlat = flatIndex(for: destination) {
+                flatTo = destFlat
+            } else {
+                return
+            }
+            taskListVM.handleFlatMove(from: IndexSet(integer: flatFrom), to: flatTo)
+        } else {
+            // Cross-section move: find insertion position within destination section
+            let destParents = filtered.enumerated().compactMap { (i, item) -> (idx: Int, task: FocusTask)? in
+                if case .task(let t) = item, t.parentTaskId == nil, t.priority == destPriority, t.id != movedTask.id { return (i, t) }
+                return nil
+            }
+            var insertAt = destParents.count
+            for (pi, entry) in destParents.enumerated() {
+                if destination <= entry.idx {
+                    insertAt = pi
+                    break
+                }
+            }
+            taskListVM.moveTaskToPriority(movedTask.id, to: destPriority, insertAt: insertAt)
+        }
+    }
+
     // MARK: - Item List
 
     private var itemList: some View {
@@ -445,7 +523,8 @@ struct CategoryDetailView: View {
                                     }
                                 }
                             )
-                            .listRowInsets(EdgeInsets(top: 0, leading: AppStyle.Spacing.section, bottom: 0, trailing: AppStyle.Spacing.section))
+                            .moveDisabled(true)
+                            .listRowInsets(AppStyle.Insets.row)
                             .listRowSeparator(.hidden)
                             .listRowBackground(Color.clear)
 
@@ -462,6 +541,7 @@ struct CategoryDetailView: View {
                                 scheduleDate: taskListVM.taskScheduleDates[task.id]
                             )
                             .padding(.leading, task.parentTaskId != nil ? AppStyle.Insets.nestedRow.leading : 0)
+                            .moveDisabled(task.isCompleted || taskListVM.isEditMode)
                             .listRowInsets(AppStyle.Insets.row)
                             .listRowBackground(Color.clear)
                             .listRowSeparator(task.parentTaskId != nil ? .visible : .hidden)
@@ -475,9 +555,20 @@ struct CategoryDetailView: View {
                                 verticalPadding: AppStyle.Spacing.comfortable
                             )
                             .padding(.leading, AppStyle.Insets.nestedRow.leading)
+                            .moveDisabled(true)
                             .listRowInsets(AppStyle.Insets.row)
                             .listRowSeparator(.hidden)
                             .listRowBackground(Color.clear)
+
+                        case .priorityDropPlaceholder:
+                            Text("No tasks")
+                                .font(.inter(.subheadline))
+                                .foregroundColor(.secondary.opacity(0.4))
+                                .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                                .contentShape(Rectangle())
+                                .listRowInsets(AppStyle.Insets.row)
+                                .listRowBackground(Color.clear)
+                                .listRowSeparator(.hidden)
 
                         case .addTaskRow(let priority):
                             InlineAddRow(
@@ -487,10 +578,14 @@ struct CategoryDetailView: View {
                                 isAnyAddFieldActive: $isInlineAddFocused,
                                 verticalPadding: AppStyle.Spacing.comfortable
                             )
+                            .moveDisabled(true)
                             .listRowInsets(AppStyle.Insets.row)
                             .listRowSeparator(.hidden)
                             .listRowBackground(Color.clear)
                         }
+                    }
+                    .onMove { from, to in
+                        handleCategoryMove(from: from, to: to)
                     }
                 }
 

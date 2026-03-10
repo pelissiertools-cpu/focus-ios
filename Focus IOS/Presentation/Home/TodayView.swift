@@ -36,7 +36,7 @@ struct TodayView: View {
 
     init(authService: AuthService) {
         self.authService = authService
-        _taskListVM = StateObject(wrappedValue: TaskListViewModel(authService: authService))
+        _taskListVM = StateObject(wrappedValue: TaskListViewModel(authService: authService, persistenceKey: "todayTaskList"))
         _listsVM = StateObject(wrappedValue: ListsViewModel(authService: authService))
         _projectsVM = StateObject(wrappedValue: ProjectsViewModel(authService: authService))
 

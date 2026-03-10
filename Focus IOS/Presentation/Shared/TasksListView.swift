@@ -228,7 +228,7 @@ struct TasksListView: View {
                         }
                     )
                     .moveDisabled(true)
-                    .listRowInsets(EdgeInsets(top: 0, leading: AppStyle.Spacing.section, bottom: 0, trailing: AppStyle.Spacing.section))
+                    .listRowInsets(AppStyle.Insets.nestedRow)
                     .listRowSeparator(.hidden)
                     .listRowBackground(Color.clear)
 
@@ -260,6 +260,16 @@ struct TasksListView: View {
                     .moveDisabled(true)
                     .listRowInsets(AppStyle.Insets.nestedRow)
                     .listRowBackground(Color.clear)
+
+                case .priorityDropPlaceholder:
+                    Text("No tasks")
+                        .font(.inter(.subheadline))
+                        .foregroundColor(.secondary.opacity(0.4))
+                        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                        .contentShape(Rectangle())
+                        .listRowInsets(AppStyle.Insets.nestedRow)
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
 
                 case .addTaskRow(let priority):
                     InlineAddRow(
@@ -321,17 +331,13 @@ struct PrioritySectionHeader: View {
     var onAddTap: (() -> Void)? = nil
 
     var body: some View {
-        VStack(spacing: 0) {
+        VStack(alignment: .leading, spacing: AppStyle.Spacing.small) {
             Spacer(minLength: 0)
 
             HStack {
                 HStack(spacing: AppStyle.Spacing.compact) {
-                    RoundedRectangle(cornerRadius: 5, style: .continuous)
-                        .fill(priority.dotColor)
-                        .frame(width: 15, height: 15)
-
                     Text(priority.displayName)
-                        .font(.inter(size: 14))
+                        .font(.inter(size: 14, weight: .medium))
 
                     if count > 0 {
                         Text("\(count)")
@@ -344,12 +350,6 @@ struct PrioritySectionHeader: View {
                         .foregroundColor(.secondary)
                         .rotationEffect(.degrees(isCollapsed ? 0 : 90))
                 }
-                .padding(.horizontal, AppStyle.Spacing.comfortable)
-                .padding(.vertical, AppStyle.Spacing.medium)
-                .background(
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .fill(Color.pillBackground)
-                )
 
                 Spacer()
 
@@ -367,15 +367,16 @@ struct PrioritySectionHeader: View {
                     .accessibilityLabel("Add task")
                 }
             }
-            .padding(.leading, AppStyle.Spacing.section)
-            .padding(.trailing, AppStyle.Spacing.section)
-            .padding(.bottom, AppStyle.Spacing.compact)
             .contentShape(Rectangle())
             .onTapGesture {
                 onToggle()
             }
-            .frame(minHeight: 50, alignment: .bottom)
+
+            Rectangle()
+                .fill(priority.dotColor)
+                .frame(height: 1.5)
         }
+        .frame(minHeight: 44, alignment: .bottom)
     }
 }
 

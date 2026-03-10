@@ -524,7 +524,7 @@ struct TodayView: View {
 
                 case .focusDivider:
                     Rectangle()
-                        .fill(Color.dividerBadge)
+                        .fill(Color.todayBadge)
                         .frame(height: 2)
                         .listRowInsets(EdgeInsets(top: AppStyle.Spacing.compact, leading: AppStyle.Spacing.page, bottom: AppStyle.Spacing.compact, trailing: AppStyle.Spacing.page))
                         .listRowBackground(Color.clear)

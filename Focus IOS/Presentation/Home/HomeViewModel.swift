@@ -41,6 +41,7 @@ class HomeViewModel: ObservableObject {
     @Published var isLoading = false
     @Published var errorMessage: String?
     @Published var todayTaskCount: Int = 0
+    @Published var mainFocusTasks: [FocusTask] = []
 
     // Navigation state
     @Published var selectedMenuItem: HomeMenuItem?
@@ -150,6 +151,23 @@ class HomeViewModel: ObservableObject {
             let focus = try await scheduleRepository.fetchSchedules(timeframe: .daily, date: Date(), section: .focus)
             let todo = try await scheduleRepository.fetchSchedules(timeframe: .daily, date: Date(), section: .todo)
             todayTaskCount = focus.count + todo.count
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func fetchMainFocusTasks() async {
+        do {
+            let focusSchedules = try await scheduleRepository.fetchSchedules(timeframe: .daily, date: Date(), section: .focus)
+            let taskIds = focusSchedules.sorted(by: { $0.sortOrder < $1.sortOrder }).map(\.taskId)
+            guard !taskIds.isEmpty else {
+                mainFocusTasks = []
+                return
+            }
+            let tasks = try await repository.fetchTasksByIds(taskIds)
+            // Preserve schedule sort order and exclude completed
+            let taskMap = Dictionary(uniqueKeysWithValues: tasks.map { ($0.id, $0) })
+            mainFocusTasks = taskIds.compactMap { taskMap[$0] }.filter { !$0.isCompleted }
         } catch {
             errorMessage = error.localizedDescription
         }

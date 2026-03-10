@@ -252,6 +252,62 @@ struct HomeView: View {
                             .padding(.bottom, -AppStyle.Spacing.compact)
                         }
 
+                        // MARK: - Main Focus Section
+                        if !viewModel.mainFocusTasks.isEmpty {
+                            // Divider + header
+                            VStack(alignment: .leading, spacing: AppStyle.Spacing.compact) {
+                                Rectangle()
+                                    .fill(Color.cardBorder)
+                                    .frame(height: AppStyle.Border.thin)
+
+                                Button {
+                                    viewModel.selectedMenuItem = .today
+                                } label: {
+                                    HStack(spacing: AppStyle.Spacing.compact) {
+                                        Image(systemName: "target")
+                                            .font(.helveticaNeue(size: AppStyle.Layout.sectionDividerIcon, weight: .medium))
+                                            .foregroundColor(.focusBlue)
+                                            .frame(width: AppStyle.Layout.iconBadge, height: AppStyle.Layout.iconBadge)
+
+                                        Text("Main Focus")
+                                            .font(.inter(size: 14, weight: .bold))
+                                            .foregroundColor(.focusBlue)
+                                            .padding(.trailing, AppStyle.Spacing.compact)
+                                    }
+                                    .background(Color.todayBadge, in: RoundedRectangle(cornerRadius: AppStyle.CornerRadius.iconBadge))
+                                }
+                                .buttonStyle(.plain)
+                            }
+                            .padding(.horizontal, AppStyle.Spacing.page)
+
+                            // Task list
+                            VStack(spacing: 0) {
+                                ForEach(viewModel.mainFocusTasks) { task in
+                                    Button {
+                                        viewModel.selectedMenuItem = .today
+                                    } label: {
+                                        HStack(spacing: AppStyle.Spacing.compact) {
+                                            Circle()
+                                                .stroke(Color.gray, lineWidth: 1.5)
+                                                .frame(width: AppStyle.Layout.dotSize, height: AppStyle.Layout.dotSize)
+                                                .frame(width: AppStyle.Layout.iconBadge)
+
+                                            Text(task.title)
+                                                .font(AppStyle.Typography.itemTitle)
+                                                .foregroundColor(.primary)
+                                                .lineLimit(2)
+
+                                            Spacer()
+                                        }
+                                        .padding(.vertical, AppStyle.Spacing.compact)
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                            }
+                            .padding(.horizontal, AppStyle.Spacing.page)
+                            .padding(.top, -(AppStyle.Spacing.section / 2))
+                        }
+
                         // MARK: - Pinned Section
                         if !viewModel.pinnedItems.isEmpty {
                             homeSectionDivider(title: "PINNED", assetIcon: "PushPin")
@@ -262,6 +318,7 @@ struct HomeView: View {
                                 }
                             }
                             .padding(.horizontal, AppStyle.Spacing.page)
+                            .padding(.top, -(AppStyle.Spacing.section / 2))
                         }
                     }
                     .padding(.bottom, 120)
@@ -418,6 +475,7 @@ struct HomeView: View {
 
                 // Pre-fetch today schedules so TodayView opens instantly
                 await prefetchTodaySchedules()
+                await viewModel.fetchMainFocusTasks()
             }
             // Add bar: auto-focus on open
             .onChange(of: showingAddBar) { _, isShowing in
@@ -637,14 +695,14 @@ struct HomeView: View {
         Button {
             viewModel.selectedPinnedItem = item
         } label: {
-            HStack(spacing: AppStyle.Spacing.comfortable) {
+            HStack(spacing: AppStyle.Spacing.compact) {
                 if item.type == .project {
                     Image("ProjectIcon")
                         .renderingMode(.template)
                         .resizable().scaledToFit()
                         .frame(width: 16, height: 16)
                         .foregroundColor(.secondary)
-                        .frame(width: AppStyle.Layout.pillButton)
+                        .frame(width: AppStyle.Layout.iconBadge)
                 } else if item.type == .goal {
                     Image("TargetIcon")
                         .renderingMode(.template)
@@ -652,12 +710,12 @@ struct HomeView: View {
                         .scaledToFit()
                         .frame(width: AppStyle.Layout.smallIcon, height: AppStyle.Layout.smallIcon)
                         .foregroundColor(.secondary)
-                        .frame(width: AppStyle.Layout.pillButton)
+                        .frame(width: AppStyle.Layout.iconBadge)
                 } else {
                     Image(systemName: "checklist")
                         .font(.inter(.body, weight: .medium))
                         .foregroundColor(.secondary)
-                        .frame(width: AppStyle.Layout.pillButton)
+                        .frame(width: AppStyle.Layout.iconBadge)
                 }
 
                 Text(item.title)

@@ -115,6 +115,32 @@ struct FocusTask: Codable, Identifiable, Hashable, Equatable {
         self.parentTaskId = parentTaskId
     }
 
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(userId, forKey: .userId)
+        try container.encode(title, forKey: .title)
+        try container.encode(description, forKey: .description)
+        try container.encode(type, forKey: .type)
+        try container.encode(isCompleted, forKey: .isCompleted)
+        try container.encode(completedDate, forKey: .completedDate)
+        try container.encode(createdDate, forKey: .createdDate)
+        try container.encode(modifiedDate, forKey: .modifiedDate)
+        try container.encode(sortOrder, forKey: .sortOrder)
+        try container.encode(isInLibrary, forKey: .isInLibrary)
+        try container.encode(previousCompletionState, forKey: .previousCompletionState)
+        try container.encode(priority, forKey: .priority)
+        try container.encode(isSection, forKey: .isSection)
+        try container.encode(isCleared, forKey: .isCleared)
+        try container.encode(isPinned, forKey: .isPinned)
+        try container.encode(dueDate, forKey: .dueDate)
+        try container.encode(notificationEnabled, forKey: .notificationEnabled)
+        try container.encode(notificationDate, forKey: .notificationDate)
+        try container.encode(categoryId, forKey: .categoryId)
+        try container.encode(projectId, forKey: .projectId)
+        try container.encode(parentTaskId, forKey: .parentTaskId)
+    }
+
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = try container.decode(UUID.self, forKey: .id)

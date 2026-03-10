@@ -544,6 +544,7 @@ struct FlatTaskRow: View {
     var onReschedule: (() -> Void)? = nil
     var onPushToTomorrow: (() -> Void)? = nil
     var onUnschedule: (() -> Void)? = nil
+    var showCategoryOption: Bool = true
     var appearCompleted: Bool? = nil
     var overdueDate: Date? = nil
     var scheduleDate: Date? = nil
@@ -684,11 +685,13 @@ struct FlatTaskRow: View {
                         Label("Priority", systemImage: "flag")
                     }
 
-                    ContextMenuItems.categorySubmenu(
-                        currentCategoryId: task.categoryId,
-                        categories: viewModel.categories
-                    ) { categoryId in
-                        _Concurrency.Task { await viewModel.moveTaskToCategory(task, categoryId: categoryId) }
+                    if showCategoryOption {
+                        ContextMenuItems.categorySubmenu(
+                            currentCategoryId: task.categoryId,
+                            categories: viewModel.categories
+                        ) { categoryId in
+                            _Concurrency.Task { await viewModel.moveTaskToCategory(task, categoryId: categoryId) }
+                        }
                     }
                 }
 

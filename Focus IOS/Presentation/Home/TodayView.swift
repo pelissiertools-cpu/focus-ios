@@ -475,7 +475,8 @@ struct TodayView: View {
                         isEditMode: false,
                         isSelected: false,
                         onSelectToggle: nil,
-                        onToggleCompletion: nil
+                        onToggleCompletion: nil,
+                        showCategoryOption: false
                     )
                     .padding(.leading, 32)
                     .listRowInsets(AppStyle.Insets.row)
@@ -607,6 +608,7 @@ struct TodayView: View {
                             }
                         }
                     },
+                    showCategoryOption: false,
                     overdueDate: overdueScheduleDates[task.id]
                 )
 

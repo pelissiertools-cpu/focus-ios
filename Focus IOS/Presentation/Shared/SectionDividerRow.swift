@@ -38,6 +38,7 @@ struct SectionDividerRow: View {
                 .textFieldStyle(.plain)
                 .focused($isEditing)
                 .onSubmit { saveSectionTitle() }
+                .allowsHitTesting(isEditing)
                 .padding(.top, AppStyle.Spacing.section)
 
             Rectangle()

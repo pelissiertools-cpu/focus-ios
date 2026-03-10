@@ -113,8 +113,9 @@ struct ProjectContentView: View {
                         .moveDisabled(true)
                     } else {
                         let items = viewModel.flattenedProjectItems(for: project.id)
+                        let hasRealTasks = items.contains { if case .task = $0 { return true }; return false }
 
-                        if items.isEmpty || (items.count <= 1 && !isProjectCompleted) {
+                        if !hasRealTasks && !isProjectCompleted {
                             Text("No tasks yet")
                                 .font(AppStyle.Typography.emptyTitle)
                                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -122,125 +123,104 @@ struct ProjectContentView: View {
                                 .listRowBackground(Color.clear)
                                 .listRowSeparator(.hidden)
                                 .moveDisabled(true)
+                        }
 
-                            if !isProjectCompleted {
-                                InlineAddRow(
-                                    placeholder: "Task title",
-                                    buttonLabel: "Add task",
-                                    onSubmit: { title in await viewModel.createProjectTask(title: title, projectId: project.id) },
-                                    isAnyAddFieldActive: Binding(
-                                        get: { isInlineAddFocused },
-                                        set: { newValue in
-                                            isInlineAddFocused = newValue
-                                            if newValue { activeAddRowId = "empty-add-task" }
-                                        }
-                                    ),
-                                    verticalPadding: AppStyle.Spacing.compact
+                        ForEach(items) { item in
+                            switch item {
+                            case .section(let section):
+                                ProjectSectionRow(
+                                    section: section,
+                                    viewModel: viewModel,
+                                    projectId: project.id,
+                                    editingSectionId: $editingSectionId
                                 )
-                                .id("empty-add-task")
                                 .listRowInsets(AppStyle.Insets.row)
                                 .listRowBackground(Color.clear)
                                 .listRowSeparator(.hidden)
-                                .moveDisabled(true)
-                            }
-                        } else {
-                            ForEach(items) { item in
-                                switch item {
-                                case .section(let section):
-                                    ProjectSectionRow(
-                                        section: section,
-                                        viewModel: viewModel,
-                                        projectId: project.id,
-                                        editingSectionId: $editingSectionId
-                                    )
-                                    .listRowInsets(AppStyle.Insets.row)
-                                    .listRowBackground(Color.clear)
-                                    .listRowSeparator(.hidden)
 
-                                case .task(let task):
-                                    Group {
-                                        if task.parentTaskId != nil {
-                                            ProjectSubtaskRow(
-                                                subtask: task,
-                                                parentId: task.parentTaskId!,
-                                                viewModel: viewModel
-                                            )
-                                            .padding(.leading, viewModel.contentEditMode ? 0 : 32)
-                                        } else {
-                                            ContentTaskRow(
-                                                task: task,
-                                                projectId: project.id,
-                                                viewModel: viewModel
-                                            )
-                                        }
-                                    }
-                                    .moveDisabled(task.isCompleted || viewModel.contentEditMode)
-                                    .listRowInsets(AppStyle.Insets.row)
-                                    .listRowBackground(Color.clear)
-                                    .listRowSeparator(.hidden)
-
-                                case .addSubtaskRow(let parentId):
-                                    if !viewModel.contentEditMode {
-                                        let rowId = "add-subtask-\(parentId.uuidString)"
-                                        InlineAddRow(
-                                            placeholder: "Subtask title",
-                                            buttonLabel: "Add subtask",
-                                            onSubmit: { title in await viewModel.createSubtask(title: title, parentId: parentId) },
-                                            isAnyAddFieldActive: Binding(
-                                                get: { isInlineAddFocused },
-                                                set: { newValue in
-                                                    isInlineAddFocused = newValue
-                                                    if newValue { activeAddRowId = rowId }
-                                                }
-                                            ),
-                                            iconFont: .inter(.caption),
-                                            verticalPadding: AppStyle.Spacing.small
+                            case .task(let task):
+                                Group {
+                                    if task.parentTaskId != nil {
+                                        ProjectSubtaskRow(
+                                            subtask: task,
+                                            parentId: task.parentTaskId!,
+                                            viewModel: viewModel
                                         )
-                                        .padding(.leading, 32)
-                                        .moveDisabled(true)
-                                        .listRowInsets(AppStyle.Insets.row)
-                                        .listRowBackground(Color.clear)
-                                        .listRowSeparator(.hidden)
+                                        .padding(.leading, viewModel.contentEditMode ? 0 : 32)
+                                    } else {
+                                        ContentTaskRow(
+                                            task: task,
+                                            projectId: project.id,
+                                            viewModel: viewModel
+                                        )
                                     }
+                                }
+                                .moveDisabled(task.isCompleted || viewModel.contentEditMode)
+                                .listRowInsets(AppStyle.Insets.row)
+                                .listRowBackground(Color.clear)
+                                .listRowSeparator(.hidden)
 
-                                case .completedHeader(let count):
-                                    ProjectContentDonePill(
-                                        count: count,
-                                        isCollapsed: viewModel.isContentDoneCollapsed,
-                                        onToggle: { viewModel.toggleContentDoneCollapsed() }
+                            case .addSubtaskRow(let parentId):
+                                if !viewModel.contentEditMode {
+                                    let rowId = "add-subtask-\(parentId.uuidString)"
+                                    InlineAddRow(
+                                        placeholder: "Subtask title",
+                                        buttonLabel: "Add subtask",
+                                        onSubmit: { title in await viewModel.createSubtask(title: title, parentId: parentId) },
+                                        isAnyAddFieldActive: Binding(
+                                            get: { isInlineAddFocused },
+                                            set: { newValue in
+                                                isInlineAddFocused = newValue
+                                                if newValue { activeAddRowId = rowId }
+                                            }
+                                        ),
+                                        iconFont: .inter(.caption),
+                                        verticalPadding: AppStyle.Spacing.small
+                                    )
+                                    .padding(.leading, 32)
+                                    .moveDisabled(true)
+                                    .listRowInsets(AppStyle.Insets.row)
+                                    .listRowBackground(Color.clear)
+                                    .listRowSeparator(.hidden)
+                                }
+
+                            case .completedHeader(let count):
+                                ProjectContentDonePill(
+                                    count: count,
+                                    isCollapsed: viewModel.isContentDoneCollapsed,
+                                    onToggle: { viewModel.toggleContentDoneCollapsed() }
+                                )
+                                .moveDisabled(true)
+                                .listRowInsets(AppStyle.Insets.row)
+                                .listRowBackground(Color.clear)
+                                .listRowSeparator(.hidden)
+
+                            case .addTaskRow(let sectionId):
+                                if !viewModel.contentEditMode {
+                                    let rowId = item.id
+                                    InlineAddRow(
+                                        placeholder: "Task title",
+                                        buttonLabel: "Add task",
+                                        onSubmit: { title in await viewModel.createProjectTaskInSection(title: title, projectId: project.id, sectionId: sectionId) },
+                                        isAnyAddFieldActive: Binding(
+                                            get: { isInlineAddFocused },
+                                            set: { newValue in
+                                                isInlineAddFocused = newValue
+                                                if newValue { activeAddRowId = rowId }
+                                            }
+                                        ),
+                                        verticalPadding: AppStyle.Spacing.compact
                                     )
                                     .moveDisabled(true)
                                     .listRowInsets(AppStyle.Insets.row)
                                     .listRowBackground(Color.clear)
                                     .listRowSeparator(.hidden)
-
-                                case .addTaskRow(let sectionId):
-                                    if !viewModel.contentEditMode {
-                                        let rowId = item.id
-                                        InlineAddRow(
-                                            placeholder: "Task title",
-                                            buttonLabel: "Add task",
-                                            onSubmit: { title in await viewModel.createProjectTaskInSection(title: title, projectId: project.id, sectionId: sectionId) },
-                                            isAnyAddFieldActive: Binding(
-                                                get: { isInlineAddFocused },
-                                                set: { newValue in
-                                                    isInlineAddFocused = newValue
-                                                    if newValue { activeAddRowId = rowId }
-                                                }
-                                            ),
-                                            verticalPadding: AppStyle.Spacing.compact
-                                        )
-                                        .moveDisabled(true)
-                                        .listRowInsets(AppStyle.Insets.row)
-                                        .listRowBackground(Color.clear)
-                                        .listRowSeparator(.hidden)
-                                    }
                                 }
                             }
-                            .onMove { from, to in
-                                if !viewModel.contentEditMode {
-                                    viewModel.handleProjectContentFlatMove(from: from, to: to, projectId: project.id)
-                                }
+                        }
+                        .onMove { from, to in
+                            if !viewModel.contentEditMode {
+                                viewModel.handleProjectContentFlatMove(from: from, to: to, projectId: project.id)
                             }
                         }
                     }
@@ -251,10 +231,17 @@ struct ProjectContentView: View {
                         .listRowBackground(Color.clear)
                         .listRowSeparator(.hidden)
                         .moveDisabled(true)
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            UIApplication.shared.sendAction(
+                                #selector(UIResponder.resignFirstResponder),
+                                to: nil, from: nil, for: nil
+                            )
+                        }
                 }
                 .listStyle(.plain)
                 .scrollContentBackground(.hidden)
-                .scrollDismissesKeyboard(.interactively)
+                .scrollDismissesKeyboard(.immediately)
                 .onChange(of: isInlineAddFocused) { _, focused in
                     if focused, let targetId = activeAddRowId {
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
@@ -669,6 +656,7 @@ struct ProjectSectionRow: View {
                     .textFieldStyle(.plain)
                     .focused($isEditing)
                     .onSubmit { saveSectionTitle() }
+                    .allowsHitTesting(isEditing)
 
                 Spacer()
 

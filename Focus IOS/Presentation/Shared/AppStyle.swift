@@ -91,27 +91,27 @@ enum AppStyle {
 
     // MARK: - Spacing
 
-    enum Spacing: Sendable {
+    enum Spacing {
         /// 2pt — hairline gaps, minor adjustments
-        nonisolated(unsafe) static let micro: CGFloat = 2
+        static let micro: CGFloat = 2
         /// 4pt — tight gaps, small bottom margins
-        nonisolated(unsafe) static let tiny: CGFloat = 4
+        static let tiny: CGFloat = 4
         /// 6pt — minimal row spacing, tight padding
-        nonisolated(unsafe) static let small: CGFloat = 6
+        static let small: CGFloat = 6
         /// 8pt — standard row vertical padding, compact spacing
-        nonisolated(unsafe) static let compact: CGFloat = 8
+        static let compact: CGFloat = 8
         /// 10pt — button/icon horizontal padding
-        nonisolated(unsafe) static let medium: CGFloat = 10
+        static let medium: CGFloat = 10
         /// 12pt — component spacing, medium padding
-        nonisolated(unsafe) static let comfortable: CGFloat = 12
+        static let comfortable: CGFloat = 12
         /// 14pt — content padding inside cards/sections
-        nonisolated(unsafe) static let content: CGFloat = 14
+        static let content: CGFloat = 14
         /// 16pt — section-level padding
-        nonisolated(unsafe) static let section: CGFloat = 16
+        static let section: CGFloat = 16
         /// 20pt — page-level horizontal padding
-        nonisolated(unsafe) static let page: CGFloat = 20
+        static let page: CGFloat = 20
         /// 24pt — large section separation
-        nonisolated(unsafe) static let expanded: CGFloat = 24
+        static let expanded: CGFloat = 24
     }
 
     // MARK: - Layout

@@ -159,9 +159,9 @@ struct HomeView: View {
                             homeCard(title: "Today", customIcon: {
                                 Image(systemName: "sun.max")
                                     .font(.helveticaNeue(size: 15, weight: .medium))
-                                    .foregroundColor(.focusBlue)
+                                    .foregroundColor(.accentOrange)
                                     .frame(width: AppStyle.Layout.iconBadge, height: AppStyle.Layout.iconBadge)
-                                    .background(Color.todayBadge, in: RoundedRectangle(cornerRadius: AppStyle.CornerRadius.iconBadge))
+                                    .background(Color.dividerBadge, in: RoundedRectangle(cornerRadius: AppStyle.CornerRadius.iconBadge))
                             }) {
                                 viewModel.selectedMenuItem = .today
                             }
@@ -748,9 +748,9 @@ struct HomeView: View {
                     .resizable()
                     .scaledToFit()
                     .frame(width: AppStyle.Layout.sectionDividerIcon, height: AppStyle.Layout.sectionDividerIcon)
-                    .foregroundColor(.accentOrange)
+                    .foregroundColor(.appText)
                     .frame(width: AppStyle.Layout.iconBadge, height: AppStyle.Layout.iconBadge)
-                    .background(Color.dividerBadge, in: RoundedRectangle(cornerRadius: AppStyle.CornerRadius.iconBadge))
+                    .background(Color.iconBadgeBackground, in: RoundedRectangle(cornerRadius: AppStyle.CornerRadius.iconBadge))
             } else {
                 Text(title)
                     .homeSectionLabelStyle()

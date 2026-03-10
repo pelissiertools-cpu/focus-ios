@@ -157,9 +157,9 @@ struct TodayView: View {
                 HStack(alignment: .center, spacing: AppStyle.Spacing.compact) {
                     Image(systemName: "sun.max")
                         .font(.helveticaNeue(size: 15, weight: .medium))
-                        .foregroundColor(.focusBlue)
+                        .foregroundColor(.accentOrange)
                         .frame(width: AppStyle.Layout.iconBadge, height: AppStyle.Layout.iconBadge)
-                        .background(Color.todayBadge, in: RoundedRectangle(cornerRadius: AppStyle.CornerRadius.iconBadge))
+                        .background(Color.dividerBadge, in: RoundedRectangle(cornerRadius: AppStyle.CornerRadius.iconBadge))
 
                     Text("Today")
                         .pageTitleStyle()
@@ -451,10 +451,15 @@ struct TodayView: View {
             ForEach(flattenedTodayItems) { flatItem in
                 switch flatItem {
                 case .focusSectionHeader:
-                    Text("Main Focus")
-                        .font(.inter(.headline, weight: .bold))
-                        .foregroundColor(.focusBlue)
-                        .padding(.top, AppStyle.Spacing.section)
+                    HStack(spacing: AppStyle.Spacing.compact) {
+                        Image(systemName: "target")
+                            .font(.helveticaNeue(size: AppStyle.Layout.sectionDividerIcon, weight: .medium))
+                            .foregroundColor(.focusBlue)
+                        Text("Main Focus")
+                            .font(.inter(.headline, weight: .bold))
+                            .foregroundColor(.focusBlue)
+                    }
+                    .padding(.top, AppStyle.Spacing.section)
                         .listRowInsets(AppStyle.Insets.row)
                         .listRowBackground(Color.clear)
                         .listRowSeparator(.hidden)
@@ -519,7 +524,7 @@ struct TodayView: View {
 
                 case .focusDivider:
                     Rectangle()
-                        .fill(Color.todayBadge)
+                        .fill(Color.dividerBadge)
                         .frame(height: 2)
                         .listRowInsets(EdgeInsets(top: AppStyle.Spacing.compact, leading: AppStyle.Spacing.page, bottom: AppStyle.Spacing.compact, trailing: AppStyle.Spacing.page))
                         .listRowBackground(Color.clear)

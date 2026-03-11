@@ -234,7 +234,7 @@ struct AddBar: View {
                     .onSubmit { save() }
                     .padding(.horizontal, AppStyle.Spacing.content)
                     .padding(.top, AppStyle.Spacing.page)
-                    .padding(.bottom, AppStyle.Spacing.content)
+                    .padding(.bottom, AppStyle.Spacing.page)
 
                 // Content area
                 contentArea
@@ -543,7 +543,7 @@ struct AddBar: View {
                         .foregroundColor(hasDateChanges ? .white : .secondary)
                         .frame(width: AppStyle.Layout.iconButton, height: AppStyle.Layout.iconButton)
                         .background(
-                            hasDateChanges ? Color.appRed : Color(.systemGray4),
+                            hasDateChanges ? Color.focusBlue : Color(.systemGray4),
                             in: Circle()
                         )
                 }
@@ -565,13 +565,13 @@ struct AddBar: View {
             } label: {
                 HStack(spacing: AppStyle.Spacing.tiny) {
                     Image(systemName: "plus")
-                        .font(.inter(.caption))
+                        .font(.inter(size: 14, weight: .semiBold))
                     Text(addButtonLabel)
-                        .font(.inter(.caption))
+                        .font(.inter(size: 14, weight: .semiBold))
                 }
                 .foregroundColor(.white)
                 .padding(.horizontal, AppStyle.Spacing.comfortable)
-                .padding(.vertical, AppStyle.Spacing.comfortable)
+                .padding(.vertical, AppStyle.Spacing.medium)
                 .background(Color.black, in: Capsule())
             }
             .buttonStyle(.plain)
@@ -586,14 +586,14 @@ struct AddBar: View {
                 } label: {
                     HStack(spacing: AppStyle.Spacing.tiny) {
                         Image(systemName: "calendar")
-                            .font(.inter(.caption))
+                            .font(.inter(size: 14, weight: .semiBold))
                         Text(scheduleDateLabel)
-                            .font(.inter(.caption))
+                            .font(.inter(size: 14, weight: .semiBold))
                     }
-                    .foregroundColor(!scheduleDates.isEmpty ? .white : .black)
+                    .foregroundColor(!scheduleDates.isEmpty ? .focusBlue : .black)
                     .padding(.horizontal, AppStyle.Spacing.medium)
-                    .padding(.vertical, AppStyle.Spacing.comfortable)
-                    .background(!scheduleDates.isEmpty ? Color.appRed : Color.white, in: Capsule())
+                    .padding(.vertical, AppStyle.Spacing.medium)
+                    .background(!scheduleDates.isEmpty ? Color.todayBadge : Color.white, in: Capsule())
                 }
                 .buttonStyle(.plain)
             }
@@ -617,11 +617,11 @@ struct AddBar: View {
                         .fill(priority.dotColor)
                         .frame(width: AppStyle.Layout.dotSize, height: AppStyle.Layout.dotSize)
                     Text(priority.displayName)
-                        .font(.inter(.caption))
+                        .font(.inter(size: 14, weight: .semiBold))
                 }
                 .foregroundColor(.black)
                 .padding(.horizontal, AppStyle.Spacing.comfortable)
-                .padding(.vertical, AppStyle.Spacing.comfortable)
+                .padding(.vertical, AppStyle.Spacing.medium)
                 .background(Color.white, in: Capsule())
             }
 
@@ -632,11 +632,11 @@ struct AddBar: View {
                 }
             } label: {
                 Image(systemName: "ellipsis")
-                    .font(.inter(.caption, weight: .bold))
+                    .font(.inter(size: 14, weight: .semiBold))
                     .foregroundColor(.black)
                     .frame(minHeight: UIFont.preferredFont(forTextStyle: .caption1).lineHeight)
                     .padding(.horizontal, AppStyle.Spacing.medium)
-                    .padding(.vertical, AppStyle.Spacing.comfortable)
+                    .padding(.vertical, AppStyle.Spacing.medium)
                     .background(Color.white, in: Capsule())
             }
             .accessibilityLabel("More options")
@@ -694,13 +694,13 @@ struct AddBar: View {
             } label: {
                 HStack(spacing: AppStyle.Spacing.tiny) {
                     Image(systemName: "folder")
-                        .font(.inter(.caption))
+                        .font(.inter(size: 14, weight: .semiBold))
                     Text(LocalizedStringKey(categoryPillLabel))
-                        .font(.inter(.caption))
+                        .font(.inter(size: 14, weight: .semiBold))
                 }
                 .foregroundColor(.black)
                 .padding(.horizontal, AppStyle.Spacing.comfortable)
-                .padding(.vertical, AppStyle.Spacing.comfortable)
+                .padding(.vertical, AppStyle.Spacing.medium)
                 .background(Color.white, in: Capsule())
             }
 
@@ -715,15 +715,15 @@ struct AddBar: View {
                                 .tint(.primary)
                         } else {
                             Image(systemName: hasGeneratedBreakdown ? "arrow.clockwise" : "sparkles")
-                                .font(.inter(.caption))
+                                .font(.inter(size: 14, weight: .semiBold))
                                 .foregroundColor(!isTitleEmpty ? .blue : .primary)
                         }
                         Text(LocalizedStringKey(hasGeneratedBreakdown ? "Regenerate" : "Suggest Breakdown"))
-                            .font(.inter(.caption))
+                            .font(.inter(size: 14, weight: .semiBold))
                             .foregroundColor(.primary)
                     }
                     .padding(.horizontal, AppStyle.Spacing.comfortable)
-                    .padding(.vertical, AppStyle.Spacing.comfortable)
+                    .padding(.vertical, AppStyle.Spacing.medium)
                     .background(
                         !isTitleEmpty ? Color.pillBackground : Color.clear,
                         in: Capsule()

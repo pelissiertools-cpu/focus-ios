@@ -394,13 +394,13 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                         } label: {
                             HStack(spacing: AppStyle.Spacing.tiny) {
                                 Image(systemName: "plus")
-                                    .font(.inter(.caption))
+                                    .font(.inter(size: 14, weight: .semiBold))
                                 Text("Sub-task")
-                                    .font(.inter(.caption))
+                                    .font(.inter(size: 14, weight: .semiBold))
                             }
                             .foregroundColor(.white)
-                            .padding(.horizontal, AppStyle.Spacing.medium)
-                            .padding(.vertical, AppStyle.Spacing.small)
+                            .padding(.horizontal, AppStyle.Spacing.comfortable)
+                            .padding(.vertical, AppStyle.Spacing.medium)
                             .glassEffect(.regular.tint(.black).interactive(), in: .capsule)
                         }
                         .buttonStyle(.plain)
@@ -549,12 +549,12 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                             .font(.inter(.subheadline, weight: .medium))
                             .lineLimit(1)
                     }
-                    .foregroundColor(schedulePillIsActive ? .white : .primary)
+                    .foregroundColor(schedulePillIsActive ? .focusBlue : .primary)
                     .padding(.horizontal, AppStyle.Spacing.comfortable)
                     .padding(.vertical, AppStyle.Spacing.medium)
                     .glassEffect(
                         schedulePillIsActive
-                            ? .regular.tint(.appRed).interactive()
+                            ? .regular.tint(Color.todayBadge).interactive()
                             : .regular.interactive(),
                         in: .capsule
                     )

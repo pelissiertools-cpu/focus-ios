@@ -201,7 +201,7 @@ struct AddBar: View {
                     .onSubmit { save() }
                     .padding(.horizontal, AppStyle.Spacing.content)
                     .padding(.top, AppStyle.Spacing.page)
-                    .padding(.bottom, AppStyle.Spacing.medium)
+                    .padding(.bottom, AppStyle.Spacing.content)
 
                 // Content area
                 contentArea
@@ -221,7 +221,7 @@ struct AddBar: View {
                     optionsRow
                 }
 
-                Spacer().frame(height: AppStyle.Spacing.page)
+                Spacer().frame(height: AppStyle.Spacing.medium)
             }
             .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 20))
             .padding(.horizontal)
@@ -497,8 +497,8 @@ struct AddBar: View {
                         .font(.inter(.caption))
                 }
                 .foregroundColor(.white)
-                .padding(.horizontal, AppStyle.Spacing.medium)
-                .padding(.vertical, AppStyle.Spacing.compact)
+                .padding(.horizontal, AppStyle.Spacing.comfortable)
+                .padding(.vertical, AppStyle.Spacing.comfortable)
                 .background(Color.black, in: Capsule())
             }
             .buttonStyle(.plain)
@@ -519,7 +519,7 @@ struct AddBar: View {
                     }
                     .foregroundColor(!scheduleDates.isEmpty ? .white : .black)
                     .padding(.horizontal, AppStyle.Spacing.medium)
-                    .padding(.vertical, AppStyle.Spacing.compact)
+                    .padding(.vertical, AppStyle.Spacing.comfortable)
                     .background(!scheduleDates.isEmpty ? Color.appRed : Color.white, in: Capsule())
                 }
                 .buttonStyle(.plain)
@@ -547,8 +547,8 @@ struct AddBar: View {
                         .font(.inter(.caption))
                 }
                 .foregroundColor(.black)
-                .padding(.horizontal, AppStyle.Spacing.medium)
-                .padding(.vertical, AppStyle.Spacing.compact)
+                .padding(.horizontal, AppStyle.Spacing.comfortable)
+                .padding(.vertical, AppStyle.Spacing.comfortable)
                 .background(Color.white, in: Capsule())
             }
 
@@ -563,7 +563,7 @@ struct AddBar: View {
                     .foregroundColor(.black)
                     .frame(minHeight: UIFont.preferredFont(forTextStyle: .caption1).lineHeight)
                     .padding(.horizontal, AppStyle.Spacing.medium)
-                    .padding(.vertical, AppStyle.Spacing.compact)
+                    .padding(.vertical, AppStyle.Spacing.comfortable)
                     .background(Color.white, in: Capsule())
             }
             .accessibilityLabel("More options")
@@ -626,33 +626,31 @@ struct AddBar: View {
                         .font(.inter(.caption))
                 }
                 .foregroundColor(.black)
-                .padding(.horizontal, AppStyle.Spacing.medium)
-                .padding(.vertical, AppStyle.Spacing.compact)
+                .padding(.horizontal, AppStyle.Spacing.comfortable)
+                .padding(.vertical, AppStyle.Spacing.comfortable)
                 .background(Color.white, in: Capsule())
             }
-
-            Spacer()
 
             // AI Breakdown (task mode only)
             if config.showAIBreakdown && (activeMode == .task || activeMode == .goal) {
                 Button {
                     generateBreakdown()
                 } label: {
-                    HStack(spacing: AppStyle.Spacing.small) {
+                    HStack(spacing: AppStyle.Spacing.tiny) {
                         if isGeneratingBreakdown {
                             ProgressView()
                                 .tint(.primary)
                         } else {
                             Image(systemName: hasGeneratedBreakdown ? "arrow.clockwise" : "sparkles")
-                                .font(.inter(.subheadline, weight: .semiBold))
+                                .font(.inter(.caption))
                                 .foregroundColor(!isTitleEmpty ? .blue : .primary)
                         }
                         Text(LocalizedStringKey(hasGeneratedBreakdown ? "Regenerate" : "Suggest Breakdown"))
-                            .font(.inter(.caption, weight: .medium))
+                            .font(.inter(.caption))
                             .foregroundColor(.primary)
                     }
-                    .padding(.horizontal, AppStyle.Spacing.content)
-                    .padding(.vertical, AppStyle.Spacing.compact)
+                    .padding(.horizontal, AppStyle.Spacing.comfortable)
+                    .padding(.vertical, AppStyle.Spacing.comfortable)
                     .background(
                         !isTitleEmpty ? Color.pillBackground : Color.clear,
                         in: Capsule()
@@ -661,6 +659,8 @@ struct AddBar: View {
                 .buttonStyle(.plain)
                 .disabled(isTitleEmpty || isGeneratingBreakdown)
             }
+
+            Spacer()
         }
         .padding(.horizontal, AppStyle.Spacing.content)
         .padding(.top, AppStyle.Spacing.small)

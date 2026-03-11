@@ -179,7 +179,7 @@ struct HomeView: View {
 
                         // MARK: - Schedule / Completed
                         HStack(spacing: AppStyle.Spacing.comfortable) {
-                            homeCard(title: "Scheduled", customIcon: {
+                            homeCard(title: "Upcoming", customIcon: {
                                 Image(systemName: "calendar")
                                     .font(.helveticaNeue(size: 15, weight: .medium))
                                     .foregroundColor(.appRed)

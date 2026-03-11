@@ -767,7 +767,7 @@ struct ScheduledView: View {
                     .frame(width: AppStyle.Layout.iconBadge, height: AppStyle.Layout.iconBadge)
                     .background(Color.scheduledBadge, in: RoundedRectangle(cornerRadius: AppStyle.CornerRadius.iconBadge))
 
-                Text("Scheduled")
+                Text("Upcoming")
                     .pageTitleStyle()
                     .foregroundColor(.primary)
                 Spacer()
@@ -880,9 +880,9 @@ struct ScheduledView: View {
     @ViewBuilder
     private var emptyStateView: some View {
         VStack(spacing: AppStyle.Spacing.tiny) {
-            Text("No scheduled items")
+            Text("No upcoming items")
                 .font(AppStyle.Typography.emptyTitle)
-            Text("Scheduled tasks, lists, and projects will appear here")
+            Text("Upcoming tasks, lists, and projects will appear here")
                 .font(AppStyle.Typography.emptySubtitle)
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)

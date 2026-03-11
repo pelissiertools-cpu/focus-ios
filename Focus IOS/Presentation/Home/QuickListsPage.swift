@@ -170,10 +170,39 @@ struct QuickListsPage: View {
                             }
                         }
 
-                    AddListBar(
-                        listsViewModel: listsViewModel,
-                        onSaved: {
-                            _Concurrency.Task {
+                    AddBar(
+                        config: .quickLists,
+                        categories: listsViewModel.categories,
+                        activeMode: .constant(.list),
+                        onSave: { result in
+                            guard case .list(let r) = result else { return }
+                            _Concurrency.Task { @MainActor in
+                                await listsViewModel.createList(title: r.title, categoryId: r.categoryId, priority: r.priority)
+                                if let createdList = listsViewModel.lists.first {
+                                    for itemTitle in r.itemTitles {
+                                        await listsViewModel.createItem(title: itemTitle, listId: createdList.id)
+                                    }
+                                    if !r.itemTitles.isEmpty {
+                                        listsViewModel.expandedLists.insert(createdList.id)
+                                    }
+                                    if let sched = r.schedule {
+                                        for date in sched.dates {
+                                            let schedule = Schedule(
+                                                userId: createdList.userId,
+                                                taskId: createdList.id,
+                                                timeframe: sched.timeframe,
+                                                section: sched.section,
+                                                scheduleDate: date,
+                                                sortOrder: 0,
+                                                scheduledTime: nil,
+                                                durationMinutes: nil
+                                            )
+                                            _ = try? await listsViewModel.scheduleRepository.createSchedule(schedule)
+                                        }
+                                        await focusViewModel.fetchSchedules()
+                                        await listsViewModel.fetchScheduledTaskIds()
+                                    }
+                                }
                                 await viewModel.fetchLists()
                                 await listsViewModel.fetchLists()
                             }

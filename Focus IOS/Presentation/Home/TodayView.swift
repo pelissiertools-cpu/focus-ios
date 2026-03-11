@@ -237,12 +237,53 @@ struct TodayView: View {
                             }
                         }
 
-                    AddTodayTaskBar(
-                        taskListVM: taskListVM,
-                        authService: authService,
-                        onSaved: {
-                            _Concurrency.Task {
+                    AddBar(
+                        config: .today,
+                        categories: taskListVM.categories,
+                        activeMode: .constant(.task),
+                        onSave: { result in
+                            guard case .task(let r) = result else { return }
+                            _Concurrency.Task { @MainActor in
+                                guard let userId = authService.currentUser?.id else { return }
+                                let taskRepo = TaskRepository()
+                                let scheduleRepo = ScheduleRepository()
+                                do {
+                                    let newTask = FocusTask(
+                                        userId: userId,
+                                        title: r.title,
+                                        type: .task,
+                                        isCompleted: false,
+                                        isInLibrary: true,
+                                        priority: r.priority,
+                                        categoryId: r.categoryId
+                                    )
+                                    let created = try await taskRepo.createTask(newTask)
+                                    for subtaskTitle in r.subtaskTitles {
+                                        _ = try await taskRepo.createSubtask(
+                                            title: subtaskTitle,
+                                            parentTaskId: created.id,
+                                            userId: userId
+                                        )
+                                    }
+                                    let today = Calendar.current.startOfDay(for: Date())
+                                    let schedule = Schedule(
+                                        userId: userId,
+                                        taskId: created.id,
+                                        timeframe: .daily,
+                                        section: .todo,
+                                        scheduleDate: today,
+                                        sortOrder: 0
+                                    )
+                                    _ = try await scheduleRepo.createSchedule(schedule)
+                                    await focusViewModel.fetchSchedules()
+                                    await taskListVM.fetchTasks()
+                                } catch { }
                                 await fetchTodayData()
+                            }
+                        },
+                        onDismiss: {
+                            withAnimation(AppStyle.Anim.modeSwitch) {
+                                showingAddBar = false
                             }
                         }
                     )

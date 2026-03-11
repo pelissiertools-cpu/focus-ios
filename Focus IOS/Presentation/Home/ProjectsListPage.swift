@@ -235,10 +235,37 @@ struct ProjectsListPage: View {
                             }
                         }
 
-                    AddProjectBar(
-                        projectsViewModel: projectsViewModel,
-                        onSaved: {
-                            _Concurrency.Task {
+                    AddBar(
+                        config: .projectsList,
+                        categories: projectsViewModel.categories,
+                        activeMode: .constant(.project),
+                        onSave: { result in
+                            guard case .project(let r) = result else { return }
+                            _Concurrency.Task { @MainActor in
+                                guard let projectId = await projectsViewModel.saveNewProject(
+                                    title: r.title,
+                                    categoryId: r.categoryId,
+                                    priority: r.priority,
+                                    draftTasks: r.draftTasks
+                                ) else { return }
+                                if let sched = r.schedule {
+                                    guard let userId = projectsViewModel.authService.currentUser?.id else { return }
+                                    for date in sched.dates {
+                                        let schedule = Schedule(
+                                            userId: userId,
+                                            taskId: projectId,
+                                            timeframe: sched.timeframe,
+                                            section: sched.section,
+                                            scheduleDate: date,
+                                            sortOrder: 0,
+                                            scheduledTime: nil,
+                                            durationMinutes: nil
+                                        )
+                                        _ = try? await projectsViewModel.scheduleRepository.createSchedule(schedule)
+                                    }
+                                    await focusViewModel.fetchSchedules()
+                                    await projectsViewModel.fetchScheduledTaskIds()
+                                }
                                 await viewModel.fetchProjects()
                                 await projectsViewModel.fetchProjects()
                             }

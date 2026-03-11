@@ -211,14 +211,98 @@ struct CategoryDetailView: View {
                             }
                         }
 
-                    VStack(spacing: 0) {
-                        addBarModeSelector
-                            .padding(.vertical, AppStyle.Spacing.comfortable)
-
-                        activeAddBar
-                            .padding(.bottom, AppStyle.Spacing.compact)
-                    }
-                    .contentShape(Rectangle())
+                    AddBar(
+                        config: .categoryDetail(categoryId: category.id),
+                        categories: taskListVM.categories,
+                        activeMode: $addBarMode,
+                        onSave: { result in
+                            switch result {
+                            case .task(let r):
+                                _Concurrency.Task { @MainActor in
+                                    await taskListVM.createTaskWithSchedules(
+                                        title: r.title,
+                                        categoryId: r.categoryId,
+                                        priority: r.priority,
+                                        subtaskTitles: r.subtaskTitles,
+                                        scheduleAfterCreate: r.schedule != nil,
+                                        selectedTimeframe: r.schedule?.timeframe ?? .daily,
+                                        selectedSection: r.schedule?.section ?? .todo,
+                                        selectedDates: r.schedule?.dates ?? [],
+                                        hasScheduledTime: false,
+                                        scheduledTime: nil
+                                    )
+                                    if r.schedule != nil {
+                                        await focusViewModel.fetchSchedules()
+                                    }
+                                    await refreshData()
+                                }
+                            case .list(let r):
+                                _Concurrency.Task { @MainActor in
+                                    await listsVM.createList(title: r.title, categoryId: r.categoryId, priority: r.priority)
+                                    if let createdList = listsVM.lists.first {
+                                        for itemTitle in r.itemTitles {
+                                            await listsVM.createItem(title: itemTitle, listId: createdList.id)
+                                        }
+                                        if !r.itemTitles.isEmpty {
+                                            listsVM.expandedLists.insert(createdList.id)
+                                        }
+                                        if let sched = r.schedule {
+                                            for date in sched.dates {
+                                                let schedule = Schedule(
+                                                    userId: createdList.userId,
+                                                    taskId: createdList.id,
+                                                    timeframe: sched.timeframe,
+                                                    section: sched.section,
+                                                    scheduleDate: date,
+                                                    sortOrder: 0,
+                                                    scheduledTime: nil,
+                                                    durationMinutes: nil
+                                                )
+                                                _ = try? await listsVM.scheduleRepository.createSchedule(schedule)
+                                            }
+                                            await focusViewModel.fetchSchedules()
+                                            await listsVM.fetchScheduledTaskIds()
+                                        }
+                                    }
+                                    await refreshData()
+                                }
+                            case .project(let r):
+                                _Concurrency.Task { @MainActor in
+                                    guard let projectId = await projectsVM.saveNewProject(
+                                        title: r.title,
+                                        categoryId: r.categoryId,
+                                        priority: r.priority,
+                                        draftTasks: r.draftTasks
+                                    ) else { return }
+                                    if let sched = r.schedule {
+                                        guard let userId = projectsVM.authService.currentUser?.id else { return }
+                                        for date in sched.dates {
+                                            let schedule = Schedule(
+                                                userId: userId,
+                                                taskId: projectId,
+                                                timeframe: sched.timeframe,
+                                                section: sched.section,
+                                                scheduleDate: date,
+                                                sortOrder: 0,
+                                                scheduledTime: nil,
+                                                durationMinutes: nil
+                                            )
+                                            _ = try? await projectsVM.scheduleRepository.createSchedule(schedule)
+                                        }
+                                        await focusViewModel.fetchSchedules()
+                                        await projectsVM.fetchScheduledTaskIds()
+                                    }
+                                    await refreshData()
+                                }
+                            }
+                        },
+                        onDismiss: {
+                            withAnimation(AppStyle.Anim.modeSwitch) {
+                                showingAddBar = false
+                            }
+                        }
+                    )
+                    .padding(.bottom, AppStyle.Spacing.compact)
                 }
                 .transition(.move(edge: .bottom).combined(with: .opacity))
                 .zIndex(100)
@@ -356,94 +440,6 @@ struct CategoryDetailView: View {
 
     // MARK: - Add Bar Mode Selector
 
-    private var addBarModeSelector: some View {
-        HStack(spacing: AppStyle.Spacing.comfortable) {
-            addBarModeCircle(mode: .task, icon: "checkmark.circle")
-            addBarModeCircle(mode: .list, icon: "checklist")
-            addBarModeCircle(mode: .project, icon: "folder", customImage: "ProjectIcon")
-            Spacer()
-        }
-        .padding(.horizontal)
-    }
-
-    private func addBarModeCircle(mode: TaskType, icon: String, customImage: String? = nil) -> some View {
-        let isActive = addBarMode == mode
-        return Button {
-            withAnimation(AppStyle.Anim.buttonTap) {
-                addBarMode = mode
-            }
-        } label: {
-            Group {
-                if let customImage {
-                    Image(customImage)
-                        .renderingMode(.template)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 16, height: 16)
-                } else {
-                    Image(systemName: icon)
-                }
-            }
-            .font(.inter(.body, weight: .medium))
-            .foregroundColor(isActive ? .white : .primary)
-            .frame(width: AppStyle.Layout.iconButton, height: AppStyle.Layout.iconButton)
-            .glassEffect(
-                isActive
-                    ? .regular.tint(.black).interactive()
-                    : .regular.interactive(),
-                in: .circle
-            )
-        }
-        .buttonStyle(.plain)
-    }
-
-    // MARK: - Active Add Bar
-
-    @ViewBuilder
-    private var activeAddBar: some View {
-        switch addBarMode {
-        case .task, .goal:
-            AddTaskBar(
-                taskListVM: taskListVM,
-                authService: authService,
-                initialCategoryId: category.id,
-                onSaved: {
-                    _Concurrency.Task { await refreshData() }
-                },
-                onDismiss: {
-                    withAnimation(AppStyle.Anim.modeSwitch) {
-                        showingAddBar = false
-                    }
-                }
-            )
-        case .list:
-            AddListBar(
-                listsViewModel: listsVM,
-                initialCategoryId: category.id,
-                onSaved: {
-                    _Concurrency.Task { await refreshData() }
-                },
-                onDismiss: {
-                    withAnimation(AppStyle.Anim.modeSwitch) {
-                        showingAddBar = false
-                    }
-                }
-            )
-        case .project:
-            AddProjectBar(
-                projectsViewModel: projectsVM,
-                initialCategoryId: category.id,
-                onSaved: {
-                    _Concurrency.Task { await refreshData() }
-                },
-                onDismiss: {
-                    withAnimation(AppStyle.Anim.modeSwitch) {
-                        showingAddBar = false
-                    }
-                }
-            )
-        }
-    }
 
     // MARK: - Drag & Drop
 

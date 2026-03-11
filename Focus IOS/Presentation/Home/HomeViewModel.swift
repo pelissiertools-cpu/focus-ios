@@ -76,6 +76,25 @@ class HomeViewModel: ObservableObject {
                 }
             }
             .store(in: &cancellables)
+
+        NotificationCenter.default.publisher(for: .notificationTappedNavigateToday)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                guard let self else { return }
+                self.navigateToToday()
+            }
+            .store(in: &cancellables)
+
+        // Handle cold-start: notification tapped before this VM existed
+        if AppDelegate.pendingNavigateToToday {
+            AppDelegate.pendingNavigateToToday = false
+            selectedMenuItem = .today
+        }
+    }
+
+    private func navigateToToday() {
+        AppDelegate.pendingNavigateToToday = false
+        selectedMenuItem = .today
     }
 
     func fetchProjects(showLoading: Bool = false) async {

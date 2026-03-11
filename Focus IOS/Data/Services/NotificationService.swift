@@ -67,3 +67,7 @@ class NotificationService {
         }
     }
 }
+
+extension Notification.Name {
+    static let notificationTappedNavigateToday = Notification.Name("notificationTappedNavigateToday")
+}

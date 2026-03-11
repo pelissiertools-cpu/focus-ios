@@ -10,6 +10,7 @@ import GoogleSignIn
 
 @main
 struct Focus_IOSApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @StateObject private var authService: AuthService
     @StateObject private var focusViewModel: FocusTabViewModel
     @StateObject private var languageManager = LanguageManager.shared

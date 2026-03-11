@@ -15,7 +15,7 @@ class NotificationService {
     private init() {}
 
     func requestPermission() {
-        center.requestAuthorization(options: [.alert, .sound, .badge, .timeSensitive]) { _, _ in }
+        center.requestAuthorization(options: [.alert, .sound, .badge]) { _, _ in }
     }
 
     func scheduleNotification(taskId: UUID, title: String, date: Date) {

@@ -184,44 +184,49 @@ struct AddBar: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Mode selector
+            // Mode selector (above the card)
             if config.availableModes.count > 1 {
                 modeSelector
+                    .padding(.vertical, AppStyle.Spacing.comfortable)
             }
 
-            // Title
-            TextField(titlePlaceholder, text: $title)
-                .font(.inter(.title3))
-                .textFieldStyle(.plain)
-                .focused($titleFocused)
-                .submitLabel(.return)
-                .onSubmit { save() }
-                .padding(.horizontal, AppStyle.Spacing.content)
-                .padding(.top, AppStyle.Spacing.page)
-                .padding(.bottom, AppStyle.Spacing.medium)
+            // Glass card
+            VStack(spacing: 0) {
+                // Title
+                TextField(titlePlaceholder, text: $title)
+                    .font(.inter(.title3))
+                    .textFieldStyle(.plain)
+                    .focused($titleFocused)
+                    .submitLabel(.return)
+                    .onSubmit { save() }
+                    .padding(.horizontal, AppStyle.Spacing.content)
+                    .padding(.top, AppStyle.Spacing.page)
+                    .padding(.bottom, AppStyle.Spacing.medium)
 
-            // Content area
-            contentArea
+                // Content area
+                contentArea
 
-            // Schedule expansion
-            if config.showSchedule && scheduleExpanded {
-                scheduleSection
+                // Schedule expansion
+                if config.showSchedule && scheduleExpanded {
+                    scheduleSection
+                }
+
+                // Button row
+                if !scheduleExpanded {
+                    buttonRow
+                }
+
+                // Options row
+                if optionsExpanded && !scheduleExpanded {
+                    optionsRow
+                }
+
+                Spacer().frame(height: AppStyle.Spacing.page)
             }
-
-            // Button row
-            if !scheduleExpanded {
-                buttonRow
-            }
-
-            // Options row
-            if optionsExpanded && !scheduleExpanded {
-                optionsRow
-            }
-
-            Spacer().frame(height: AppStyle.Spacing.page)
+            .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 20))
+            .padding(.horizontal)
         }
-        .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 20))
-        .padding(.horizontal)
+        .contentShape(Rectangle())
         .onAppear {
             if let initialCategoryId = config.initialCategoryId {
                 categoryId = initialCategoryId
@@ -246,7 +251,6 @@ struct AddBar: View {
             Spacer()
         }
         .padding(.horizontal)
-        .padding(.top, AppStyle.Spacing.medium)
     }
 
     private func modeCircle(mode: TaskType) -> some View {

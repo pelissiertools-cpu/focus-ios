@@ -79,6 +79,10 @@ struct HomeView: View {
     // Unified title focus
     @FocusState private var addBarTitleFocus: HomeAddBarTitleFocus?
 
+    // Toast notification state
+    @State private var toastMessage = ""
+    @State private var showToast = false
+
     // Pre-computed title emptiness checks
     private var isAddTaskTitleEmpty: Bool {
         addTaskTitle.trimmingCharacters(in: .whitespaces).isEmpty
@@ -368,6 +372,21 @@ struct HomeView: View {
                     }
                     .transition(.move(edge: .bottom).combined(with: .opacity))
                     .zIndex(100)
+                }
+
+                // MARK: - Toast Notification
+                if showToast {
+                    VStack {
+                        Text(toastMessage)
+                            .font(.inter(.subheadline, weight: .medium))
+                            .foregroundColor(.primary)
+                            .padding(.horizontal, AppStyle.Spacing.section)
+                            .padding(.vertical, AppStyle.Spacing.compact)
+                            .glassEffect(.regular.interactive(), in: .capsule)
+                            .transition(.move(edge: .top).combined(with: .opacity))
+                        Spacer()
+                    }
+                    .zIndex(200)
                 }
             }
             .navigationDestination(item: $viewModel.selectedMenuItem) { menuItem in
@@ -1895,6 +1914,7 @@ struct HomeView: View {
         let dates = addTaskDates
 
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        presentToast("Task was created")
 
         addBarTitleFocus = .task
         focusedSubtaskId = nil
@@ -1976,6 +1996,7 @@ struct HomeView: View {
         let dates = addListDates
 
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        presentToast("List was created")
 
         addBarTitleFocus = .list
         focusedListItemId = nil
@@ -2070,6 +2091,7 @@ struct HomeView: View {
         let dates = addProjectDates
 
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        presentToast("Project was created")
 
         addBarTitleFocus = .project
         focusedProjectTaskId = nil
@@ -2195,6 +2217,20 @@ struct HomeView: View {
         dismissAddList()
         dismissAddProject()
         showingAddBar = false
+    }
+
+    // MARK: - Toast
+
+    private func presentToast(_ message: String) {
+        withAnimation(AppStyle.Anim.modeSwitch) {
+            toastMessage = message
+            showToast = true
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+            withAnimation(AppStyle.Anim.modeSwitch) {
+                showToast = false
+            }
+        }
     }
 
     // MARK: - Today Schedule Pre-fetch

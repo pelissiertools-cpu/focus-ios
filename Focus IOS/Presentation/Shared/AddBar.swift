@@ -203,7 +203,7 @@ struct AddBar: View {
         if calendar.isDateInToday(date) {
             return String(localized: "Today")
         } else if calendar.isDateInTomorrow(date) {
-            return String(localized: "Tomorrow")
+            return String(localized: "Tom")
         } else {
             let formatter = DateFormatter()
             formatter.dateFormat = calendar.isDate(date, equalTo: Date(), toGranularity: .year)

@@ -58,26 +58,8 @@ struct BacklogView: View {
     @State private var selectedProjectForNavigation: FocusTask?
     @State private var selectedListForNavigation: FocusTask?
 
-    // Add task bar state
+    // Add bar state
     @State private var showingAddBar = false
-    @State private var addTaskTitle = ""
-    @State private var addTaskSubtasks: [DraftSubtaskEntry] = []
-    @State private var addTaskCategoryId: UUID? = nil
-    @State private var addTaskScheduleExpanded = false
-    @State private var addTaskTimeframe: Timeframe = .daily
-    @State private var addTaskSection: Section = .todo
-    @State private var addTaskDates: Set<Date> = []
-    @State private var addTaskPriority: Priority = .low
-    @State private var addTaskOptionsExpanded = false
-    @State private var addTaskDatesSnapshot: Set<Date> = []
-    @State private var isGeneratingBreakdown = false
-    @State private var hasGeneratedBreakdown = false
-    @FocusState private var focusedSubtaskId: UUID?
-    @FocusState private var addBarTitleFocused: Bool
-
-    private var isAddTaskTitleEmpty: Bool {
-        addTaskTitle.trimmingCharacters(in: .whitespaces).isEmpty
-    }
 
     // MARK: - Computed Properties
 
@@ -379,13 +361,41 @@ struct BacklogView: View {
                         .contentShape(Rectangle())
                         .onTapGesture {
                             withAnimation(AppStyle.Anim.modeSwitch) {
-                                dismissAddBar()
+                                showingAddBar = false
                             }
                         }
 
-                    addTaskBar
-                        .padding(.bottom, AppStyle.Spacing.compact)
-                        .contentShape(Rectangle())
+                    AddBar(
+                        config: .backlog,
+                        categories: taskListVM.categories,
+                        activeMode: .constant(.task),
+                        onSave: { result in
+                            guard case .task(let r) = result else { return }
+                            _Concurrency.Task { @MainActor in
+                                await taskListVM.createTaskWithSchedules(
+                                    title: r.title,
+                                    categoryId: r.categoryId,
+                                    priority: r.priority,
+                                    subtaskTitles: r.subtaskTitles,
+                                    scheduleAfterCreate: r.schedule != nil,
+                                    selectedTimeframe: r.schedule?.timeframe ?? .daily,
+                                    selectedSection: r.schedule?.section ?? .todo,
+                                    selectedDates: r.schedule?.dates ?? [],
+                                    hasScheduledTime: false,
+                                    scheduledTime: nil
+                                )
+                                if r.schedule != nil {
+                                    await focusViewModel.fetchSchedules()
+                                }
+                            }
+                        },
+                        onDismiss: {
+                            withAnimation(AppStyle.Anim.modeSwitch) {
+                                showingAddBar = false
+                            }
+                        }
+                    )
+                    .padding(.bottom, AppStyle.Spacing.compact)
                 }
                 .transition(.move(edge: .bottom).combined(with: .opacity))
                 .zIndex(100)
@@ -400,13 +410,6 @@ struct BacklogView: View {
             if !focused && searchText.trimmingCharacters(in: .whitespaces).isEmpty {
                 withAnimation(AppStyle.Anim.expand) {
                     isSearchActive = false
-                }
-            }
-        }
-        .onChange(of: showingAddBar) { _, isShowing in
-            if isShowing {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                    addBarTitleFocused = true
                 }
             }
         }
@@ -1000,361 +1003,6 @@ struct BacklogView: View {
         .listRowBackground(Color.clear)
     }
 
-}
-
-// MARK: - Add Task Bar
-
-private extension BacklogView {
-    var categoryPillLabel: String {
-        if let categoryId = addTaskCategoryId,
-           let category = taskListVM.categories.first(where: { $0.id == categoryId }) {
-            return category.name
-        }
-        return "Category"
-    }
-
-    var addTaskBar: some View {
-        VStack(spacing: 0) {
-            TextField("Create a new task", text: $addTaskTitle)
-                .font(.inter(.title3))
-                .textFieldStyle(.plain)
-                .focused($addBarTitleFocused)
-                .submitLabel(.return)
-                .onSubmit { saveTask() }
-                .padding(.horizontal, AppStyle.Spacing.content)
-                .padding(.top, AppStyle.Spacing.page)
-                .padding(.bottom, AppStyle.Spacing.medium)
-
-            DraftSubtaskListEditor(
-                subtasks: $addTaskSubtasks,
-                focusedSubtaskId: $focusedSubtaskId,
-                onAddNew: { addNewSubtask() }
-            )
-
-            if addTaskScheduleExpanded {
-                Divider()
-                    .padding(.horizontal, AppStyle.Spacing.content)
-
-                VStack(alignment: .leading, spacing: AppStyle.Spacing.comfortable) {
-                    Picker("Section", selection: $addTaskSection) {
-                        Text("Focus").tag(Section.focus)
-                        Text("To-Do").tag(Section.todo)
-                    }
-                    .pickerStyle(.segmented)
-
-                    UnifiedCalendarPicker(
-                        selectedDates: $addTaskDates,
-                        selectedTimeframe: $addTaskTimeframe
-                    )
-                }
-                .padding(.horizontal, AppStyle.Spacing.content)
-                .padding(.top, AppStyle.Spacing.small)
-                .padding(.bottom, AppStyle.Spacing.content)
-
-                HStack {
-                    Button {
-                        withAnimation(AppStyle.Anim.toggle) {
-                            addTaskDates.removeAll()
-                            addTaskScheduleExpanded = false
-                        }
-                    } label: {
-                        Image(systemName: "xmark")
-                            .font(.inter(.body, weight: .semiBold))
-                            .foregroundColor(.primary)
-                            .frame(width: AppStyle.Layout.iconButton, height: AppStyle.Layout.iconButton)
-                            .background(Color(.systemGray4), in: Circle())
-                    }
-                    .buttonStyle(.plain)
-
-                    Spacer()
-
-                    let hasDateChanges = addTaskDates != addTaskDatesSnapshot
-                    Button {
-                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                        withAnimation(AppStyle.Anim.toggle) {
-                            addTaskScheduleExpanded = false
-                        }
-                    } label: {
-                        Image(systemName: "checkmark")
-                            .font(.inter(.body, weight: .semiBold))
-                            .foregroundColor(hasDateChanges ? .white : .secondary)
-                            .frame(width: AppStyle.Layout.iconButton, height: AppStyle.Layout.iconButton)
-                            .background(
-                                hasDateChanges ? Color.appRed : Color(.systemGray4),
-                                in: Circle()
-                            )
-                    }
-                    .buttonStyle(.plain)
-                }
-                .padding(.horizontal, AppStyle.Spacing.content)
-                .padding(.bottom, AppStyle.Spacing.tiny)
-            }
-
-            if !addTaskScheduleExpanded {
-                HStack(spacing: AppStyle.Spacing.compact) {
-                    Button {
-                        addNewSubtask()
-                    } label: {
-                        HStack(spacing: AppStyle.Spacing.tiny) {
-                            Image(systemName: "plus")
-                                .font(.inter(.caption))
-                            Text("Sub-task")
-                                .font(.inter(.caption))
-                        }
-                        .foregroundColor(.white)
-                        .padding(.horizontal, AppStyle.Spacing.medium)
-                        .padding(.vertical, AppStyle.Spacing.compact)
-                        .background(Color.charcoal, in: Capsule())
-                    }
-                    .buttonStyle(.plain)
-
-                    Button {
-                        withAnimation(AppStyle.Anim.toggle) {
-                            addTaskOptionsExpanded.toggle()
-                        }
-                    } label: {
-                        Image(systemName: "ellipsis")
-                            .font(.inter(.caption, weight: .bold))
-                            .foregroundColor(.appText)
-                            .frame(minHeight: UIFont.preferredFont(forTextStyle: .caption1).lineHeight)
-                            .padding(.horizontal, AppStyle.Spacing.medium)
-                            .padding(.vertical, AppStyle.Spacing.compact)
-                            .background(Color.cardBackground, in: Capsule())
-                    }
-                    .buttonStyle(.plain)
-
-                    Spacer()
-
-                    Button {
-                        generateBreakdown()
-                    } label: {
-                        HStack(spacing: AppStyle.Spacing.small) {
-                            if isGeneratingBreakdown {
-                                ProgressView()
-                                    .tint(.primary)
-                            } else {
-                                Image(systemName: hasGeneratedBreakdown ? "arrow.clockwise" : "sparkles")
-                                    .font(.inter(.subheadline, weight: .semiBold))
-                                    .foregroundColor(!isAddTaskTitleEmpty ? .focusBlue : .primary)
-                            }
-                            Text(LocalizedStringKey(hasGeneratedBreakdown ? "Regenerate" : "Suggest Breakdown"))
-                                .font(.inter(.caption, weight: .medium))
-                                .foregroundColor(.primary)
-                        }
-                        .padding(.horizontal, AppStyle.Spacing.content)
-                        .padding(.vertical, AppStyle.Spacing.compact)
-                        .background(
-                            !isAddTaskTitleEmpty ? Color.pillBackground : Color.clear,
-                            in: Capsule()
-                        )
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(isAddTaskTitleEmpty || isGeneratingBreakdown)
-
-                    Button {
-                        saveTask()
-                    } label: {
-                        Image(systemName: "checkmark")
-                            .font(.inter(.body, weight: .semiBold))
-                            .foregroundColor(isAddTaskTitleEmpty ? .secondary : .white)
-                            .frame(width: AppStyle.Layout.iconButton, height: AppStyle.Layout.iconButton)
-                            .background(
-                                isAddTaskTitleEmpty ? Color(.systemGray4) : Color.focusBlue,
-                                in: Circle()
-                            )
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(isAddTaskTitleEmpty)
-                }
-                .padding(.horizontal, AppStyle.Spacing.content)
-                .padding(.bottom, AppStyle.Spacing.tiny)
-            }
-
-            if addTaskOptionsExpanded && !addTaskScheduleExpanded {
-                HStack(spacing: AppStyle.Spacing.compact) {
-                    Menu {
-                        Button {
-                            addTaskCategoryId = nil
-                        } label: {
-                            if addTaskCategoryId == nil {
-                                Label("None", systemImage: "checkmark")
-                            } else {
-                                Text("None")
-                            }
-                        }
-                        ForEach(taskListVM.categories) { category in
-                            Button {
-                                addTaskCategoryId = category.id
-                            } label: {
-                                if addTaskCategoryId == category.id {
-                                    Label(category.name, systemImage: "checkmark")
-                                } else {
-                                    Text(category.name)
-                                }
-                            }
-                        }
-                    } label: {
-                        HStack(spacing: AppStyle.Spacing.tiny) {
-                            Image(systemName: "folder")
-                                .font(.inter(.caption))
-                            Text(LocalizedStringKey(categoryPillLabel))
-                                .font(.inter(.caption))
-                        }
-                        .foregroundColor(.appText)
-                        .padding(.horizontal, AppStyle.Spacing.medium)
-                        .padding(.vertical, AppStyle.Spacing.compact)
-                        .background(Color.cardBackground, in: Capsule())
-                    }
-
-                    Button {
-                        if !addTaskScheduleExpanded {
-                            addTaskDatesSnapshot = addTaskDates
-                        }
-                        withAnimation(AppStyle.Anim.toggle) {
-                            addTaskScheduleExpanded.toggle()
-                        }
-                    } label: {
-                        HStack(spacing: AppStyle.Spacing.tiny) {
-                            Image(systemName: "arrow.right.circle")
-                                .font(.inter(.caption))
-                            Text("Schedule")
-                                .font(.inter(.caption))
-                        }
-                        .foregroundColor(!addTaskDates.isEmpty ? .white : .appText)
-                        .padding(.horizontal, AppStyle.Spacing.medium)
-                        .padding(.vertical, AppStyle.Spacing.compact)
-                        .background(!addTaskDates.isEmpty ? Color.appRed : Color.cardBackground, in: Capsule())
-                    }
-                    .buttonStyle(.plain)
-
-                    Menu {
-                        ForEach(Priority.allCases, id: \.self) { priority in
-                            Button {
-                                addTaskPriority = priority
-                            } label: {
-                                if addTaskPriority == priority {
-                                    Label(priority.displayName, systemImage: "checkmark")
-                                } else {
-                                    Text(priority.displayName)
-                                }
-                            }
-                        }
-                    } label: {
-                        HStack(spacing: AppStyle.Spacing.tiny) {
-                            Circle()
-                                .fill(addTaskPriority.dotColor)
-                                .frame(width: AppStyle.Layout.dotSize, height: AppStyle.Layout.dotSize)
-                            Text(addTaskPriority.displayName)
-                                .font(.inter(.caption))
-                        }
-                        .foregroundColor(.appText)
-                        .padding(.horizontal, AppStyle.Spacing.medium)
-                        .padding(.vertical, AppStyle.Spacing.compact)
-                        .background(Color.cardBackground, in: Capsule())
-                    }
-
-                    Spacer()
-                }
-                .padding(.horizontal, AppStyle.Spacing.content)
-                .padding(.top, AppStyle.Spacing.small)
-            }
-
-            Spacer().frame(height: AppStyle.Spacing.page)
-        }
-        .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 20))
-        .padding(.horizontal)
-    }
-
-    // MARK: - Add Task Helpers
-
-    func saveTask() {
-        let title = addTaskTitle.trimmingCharacters(in: .whitespaces)
-        guard !title.isEmpty else { return }
-
-        let subtasksToCreate = addTaskSubtasks
-            .map { $0.title.trimmingCharacters(in: .whitespaces) }
-            .filter { !$0.isEmpty }
-        let categoryId = addTaskCategoryId
-        let priority = addTaskPriority
-        let scheduleEnabled = !addTaskDates.isEmpty
-        let timeframe = addTaskTimeframe
-        let section = addTaskSection
-        let dates = addTaskDates
-
-        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-
-        addBarTitleFocused = true
-        focusedSubtaskId = nil
-
-        addTaskTitle = ""
-        addTaskSubtasks = []
-        addTaskDates = []
-        addTaskOptionsExpanded = false
-        addTaskScheduleExpanded = false
-        addTaskPriority = .low
-        hasGeneratedBreakdown = false
-
-        _Concurrency.Task { @MainActor in
-            await taskListVM.createTaskWithSchedules(
-                title: title,
-                categoryId: categoryId,
-                priority: priority,
-                subtaskTitles: subtasksToCreate,
-                scheduleAfterCreate: scheduleEnabled,
-                selectedTimeframe: timeframe,
-                selectedSection: section,
-                selectedDates: dates,
-                hasScheduledTime: false,
-                scheduledTime: nil
-            )
-
-            if scheduleEnabled && !dates.isEmpty {
-                await focusViewModel.fetchSchedules()
-            }
-        }
-    }
-
-    func addNewSubtask() {
-        addBarTitleFocused = true
-        let newEntry = DraftSubtaskEntry()
-        withAnimation(AppStyle.Anim.quick) {
-            addTaskSubtasks.append(newEntry)
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            focusedSubtaskId = newEntry.id
-        }
-    }
-
-    func generateBreakdown() {
-        let title = addTaskTitle.trimmingCharacters(in: .whitespaces)
-        guard !title.isEmpty else { return }
-        isGeneratingBreakdown = true
-        _Concurrency.Task { @MainActor in
-            do {
-                let aiService = AIService()
-                let suggestions = try await aiService.generateSubtasks(title: title, description: nil)
-                withAnimation(AppStyle.Anim.toggle) {
-                    addTaskSubtasks.append(contentsOf: suggestions.map { DraftSubtaskEntry(title: $0) })
-                }
-                hasGeneratedBreakdown = true
-            } catch { }
-            isGeneratingBreakdown = false
-        }
-    }
-
-    func dismissAddBar() {
-        addTaskTitle = ""
-        addTaskSubtasks = []
-        addTaskCategoryId = nil
-        addTaskPriority = .low
-        addTaskOptionsExpanded = false
-        addTaskScheduleExpanded = false
-        addTaskDates = []
-        hasGeneratedBreakdown = false
-        focusedSubtaskId = nil
-        addBarTitleFocused = false
-        showingAddBar = false
-    }
 }
 
 // MARK: - Backlog Filter Pill

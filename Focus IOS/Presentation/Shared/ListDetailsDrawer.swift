@@ -204,9 +204,9 @@ struct ListDetailsDrawer: View {
                 showingScheduleSheet = true
             } label: {
                 HStack(spacing: AppStyle.Spacing.small) {
-                    Image(systemName: "arrow.right.circle")
+                    Image(systemName: "calendar")
                         .font(.inter(.subheadline))
-                    Text("Schedule")
+                    Text("Date")
                         .font(.inter(.subheadline, weight: .medium))
                         .lineLimit(1)
                 }

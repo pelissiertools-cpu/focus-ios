@@ -93,6 +93,24 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
         !scheduleDates.isEmpty || hasExistingSchedules || pendingSchedule != nil
     }
 
+    private var scheduleDateLabel: String {
+        guard let date = scheduleDates.sorted().first else {
+            return String(localized: "Date")
+        }
+        let calendar = Calendar.current
+        if calendar.isDateInToday(date) {
+            return String(localized: "Today")
+        } else if calendar.isDateInTomorrow(date) {
+            return String(localized: "Tomorrow")
+        } else {
+            let formatter = DateFormatter()
+            formatter.dateFormat = calendar.isDate(date, equalTo: Date(), toGranularity: .year)
+                ? "MMM d"
+                : "MMM d, yyyy"
+            return formatter.string(from: date)
+        }
+    }
+
     private var hasScheduleChanges: Bool {
         let currentDates = Set(scheduleDates.map { Calendar.current.startOfDay(for: $0) })
         return originalScheduleDates != currentDates
@@ -524,9 +542,9 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
                     }
                 } label: {
                     HStack(spacing: AppStyle.Spacing.small) {
-                        Image(systemName: "arrow.right.circle")
+                        Image(systemName: "calendar")
                             .font(.inter(.subheadline))
-                        Text("Schedule")
+                        Text(scheduleDateLabel)
                             .font(.inter(.subheadline, weight: .medium))
                             .lineLimit(1)
                     }

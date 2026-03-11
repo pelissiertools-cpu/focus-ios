@@ -1098,6 +1098,7 @@
       }
     },
     "Create a new list" : {
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -1112,9 +1113,6 @@
           }
         }
       }
-    },
-    "Create a new project" : {
-
     },
     "Create a new project." : {
       "extractionState" : "stale",
@@ -1134,6 +1132,7 @@
       }
     },
     "Create a new task" : {
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -1906,6 +1905,7 @@
       }
     },
     "Item" : {
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -3063,6 +3063,7 @@
 
     },
     "Section" : {
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -3882,6 +3883,7 @@
       }
     },
     "To-Do" : {
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -3916,7 +3918,6 @@
       }
     },
     "Tomorrow" : {
-      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {

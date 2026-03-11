@@ -51,6 +51,14 @@ struct AddBarConfig {
     static func upcoming(initialDates: Set<Date> = [], initialTimeframe: Timeframe = .daily) -> AddBarConfig {
         AddBarConfig(availableModes: [.task], showSchedule: true, showAIBreakdown: true, initialDates: initialDates, initialTimeframe: initialTimeframe)
     }
+
+    static var home: AddBarConfig {
+        AddBarConfig(availableModes: [.task, .list, .project], showSchedule: true, showAIBreakdown: true)
+    }
+
+    static var backlog: AddBarConfig {
+        AddBarConfig(availableModes: [.task], showSchedule: true, showAIBreakdown: true)
+    }
 }
 
 // MARK: - Result Types
@@ -151,6 +159,24 @@ struct AddBar: View {
         case .task, .goal: return "Sub-task"
         case .list: return "Item"
         case .project: return "Task"
+        }
+    }
+
+    private var scheduleDateLabel: String {
+        guard let date = scheduleDates.sorted().first else {
+            return String(localized: "Date")
+        }
+        let calendar = Calendar.current
+        if calendar.isDateInToday(date) {
+            return String(localized: "Today")
+        } else if calendar.isDateInTomorrow(date) {
+            return String(localized: "Tomorrow")
+        } else {
+            let formatter = DateFormatter()
+            formatter.dateFormat = calendar.isDate(date, equalTo: Date(), toGranularity: .year)
+                ? "MMM d"
+                : "MMM d, yyyy"
+            return formatter.string(from: date)
         }
     }
 
@@ -473,6 +499,55 @@ struct AddBar: View {
             }
             .buttonStyle(.plain)
 
+            // Schedule button
+            if config.showSchedule {
+                Button {
+                    scheduleDatesSnapshot = scheduleDates
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        scheduleExpanded.toggle()
+                    }
+                } label: {
+                    HStack(spacing: AppStyle.Spacing.tiny) {
+                        Image(systemName: "calendar")
+                            .font(.inter(.caption))
+                        Text(scheduleDateLabel)
+                            .font(.inter(.caption))
+                    }
+                    .foregroundColor(!scheduleDates.isEmpty ? .white : .black)
+                    .padding(.horizontal, AppStyle.Spacing.medium)
+                    .padding(.vertical, AppStyle.Spacing.compact)
+                    .background(!scheduleDates.isEmpty ? Color.appRed : Color.white, in: Capsule())
+                }
+                .buttonStyle(.plain)
+            }
+
+            // Priority menu
+            Menu {
+                ForEach(Priority.allCases, id: \.self) { p in
+                    Button {
+                        priority = p
+                    } label: {
+                        if priority == p {
+                            Label(p.displayName, systemImage: "checkmark")
+                        } else {
+                            Text(p.displayName)
+                        }
+                    }
+                }
+            } label: {
+                HStack(spacing: AppStyle.Spacing.tiny) {
+                    Circle()
+                        .fill(priority.dotColor)
+                        .frame(width: AppStyle.Layout.dotSize, height: AppStyle.Layout.dotSize)
+                    Text(priority.displayName)
+                        .font(.inter(.caption))
+                }
+                .foregroundColor(.black)
+                .padding(.horizontal, AppStyle.Spacing.medium)
+                .padding(.vertical, AppStyle.Spacing.compact)
+                .background(Color.white, in: Capsule())
+            }
+
             // More options
             Button {
                 withAnimation(.easeInOut(duration: 0.2)) {
@@ -491,35 +566,6 @@ struct AddBar: View {
             .buttonStyle(.plain)
 
             Spacer()
-
-            // AI Breakdown (task mode only)
-            if config.showAIBreakdown && (activeMode == .task || activeMode == .goal) {
-                Button {
-                    generateBreakdown()
-                } label: {
-                    HStack(spacing: AppStyle.Spacing.small) {
-                        if isGeneratingBreakdown {
-                            ProgressView()
-                                .tint(.primary)
-                        } else {
-                            Image(systemName: hasGeneratedBreakdown ? "arrow.clockwise" : "sparkles")
-                                .font(.inter(.subheadline, weight: .semiBold))
-                                .foregroundColor(!isTitleEmpty ? .blue : .primary)
-                        }
-                        Text(LocalizedStringKey(hasGeneratedBreakdown ? "Regenerate" : "Suggest Breakdown"))
-                            .font(.inter(.caption, weight: .medium))
-                            .foregroundColor(.primary)
-                    }
-                    .padding(.horizontal, AppStyle.Spacing.content)
-                    .padding(.vertical, AppStyle.Spacing.compact)
-                    .background(
-                        !isTitleEmpty ? Color.pillBackground : Color.clear,
-                        in: Capsule()
-                    )
-                }
-                .buttonStyle(.plain)
-                .disabled(isTitleEmpty || isGeneratingBreakdown)
-            }
 
             // Save button
             Button {
@@ -581,56 +627,36 @@ struct AddBar: View {
                 .background(Color.white, in: Capsule())
             }
 
-            // Schedule button
-            if config.showSchedule {
+            Spacer()
+
+            // AI Breakdown (task mode only)
+            if config.showAIBreakdown && (activeMode == .task || activeMode == .goal) {
                 Button {
-                    scheduleDatesSnapshot = scheduleDates
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        scheduleExpanded.toggle()
-                    }
+                    generateBreakdown()
                 } label: {
-                    HStack(spacing: AppStyle.Spacing.tiny) {
-                        Image(systemName: "arrow.right.circle")
-                            .font(.inter(.caption))
-                        Text("Schedule")
-                            .font(.inter(.caption))
+                    HStack(spacing: AppStyle.Spacing.small) {
+                        if isGeneratingBreakdown {
+                            ProgressView()
+                                .tint(.primary)
+                        } else {
+                            Image(systemName: hasGeneratedBreakdown ? "arrow.clockwise" : "sparkles")
+                                .font(.inter(.subheadline, weight: .semiBold))
+                                .foregroundColor(!isTitleEmpty ? .blue : .primary)
+                        }
+                        Text(LocalizedStringKey(hasGeneratedBreakdown ? "Regenerate" : "Suggest Breakdown"))
+                            .font(.inter(.caption, weight: .medium))
+                            .foregroundColor(.primary)
                     }
-                    .foregroundColor(!scheduleDates.isEmpty ? .white : .black)
-                    .padding(.horizontal, AppStyle.Spacing.medium)
+                    .padding(.horizontal, AppStyle.Spacing.content)
                     .padding(.vertical, AppStyle.Spacing.compact)
-                    .background(!scheduleDates.isEmpty ? Color.appRed : Color.white, in: Capsule())
+                    .background(
+                        !isTitleEmpty ? Color.pillBackground : Color.clear,
+                        in: Capsule()
+                    )
                 }
                 .buttonStyle(.plain)
+                .disabled(isTitleEmpty || isGeneratingBreakdown)
             }
-
-            // Priority menu
-            Menu {
-                ForEach(Priority.allCases, id: \.self) { p in
-                    Button {
-                        priority = p
-                    } label: {
-                        if priority == p {
-                            Label(p.displayName, systemImage: "checkmark")
-                        } else {
-                            Text(p.displayName)
-                        }
-                    }
-                }
-            } label: {
-                HStack(spacing: AppStyle.Spacing.tiny) {
-                    Circle()
-                        .fill(priority.dotColor)
-                        .frame(width: AppStyle.Layout.dotSize, height: AppStyle.Layout.dotSize)
-                    Text(priority.displayName)
-                        .font(.inter(.caption))
-                }
-                .foregroundColor(.black)
-                .padding(.horizontal, AppStyle.Spacing.medium)
-                .padding(.vertical, AppStyle.Spacing.compact)
-                .background(Color.white, in: Capsule())
-            }
-
-            Spacer()
         }
         .padding(.horizontal, AppStyle.Spacing.content)
         .padding(.top, AppStyle.Spacing.small)

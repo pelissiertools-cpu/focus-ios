@@ -6,10 +6,6 @@
 import SwiftUI
 import Auth
 
-private enum HomeAddBarTitleFocus: Hashable {
-    case task, list, project
-}
-
 struct HomeView: View {
     @ObservedObject var viewModel: HomeViewModel
     @EnvironmentObject var focusViewModel: FocusTabViewModel
@@ -31,70 +27,13 @@ struct HomeView: View {
 
     private let authService: AuthService
 
-    // Unified add bar state
+    // Add bar state
     @State private var showingAddBar = false
     @State private var addBarMode: TaskType = .task
-
-    // Compact add-task bar state
-    @State private var addTaskTitle = ""
-    @State private var addTaskSubtasks: [DraftSubtaskEntry] = []
-    @State private var addTaskCategoryId: UUID? = nil
-    @State private var addTaskScheduleExpanded = false
-    @State private var addTaskTimeframe: Timeframe = .daily
-    @State private var addTaskSection: Section = .todo
-    @State private var addTaskDates: Set<Date> = []
-    @State private var addTaskPriority: Priority = .low
-    @State private var addTaskOptionsExpanded = false
-    @State private var addTaskDatesSnapshot: Set<Date> = []
-    @State private var isGeneratingBreakdown = false
-    @State private var hasGeneratedBreakdown = false
-    @FocusState private var focusedSubtaskId: UUID?
-
-    // Compact add-list bar state
-    @State private var addListTitle = ""
-    @State private var addListItems: [DraftSubtaskEntry] = []
-    @State private var addListCategoryId: UUID? = nil
-    @State private var addListScheduleExpanded = false
-    @State private var addListTimeframe: Timeframe = .daily
-    @State private var addListSection: Section = .todo
-    @State private var addListDates: Set<Date> = []
-    @State private var addListDatesSnapshot: Set<Date> = []
-    @State private var addListOptionsExpanded = false
-    @State private var addListPriority: Priority = .low
-    @FocusState private var focusedListItemId: UUID?
-
-    // Compact add-project bar state
-    @State private var addProjectTitle = ""
-    @State private var addProjectDraftTasks: [DraftTask] = []
-    @State private var addProjectCategoryId: UUID? = nil
-    @State private var addProjectScheduleExpanded = false
-    @State private var addProjectTimeframe: Timeframe = .daily
-    @State private var addProjectSection: Section = .todo
-    @State private var addProjectDates: Set<Date> = []
-    @State private var addProjectDatesSnapshot: Set<Date> = []
-    @State private var addProjectOptionsExpanded = false
-    @State private var addProjectPriority: Priority = .low
-    @FocusState private var focusedProjectTaskId: UUID?
-
-    // Unified title focus
-    @FocusState private var addBarTitleFocus: HomeAddBarTitleFocus?
 
     // Toast notification state
     @State private var toastMessage = ""
     @State private var showToast = false
-
-    // Pre-computed title emptiness checks
-    private var isAddTaskTitleEmpty: Bool {
-        addTaskTitle.trimmingCharacters(in: .whitespaces).isEmpty
-    }
-
-    private var isAddListTitleEmpty: Bool {
-        addListTitle.trimmingCharacters(in: .whitespaces).isEmpty
-    }
-
-    private var isAddProjectTitleEmpty: Bool {
-        addProjectTitle.trimmingCharacters(in: .whitespaces).isEmpty
-    }
 
     private var inboxCount: Int {
         taskListVM.tasks.filter {
@@ -344,31 +283,117 @@ struct HomeView: View {
 
                 // MARK: - Add Bar Overlay
                 if showingAddBar {
-                    // Scrim
                     Color.black.opacity(AppStyle.Opacity.scrim)
                         .ignoresSafeArea()
                         .allowsHitTesting(false)
                         .transition(.opacity)
                         .zIndex(50)
 
-                    // Tap-to-dismiss + add bar
                     VStack(spacing: 0) {
                         Color.clear
                             .contentShape(Rectangle())
                             .onTapGesture {
                                 withAnimation(AppStyle.Anim.modeSwitch) {
-                                    dismissActiveAddBar()
+                                    showingAddBar = false
                                 }
                             }
 
-                        VStack(spacing: 0) {
-                            addBarModeSelector
-                                .padding(.vertical, AppStyle.Spacing.comfortable)
-
-                            activeAddBar
-                                .padding(.bottom, AppStyle.Spacing.compact)
-                        }
-                        .contentShape(Rectangle())
+                        AddBar(
+                            config: .home,
+                            categories: taskListVM.categories,
+                            activeMode: $addBarMode,
+                            onSave: { result in
+                                switch result {
+                                case .task: presentToast("Task was created")
+                                case .list: presentToast("List was created")
+                                case .project: presentToast("Project was created")
+                                }
+                                switch result {
+                                case .task(let r):
+                                    _Concurrency.Task { @MainActor in
+                                        await taskListVM.createTaskWithSchedules(
+                                            title: r.title,
+                                            categoryId: r.categoryId,
+                                            priority: r.priority,
+                                            subtaskTitles: r.subtaskTitles,
+                                            scheduleAfterCreate: r.schedule != nil,
+                                            selectedTimeframe: r.schedule?.timeframe ?? .daily,
+                                            selectedSection: r.schedule?.section ?? .todo,
+                                            selectedDates: r.schedule?.dates ?? [],
+                                            hasScheduledTime: false,
+                                            scheduledTime: nil
+                                        )
+                                        if r.schedule != nil {
+                                            await focusViewModel.fetchSchedules()
+                                        }
+                                    }
+                                case .list(let r):
+                                    _Concurrency.Task { @MainActor in
+                                        await listsViewModel.createList(title: r.title, categoryId: r.categoryId, priority: r.priority)
+                                        if let createdList = listsViewModel.lists.first {
+                                            for itemTitle in r.itemTitles {
+                                                await listsViewModel.createItem(title: itemTitle, listId: createdList.id)
+                                            }
+                                            if !r.itemTitles.isEmpty {
+                                                listsViewModel.expandedLists.insert(createdList.id)
+                                            }
+                                            if let sched = r.schedule {
+                                                for date in sched.dates {
+                                                    let schedule = Schedule(
+                                                        userId: createdList.userId,
+                                                        taskId: createdList.id,
+                                                        timeframe: sched.timeframe,
+                                                        section: sched.section,
+                                                        scheduleDate: date,
+                                                        sortOrder: 0,
+                                                        scheduledTime: nil,
+                                                        durationMinutes: nil
+                                                    )
+                                                    _ = try? await listsViewModel.scheduleRepository.createSchedule(schedule)
+                                                }
+                                                await focusViewModel.fetchSchedules()
+                                                await listsViewModel.fetchScheduledTaskIds()
+                                            }
+                                        }
+                                        await viewModel.fetchLists()
+                                    }
+                                case .project(let r):
+                                    _Concurrency.Task { @MainActor in
+                                        guard let projectId = await projectsViewModel.saveNewProject(
+                                            title: r.title,
+                                            categoryId: r.categoryId,
+                                            priority: r.priority,
+                                            draftTasks: r.draftTasks
+                                        ) else { return }
+                                        if let sched = r.schedule {
+                                            guard let userId = projectsViewModel.authService.currentUser?.id else { return }
+                                            for date in sched.dates {
+                                                let schedule = Schedule(
+                                                    userId: userId,
+                                                    taskId: projectId,
+                                                    timeframe: sched.timeframe,
+                                                    section: sched.section,
+                                                    scheduleDate: date,
+                                                    sortOrder: 0,
+                                                    scheduledTime: nil,
+                                                    durationMinutes: nil
+                                                )
+                                                _ = try? await projectsViewModel.scheduleRepository.createSchedule(schedule)
+                                            }
+                                            await focusViewModel.fetchSchedules()
+                                            await projectsViewModel.fetchScheduledTaskIds()
+                                        }
+                                        await viewModel.fetchProjects()
+                                    }
+                                }
+                            },
+                            onDismiss: {
+                                withAnimation(AppStyle.Anim.modeSwitch) {
+                                    showingAddBar = false
+                                }
+                            }
+                        )
+                        .padding(.bottom, AppStyle.Spacing.compact)
                     }
                     .transition(.move(edge: .bottom).combined(with: .opacity))
                     .zIndex(100)
@@ -494,79 +519,6 @@ struct HomeView: View {
                 // Pre-fetch today schedules so TodayView opens instantly
                 await prefetchTodaySchedules()
                 await viewModel.fetchMainFocusTasks()
-            }
-            // Add bar: auto-focus on open
-            .onChange(of: showingAddBar) { _, isShowing in
-                if isShowing {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                        switch addBarMode {
-                        case .task, .goal: addBarTitleFocus = .task
-                        case .list: addBarTitleFocus = .list
-                        case .project: addBarTitleFocus = .project
-                        }
-                    }
-                }
-            }
-            // Add bar: focus transfer on mode switch
-            .onChange(of: addBarMode) { _, newMode in
-                guard showingAddBar else { return }
-                focusedSubtaskId = nil
-                focusedListItemId = nil
-                focusedProjectTaskId = nil
-                switch newMode {
-                case .task, .goal: addBarTitleFocus = .task
-                case .list: addBarTitleFocus = .list
-                case .project: addBarTitleFocus = .project
-                }
-            }
-            // Task schedule expansion focus management
-            .onChange(of: addTaskScheduleExpanded) { _, isExpanded in
-                if isExpanded {
-                    addBarTitleFocus = nil
-                    focusedSubtaskId = nil
-                }
-            }
-            .onChange(of: addBarTitleFocus) { _, focus in
-                if focus == .task && addTaskScheduleExpanded {
-                    withAnimation(AppStyle.Anim.toggle) {
-                        addTaskScheduleExpanded = false
-                    }
-                }
-            }
-            .onChange(of: focusedSubtaskId) { _, subtaskId in
-                if subtaskId != nil && addTaskScheduleExpanded {
-                    withAnimation(AppStyle.Anim.toggle) {
-                        addTaskScheduleExpanded = false
-                    }
-                }
-            }
-            // List schedule expansion focus management
-            .onChange(of: addListScheduleExpanded) { _, isExpanded in
-                if isExpanded {
-                    addBarTitleFocus = nil
-                    focusedListItemId = nil
-                }
-            }
-            .onChange(of: focusedListItemId) { _, itemId in
-                if itemId != nil && addListScheduleExpanded {
-                    withAnimation(AppStyle.Anim.toggle) {
-                        addListScheduleExpanded = false
-                    }
-                }
-            }
-            // Project schedule expansion focus management
-            .onChange(of: addProjectScheduleExpanded) { _, isExpanded in
-                if isExpanded {
-                    addBarTitleFocus = nil
-                    focusedProjectTaskId = nil
-                }
-            }
-            .onChange(of: focusedProjectTaskId) { _, taskId in
-                if taskId != nil && addProjectScheduleExpanded {
-                    withAnimation(AppStyle.Anim.toggle) {
-                        addProjectScheduleExpanded = false
-                    }
-                }
             }
         }
         .overlay {
@@ -987,1238 +939,6 @@ struct HomeView: View {
         .ignoresSafeArea(edges: .bottom)
     }
 
-    // MARK: - Add Bar Mode Selector
-
-    private var addBarModeSelector: some View {
-        HStack(spacing: AppStyle.Spacing.comfortable) {
-            addBarModeCircle(mode: .task, icon: "checkmark.circle")
-            addBarModeCircle(mode: .list, icon: "checklist")
-            addBarModeCircle(mode: .project, icon: "folder", customImage: "ProjectIcon")
-            Spacer()
-        }
-        .padding(.horizontal)
-    }
-
-    private func addBarModeCircle(mode: TaskType, icon: String, customImage: String? = nil) -> some View {
-        let isActive = addBarMode == mode
-        return Button {
-            withAnimation(AppStyle.Anim.buttonTap) {
-                addBarMode = mode
-            }
-        } label: {
-            Group {
-                if let customImage {
-                    Image(customImage)
-                        .renderingMode(.template)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 16, height: 16)
-                } else {
-                    Image(systemName: icon)
-                }
-            }
-            .font(.inter(.body, weight: .medium))
-            .foregroundColor(isActive ? .white : .primary)
-            .frame(width: AppStyle.Layout.iconButton, height: AppStyle.Layout.iconButton)
-            .glassEffect(
-                isActive
-                    ? .regular.tint(.black).interactive()
-                    : .regular.interactive(),
-                in: .circle
-            )
-        }
-        .buttonStyle(.plain)
-    }
-
-    // MARK: - Active Add Bar
-
-    @ViewBuilder
-    private var activeAddBar: some View {
-        switch addBarMode {
-        case .task, .goal: addTaskBar
-        case .list: addListBar
-        case .project: addProjectBar
-        }
-    }
-
-    // MARK: - Compact Add Task Bar
-
-    private var addTaskBar: some View {
-        VStack(spacing: 0) {
-            // Task title row
-            TextField("Create a new task", text: $addTaskTitle)
-                .font(.inter(.title3))
-                .textFieldStyle(.plain)
-                .focused($addBarTitleFocus, equals: .task)
-                .submitLabel(.return)
-                .onSubmit {
-                    saveTask()
-                }
-                .padding(.horizontal, AppStyle.Spacing.content)
-                .padding(.top, AppStyle.Spacing.page)
-                .padding(.bottom, AppStyle.Spacing.medium)
-
-            // Subtasks
-            DraftSubtaskListEditor(
-                subtasks: $addTaskSubtasks,
-                focusedSubtaskId: $focusedSubtaskId,
-                onAddNew: { addNewSubtask() }
-            )
-
-            // Schedule expansion (calendar section)
-            if addTaskScheduleExpanded {
-                Divider()
-                    .padding(.horizontal, AppStyle.Spacing.content)
-
-                VStack(alignment: .leading, spacing: AppStyle.Spacing.comfortable) {
-                    Picker("Section", selection: $addTaskSection) {
-                        Text("Focus").tag(Section.focus)
-                        Text("To-Do").tag(Section.todo)
-                    }
-                    .pickerStyle(.segmented)
-
-                    UnifiedCalendarPicker(
-                        selectedDates: $addTaskDates,
-                        selectedTimeframe: $addTaskTimeframe
-                    )
-                }
-                .padding(.horizontal, AppStyle.Spacing.content)
-                .padding(.top, AppStyle.Spacing.small)
-                .padding(.bottom, AppStyle.Spacing.content)
-
-                // Schedule mode action row
-                HStack {
-                    Button {
-                        withAnimation(AppStyle.Anim.toggle) {
-                            addTaskDates.removeAll()
-                            addTaskScheduleExpanded = false
-                        }
-                    } label: {
-                        Image(systemName: "xmark")
-                            .font(.inter(.body, weight: .semiBold))
-                            .foregroundColor(.primary)
-                            .frame(width: AppStyle.Layout.iconButton, height: AppStyle.Layout.iconButton)
-                            .background(Color(.systemGray4), in: Circle())
-                    }
-                    .buttonStyle(.plain)
-
-                    Spacer()
-
-                    let hasDateChanges = addTaskDates != addTaskDatesSnapshot
-                    Button {
-                        let generator = UIImpactFeedbackGenerator(style: .medium)
-                        generator.impactOccurred()
-                        withAnimation(AppStyle.Anim.toggle) {
-                            addTaskScheduleExpanded = false
-                        }
-                    } label: {
-                        Image(systemName: "checkmark")
-                            .font(.inter(.body, weight: .semiBold))
-                            .foregroundColor(hasDateChanges ? .white : .secondary)
-                            .frame(width: AppStyle.Layout.iconButton, height: AppStyle.Layout.iconButton)
-                            .background(
-                                hasDateChanges ? Color.appRed : Color(.systemGray4),
-                                in: Circle()
-                            )
-                    }
-                    .buttonStyle(.plain)
-                }
-                .padding(.horizontal, AppStyle.Spacing.content)
-                .padding(.bottom, AppStyle.Spacing.tiny)
-            }
-
-            // Sub-task row: [Sub-task] ... [AI Breakdown] [Checkmark]
-            if !addTaskScheduleExpanded {
-            HStack(spacing: AppStyle.Spacing.compact) {
-                Button {
-                    addNewSubtask()
-                } label: {
-                    HStack(spacing: AppStyle.Spacing.tiny) {
-                        Image(systemName: "plus")
-                            .font(.inter(.caption))
-                        Text("Sub-task")
-                            .font(.inter(.caption))
-                    }
-                    .foregroundColor(.white)
-                    .padding(.horizontal, AppStyle.Spacing.medium)
-                    .padding(.vertical, AppStyle.Spacing.compact)
-                    .background(Color.black, in: Capsule())
-                }
-                .buttonStyle(.plain)
-
-                // More options pill
-                Button {
-                    withAnimation(AppStyle.Anim.toggle) {
-                        addTaskOptionsExpanded.toggle()
-                    }
-                } label: {
-                    Image(systemName: "ellipsis")
-                        .font(.inter(.caption, weight: .bold))
-                        .foregroundColor(.black)
-                        .frame(minHeight: UIFont.preferredFont(forTextStyle: .caption1).lineHeight)
-                        .padding(.horizontal, AppStyle.Spacing.medium)
-                        .padding(.vertical, AppStyle.Spacing.compact)
-                        .background(Color.white, in: Capsule())
-                }
-                .buttonStyle(.plain)
-
-                Spacer()
-
-                // AI Breakdown
-                Button {
-                    generateBreakdown()
-                } label: {
-                    HStack(spacing: AppStyle.Spacing.small) {
-                        if isGeneratingBreakdown {
-                            ProgressView()
-                                .tint(.primary)
-                        } else {
-                            Image(systemName: hasGeneratedBreakdown ? "arrow.clockwise" : "sparkles")
-                                .font(.inter(.subheadline, weight: .semiBold))
-                                .foregroundColor(!isAddTaskTitleEmpty ? .blue : .primary)
-                        }
-                        Text(LocalizedStringKey(hasGeneratedBreakdown ? "Regenerate" : "Suggest Breakdown"))
-                            .font(.inter(.caption, weight: .medium))
-                            .foregroundColor(.primary)
-                    }
-                    .padding(.horizontal, AppStyle.Spacing.content)
-                    .padding(.vertical, AppStyle.Spacing.compact)
-                    .background(
-                        !isAddTaskTitleEmpty ? Color.pillBackground : Color.clear,
-                        in: Capsule()
-                    )
-                }
-                .buttonStyle(.plain)
-                .disabled(isAddTaskTitleEmpty || isGeneratingBreakdown)
-
-                // Submit button (checkmark)
-                Button {
-                    saveTask()
-                } label: {
-                    Image(systemName: "checkmark")
-                        .font(.inter(.body, weight: .semiBold))
-                        .foregroundColor(isAddTaskTitleEmpty ? .secondary : .white)
-                        .frame(width: AppStyle.Layout.iconButton, height: AppStyle.Layout.iconButton)
-                        .background(
-                            isAddTaskTitleEmpty ? Color(.systemGray4) : Color.focusBlue,
-                            in: Circle()
-                        )
-                }
-                .buttonStyle(.plain)
-                .disabled(isAddTaskTitleEmpty)
-            }
-            .padding(.horizontal, AppStyle.Spacing.content)
-            .padding(.bottom, AppStyle.Spacing.tiny)
-            }
-
-            // Bottom row: [Category] [Schedule] [Priority]
-            if addTaskOptionsExpanded && !addTaskScheduleExpanded {
-            HStack(spacing: AppStyle.Spacing.compact) {
-                Menu {
-                    Button {
-                        addTaskCategoryId = nil
-                    } label: {
-                        if addTaskCategoryId == nil {
-                            Label("None", systemImage: "checkmark")
-                        } else {
-                            Text("None")
-                        }
-                    }
-                    ForEach(taskListVM.categories) { category in
-                        Button {
-                            addTaskCategoryId = category.id
-                        } label: {
-                            if addTaskCategoryId == category.id {
-                                Label(category.name, systemImage: "checkmark")
-                            } else {
-                                Text(category.name)
-                            }
-                        }
-                    }
-                } label: {
-                    HStack(spacing: AppStyle.Spacing.tiny) {
-                        Image(systemName: "folder")
-                            .font(.inter(.caption))
-                        Text(LocalizedStringKey(taskCategoryPillLabel))
-                            .font(.inter(.caption))
-                    }
-                    .foregroundColor(.black)
-                    .padding(.horizontal, AppStyle.Spacing.medium)
-                    .padding(.vertical, AppStyle.Spacing.compact)
-                    .background(Color.white, in: Capsule())
-                }
-
-                Button {
-                    if !addTaskScheduleExpanded {
-                        addTaskDatesSnapshot = addTaskDates
-                    }
-                    withAnimation(AppStyle.Anim.toggle) {
-                        addTaskScheduleExpanded.toggle()
-                    }
-                } label: {
-                    HStack(spacing: AppStyle.Spacing.tiny) {
-                        Image(systemName: "arrow.right.circle")
-                            .font(.inter(.caption))
-                        Text("Schedule")
-                            .font(.inter(.caption))
-                    }
-                    .foregroundColor(!addTaskDates.isEmpty ? .white : .black)
-                    .padding(.horizontal, AppStyle.Spacing.medium)
-                    .padding(.vertical, AppStyle.Spacing.compact)
-                    .background(!addTaskDates.isEmpty ? Color.appRed : Color.white, in: Capsule())
-                }
-                .buttonStyle(.plain)
-
-                Menu {
-                    ForEach(Priority.allCases, id: \.self) { priority in
-                        Button {
-                            addTaskPriority = priority
-                        } label: {
-                            if addTaskPriority == priority {
-                                Label(priority.displayName, systemImage: "checkmark")
-                            } else {
-                                Text(priority.displayName)
-                            }
-                        }
-                    }
-                } label: {
-                    HStack(spacing: AppStyle.Spacing.tiny) {
-                        Circle()
-                            .fill(addTaskPriority.dotColor)
-                            .frame(width: AppStyle.Layout.dotSize, height: AppStyle.Layout.dotSize)
-                        Text(addTaskPriority.displayName)
-                            .font(.inter(.caption))
-                    }
-                    .foregroundColor(.black)
-                    .padding(.horizontal, AppStyle.Spacing.medium)
-                    .padding(.vertical, AppStyle.Spacing.compact)
-                    .background(Color.white, in: Capsule())
-                }
-
-                Spacer()
-            }
-            .padding(.horizontal, AppStyle.Spacing.content)
-            .padding(.top, AppStyle.Spacing.small)
-            }
-
-            Spacer().frame(height: AppStyle.Spacing.page)
-        }
-        .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 20))
-        .padding(.horizontal)
-    }
-
-    // MARK: - Compact Add List Bar
-
-    private var addListBar: some View {
-        VStack(spacing: 0) {
-            TextField("Create a new list", text: $addListTitle)
-                .font(.inter(.title3))
-                .textFieldStyle(.plain)
-                .focused($addBarTitleFocus, equals: .list)
-                .submitLabel(.return)
-                .onSubmit {
-                    saveList()
-                }
-                .padding(.horizontal, AppStyle.Spacing.content)
-                .padding(.top, AppStyle.Spacing.page)
-                .padding(.bottom, AppStyle.Spacing.medium)
-
-            DraftSubtaskListEditor(
-                subtasks: $addListItems,
-                focusedSubtaskId: $focusedListItemId,
-                onAddNew: { addNewListItem() },
-                placeholder: "Item"
-            )
-
-            // Schedule expansion
-            if addListScheduleExpanded {
-                Divider()
-                    .padding(.horizontal, AppStyle.Spacing.content)
-
-                VStack(alignment: .leading, spacing: AppStyle.Spacing.comfortable) {
-                    Picker("Section", selection: $addListSection) {
-                        Text("Focus").tag(Section.focus)
-                        Text("To-Do").tag(Section.todo)
-                    }
-                    .pickerStyle(.segmented)
-
-                    UnifiedCalendarPicker(
-                        selectedDates: $addListDates,
-                        selectedTimeframe: $addListTimeframe
-                    )
-                }
-                .padding(.horizontal, AppStyle.Spacing.content)
-                .padding(.top, AppStyle.Spacing.small)
-                .padding(.bottom, AppStyle.Spacing.content)
-
-                HStack {
-                    Button {
-                        withAnimation(AppStyle.Anim.toggle) {
-                            addListDates.removeAll()
-                            addListScheduleExpanded = false
-                        }
-                    } label: {
-                        Image(systemName: "xmark")
-                            .font(.inter(.body, weight: .semiBold))
-                            .foregroundColor(.primary)
-                            .frame(width: AppStyle.Layout.iconButton, height: AppStyle.Layout.iconButton)
-                            .background(Color(.systemGray4), in: Circle())
-                    }
-                    .buttonStyle(.plain)
-
-                    Spacer()
-
-                    let hasDateChanges = addListDates != addListDatesSnapshot
-                    Button {
-                        let generator = UIImpactFeedbackGenerator(style: .medium)
-                        generator.impactOccurred()
-                        withAnimation(AppStyle.Anim.toggle) {
-                            addListScheduleExpanded = false
-                        }
-                    } label: {
-                        Image(systemName: "checkmark")
-                            .font(.inter(.body, weight: .semiBold))
-                            .foregroundColor(hasDateChanges ? .white : .secondary)
-                            .frame(width: AppStyle.Layout.iconButton, height: AppStyle.Layout.iconButton)
-                            .background(
-                                hasDateChanges ? Color.appRed : Color(.systemGray4),
-                                in: Circle()
-                            )
-                    }
-                    .buttonStyle(.plain)
-                }
-                .padding(.horizontal, AppStyle.Spacing.content)
-                .padding(.bottom, AppStyle.Spacing.tiny)
-            }
-
-            // Row 1: [Item] [...] Spacer [Checkmark]
-            if !addListScheduleExpanded {
-            HStack(spacing: AppStyle.Spacing.compact) {
-                Button {
-                    addNewListItem()
-                } label: {
-                    HStack(spacing: AppStyle.Spacing.tiny) {
-                        Image(systemName: "plus")
-                            .font(.inter(.caption))
-                        Text("Item")
-                            .font(.inter(.caption))
-                    }
-                    .foregroundColor(.white)
-                    .padding(.horizontal, AppStyle.Spacing.medium)
-                    .padding(.vertical, AppStyle.Spacing.compact)
-                    .background(Color.black, in: Capsule())
-                }
-                .buttonStyle(.plain)
-
-                Button {
-                    withAnimation(AppStyle.Anim.toggle) {
-                        addListOptionsExpanded.toggle()
-                    }
-                } label: {
-                    Image(systemName: "ellipsis")
-                        .font(.inter(.caption, weight: .bold))
-                        .foregroundColor(.black)
-                        .frame(minHeight: UIFont.preferredFont(forTextStyle: .caption1).lineHeight)
-                        .padding(.horizontal, AppStyle.Spacing.medium)
-                        .padding(.vertical, AppStyle.Spacing.compact)
-                        .background(Color.white, in: Capsule())
-                }
-                .buttonStyle(.plain)
-
-                Spacer()
-
-                Button {
-                    saveList()
-                } label: {
-                    Image(systemName: "checkmark")
-                        .font(.inter(.body, weight: .semiBold))
-                        .foregroundColor(isAddListTitleEmpty ? .secondary : .white)
-                        .frame(width: AppStyle.Layout.iconButton, height: AppStyle.Layout.iconButton)
-                        .background(
-                            isAddListTitleEmpty ? Color(.systemGray4) : Color.focusBlue,
-                            in: Circle()
-                        )
-                }
-                .buttonStyle(.plain)
-                .disabled(isAddListTitleEmpty)
-            }
-            .padding(.horizontal, AppStyle.Spacing.content)
-            .padding(.bottom, AppStyle.Spacing.tiny)
-            }
-
-            // Row 2: [Category] [Schedule] [Priority]
-            if addListOptionsExpanded && !addListScheduleExpanded {
-            HStack(spacing: AppStyle.Spacing.compact) {
-                Menu {
-                    Button {
-                        addListCategoryId = nil
-                    } label: {
-                        if addListCategoryId == nil {
-                            Label("None", systemImage: "checkmark")
-                        } else {
-                            Text("None")
-                        }
-                    }
-                    ForEach(listsViewModel.categories) { category in
-                        Button {
-                            addListCategoryId = category.id
-                        } label: {
-                            if addListCategoryId == category.id {
-                                Label(category.name, systemImage: "checkmark")
-                            } else {
-                                Text(category.name)
-                            }
-                        }
-                    }
-                } label: {
-                    HStack(spacing: AppStyle.Spacing.tiny) {
-                        Image(systemName: "folder")
-                            .font(.inter(.caption))
-                        Text(LocalizedStringKey(listCategoryPillLabel))
-                            .font(.inter(.caption))
-                    }
-                    .foregroundColor(.black)
-                    .padding(.horizontal, AppStyle.Spacing.medium)
-                    .padding(.vertical, AppStyle.Spacing.compact)
-                    .background(Color.white, in: Capsule())
-                }
-
-                Button {
-                    addListDatesSnapshot = addListDates
-                    withAnimation(AppStyle.Anim.toggle) {
-                        addListScheduleExpanded.toggle()
-                    }
-                } label: {
-                    HStack(spacing: AppStyle.Spacing.tiny) {
-                        Image(systemName: "arrow.right.circle")
-                            .font(.inter(.caption))
-                        Text("Schedule")
-                            .font(.inter(.caption))
-                    }
-                    .foregroundColor(!addListDates.isEmpty ? .white : .black)
-                    .padding(.horizontal, AppStyle.Spacing.medium)
-                    .padding(.vertical, AppStyle.Spacing.compact)
-                    .background(!addListDates.isEmpty ? Color.appRed : Color.white, in: Capsule())
-                }
-                .buttonStyle(.plain)
-
-                Menu {
-                    ForEach(Priority.allCases, id: \.self) { priority in
-                        Button {
-                            addListPriority = priority
-                        } label: {
-                            if addListPriority == priority {
-                                Label(priority.displayName, systemImage: "checkmark")
-                            } else {
-                                Text(priority.displayName)
-                            }
-                        }
-                    }
-                } label: {
-                    HStack(spacing: AppStyle.Spacing.tiny) {
-                        Circle()
-                            .fill(addListPriority.dotColor)
-                            .frame(width: AppStyle.Layout.dotSize, height: AppStyle.Layout.dotSize)
-                        Text(addListPriority.displayName)
-                            .font(.inter(.caption))
-                    }
-                    .foregroundColor(.black)
-                    .padding(.horizontal, AppStyle.Spacing.medium)
-                    .padding(.vertical, AppStyle.Spacing.compact)
-                    .background(Color.white, in: Capsule())
-                }
-
-                Spacer()
-            }
-            .padding(.horizontal, AppStyle.Spacing.content)
-            .padding(.top, AppStyle.Spacing.small)
-            }
-
-            Spacer().frame(height: AppStyle.Spacing.page)
-        }
-        .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 20))
-        .padding(.horizontal)
-    }
-
-    // MARK: - Compact Add Project Bar
-
-    private var addProjectBar: some View {
-        VStack(spacing: 0) {
-            TextField("Create a new project", text: $addProjectTitle)
-                .font(.inter(.title3))
-                .textFieldStyle(.plain)
-                .focused($addBarTitleFocus, equals: .project)
-                .submitLabel(.return)
-                .onSubmit {
-                    saveProject()
-                }
-                .padding(.horizontal, AppStyle.Spacing.content)
-                .padding(.top, AppStyle.Spacing.page)
-                .padding(.bottom, AppStyle.Spacing.medium)
-
-            // Tasks + subtasks area
-            if !addProjectDraftTasks.isEmpty {
-                Divider()
-                    .padding(.horizontal, AppStyle.Spacing.content)
-
-                VStack(alignment: .leading, spacing: AppStyle.Spacing.small) {
-                    ForEach(addProjectDraftTasks) { task in
-                        projectTaskDraftRow(task: task)
-                    }
-                }
-                .padding(.horizontal, AppStyle.Spacing.content)
-                .padding(.top, AppStyle.Spacing.compact)
-                .padding(.bottom, AppStyle.Spacing.small)
-            }
-
-            // Schedule expansion
-            if addProjectScheduleExpanded {
-                Divider()
-                    .padding(.horizontal, AppStyle.Spacing.content)
-
-                VStack(alignment: .leading, spacing: AppStyle.Spacing.comfortable) {
-                    Picker("Section", selection: $addProjectSection) {
-                        Text("Focus").tag(Section.focus)
-                        Text("To-Do").tag(Section.todo)
-                    }
-                    .pickerStyle(.segmented)
-
-                    UnifiedCalendarPicker(
-                        selectedDates: $addProjectDates,
-                        selectedTimeframe: $addProjectTimeframe
-                    )
-                }
-                .padding(.horizontal, AppStyle.Spacing.content)
-                .padding(.top, AppStyle.Spacing.small)
-                .padding(.bottom, AppStyle.Spacing.content)
-
-                HStack {
-                    Button {
-                        withAnimation(AppStyle.Anim.toggle) {
-                            addProjectDates.removeAll()
-                            addProjectScheduleExpanded = false
-                        }
-                    } label: {
-                        Image(systemName: "xmark")
-                            .font(.inter(.body, weight: .semiBold))
-                            .foregroundColor(.primary)
-                            .frame(width: AppStyle.Layout.iconButton, height: AppStyle.Layout.iconButton)
-                            .background(Color(.systemGray4), in: Circle())
-                    }
-                    .buttonStyle(.plain)
-
-                    Spacer()
-
-                    let hasDateChanges = addProjectDates != addProjectDatesSnapshot
-                    Button {
-                        let generator = UIImpactFeedbackGenerator(style: .medium)
-                        generator.impactOccurred()
-                        withAnimation(AppStyle.Anim.toggle) {
-                            addProjectScheduleExpanded = false
-                        }
-                    } label: {
-                        Image(systemName: "checkmark")
-                            .font(.inter(.body, weight: .semiBold))
-                            .foregroundColor(hasDateChanges ? .white : .secondary)
-                            .frame(width: AppStyle.Layout.iconButton, height: AppStyle.Layout.iconButton)
-                            .background(
-                                hasDateChanges ? Color.appRed : Color(.systemGray4),
-                                in: Circle()
-                            )
-                    }
-                    .buttonStyle(.plain)
-                }
-                .padding(.horizontal, AppStyle.Spacing.content)
-                .padding(.bottom, AppStyle.Spacing.tiny)
-            }
-
-            // Row 1: [Task] [...] Spacer [Checkmark]
-            if !addProjectScheduleExpanded {
-            HStack(spacing: AppStyle.Spacing.compact) {
-                Button {
-                    addNewProjectTask()
-                } label: {
-                    HStack(spacing: AppStyle.Spacing.tiny) {
-                        Image(systemName: "plus")
-                            .font(.inter(.caption))
-                        Text("Task")
-                            .font(.inter(.caption))
-                    }
-                    .foregroundColor(.white)
-                    .padding(.horizontal, AppStyle.Spacing.medium)
-                    .padding(.vertical, AppStyle.Spacing.compact)
-                    .background(Color.black, in: Capsule())
-                }
-                .buttonStyle(.plain)
-
-                Button {
-                    withAnimation(AppStyle.Anim.toggle) {
-                        addProjectOptionsExpanded.toggle()
-                    }
-                } label: {
-                    Image(systemName: "ellipsis")
-                        .font(.inter(.caption, weight: .bold))
-                        .foregroundColor(.black)
-                        .frame(minHeight: UIFont.preferredFont(forTextStyle: .caption1).lineHeight)
-                        .padding(.horizontal, AppStyle.Spacing.medium)
-                        .padding(.vertical, AppStyle.Spacing.compact)
-                        .background(Color.white, in: Capsule())
-                }
-                .buttonStyle(.plain)
-
-                Spacer()
-
-                Button {
-                    saveProject()
-                } label: {
-                    Image(systemName: "checkmark")
-                        .font(.inter(.body, weight: .semiBold))
-                        .foregroundColor(isAddProjectTitleEmpty ? .secondary : .white)
-                        .frame(width: AppStyle.Layout.iconButton, height: AppStyle.Layout.iconButton)
-                        .background(
-                            isAddProjectTitleEmpty ? Color(.systemGray4) : Color.focusBlue,
-                            in: Circle()
-                        )
-                }
-                .buttonStyle(.plain)
-                .disabled(isAddProjectTitleEmpty)
-            }
-            .padding(.horizontal, AppStyle.Spacing.content)
-            .padding(.bottom, AppStyle.Spacing.tiny)
-            }
-
-            // Row 2: [Category] [Schedule] [Priority]
-            if addProjectOptionsExpanded && !addProjectScheduleExpanded {
-            HStack(spacing: AppStyle.Spacing.compact) {
-                Menu {
-                    Button {
-                        addProjectCategoryId = nil
-                    } label: {
-                        if addProjectCategoryId == nil {
-                            Label("None", systemImage: "checkmark")
-                        } else {
-                            Text("None")
-                        }
-                    }
-                    ForEach(projectsViewModel.categories) { category in
-                        Button {
-                            addProjectCategoryId = category.id
-                        } label: {
-                            if addProjectCategoryId == category.id {
-                                Label(category.name, systemImage: "checkmark")
-                            } else {
-                                Text(category.name)
-                            }
-                        }
-                    }
-                } label: {
-                    HStack(spacing: AppStyle.Spacing.tiny) {
-                        Image(systemName: "folder")
-                            .font(.inter(.caption))
-                        Text(LocalizedStringKey(projectCategoryPillLabel))
-                            .font(.inter(.caption))
-                    }
-                    .foregroundColor(.black)
-                    .padding(.horizontal, AppStyle.Spacing.medium)
-                    .padding(.vertical, AppStyle.Spacing.compact)
-                    .background(Color.white, in: Capsule())
-                }
-
-                Button {
-                    addProjectDatesSnapshot = addProjectDates
-                    withAnimation(AppStyle.Anim.toggle) {
-                        addProjectScheduleExpanded.toggle()
-                    }
-                } label: {
-                    HStack(spacing: AppStyle.Spacing.tiny) {
-                        Image(systemName: "arrow.right.circle")
-                            .font(.inter(.caption))
-                        Text("Schedule")
-                            .font(.inter(.caption))
-                    }
-                    .foregroundColor(!addProjectDates.isEmpty ? .white : .black)
-                    .padding(.horizontal, AppStyle.Spacing.medium)
-                    .padding(.vertical, AppStyle.Spacing.compact)
-                    .background(!addProjectDates.isEmpty ? Color.appRed : Color.white, in: Capsule())
-                }
-                .buttonStyle(.plain)
-
-                Menu {
-                    ForEach(Priority.allCases, id: \.self) { priority in
-                        Button {
-                            addProjectPriority = priority
-                        } label: {
-                            if addProjectPriority == priority {
-                                Label(priority.displayName, systemImage: "checkmark")
-                            } else {
-                                Text(priority.displayName)
-                            }
-                        }
-                    }
-                } label: {
-                    HStack(spacing: AppStyle.Spacing.tiny) {
-                        Circle()
-                            .fill(addProjectPriority.dotColor)
-                            .frame(width: AppStyle.Layout.dotSize, height: AppStyle.Layout.dotSize)
-                        Text(addProjectPriority.displayName)
-                            .font(.inter(.caption))
-                    }
-                    .foregroundColor(.black)
-                    .padding(.horizontal, AppStyle.Spacing.medium)
-                    .padding(.vertical, AppStyle.Spacing.compact)
-                    .background(Color.white, in: Capsule())
-                }
-
-                Spacer()
-            }
-            .padding(.horizontal, AppStyle.Spacing.content)
-            .padding(.top, AppStyle.Spacing.small)
-            }
-
-            Spacer().frame(height: AppStyle.Spacing.page)
-        }
-        .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 20))
-        .padding(.horizontal)
-    }
-
-    // MARK: - Project Task Draft Row
-
-    @ViewBuilder
-    private func projectTaskDraftRow(task: DraftTask) -> some View {
-        HStack(spacing: AppStyle.Spacing.compact) {
-            Image(systemName: "circle")
-                .font(.inter(.caption2))
-                .foregroundColor(.secondary.opacity(0.5))
-
-            TextField("Task", text: projectTaskBinding(for: task.id), axis: .vertical)
-                .font(.inter(.title3))
-                .textFieldStyle(.plain)
-                .focused($focusedProjectTaskId, equals: task.id)
-                .lineLimit(1...3)
-                .onChange(of: projectTaskBinding(for: task.id).wrappedValue) { _, newValue in
-                    if newValue.contains("\n") {
-                        if let idx = addProjectDraftTasks.firstIndex(where: { $0.id == task.id }) {
-                            addProjectDraftTasks[idx].title = newValue.replacingOccurrences(of: "\n", with: "")
-                        }
-                        addNewProjectSubtask(toTask: task.id)
-                    }
-                }
-
-            Button {
-                removeProjectTask(id: task.id)
-            } label: {
-                Image(systemName: "xmark.circle.fill")
-                    .font(.inter(.caption))
-                    .foregroundColor(.secondary)
-            }
-            .buttonStyle(.plain)
-        }
-
-        // Subtask rows
-        ForEach(task.subtasks) { subtask in
-            HStack(spacing: AppStyle.Spacing.compact) {
-                Image(systemName: "circle")
-                    .font(.inter(.caption2))
-                    .foregroundColor(.secondary.opacity(0.5))
-
-                TextField("Sub-task", text: projectSubtaskBinding(forSubtask: subtask.id, inTask: task.id), axis: .vertical)
-                    .font(.inter(.body))
-                    .textFieldStyle(.plain)
-                    .focused($focusedProjectTaskId, equals: subtask.id)
-                    .lineLimit(1...3)
-                    .onChange(of: projectSubtaskBinding(forSubtask: subtask.id, inTask: task.id).wrappedValue) { _, newValue in
-                        if newValue.contains("\n") {
-                            if let tIdx = addProjectDraftTasks.firstIndex(where: { $0.id == task.id }),
-                               let sIdx = addProjectDraftTasks[tIdx].subtasks.firstIndex(where: { $0.id == subtask.id }) {
-                                addProjectDraftTasks[tIdx].subtasks[sIdx].title = newValue.replacingOccurrences(of: "\n", with: "")
-                            }
-                            addNewProjectSubtask(toTask: task.id)
-                        }
-                    }
-
-                Button {
-                    removeProjectSubtask(id: subtask.id, fromTask: task.id)
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.inter(.caption))
-                        .foregroundColor(.secondary)
-                }
-                .buttonStyle(.plain)
-            }
-            .padding(.leading, 28)
-            .padding(.trailing, AppStyle.Spacing.compact)
-            .padding(.vertical, AppStyle.Spacing.small)
-        }
-        .padding(.top, AppStyle.Spacing.comfortable)
-
-        // "+ Sub-task" button
-        Button {
-            addNewProjectSubtask(toTask: task.id)
-        } label: {
-            HStack(spacing: AppStyle.Spacing.tiny) {
-                Image(systemName: "plus")
-                    .font(.inter(.subheadline))
-                Text("Sub-task")
-                    .font(.inter(.subheadline))
-            }
-            .foregroundColor(.secondary)
-            .padding(.vertical, AppStyle.Spacing.tiny)
-        }
-        .buttonStyle(.plain)
-        .padding(.leading, 28)
-        .padding(.top, AppStyle.Spacing.compact)
-        .padding(.bottom, AppStyle.Spacing.small)
-    }
-
-    // MARK: - Add Task Helpers
-
-    private var taskCategoryPillLabel: String {
-        if let categoryId = addTaskCategoryId,
-           let category = taskListVM.categories.first(where: { $0.id == categoryId }) {
-            return category.name
-        }
-        return "Category"
-    }
-
-    private func generateBreakdown() {
-        let title = addTaskTitle.trimmingCharacters(in: .whitespaces)
-        guard !title.isEmpty else { return }
-        isGeneratingBreakdown = true
-        _Concurrency.Task { @MainActor in
-            do {
-                let aiService = AIService()
-                let suggestions = try await aiService.generateSubtasks(title: title, description: nil)
-                withAnimation(AppStyle.Anim.toggle) {
-                    addTaskSubtasks.append(contentsOf: suggestions.map { DraftSubtaskEntry(title: $0) })
-                }
-                hasGeneratedBreakdown = true
-            } catch {
-                // Silently fail
-            }
-            isGeneratingBreakdown = false
-        }
-    }
-
-    private func saveTask() {
-        let title = addTaskTitle.trimmingCharacters(in: .whitespaces)
-        guard !title.isEmpty else { return }
-
-        let subtasksToCreate = addTaskSubtasks
-            .map { $0.title.trimmingCharacters(in: .whitespaces) }
-            .filter { !$0.isEmpty }
-        let categoryId = addTaskCategoryId
-        let priority = addTaskPriority
-        let scheduleEnabled = !addTaskDates.isEmpty
-        let timeframe = addTaskTimeframe
-        let section = addTaskSection
-        let dates = addTaskDates
-
-        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-        presentToast("Task was created")
-
-        addBarTitleFocus = .task
-        focusedSubtaskId = nil
-
-        addTaskTitle = ""
-        addTaskSubtasks = []
-        addTaskDates = []
-        addTaskOptionsExpanded = false
-        addTaskScheduleExpanded = false
-        addTaskPriority = .low
-        hasGeneratedBreakdown = false
-
-        _Concurrency.Task { @MainActor in
-            await taskListVM.createTaskWithSchedules(
-                title: title,
-                categoryId: categoryId,
-                priority: priority,
-                subtaskTitles: subtasksToCreate,
-                scheduleAfterCreate: scheduleEnabled,
-                selectedTimeframe: timeframe,
-                selectedSection: section,
-                selectedDates: dates,
-                hasScheduledTime: false,
-                scheduledTime: nil
-            )
-
-            if scheduleEnabled && !dates.isEmpty {
-                await focusViewModel.fetchSchedules()
-            }
-        }
-    }
-
-    private func addNewSubtask() {
-        addBarTitleFocus = .task
-        let newEntry = DraftSubtaskEntry()
-        withAnimation(AppStyle.Anim.quick) {
-            addTaskSubtasks.append(newEntry)
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            focusedSubtaskId = newEntry.id
-        }
-    }
-
-    private func dismissAddTask() {
-        addTaskTitle = ""
-        addTaskSubtasks = []
-        addTaskCategoryId = nil
-        addTaskPriority = .low
-        addTaskOptionsExpanded = false
-        addTaskScheduleExpanded = false
-        addTaskDates = []
-        hasGeneratedBreakdown = false
-        addBarTitleFocus = nil
-        focusedSubtaskId = nil
-    }
-
-    // MARK: - Add List Helpers
-
-    private var listCategoryPillLabel: String {
-        if let categoryId = addListCategoryId,
-           let category = listsViewModel.categories.first(where: { $0.id == categoryId }) {
-            return category.name
-        }
-        return "Category"
-    }
-
-    private func saveList() {
-        let title = addListTitle.trimmingCharacters(in: .whitespaces)
-        guard !title.isEmpty else { return }
-
-        let itemTitles = addListItems
-            .map { $0.title.trimmingCharacters(in: .whitespaces) }
-            .filter { !$0.isEmpty }
-        let categoryId = addListCategoryId
-        let priority = addListPriority
-        let scheduleEnabled = !addListDates.isEmpty
-        let timeframe = addListTimeframe
-        let section = addListSection
-        let dates = addListDates
-
-        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-        presentToast("List was created")
-
-        addBarTitleFocus = .list
-        focusedListItemId = nil
-
-        addListTitle = ""
-        addListItems = []
-        addListDates = []
-        addListScheduleExpanded = false
-        addListOptionsExpanded = false
-        addListPriority = .low
-
-        _Concurrency.Task { @MainActor in
-            await listsViewModel.createList(title: title, categoryId: categoryId, priority: priority)
-
-            if let createdList = listsViewModel.lists.first {
-                for itemTitle in itemTitles {
-                    await listsViewModel.createItem(title: itemTitle, listId: createdList.id)
-                }
-                if !itemTitles.isEmpty {
-                    listsViewModel.expandedLists.insert(createdList.id)
-                }
-
-                if scheduleEnabled && !dates.isEmpty {
-                    for date in dates {
-                        let schedule = Schedule(
-                            userId: createdList.userId,
-                            taskId: createdList.id,
-                            timeframe: timeframe,
-                            section: section,
-                            scheduleDate: date,
-                            sortOrder: 0,
-                            scheduledTime: nil,
-                            durationMinutes: nil
-                        )
-                        _ = try? await listsViewModel.scheduleRepository.createSchedule(schedule)
-                    }
-                    await focusViewModel.fetchSchedules()
-                    await listsViewModel.fetchScheduledTaskIds()
-                }
-            }
-
-            // Refresh Home's list display
-            await viewModel.fetchLists()
-        }
-    }
-
-    private func addNewListItem() {
-        addBarTitleFocus = .list
-        let newEntry = DraftSubtaskEntry()
-        withAnimation(AppStyle.Anim.quick) {
-            addListItems.append(newEntry)
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            focusedListItemId = newEntry.id
-        }
-    }
-
-    private func dismissAddList() {
-        addListTitle = ""
-        addListItems = []
-        addListCategoryId = nil
-        addListScheduleExpanded = false
-        addListOptionsExpanded = false
-        addListPriority = .low
-        addListDates = []
-        addBarTitleFocus = nil
-        focusedListItemId = nil
-    }
-
-    // MARK: - Add Project Helpers
-
-    private var projectCategoryPillLabel: String {
-        if let categoryId = addProjectCategoryId,
-           let category = projectsViewModel.categories.first(where: { $0.id == categoryId }) {
-            return category.name
-        }
-        return "Category"
-    }
-
-    private func saveProject() {
-        let title = addProjectTitle.trimmingCharacters(in: .whitespaces)
-        guard !title.isEmpty else { return }
-
-        let draftTasks = addProjectDraftTasks.filter {
-            !$0.title.trimmingCharacters(in: .whitespaces).isEmpty
-        }
-        let categoryId = addProjectCategoryId
-        let priority = addProjectPriority
-        let scheduleEnabled = !addProjectDates.isEmpty
-        let timeframe = addProjectTimeframe
-        let section = addProjectSection
-        let dates = addProjectDates
-
-        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-        presentToast("Project was created")
-
-        addBarTitleFocus = .project
-        focusedProjectTaskId = nil
-
-        addProjectTitle = ""
-        addProjectDraftTasks = []
-        addProjectDates = []
-        addProjectScheduleExpanded = false
-        addProjectOptionsExpanded = false
-        addProjectPriority = .low
-
-        _Concurrency.Task { @MainActor in
-            guard let projectId = await projectsViewModel.saveNewProject(
-                title: title,
-                categoryId: categoryId,
-                priority: priority,
-                draftTasks: draftTasks
-            ) else { return }
-
-            if scheduleEnabled && !dates.isEmpty {
-                guard let userId = projectsViewModel.authService.currentUser?.id else { return }
-                for date in dates {
-                    let schedule = Schedule(
-                        userId: userId,
-                        taskId: projectId,
-                        timeframe: timeframe,
-                        section: section,
-                        scheduleDate: date,
-                        sortOrder: 0,
-                        scheduledTime: nil,
-                        durationMinutes: nil
-                    )
-                    _ = try? await projectsViewModel.scheduleRepository.createSchedule(schedule)
-                }
-                await focusViewModel.fetchSchedules()
-                await projectsViewModel.fetchScheduledTaskIds()
-            }
-
-            // Refresh Home's project display
-            await viewModel.fetchProjects()
-        }
-    }
-
-    private func projectTaskBinding(for taskId: UUID) -> Binding<String> {
-        Binding(
-            get: { addProjectDraftTasks.first(where: { $0.id == taskId })?.title ?? "" },
-            set: { newValue in
-                if let idx = addProjectDraftTasks.firstIndex(where: { $0.id == taskId }) {
-                    addProjectDraftTasks[idx].title = newValue
-                }
-            }
-        )
-    }
-
-    private func projectSubtaskBinding(forSubtask subtaskId: UUID, inTask taskId: UUID) -> Binding<String> {
-        Binding(
-            get: {
-                guard let tIdx = addProjectDraftTasks.firstIndex(where: { $0.id == taskId }),
-                      let s = addProjectDraftTasks[tIdx].subtasks.first(where: { $0.id == subtaskId })
-                else { return "" }
-                return s.title
-            },
-            set: { newValue in
-                if let tIdx = addProjectDraftTasks.firstIndex(where: { $0.id == taskId }),
-                   let sIdx = addProjectDraftTasks[tIdx].subtasks.firstIndex(where: { $0.id == subtaskId }) {
-                    addProjectDraftTasks[tIdx].subtasks[sIdx].title = newValue
-                }
-            }
-        )
-    }
-
-    private func addNewProjectTask() {
-        let newTask = DraftTask()
-        withAnimation(AppStyle.Anim.quick) {
-            addProjectDraftTasks.append(newTask)
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            focusedProjectTaskId = newTask.id
-        }
-    }
-
-    private func addNewProjectSubtask(toTask taskId: UUID) {
-        guard let tIdx = addProjectDraftTasks.firstIndex(where: { $0.id == taskId }) else { return }
-        let newSubtask = DraftSubtask(title: "")
-        withAnimation(AppStyle.Anim.quick) {
-            addProjectDraftTasks[tIdx].subtasks.append(newSubtask)
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            focusedProjectTaskId = newSubtask.id
-        }
-    }
-
-    private func removeProjectTask(id: UUID) {
-        withAnimation(AppStyle.Anim.quick) {
-            addProjectDraftTasks.removeAll { $0.id == id }
-        }
-    }
-
-    private func removeProjectSubtask(id: UUID, fromTask taskId: UUID) {
-        guard let tIdx = addProjectDraftTasks.firstIndex(where: { $0.id == taskId }) else { return }
-        withAnimation(AppStyle.Anim.quick) {
-            addProjectDraftTasks[tIdx].subtasks.removeAll { $0.id == id }
-        }
-    }
-
-    private func dismissAddProject() {
-        addProjectTitle = ""
-        addProjectDraftTasks = []
-        addProjectCategoryId = nil
-        addProjectScheduleExpanded = false
-        addProjectOptionsExpanded = false
-        addProjectPriority = .low
-        addProjectDates = []
-        addBarTitleFocus = nil
-        focusedProjectTaskId = nil
-    }
-
-    // MARK: - Shared Dismiss
-
-    private func dismissActiveAddBar() {
-        guard showingAddBar else { return }
-        dismissAddTask()
-        dismissAddList()
-        dismissAddProject()
-        showingAddBar = false
-    }
-
     // MARK: - Toast
 
     private func presentToast(_ message: String) {
@@ -2232,6 +952,7 @@ struct HomeView: View {
             }
         }
     }
+
 
     // MARK: - Today Schedule Pre-fetch
 

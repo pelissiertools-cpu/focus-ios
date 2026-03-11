@@ -929,7 +929,7 @@ struct ScheduledView: View {
                         let timeframe = r.schedule?.timeframe ?? .daily
                         let section = r.schedule?.section ?? .todo
 
-                        await taskListVM.createTaskWithSchedules(
+                        let taskId = await taskListVM.createTaskWithSchedules(
                             title: r.title,
                             categoryId: r.categoryId,
                             priority: r.priority,
@@ -941,6 +941,9 @@ struct ScheduledView: View {
                             hasScheduledTime: false,
                             scheduledTime: nil
                         )
+                        if let taskId {
+                            r.schedule?.scheduleNotificationIfNeeded(taskId: taskId, taskTitle: r.title)
+                        }
                         await focusViewModel.fetchSchedules()
                         await refreshAllData()
                     }

@@ -8,8 +8,8 @@ import SwiftUI
 struct NotificationToggleRow: View {
     @Binding var isEnabled: Bool
     @Binding var selectedTime: Date
+    @Binding var isExpanded: Bool
 
-    @State private var isExpanded = false
     @State private var hasAppeared = false
 
     private var formattedTime: String {

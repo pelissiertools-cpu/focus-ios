@@ -43,6 +43,7 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
     @State private var pendingDeletions: Set<UUID> = []
     // Notification
     @State private var notificationEnabled: Bool = false
+    @State private var notificationExpanded: Bool = false
     @State private var notificationTime: Date = {
         var components = Calendar.current.dateComponents([.year, .month, .day], from: Date())
         components.hour = 9
@@ -735,7 +736,8 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
 
             NotificationToggleRow(
                 isEnabled: $notificationEnabled,
-                selectedTime: $notificationTime
+                selectedTime: $notificationTime,
+                isExpanded: $notificationExpanded
             )
         }
         .background(Color(.secondarySystemGroupedBackground))

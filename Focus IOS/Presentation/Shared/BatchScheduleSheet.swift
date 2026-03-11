@@ -28,6 +28,7 @@ struct BatchScheduleSheet<VM: LogFilterable>: View {
 
     // Notification
     @State private var notificationEnabled = false
+    @State private var notificationExpanded = false
     @State private var notificationTime: Date = {
         var components = Calendar.current.dateComponents([.year, .month, .day], from: Date())
         components.hour = 9
@@ -63,7 +64,8 @@ struct BatchScheduleSheet<VM: LogFilterable>: View {
                     SwiftUI.Section {
                         NotificationToggleRow(
                             isEnabled: $notificationEnabled,
-                            selectedTime: $notificationTime
+                            selectedTime: $notificationTime,
+                            isExpanded: $notificationExpanded
                         )
                     }
                 }

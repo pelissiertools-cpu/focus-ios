@@ -67,6 +67,8 @@ struct AddBarScheduleInfo {
     let dates: Set<Date>
     let timeframe: Timeframe
     let section: Section
+    let notificationEnabled: Bool
+    let notificationTime: Date
 }
 
 struct AddBarTaskResult {
@@ -99,6 +101,28 @@ enum AddBarResult {
     case project(AddBarProjectResult)
 }
 
+extension AddBarScheduleInfo {
+    /// Persists notification to DB and schedules local notification for the given task.
+    func scheduleNotificationIfNeeded(taskId: UUID, taskTitle: String) {
+        guard notificationEnabled, let firstDate = dates.sorted().first else { return }
+        let cal = Calendar.current
+        var comps = cal.dateComponents([.year, .month, .day], from: firstDate)
+        let timeComps = cal.dateComponents([.hour, .minute], from: notificationTime)
+        comps.hour = timeComps.hour
+        comps.minute = timeComps.minute
+        guard let notifDate = cal.date(from: comps) else { return }
+
+        _Concurrency.Task {
+            try? await TaskRepository().updateTaskNotification(
+                id: taskId,
+                enabled: true,
+                date: notifDate
+            )
+        }
+        NotificationService.shared.scheduleNotification(taskId: taskId, title: taskTitle, date: notifDate)
+    }
+}
+
 // MARK: - AddBar View
 
 struct AddBar: View {
@@ -119,6 +143,15 @@ struct AddBar: View {
     @State private var scheduleDatesSnapshot: Set<Date> = []
     @State private var timeframe: Timeframe = .daily
     @State private var section: Section = .todo
+    @State private var notificationEnabled = false
+    @State private var notificationExpanded = false
+    @State private var notificationTime: Date = {
+        let cal = Calendar.current
+        var comps = cal.dateComponents([.year, .month, .day], from: Date())
+        comps.hour = 9
+        comps.minute = 0
+        return cal.date(from: comps) ?? Date()
+    }()
 
     // Task mode
     @State private var subtasks: [DraftSubtaskEntry] = []
@@ -430,15 +463,23 @@ struct AddBar: View {
             Divider()
                 .padding(.horizontal, AppStyle.Spacing.content)
 
-            VStack(alignment: .leading, spacing: AppStyle.Spacing.comfortable) {
-                UnifiedCalendarPicker(
-                    selectedDates: $scheduleDates,
-                    selectedTimeframe: $timeframe
-                )
+            if !notificationExpanded {
+                VStack(alignment: .leading, spacing: AppStyle.Spacing.comfortable) {
+                    UnifiedCalendarPicker(
+                        selectedDates: $scheduleDates,
+                        selectedTimeframe: $timeframe
+                    )
+                }
+                .padding(.horizontal, AppStyle.Spacing.content)
+                .padding(.top, AppStyle.Spacing.small)
+                .padding(.bottom, AppStyle.Spacing.content)
             }
-            .padding(.horizontal, AppStyle.Spacing.content)
-            .padding(.top, AppStyle.Spacing.small)
-            .padding(.bottom, AppStyle.Spacing.content)
+
+            NotificationToggleRow(
+                isEnabled: $notificationEnabled,
+                selectedTime: $notificationTime,
+                isExpanded: $notificationExpanded
+            )
 
             HStack {
                 Button {
@@ -677,7 +718,9 @@ struct AddBar: View {
         let scheduleInfo: AddBarScheduleInfo? = scheduleDates.isEmpty ? nil : AddBarScheduleInfo(
             dates: scheduleDates,
             timeframe: timeframe,
-            section: section
+            section: section,
+            notificationEnabled: notificationEnabled,
+            notificationTime: notificationTime
         )
 
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
@@ -727,6 +770,8 @@ struct AddBar: View {
         scheduleDates = []
         scheduleExpanded = false
         optionsExpanded = false
+        notificationEnabled = false
+        notificationExpanded = false
         priority = .low
         hasGeneratedBreakdown = false
 

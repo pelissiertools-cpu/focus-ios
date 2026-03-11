@@ -373,7 +373,7 @@ struct BacklogView: View {
                         onSave: { result in
                             guard case .task(let r) = result else { return }
                             _Concurrency.Task { @MainActor in
-                                await taskListVM.createTaskWithSchedules(
+                                let taskId = await taskListVM.createTaskWithSchedules(
                                     title: r.title,
                                     categoryId: r.categoryId,
                                     priority: r.priority,
@@ -385,6 +385,9 @@ struct BacklogView: View {
                                     hasScheduledTime: false,
                                     scheduledTime: nil
                                 )
+                                if let taskId {
+                                    r.schedule?.scheduleNotificationIfNeeded(taskId: taskId, taskTitle: r.title)
+                                }
                                 if r.schedule != nil {
                                     await focusViewModel.fetchSchedules()
                                 }

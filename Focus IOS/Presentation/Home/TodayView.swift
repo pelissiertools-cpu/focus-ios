@@ -1146,14 +1146,16 @@ private enum TodayItemEntry: Identifiable {
 enum OverdueDateFormatter {
     static func format(_ date: Date) -> String {
         let calendar = Calendar.current
-        let today = calendar.startOfDay(for: Date())
-        let scheduleDay = calendar.startOfDay(for: date)
 
-        if calendar.isDate(scheduleDay, inSameDayAs: calendar.date(byAdding: .day, value: -1, to: today)!) {
+        if calendar.isDateInToday(date) {
+            return "Today"
+        } else if calendar.isDateInTomorrow(date) {
+            return "Tomorrow"
+        } else if calendar.isDateInYesterday(date) {
             return "Yesterday"
         } else {
             let formatter = DateFormatter()
-            formatter.dateFormat = "yyyy-MM-dd"
+            formatter.dateFormat = "MMM d"
             return formatter.string(from: date)
         }
     }

@@ -29,6 +29,7 @@ struct SettingsView: View {
     // Appearance picker state
     @State private var showAppearancePicker = false
     @EnvironmentObject var appearanceManager: AppearanceManager
+    @EnvironmentObject var notificationManager: NotificationManager
 
     private var userEmail: String {
         authService.currentUser?.email ?? ""
@@ -110,16 +111,28 @@ struct SettingsView: View {
                             .padding(.leading, AppStyle.Layout.touchTarget)
 
                         // Notifications row
-                        Button {
-                            // Placeholder
-                        } label: {
-                            settingsRow(
-                                icon: "bell",
-                                title: "Notifications",
-                                showChevron: true
-                            )
+                        HStack(spacing: AppStyle.Spacing.comfortable) {
+                            Image(systemName: notificationManager.isEnabled ? "bell.badge" : "bell")
+                                .font(.inter(.body))
+                                .foregroundStyle(.primary)
+                                .frame(width: AppStyle.Layout.pillButton)
+
+                            Text("Notifications")
+                                .font(.inter(.body))
+
+                            Spacer()
+
+                            Toggle("", isOn: $notificationManager.isEnabled)
+                                .labelsHidden()
+                                .tint(Color.appRed)
                         }
-                        .buttonStyle(.plain)
+                        .padding(.horizontal, AppStyle.Spacing.section)
+                        .padding(.vertical, AppStyle.Spacing.content)
+                        .onChange(of: notificationManager.isEnabled) { _, newValue in
+                            if newValue && !notificationManager.systemAuthorized {
+                                notificationManager.checkSystemAuthorization()
+                            }
+                        }
                     }
                     .clipShape(RoundedRectangle(cornerRadius: 12))
                     .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 12))
@@ -500,5 +513,6 @@ private struct SettingsAlertOverlay<Fields: View>: View {
         SettingsView()
             .environmentObject(AuthService())
             .environmentObject(LanguageManager.shared)
+            .environmentObject(NotificationManager.shared)
     }
 }

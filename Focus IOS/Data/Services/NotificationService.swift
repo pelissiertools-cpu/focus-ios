@@ -19,6 +19,8 @@ class NotificationService {
     }
 
     func scheduleNotification(taskId: UUID, title: String, date: Date) {
+        // Don't schedule if user has disabled notifications
+        guard NotificationManager.shared.isEnabled else { return }
         // Don't schedule notifications in the past
         guard date > Date() else { return }
 

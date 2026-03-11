@@ -15,13 +15,14 @@ struct Focus_IOSApp: App {
     @StateObject private var focusViewModel: FocusTabViewModel
     @StateObject private var languageManager = LanguageManager.shared
     @StateObject private var appearanceManager = AppearanceManager.shared
+    @StateObject private var notificationManager = NotificationManager.shared
 
     init() {
         let auth = AuthService()
         _authService = StateObject(wrappedValue: auth)
         _focusViewModel = StateObject(wrappedValue: FocusTabViewModel(authService: auth))
 
-        NotificationService.shared.requestPermission()
+        // Permission is now managed via NotificationManager toggle in Settings
 
         #if DEBUG
         for family in UIFont.familyNames.sorted() where family.contains("Inter") {
@@ -47,6 +48,7 @@ struct Focus_IOSApp: App {
             }
             .environmentObject(languageManager)
             .environmentObject(appearanceManager)
+            .environmentObject(notificationManager)
             .environment(\.locale, languageManager.locale)
             .preferredColorScheme(appearanceManager.currentAppearance.colorScheme)
             .onOpenURL { url in

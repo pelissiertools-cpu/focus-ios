@@ -73,12 +73,6 @@ struct AddProjectBar: View {
                     .padding(.horizontal, AppStyle.Spacing.content)
 
                 VStack(alignment: .leading, spacing: AppStyle.Spacing.comfortable) {
-                    Picker("Section", selection: $section) {
-                        Text("Focus").tag(Section.focus)
-                        Text("To-Do").tag(Section.todo)
-                    }
-                    .pickerStyle(.segmented)
-
                     UnifiedCalendarPicker(
                         selectedDates: $scheduleDates,
                         selectedTimeframe: $timeframe

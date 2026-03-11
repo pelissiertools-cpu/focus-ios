@@ -72,7 +72,7 @@ struct NotificationToggleRow: View {
                 Divider()
                     .padding(.horizontal, AppStyle.Spacing.content)
 
-                TimeWheelPicker(selection: $selectedTime, minuteInterval: 1)
+                TimeWheelPicker(selection: $selectedTime, minuteInterval: 5)
                     .frame(height: 200)
                     .padding(.horizontal, AppStyle.Spacing.content)
                     .padding(.vertical, AppStyle.Spacing.compact)

@@ -15,7 +15,7 @@ class NotificationService {
     private init() {}
 
     func requestPermission() {
-        center.requestAuthorization(options: [.alert, .sound, .badge]) { _, _ in }
+        center.requestAuthorization(options: [.alert, .sound, .badge, .timeSensitive]) { _, _ in }
     }
 
     func scheduleNotification(taskId: UUID, title: String, date: Date) {
@@ -26,6 +26,7 @@ class NotificationService {
         content.title = title
         content.body = formatNotificationDate(date)
         content.sound = .default
+        content.interruptionLevel = .timeSensitive
 
         let components = Calendar.current.dateComponents(
             [.year, .month, .day, .hour, .minute],

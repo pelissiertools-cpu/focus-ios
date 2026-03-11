@@ -91,19 +91,8 @@ struct ScheduleSelectionSheet: View {
                         .background(Color(.secondarySystemGroupedBackground))
                         .clipShape(RoundedRectangle(cornerRadius: 12))
 
-                        // Section picker + calendar card
+                        // Calendar card
                         VStack(spacing: 0) {
-                            Picker("Section", selection: $selectedSection) {
-                                Text("Focus").tag(Section.focus)
-                                Text("To-Do").tag(Section.todo)
-                            }
-                            .pickerStyle(.segmented)
-                            .padding(.horizontal, AppStyle.Spacing.content)
-                            .padding(.top, AppStyle.Spacing.comfortable)
-                            .padding(.bottom, AppStyle.Spacing.compact)
-
-                            Divider()
-
                             UnifiedCalendarPicker(
                                 selectedDates: $selectedDates,
                                 selectedTimeframe: $selectedTimeframe

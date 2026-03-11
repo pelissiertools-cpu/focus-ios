@@ -704,19 +704,6 @@ struct TaskDetailsDrawer<VM: TaskEditingViewModel>: View {
     @ViewBuilder
     private var inlineScheduleCard: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Section picker (Focus/To-Do)
-            Picker("Section", selection: $scheduleSection) {
-                Text("Focus").tag(Section.focus)
-                Text("To-Do").tag(Section.todo)
-            }
-            .pickerStyle(.segmented)
-            .padding(.horizontal, AppStyle.Spacing.content)
-            .padding(.top, AppStyle.Spacing.comfortable)
-            .padding(.bottom, AppStyle.Spacing.compact)
-
-            Divider()
-                .padding(.horizontal, AppStyle.Spacing.content)
-
             // Calendar picker
             ScrollView {
                 UnifiedCalendarPicker(

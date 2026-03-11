@@ -53,14 +53,6 @@ struct BatchScheduleSheet<VM: LogFilterable>: View {
                             .font(.inter(.headline))
                     }
 
-                    SwiftUI.Section("Section") {
-                        Picker("Section", selection: $selectedSection) {
-                            Text("Focus").tag(Section.focus)
-                            Text("To-Do").tag(Section.todo)
-                        }
-                        .pickerStyle(.segmented)
-                    }
-
                     SwiftUI.Section("Select Dates") {
                         UnifiedCalendarPicker(
                             selectedDates: $selectedDates,

@@ -242,10 +242,10 @@ struct DayCell: View {
     }
 
     private func toggleSelection() {
-        if let existingDate = selectedDates.first(where: { calendar.isDate($0, inSameDayAs: date) }) {
-            selectedDates.remove(existingDate)
+        if selectedDates.first(where: { calendar.isDate($0, inSameDayAs: date) }) != nil {
+            selectedDates = []
         } else {
-            selectedDates.insert(normalizedDate)
+            selectedDates = [normalizedDate]
         }
     }
 }
@@ -502,16 +502,17 @@ struct WeekPillView: View {
     }
 
     private func toggleSelection() {
-        if let existingDate = selectedDates.first(where: { date in
+        let isAlreadySelected = selectedDates.contains(where: { date in
             let dateWeek = calendar.component(.weekOfYear, from: date)
             let dateYear = calendar.component(.yearForWeekOfYear, from: date)
             let weekStartWeek = calendar.component(.weekOfYear, from: weekStart)
             let weekStartYear = calendar.component(.yearForWeekOfYear, from: weekStart)
             return dateWeek == weekStartWeek && dateYear == weekStartYear
-        }) {
-            selectedDates.remove(existingDate)
+        })
+        if isAlreadySelected {
+            selectedDates = []
         } else {
-            selectedDates.insert(weekStart)
+            selectedDates = [weekStart]
         }
     }
 }
@@ -732,14 +733,15 @@ struct MonthButton: View {
     private func toggleSelection() {
         guard let date = monthDate else { return }
 
-        if let existingDate = selectedDates.first(where: { d in
+        let isAlreadySelected = selectedDates.contains(where: { d in
             let dateMonth = calendar.component(.month, from: d)
             let dateYear = calendar.component(.year, from: d)
             return dateMonth == monthIndex + 1 && dateYear == displayYear
-        }) {
-            selectedDates.remove(existingDate)
+        })
+        if isAlreadySelected {
+            selectedDates = []
         } else {
-            selectedDates.insert(date)
+            selectedDates = [date]
         }
     }
 }
@@ -831,12 +833,13 @@ struct YearButton: View {
 
         guard let yearDate = calendar.date(from: components) else { return }
 
-        if let existingDate = selectedDates.first(where: { date in
+        let isAlreadySelected = selectedDates.contains(where: { date in
             calendar.component(.year, from: date) == year
-        }) {
-            selectedDates.remove(existingDate)
+        })
+        if isAlreadySelected {
+            selectedDates = []
         } else {
-            selectedDates.insert(yearDate)
+            selectedDates = [yearDate]
         }
     }
 }

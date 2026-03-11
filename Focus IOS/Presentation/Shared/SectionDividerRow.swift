@@ -66,6 +66,14 @@ struct SectionDividerRow: View {
         } message: {
             Text("This will remove the section header. Items will not be deleted.")
         }
+        .onAppear {
+            if editingSectionId == section.id {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    isEditing = true
+                    editingSectionId = nil
+                }
+            }
+        }
         .onChange(of: editingSectionId) { _, newId in
             if newId == section.id {
                 isEditing = true
@@ -80,9 +88,6 @@ struct SectionDividerRow: View {
     private func saveSectionTitle() {
         let trimmed = sectionTitle.trimmingCharacters(in: .whitespaces)
         if trimmed.isEmpty {
-            _Concurrency.Task {
-                await onDelete(section)
-            }
             return
         }
         guard trimmed != section.title else { return }

@@ -14,6 +14,7 @@ struct QuickListsPage: View {
     @State private var listToDelete: FocusTask?
     @State private var selectedList: FocusTask?
     @State private var editingSectionId: UUID?
+    @State private var scrollToSectionId: UUID?
     @State private var showingAddBar = false
 
     private let authService: AuthService
@@ -28,6 +29,7 @@ struct QuickListsPage: View {
         ZStack {
             Color.appBackground.ignoresSafeArea()
 
+            ScrollViewReader { proxy in
             List {
                 HStack(spacing: AppStyle.Spacing.medium) {
                     Image(systemName: "checklist")
@@ -71,6 +73,7 @@ struct QuickListsPage: View {
                                     await viewModel.deleteSection(section)
                                 }
                             )
+                            .id(item.id)
                             .listRowInsets(AppStyle.Insets.row)
                             .listRowBackground(Color.clear)
                             .listRowSeparator(.hidden)
@@ -97,7 +100,7 @@ struct QuickListsPage: View {
                 }
 
                 Color.clear
-                    .frame(height: listsViewModel.isEditMode ? 100 : AppStyle.Spacing.page)
+                    .frame(height: listsViewModel.isEditMode ? 100 : 500)
                     .listRowInsets(EdgeInsets())
                     .listRowSeparator(.hidden)
                     .listRowBackground(Color.clear)
@@ -109,6 +112,17 @@ struct QuickListsPage: View {
             .simultaneousGesture(TapGesture().onEnded {
                 UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
             })
+            .onChange(of: scrollToSectionId) { _, newId in
+                if let sectionId = newId {
+                    scrollToSectionId = nil
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        withAnimation(.easeInOut(duration: 0.25)) {
+                            proxy.scrollTo(sectionId, anchor: UnitPoint(x: 0.5, y: 0.75))
+                        }
+                    }
+                }
+            }
+            }
 
             if listsViewModel.isEditMode {
                 EditModeActionBar(viewModel: listsViewModel)
@@ -279,6 +293,7 @@ struct QuickListsPage: View {
                                 guard let userId = authService.currentUser?.id else { return }
                                 if let section = await viewModel.createSection(type: .list, userId: userId) {
                                     editingSectionId = section.id
+                                    scrollToSectionId = section.id
                                 }
                             }
                         } label: {

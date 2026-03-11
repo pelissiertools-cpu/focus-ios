@@ -15,6 +15,7 @@ struct ProjectContentView: View {
     @State private var projectTitle: String
     @State private var projectNotes: String
     @State private var editingSectionId: UUID?
+    @State private var scrollToSectionId: UUID?
     @FocusState private var isTitleFocused: Bool
     @FocusState private var isNotesFocused: Bool
 
@@ -136,6 +137,7 @@ struct ProjectContentView: View {
                                     projectId: project.id,
                                     editingSectionId: $editingSectionId
                                 )
+                                .id(section.id)
                                 .listRowInsets(AppStyle.Insets.row)
                                 .listRowBackground(Color.clear)
                                 .listRowSeparator(.hidden)
@@ -228,7 +230,7 @@ struct ProjectContentView: View {
                     }
 
                     Color.clear
-                        .frame(height: 200)
+                        .frame(height: 500)
                         .listRowInsets(EdgeInsets())
                         .listRowBackground(Color.clear)
                         .listRowSeparator(.hidden)
@@ -249,6 +251,16 @@ struct ProjectContentView: View {
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                             withAnimation(.easeInOut(duration: 0.25)) {
                                 proxy.scrollTo(targetId, anchor: UnitPoint(x: 0.5, y: 0.75))
+                            }
+                        }
+                    }
+                }
+                .onChange(of: scrollToSectionId) { _, newId in
+                    if let sectionId = newId {
+                        scrollToSectionId = nil
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                            withAnimation(.easeInOut(duration: 0.25)) {
+                                proxy.scrollTo(sectionId, anchor: UnitPoint(x: 0.5, y: 0.75))
                             }
                         }
                     }
@@ -331,6 +343,7 @@ struct ProjectContentView: View {
                                 if let tasks = viewModel.projectTasksMap[project.id],
                                    let newSection = tasks.last(where: { $0.isSection }) {
                                     editingSectionId = newSection.id
+                                    scrollToSectionId = newSection.id
                                 }
                             }
                         } label: {
@@ -695,6 +708,14 @@ struct ProjectSectionRow: View {
         } message: {
             Text("This will remove the section header. Tasks will not be deleted.")
         }
+        .onAppear {
+            if editingSectionId == section.id {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    isEditing = true
+                    editingSectionId = nil
+                }
+            }
+        }
         .onChange(of: editingSectionId) { _, newId in
             if newId == section.id {
                 isEditing = true
@@ -709,9 +730,6 @@ struct ProjectSectionRow: View {
     private func saveSectionTitle() {
         let trimmed = sectionTitle.trimmingCharacters(in: .whitespaces)
         if trimmed.isEmpty {
-            _Concurrency.Task {
-                await viewModel.deleteSection(section, projectId: projectId)
-            }
             return
         }
         guard trimmed != section.title else { return }

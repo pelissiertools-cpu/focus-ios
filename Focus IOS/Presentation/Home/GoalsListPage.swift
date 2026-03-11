@@ -14,6 +14,7 @@ struct GoalsListPage: View {
     @State private var goalToDelete: FocusTask?
     @State private var selectedGoal: FocusTask?
     @State private var editingSectionId: UUID?
+    @State private var scrollToSectionId: UUID?
     @State private var showingCreateGoal = false
 
     private let authService: AuthService
@@ -28,6 +29,7 @@ struct GoalsListPage: View {
         ZStack {
             Color.appBackground.ignoresSafeArea()
 
+            ScrollViewReader { proxy in
             List {
                 HStack(spacing: AppStyle.Spacing.medium) {
                     Image(systemName: "target")
@@ -78,6 +80,7 @@ struct GoalsListPage: View {
                                     await viewModel.deleteSection(section)
                                 }
                             )
+                            .id(item.id)
                             .listRowInsets(AppStyle.Insets.row)
                             .listRowBackground(Color.clear)
                             .listRowSeparator(.hidden)
@@ -104,7 +107,7 @@ struct GoalsListPage: View {
                 }
 
                 Color.clear
-                    .frame(height: goalsViewModel.isEditMode ? 100 : AppStyle.Spacing.page)
+                    .frame(height: goalsViewModel.isEditMode ? 100 : 500)
                     .listRowInsets(EdgeInsets())
                     .listRowSeparator(.hidden)
                     .listRowBackground(Color.clear)
@@ -116,6 +119,17 @@ struct GoalsListPage: View {
             .simultaneousGesture(TapGesture().onEnded {
                 UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
             })
+            .onChange(of: scrollToSectionId) { _, newId in
+                if let sectionId = newId {
+                    scrollToSectionId = nil
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        withAnimation(.easeInOut(duration: 0.25)) {
+                            proxy.scrollTo(sectionId, anchor: UnitPoint(x: 0.5, y: 0.75))
+                        }
+                    }
+                }
+            }
+            }
 
             if goalsViewModel.isEditMode {
                 EditModeActionBar(viewModel: goalsViewModel)
@@ -243,6 +257,7 @@ struct GoalsListPage: View {
                                     guard let userId = authService.currentUser?.id else { return }
                                     if let section = await viewModel.createSection(type: .goal, userId: userId) {
                                         editingSectionId = section.id
+                                        scrollToSectionId = section.id
                                     }
                                 }
                             } label: {

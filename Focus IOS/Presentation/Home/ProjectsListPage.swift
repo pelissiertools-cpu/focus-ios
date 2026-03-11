@@ -14,6 +14,7 @@ struct ProjectsListPage: View {
     @State private var projectToDelete: FocusTask?
     @State private var selectedProject: FocusTask?
     @State private var editingSectionId: UUID?
+    @State private var scrollToSectionId: UUID?
     @State private var showingAddBar = false
     @State private var showArchiveConfirmation = false
 
@@ -29,6 +30,7 @@ struct ProjectsListPage: View {
         ZStack {
             Color.appBackground.ignoresSafeArea()
 
+            ScrollViewReader { proxy in
             List {
                 HStack(spacing: AppStyle.Spacing.medium) {
                     Image("ProjectIcon")
@@ -82,6 +84,7 @@ struct ProjectsListPage: View {
                                     await viewModel.deleteSection(section)
                                 }
                             )
+                            .id(item.id)
                             .listRowInsets(AppStyle.Insets.row)
                             .listRowBackground(Color.clear)
                             .listRowSeparator(.hidden)
@@ -162,7 +165,7 @@ struct ProjectsListPage: View {
                 }
 
                 Color.clear
-                    .frame(height: projectsViewModel.isEditMode ? 100 : AppStyle.Spacing.page)
+                    .frame(height: projectsViewModel.isEditMode ? 100 : 500)
                     .listRowInsets(EdgeInsets())
                     .listRowSeparator(.hidden)
                     .listRowBackground(Color.clear)
@@ -174,6 +177,17 @@ struct ProjectsListPage: View {
             .simultaneousGesture(TapGesture().onEnded {
                 UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
             })
+            .onChange(of: scrollToSectionId) { _, newId in
+                if let sectionId = newId {
+                    scrollToSectionId = nil
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        withAnimation(.easeInOut(duration: 0.25)) {
+                            proxy.scrollTo(sectionId, anchor: UnitPoint(x: 0.5, y: 0.75))
+                        }
+                    }
+                }
+            }
+            }
 
             if projectsViewModel.isEditMode {
                 EditModeActionBar(viewModel: projectsViewModel)
@@ -363,6 +377,7 @@ struct ProjectsListPage: View {
                                 guard let userId = authService.currentUser?.id else { return }
                                 if let section = await viewModel.createSection(type: .project, userId: userId) {
                                     editingSectionId = section.id
+                                    scrollToSectionId = section.id
                                 }
                             }
                         } label: {

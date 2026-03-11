@@ -678,6 +678,9 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
 
             try await scheduleRepository.updateSchedule(updatedSchedule)
 
+            // Sync notification date to new schedule date
+            await syncNotificationDate(taskId: schedule.taskId, newScheduleDate: newDate)
+
             // Refresh to update view
             await fetchSchedules()
             return true
@@ -685,6 +688,26 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
             errorMessage = error.localizedDescription
             return false
         }
+    }
+
+    /// When a schedule date changes, move the notification to the same time on the new date
+    func syncNotificationDate(taskId: UUID, newScheduleDate: Date) async {
+        let calendar = Calendar.current
+        guard let tasks = try? await taskRepository.fetchTasksByIds([taskId]),
+              let task = tasks.first,
+              task.notificationEnabled,
+              let oldNotifDate = task.notificationDate else { return }
+
+        let timeComponents = calendar.dateComponents([.hour, .minute], from: oldNotifDate)
+        var newComponents = calendar.dateComponents([.year, .month, .day], from: newScheduleDate)
+        newComponents.hour = timeComponents.hour
+        newComponents.minute = timeComponents.minute
+
+        guard let newNotifDate = calendar.date(from: newComponents) else { return }
+
+        try? await taskRepository.updateTaskNotification(id: taskId, enabled: true, date: newNotifDate)
+        NotificationService.shared.cancelNotification(taskId: taskId)
+        NotificationService.shared.scheduleNotification(taskId: taskId, title: task.title, date: newNotifDate)
     }
 
     /// Check if Focus section has room at a specific date/timeframe

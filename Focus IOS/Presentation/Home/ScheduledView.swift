@@ -162,49 +162,24 @@ struct ScheduledView: View {
             return dayFormatter.string(from: date)
         }
 
-        // 1. Today + next 6 days (7 day slots, always visible & droppable)
-        for offset in 0..<7 {
-            let day = calendar.date(byAdding: .day, value: offset, to: anchor)!
+        // 1. Every day from anchor to end of month (always visible & droppable)
+        var startOfNextMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: anchor))!
+        startOfNextMonth = calendar.date(byAdding: .month, value: 1, to: startOfNextMonth)!
+
+        var offset = 0
+        var day = anchor
+        while day < startOfNextMonth {
             sections.append(ScheduledSection(
                 id: "day-\(offset)-\(day.timeIntervalSince1970)",
                 title: dayLabel(for: day),
                 isRange: false, isSubDate: false,
                 items: itemsByDate[day] ?? [], date: day, alwaysVisible: true
             ))
+            offset += 1
+            day = calendar.date(byAdding: .day, value: 1, to: day)!
         }
 
-        // 2. "Rest of [Month]" — dates after the 7-day window but still in anchor's month
-        let day7 = calendar.date(byAdding: .day, value: 7, to: anchor)!
-        var startOfNextMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: anchor))!
-        startOfNextMonth = calendar.date(byAdding: .month, value: 1, to: startOfNextMonth)!
-
-        let restOfMonthDates = itemsByDate.keys
-            .filter { $0 >= day7 && $0 < startOfNextMonth }
-            .sorted()
-
-        if !restOfMonthDates.isEmpty {
-            dayFormatter.dateFormat = "MMMM"
-            let monthName = dayFormatter.string(from: anchor)
-            sections.append(ScheduledSection(
-                id: "rest-of-\(monthName)", title: "Rest of \(monthName)",
-                isRange: true, isSubDate: false,
-                items: [], date: nil, alwaysVisible: false
-            ))
-            for date in restOfMonthDates {
-                dayFormatter.dateFormat = "EEE"
-                let dn = dayFormatter.string(from: date)
-                dayFormatter.dateFormat = "MMM d"
-                let ds = dayFormatter.string(from: date)
-                sections.append(ScheduledSection(
-                    id: "sub-\(date.timeIntervalSince1970)",
-                    title: "\(dn) \(ds)",
-                    isRange: false, isSubDate: true,
-                    items: itemsByDate[date] ?? [], date: date, alwaysVisible: false
-                ))
-            }
-        }
-
-        // 3. Future months (relative to anchor's month)
+        // 2. Future months (relative to anchor's month)
         let futureDates = itemsByDate.keys
             .filter { $0 >= startOfNextMonth }
             .sorted()
@@ -1478,12 +1453,14 @@ struct ScheduledView: View {
             sortUpdates.append((id: entry.scheduleId, sortOrder: newOrder))
         }
 
-        // Persist: date change + sort orders
+        // Persist: date change + sort orders + sync notification
         let movedScheduleId = movedEntry.scheduleId
+        let movedTaskId = movedEntry.id
         _Concurrency.Task {
             let repo = ScheduleRepository()
             try? await repo.updateScheduleDateAndSortOrder(id: movedScheduleId, date: newDate, sortOrder: insertAt + 1)
             try? await repo.updateScheduleSortOrders(sortUpdates)
+            await focusViewModel.syncNotificationDate(taskId: movedTaskId, newScheduleDate: newDate)
         }
     }
 

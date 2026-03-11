@@ -44,7 +44,7 @@ struct NotificationToggleRow: View {
                                 .font(.inter(.body, weight: .medium))
                                 .foregroundColor(.focusBlue)
                         } else {
-                            Text("Notification")
+                            Text("Reminder")
                                 .font(.inter(.body, weight: .medium))
                                 .foregroundColor(.primary)
                         }

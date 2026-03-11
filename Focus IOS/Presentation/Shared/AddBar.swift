@@ -463,7 +463,39 @@ struct AddBar: View {
             Divider()
                 .padding(.horizontal, AppStyle.Spacing.content)
 
-            if !notificationExpanded {
+            if notificationExpanded {
+                // Collapsed date summary row
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        notificationExpanded = false
+                    }
+                } label: {
+                    HStack {
+                        Image(systemName: "calendar")
+                            .font(.inter(.subheadline))
+                            .foregroundColor(.secondary)
+                            .frame(width: 24)
+
+                        Text("Date")
+                            .font(.inter(.body, weight: .medium))
+                            .foregroundColor(.primary)
+
+                        Text(scheduleDateLabel)
+                            .font(.inter(.body, weight: .medium))
+                            .foregroundColor(.focusBlue)
+
+                        Image(systemName: "chevron.down")
+                            .font(.inter(.caption2))
+                            .foregroundColor(.secondary)
+                            .rotationEffect(.degrees(0))
+
+                        Spacer()
+                    }
+                    .padding(.horizontal, AppStyle.Spacing.content)
+                    .padding(.vertical, AppStyle.Spacing.comfortable)
+                }
+                .buttonStyle(.plain)
+            } else {
                 VStack(alignment: .leading, spacing: AppStyle.Spacing.comfortable) {
                     UnifiedCalendarPicker(
                         selectedDates: $scheduleDates,

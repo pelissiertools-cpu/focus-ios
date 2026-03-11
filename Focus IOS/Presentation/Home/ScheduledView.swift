@@ -924,7 +924,6 @@ struct ScheduledView: View {
                     guard case .task(let r) = result else { return }
                     _Concurrency.Task { @MainActor in
                         // Default to today if no dates selected
-                        let scheduleEnabled = r.schedule != nil
                         let dates = r.schedule?.dates ?? [Calendar.current.startOfDay(for: Date())]
                         let timeframe = r.schedule?.timeframe ?? .daily
                         let section = r.schedule?.section ?? .todo

@@ -186,6 +186,54 @@ class AuthService: ObservableObject {
         }
     }
 
+    // MARK: - Onboarding / User Metadata
+
+    /// Whether the current user has completed onboarding (from Supabase user_metadata).
+    var hasCompletedOnboarding: Bool {
+        currentUser?.userMetadata["has_completed_onboarding"]?.boolValue ?? false
+    }
+
+    /// The user's display name from auth provider metadata (Apple/Google).
+    var displayName: String? {
+        guard case .string(let name) = currentUser?.userMetadata["full_name"],
+              !name.isEmpty else {
+            return nil
+        }
+        return name
+    }
+
+    /// Update the user's display name in Supabase user_metadata.
+    func updateDisplayName(_ name: String) async throws {
+        isLoading = true
+        errorMessage = nil
+        do {
+            self.currentUser = try await supabase.auth.update(
+                user: UserAttributes(data: ["full_name": .string(name)])
+            )
+            self.isLoading = false
+        } catch {
+            self.isLoading = false
+            self.errorMessage = error.localizedDescription
+            throw error
+        }
+    }
+
+    /// Mark onboarding as completed in Supabase user_metadata.
+    func markOnboardingCompleted() async throws {
+        isLoading = true
+        errorMessage = nil
+        do {
+            self.currentUser = try await supabase.auth.update(
+                user: UserAttributes(data: ["has_completed_onboarding": .bool(true)])
+            )
+            self.isLoading = false
+        } catch {
+            self.isLoading = false
+            self.errorMessage = error.localizedDescription
+            throw error
+        }
+    }
+
     /// Sign out the current user
     func signOut() async throws {
         isLoading = true

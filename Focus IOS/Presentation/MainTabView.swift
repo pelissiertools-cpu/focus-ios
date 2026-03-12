@@ -13,8 +13,18 @@ struct MainTabView: View {
     @StateObject private var homeViewModel = HomeViewModel()
 
     var body: some View {
-        HomeView(viewModel: homeViewModel, authService: authService)
-            .environmentObject(focusViewModel)
+        TabView {
+            HomeView(viewModel: homeViewModel, authService: authService)
+                .environmentObject(focusViewModel)
+                .tabItem {
+                    Label("Home", systemImage: "house.fill")
+                }
+
+            OnboardingContainerView()
+                .tabItem {
+                    Label("Onboarding", systemImage: "sparkles")
+                }
+        }
     }
 }
 

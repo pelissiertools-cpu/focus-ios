@@ -1069,6 +1069,109 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
         }
     }
 
+    /// Move selected content tasks to a different section within the same project.
+    /// Pass `nil` for sectionId to move tasks before the first section ("No section").
+    func batchMoveContentTasksToSection(sectionId: UUID?, projectId: UUID) async {
+        guard !selectedContentTaskIds.isEmpty else { return }
+        var allTasks = projectTasksMap[projectId] ?? []
+        var uncompleted = allTasks.filter { !$0.isCompleted && $0.parentTaskId == nil }.sorted { $0.sortOrder < $1.sortOrder }
+
+        let selectedIds = selectedContentTaskIds
+        // Remove selected tasks from their current positions
+        let movedTasks = uncompleted.filter { selectedIds.contains($0.id) && !$0.isSection }
+        uncompleted.removeAll { selectedIds.contains($0.id) && !$0.isSection }
+
+        guard !movedTasks.isEmpty else { return }
+
+        // Find the insertion point (end of target section)
+        let insertionIndex: Int
+        if let sectionId = sectionId {
+            if let sectionIdx = uncompleted.firstIndex(where: { $0.id == sectionId }) {
+                let rest = uncompleted[(sectionIdx + 1)...]
+                insertionIndex = rest.firstIndex(where: { $0.isSection }) ?? uncompleted.count
+            } else {
+                insertionIndex = uncompleted.count
+            }
+        } else {
+            // "No section" = before the first section header
+            insertionIndex = uncompleted.firstIndex(where: { $0.isSection }) ?? uncompleted.count
+        }
+
+        // Insert moved tasks at the insertion point
+        uncompleted.insert(contentsOf: movedTasks, at: insertionIndex)
+
+        // Reassign sort orders sequentially
+        var sortUpdates: [(id: UUID, sortOrder: Int)] = []
+        for (i, item) in uncompleted.enumerated() {
+            if item.sortOrder != i {
+                sortUpdates.append((id: item.id, sortOrder: i))
+            }
+            if let idx = allTasks.firstIndex(where: { $0.id == item.id }) {
+                allTasks[idx].sortOrder = i
+            }
+        }
+
+        projectTasksMap[projectId] = allTasks
+        exitContentEditMode()
+
+        // Persist
+        if !sortUpdates.isEmpty {
+            do {
+                try await repository.updateSortOrders(sortUpdates)
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+        }
+    }
+
+    /// Move selected content tasks to a different project.
+    func batchMoveContentTasksToProject(targetProjectId: UUID, sourceProjectId: UUID) async {
+        guard !selectedContentTaskIds.isEmpty else { return }
+        let selectedIds = selectedContentTaskIds
+
+        do {
+            // Determine starting sort order in target project
+            let targetTasks = projectTasksMap[targetProjectId] ?? []
+            var nextSortOrder = (targetTasks.map(\.sortOrder).max() ?? -1) + 1
+
+            let sourceTasks = projectTasksMap[sourceProjectId] ?? []
+            let tasksToMove = sourceTasks.filter { selectedIds.contains($0.id) && !$0.isSection }
+
+            for task in tasksToMove {
+                // Move the task
+                try await repository.assignToProject(taskId: task.id, projectId: targetProjectId, sortOrder: nextSortOrder)
+                nextSortOrder += 1
+
+                // Move subtasks too
+                if let subtasks = subtasksMap[task.id] {
+                    for subtask in subtasks {
+                        try await repository.assignToProject(taskId: subtask.id, projectId: targetProjectId, sortOrder: subtask.sortOrder)
+                    }
+                }
+            }
+
+            // Update local state: remove from source
+            let movedIds = Set(tasksToMove.map(\.id))
+            if var tasks = projectTasksMap[sourceProjectId] {
+                tasks.removeAll { movedIds.contains($0.id) }
+                projectTasksMap[sourceProjectId] = tasks
+            }
+            for id in movedIds {
+                subtasksMap.removeValue(forKey: id)
+            }
+
+            // If target project tasks are loaded, refresh them
+            if projectTasksMap[targetProjectId] != nil {
+                await fetchProjectTasks(for: targetProjectId)
+            }
+
+            exitContentEditMode()
+            NotificationCenter.default.post(name: .projectListChanged, object: nil)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
     // MARK: - Edit Mode (project cards)
 
     func enterEditMode() {

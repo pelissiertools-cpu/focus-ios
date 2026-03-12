@@ -394,8 +394,7 @@ struct ProjectContentView: View {
             .drawerStyle()
         }
         .sheet(isPresented: $viewModel.showContentBatchMovePicker) {
-            // Placeholder — to be wired later
-            Text("Move")
+            ContentBatchMoveSheet(viewModel: viewModel, projectId: project.id)
                 .drawerStyle()
         }
         // Task edit drawer

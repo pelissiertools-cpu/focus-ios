@@ -43,17 +43,17 @@ enum CoachMarkSection: String, CaseIterable {
     var description: String {
         switch self {
         case .today:
-            return "Tasks scheduled for today appear here. Drag to reorder and focus on what matters most."
+            return "Tasks scheduled for today appear here. Drag in main focus what matters most. Your main focus section is always visible on homeview."
         case .inbox:
-            return "A quick landing spot for new tasks. Triage them later into projects or schedule them."
+            return "A quick landing spot for your tasks. Use the sort by function to personalize your workflow. You can schedule them, group them into a project or even make a quick list."
         case .upcoming:
-            return "See what's ahead. Browse by day, week, or month and schedule tasks for the future."
+            return "See clearly what's ahead. Browse by timeframe and schedule tasks in a click. You can plan tasks for a week or month giving you more breathing room than specific days."
         case .backlog:
-            return "All your unfinished tasks in one place. Filter and search to find anything."
+            return "All your uncompleted tasks, projects and quick lists in one place. Filter and search to find anything quickly."
         case .projects:
-            return "Group related tasks into projects. Track progress and stay on top of larger goals."
+            return "Group related tasks into projects, create sections to help organize. Track progress and stay on top of larger goals."
         case .quickLists:
-            return "Simple checklists for groceries, packing, or any quick to-do. No scheduling needed."
+            return "Simple reusable checklists for your most common activities. Groceries, travel packing, returns. You can even schedule them."
         }
     }
 }

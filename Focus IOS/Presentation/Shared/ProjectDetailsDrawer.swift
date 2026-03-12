@@ -23,6 +23,7 @@ struct ProjectDetailsDrawer: View {
     @State private var pendingDeletions: Set<UUID> = []
     @FocusState private var isTitleFocused: Bool
     @FocusState private var isNewTaskFocused: Bool
+    @State private var isTasksExpanded = false
     @FocusState private var focusedTaskId: UUID?
     @Environment(\.dismiss) private var dismiss
 
@@ -144,13 +145,35 @@ struct ProjectDetailsDrawer: View {
     @ViewBuilder
     private var tasksCard: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Header: "Tasks" label + "Suggest Breakdown" button
+            // Header: "Tasks" label + count + collapse toggle + "Suggest Breakdown" button
             HStack {
-                Text("Tasks")
-                    .font(.inter(.subheadline, weight: .medium))
-                    .foregroundColor(.primary)
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        isTasksExpanded.toggle()
+                    }
+                } label: {
+                    HStack(spacing: AppStyle.Spacing.small) {
+                        Text("Tasks")
+                            .font(.inter(.subheadline, weight: .medium))
+                            .foregroundColor(.primary)
+
+                        if !projectTasks.isEmpty {
+                            Text("\(projectTasks.count)")
+                                .font(.inter(.caption, weight: .medium))
+                                .foregroundColor(.secondary)
+                        }
+
+                        Image(systemName: "chevron.down")
+                            .font(.inter(.caption2, weight: .semiBold))
+                            .foregroundColor(.secondary)
+                            .rotationEffect(.degrees(isTasksExpanded ? 0 : -90))
+                    }
+                }
+                .buttonStyle(.plain)
+
                 Spacer()
-                if !project.isCompleted {
+
+                if !project.isCompleted && projectTasks.isEmpty && draftSuggestions.isEmpty {
                     Button {
                         generateBreakdown()
                     } label: {
@@ -178,90 +201,92 @@ struct ProjectDetailsDrawer: View {
             .padding(.top, AppStyle.Spacing.comfortable)
             .padding(.bottom, AppStyle.Spacing.medium)
 
-            VStack(spacing: AppStyle.Spacing.content) {
-                ForEach(projectTasks) { task in
-                    compactTaskRow(task)
-                }
+            if isTasksExpanded {
+                VStack(spacing: AppStyle.Spacing.content) {
+                    ForEach(projectTasks) { task in
+                        compactTaskRow(task)
+                    }
 
-                // Draft AI suggestions (not yet saved)
-                ForEach(draftSuggestions) { draft in
-                    HStack(spacing: AppStyle.Spacing.compact) {
-                        Image(systemName: "sparkles")
-                            .font(.inter(.caption2))
-                            .foregroundColor(.purple.opacity(0.6))
+                    // Draft AI suggestions (not yet saved)
+                    ForEach(draftSuggestions) { draft in
+                        HStack(spacing: AppStyle.Spacing.compact) {
+                            Image(systemName: "sparkles")
+                                .font(.inter(.caption2))
+                                .foregroundColor(.purple.opacity(0.6))
 
-                        TextField("Task", text: draftBinding(for: draft.id))
-                            .font(.inter(.body))
-                            .textFieldStyle(.plain)
+                            TextField("Task", text: draftBinding(for: draft.id))
+                                .font(.inter(.body))
+                                .textFieldStyle(.plain)
 
-                        Button {
-                            withAnimation(.easeInOut(duration: 0.15)) {
-                                draftSuggestions.removeAll { $0.id == draft.id }
+                            Button {
+                                withAnimation(.easeInOut(duration: 0.15)) {
+                                    draftSuggestions.removeAll { $0.id == draft.id }
+                                }
+                            } label: {
+                                Image(systemName: "xmark.circle.fill")
+                                    .font(.inter(.caption))
+                                    .foregroundColor(.secondary)
                             }
-                        } label: {
-                            Image(systemName: "xmark.circle.fill")
-                                .font(.inter(.caption))
-                                .foregroundColor(.secondary)
+                            .buttonStyle(.plain)
                         }
-                        .buttonStyle(.plain)
+                    }
+
+                    // New task entry (shown when focused)
+                    if showNewTaskField || !newTaskTitle.isEmpty {
+                        HStack(spacing: AppStyle.Spacing.compact) {
+                            Image(systemName: "circle")
+                                .font(.inter(.caption2))
+                                .foregroundColor(.secondary.opacity(0.5))
+
+                            TextField("Task", text: $newTaskTitle)
+                                .font(.inter(.body))
+                                .textFieldStyle(.plain)
+                                .focused($isNewTaskFocused)
+                                .onAppear { isNewTaskFocused = true }
+                                .onSubmit { addTask() }
+
+                            Button {
+                                newTaskTitle = ""
+                                showNewTaskField = false
+                                isNewTaskFocused = false
+                            } label: {
+                                Image(systemName: "xmark.circle.fill")
+                                    .font(.inter(.caption))
+                                    .foregroundColor(.secondary)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+
+                    // "+ Task" pill button
+                    if !project.isCompleted {
+                        HStack {
+                            Button {
+                                if !newTaskTitle.trimmingCharacters(in: .whitespaces).isEmpty {
+                                    addTask()
+                                }
+                                showNewTaskField = true
+                                isNewTaskFocused = true
+                            } label: {
+                                HStack(spacing: AppStyle.Spacing.tiny) {
+                                    Image(systemName: "plus")
+                                        .font(.inter(size: 14, weight: .semiBold))
+                                    Text("Task")
+                                        .font(.inter(size: 14, weight: .semiBold))
+                                }
+                                .foregroundColor(.white)
+                                .padding(.horizontal, AppStyle.Spacing.comfortable)
+                                .padding(.vertical, AppStyle.Spacing.medium)
+                                .glassEffect(.regular.tint(.black).interactive(), in: .capsule)
+                            }
+                            .buttonStyle(.plain)
+                            Spacer()
+                        }
                     }
                 }
-
-                // New task entry (shown when focused)
-                if showNewTaskField || !newTaskTitle.isEmpty {
-                    HStack(spacing: AppStyle.Spacing.compact) {
-                        Image(systemName: "circle")
-                            .font(.inter(.caption2))
-                            .foregroundColor(.secondary.opacity(0.5))
-
-                        TextField("Task", text: $newTaskTitle)
-                            .font(.inter(.body))
-                            .textFieldStyle(.plain)
-                            .focused($isNewTaskFocused)
-                            .onAppear { isNewTaskFocused = true }
-                            .onSubmit { addTask() }
-
-                        Button {
-                            newTaskTitle = ""
-                            showNewTaskField = false
-                            isNewTaskFocused = false
-                        } label: {
-                            Image(systemName: "xmark.circle.fill")
-                                .font(.inter(.caption))
-                                .foregroundColor(.secondary)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-
-                // "+ Task" pill button
-                if !project.isCompleted {
-                    HStack {
-                        Button {
-                            if !newTaskTitle.trimmingCharacters(in: .whitespaces).isEmpty {
-                                addTask()
-                            }
-                            showNewTaskField = true
-                            isNewTaskFocused = true
-                        } label: {
-                            HStack(spacing: AppStyle.Spacing.tiny) {
-                                Image(systemName: "plus")
-                                    .font(.inter(size: 14, weight: .semiBold))
-                                Text("Task")
-                                    .font(.inter(size: 14, weight: .semiBold))
-                            }
-                            .foregroundColor(.white)
-                            .padding(.horizontal, AppStyle.Spacing.comfortable)
-                            .padding(.vertical, AppStyle.Spacing.medium)
-                            .glassEffect(.regular.tint(.black).interactive(), in: .capsule)
-                        }
-                        .buttonStyle(.plain)
-                        Spacer()
-                    }
-                }
+                .padding(.horizontal, AppStyle.Spacing.content)
+                .padding(.vertical, AppStyle.Spacing.medium)
             }
-            .padding(.horizontal, AppStyle.Spacing.content)
-            .padding(.vertical, AppStyle.Spacing.medium)
         }
         .background(Color(.secondarySystemGroupedBackground))
         .clipShape(RoundedRectangle(cornerRadius: 12))

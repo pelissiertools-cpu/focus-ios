@@ -48,10 +48,11 @@ struct BatchScheduleSheet<VM: LogFilterable>: View {
             )
         ) {
             ScrollViewReader { proxy in
-                Form {
+                List {
                     SwiftUI.Section("Items") {
                         Text("\(itemCount) item\(itemCount == 1 ? "" : "s") selected")
                             .font(.inter(.headline))
+                            .listRowBackground(Color(.secondarySystemGroupedBackground))
                     }
 
                     SwiftUI.Section("Select Dates") {
@@ -59,16 +60,19 @@ struct BatchScheduleSheet<VM: LogFilterable>: View {
                             selectedDates: $selectedDates,
                             selectedTimeframe: $selectedTimeframe
                         )
-                    }
+                        .listRowBackground(Color(.secondarySystemGroupedBackground))
 
-                    SwiftUI.Section {
                         NotificationToggleRow(
                             isEnabled: $notificationEnabled,
                             selectedTime: $notificationTime,
                             isExpanded: $notificationExpanded
                         )
+                        .listRowInsets(EdgeInsets())
+                        .listRowBackground(Color(.secondarySystemGroupedBackground))
                     }
                 }
+                .listStyle(.insetGrouped)
+                .scrollContentBackground(.hidden)
                 .alert("Error", isPresented: $showError) {
                     Button("OK") {}
                 } message: {

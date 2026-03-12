@@ -283,7 +283,7 @@ struct ProjectContentView: View {
                     } label: {
                         Text("Done")
                             .font(.inter(.body, weight: .medium))
-                            .foregroundColor(.appRed)
+                            .foregroundColor(.focusBlue)
                     }
                 } else {
                     Button {
@@ -324,7 +324,7 @@ struct ProjectContentView: View {
                     } label: {
                         Text(viewModel.allContentTasksSelected ? "Deselect All" : "Select All")
                             .font(.inter(.body, weight: .medium))
-                            .foregroundColor(.appRed)
+                            .foregroundColor(.focusBlue)
                     }
                 } else {
                     Menu {
@@ -388,7 +388,7 @@ struct ProjectContentView: View {
         .sheet(isPresented: $viewModel.showContentBatchScheduleSheet) {
             BatchScheduleSheet(
                 viewModel: viewModel,
-                tasks: viewModel.selectedContentTasks,
+                tasks: (viewModel.projectTasksMap[project.id] ?? []).filter { viewModel.selectedContentTaskIds.contains($0.id) },
                 onComplete: { viewModel.exitContentEditMode() }
             )
             .drawerStyle()
@@ -466,7 +466,7 @@ private struct ContentTaskRow: View {
     var body: some View {
         HStack(spacing: AppStyle.Spacing.comfortable) {
             if viewModel.contentEditMode {
-                Image(systemName: viewModel.selectedContentTaskIds.contains(task.id) ? "checkmark.circle.fill" : "circle")
+                Image(systemName: viewModel.selectedContentTaskIds.contains(task.id) ? "checkmark.circle.fill" : "circle.dashed")
                     .font(.inter(.title3))
                     .foregroundColor(viewModel.selectedContentTaskIds.contains(task.id) ? .appRed : .secondary)
                     .accessibilityLabel(viewModel.selectedContentTaskIds.contains(task.id) ? "Selected" : "Select")

@@ -85,13 +85,29 @@ struct HomeView: View {
                     VStack(alignment: .leading, spacing: AppStyle.Spacing.section) {
                         Color.clear.frame(height: 0).id("homeScrollTop")
                         // MARK: - Date Header
-                        VStack(alignment: .leading, spacing: 0) {
-                            Text(currentDayName)
-                                .font(.helveticaNeue(size: 23.5))
-                                .tracking(-0.245)
-                                .foregroundColor(.secondary)
-                            formattedDateView
-                                .foregroundColor(.secondary)
+                        HStack(alignment: .top, spacing: 10) {
+                            Button(action: {
+                                withAnimation(AppStyle.Anim.expand) {
+                                    showSettings = true
+                                }
+                            }) {
+                                Image(systemName: "person")
+                                    .font(.system(size: 14, weight: .medium))
+                                    .foregroundColor(.secondary)
+                                    .frame(width: 30, height: 30)
+                                    .background(Color.secondary.opacity(0.12), in: Circle())
+                            }
+                            .buttonStyle(.plain)
+                            .padding(.top, 2)
+
+                            VStack(alignment: .leading, spacing: 0) {
+                                Text(currentDayName)
+                                    .font(.helveticaNeue(size: 23.5))
+                                    .tracking(-0.245)
+                                    .foregroundColor(.secondary)
+                                formattedDateView
+                                    .foregroundColor(.secondary)
+                            }
                         }
                         .padding(.horizontal, AppStyle.Spacing.page)
                         .padding(.top, AppStyle.Spacing.compact)
@@ -882,18 +898,6 @@ struct HomeView: View {
                 // Bar background with notch
                 VStack(spacing: 0) {
                     HStack {
-                        // Profile button
-                        Button(action: {
-                            withAnimation(AppStyle.Anim.expand) {
-                                showSettings = true
-                            }
-                        }) {
-                            Image(systemName: "person")
-                                .font(.inter(.body, weight: .medium))
-                                .foregroundColor(.appText)
-                        }
-                        .buttonStyle(.plain)
-
                         Spacer()
 
                         // Search button

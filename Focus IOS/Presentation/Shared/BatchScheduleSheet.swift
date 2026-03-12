@@ -145,6 +145,7 @@ struct BatchScheduleSheet<VM: LogFilterable>: View {
 
             await focusViewModel.fetchSchedules()
             await viewModel.fetchScheduledTaskIds()
+            NotificationCenter.default.post(name: .schedulesChanged, object: nil)
 
             if let onComplete {
                 onComplete()

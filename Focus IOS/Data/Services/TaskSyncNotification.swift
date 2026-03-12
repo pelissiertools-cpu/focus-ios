@@ -11,6 +11,7 @@ import Foundation
 extension Notification.Name {
     static let taskCompletionChanged = Notification.Name("taskCompletionChanged")
     static let projectListChanged = Notification.Name("projectListChanged")
+    static let schedulesChanged = Notification.Name("schedulesChanged")
 }
 
 /// Keys for task sync notification userInfo

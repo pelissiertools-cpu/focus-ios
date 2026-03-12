@@ -83,7 +83,7 @@ struct TodayView: View {
     private var allTodayEntries: [TodayItemEntry] {
         var entries: [TodayItemEntry] = []
 
-        for task in taskListVM.uncompletedTasks where task.projectId == nil {
+        for task in taskListVM.uncompletedTasks {
             if let schedule = todaySchedules[task.id] {
                 entries.append(.task(task, scheduleId: schedule.scheduleId, sortOrder: schedule.sortOrder))
             }
@@ -530,6 +530,11 @@ struct TodayView: View {
         .task {
             await fetchTodayData()
             isLoading = false
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .schedulesChanged)) { _ in
+            _Concurrency.Task {
+                await fetchTodayData()
+            }
         }
     }
 

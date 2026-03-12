@@ -463,6 +463,10 @@ private struct ContentTaskRow: View {
         (viewModel.subtasksMap[task.id] ?? []).count
     }
 
+    private var isScheduled: Bool {
+        viewModel.scheduledTaskIds.contains(task.id)
+    }
+
     var body: some View {
         HStack(spacing: AppStyle.Spacing.comfortable) {
             if viewModel.contentEditMode {
@@ -478,10 +482,19 @@ private struct ContentTaskRow: View {
                     .strikethrough(displayCompleted)
                     .foregroundColor(displayCompleted ? .secondary : .primary)
 
-                if subtaskCount > 0 {
-                    Text("\(subtaskCount) subtask\(subtaskCount == 1 ? "" : "s")")
-                        .font(.inter(.caption))
-                        .foregroundColor(.secondary)
+                if subtaskCount > 0 || isScheduled {
+                    HStack(spacing: AppStyle.Spacing.small) {
+                        if subtaskCount > 0 {
+                            Text("\(subtaskCount) subtask\(subtaskCount == 1 ? "" : "s")")
+                                .font(.inter(.caption))
+                                .foregroundColor(.secondary)
+                        }
+                        if isScheduled {
+                            Image(systemName: "calendar")
+                                .font(.inter(.caption2))
+                                .foregroundColor(.green)
+                        }
+                    }
                 }
             }
             .frame(maxWidth: .infinity, minHeight: AppStyle.Layout.iconButton, alignment: .leading)

@@ -54,20 +54,13 @@ class NotificationService {
     }
 
     private func formatNotificationDate(_ date: Date) -> String {
-        let cal = Calendar.current
         let timeFormatter = DateFormatter()
         timeFormatter.dateFormat = "h:mm a"
         let timeString = timeFormatter.string(from: date)
 
-        if cal.isDateInToday(date) {
-            return "Today, \(timeString)"
-        } else if cal.isDateInTomorrow(date) {
-            return "Tomorrow, \(timeString)"
-        } else {
-            let dateFormatter = DateFormatter()
-            dateFormatter.dateFormat = "MMM d, \(timeString)"
-            return dateFormatter.string(from: date)
-        }
+        // Always use "Today" since the notification fires on the scheduled date.
+        // Relative labels like "Tomorrow" would be stale by delivery time.
+        return "Today, \(timeString)"
     }
 }
 

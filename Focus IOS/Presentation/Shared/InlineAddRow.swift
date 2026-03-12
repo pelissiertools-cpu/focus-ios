@@ -29,7 +29,7 @@ struct InlineAddRow: View {
                 // Use axis: .vertical so Return inserts a newline (intercepted below)
                 // instead of triggering .onSubmit which dismisses the keyboard.
                 TextField(placeholder, text: $title, axis: .vertical)
-                    .lineLimit(1)
+                    .lineLimit(1...3)
                     .font(textFont)
                     .focused($isFocused)
                     .onChange(of: title) { _, newValue in

@@ -195,6 +195,30 @@ struct AddBar: View {
         }
     }
 
+    private var hasSubItems: Bool {
+        switch activeMode {
+        case .task, .goal: return !subtasks.isEmpty
+        case .list: return !listItems.isEmpty
+        case .project: return !draftTasks.isEmpty
+        }
+    }
+
+    private var subItemCount: Int {
+        switch activeMode {
+        case .task, .goal: return subtasks.count
+        case .list: return listItems.count
+        case .project: return draftTasks.count
+        }
+    }
+
+    private var subItemSummaryLabel: String {
+        switch activeMode {
+        case .task, .goal: return subItemCount == 1 ? "subtask" : "subtasks"
+        case .list: return subItemCount == 1 ? "item" : "items"
+        case .project: return subItemCount == 1 ? "task" : "tasks"
+        }
+    }
+
     private var scheduleDateLabel: String {
         guard let date = scheduleDates.sorted().first else {
             return String(localized: "Date")
@@ -236,8 +260,12 @@ struct AddBar: View {
                     .padding(.top, AppStyle.Spacing.page)
                     .padding(.bottom, AppStyle.Spacing.page)
 
-                // Content area
-                contentArea
+                // Content area - collapses when schedule picker is open
+                if scheduleExpanded && hasSubItems {
+                    collapsedItemsSummary
+                } else {
+                    contentArea
+                }
 
                 // Schedule expansion
                 if config.showSchedule && scheduleExpanded {
@@ -341,6 +369,22 @@ struct AddBar: View {
         case .project:
             projectDraftTasksArea
         }
+    }
+
+    // MARK: - Collapsed Items Summary
+
+    private var collapsedItemsSummary: some View {
+        HStack(spacing: AppStyle.Spacing.tiny) {
+            Image(systemName: "chevron.right")
+                .font(.inter(.caption2))
+                .foregroundColor(.secondary)
+            Text("\(subItemCount) \(subItemSummaryLabel)")
+                .font(.inter(.subheadline))
+                .foregroundColor(.secondary)
+            Spacer()
+        }
+        .padding(.horizontal, AppStyle.Spacing.content)
+        .padding(.bottom, AppStyle.Spacing.small)
     }
 
     // MARK: - Project Draft Tasks
@@ -580,8 +624,19 @@ struct AddBar: View {
             if config.showSchedule {
                 Button {
                     scheduleDatesSnapshot = scheduleDates
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        scheduleExpanded.toggle()
+                    if !scheduleExpanded {
+                        // Dismiss keyboard first, then expand schedule in one smooth step
+                        titleFocused = false
+                        focusedSubItemId = nil
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                            withAnimation(.easeInOut(duration: 0.25)) {
+                                scheduleExpanded = true
+                            }
+                        }
+                    } else {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            scheduleExpanded = false
+                        }
                     }
                 } label: {
                     HStack(spacing: AppStyle.Spacing.tiny) {

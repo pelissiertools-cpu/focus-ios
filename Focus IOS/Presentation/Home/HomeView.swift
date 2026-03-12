@@ -299,7 +299,11 @@ struct HomeView: View {
 
                 // MARK: - Add Bar Overlay
                 if showingAddBar {
-                    Color.black.opacity(AppStyle.Opacity.scrim)
+                    Color(UIColor { traits in
+                        traits.userInterfaceStyle == .dark
+                            ? UIColor.white.withAlphaComponent(0.08)
+                            : UIColor.black.withAlphaComponent(0.15)
+                    })
                         .ignoresSafeArea()
                         .allowsHitTesting(false)
                         .transition(.opacity)

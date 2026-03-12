@@ -17,9 +17,11 @@ struct BacklogView: View {
     @StateObject private var projectsVM: ProjectsViewModel
     @StateObject private var listsVM: ListsViewModel
     @EnvironmentObject var focusViewModel: FocusTabViewModel
+    @EnvironmentObject var coachMarkManager: CoachMarkManager
     @Environment(\.dismiss) private var dismiss
     @State private var isInlineAddFocused = false
     @State private var isLoading = false
+    @State private var coachMarkVisible = false
 
     // Search
     @State private var isSearchActive: Bool
@@ -307,6 +309,25 @@ struct BacklogView: View {
                     .padding(.horizontal, AppStyle.Spacing.page)
                 } else {
                     itemList
+                }
+            }
+
+            // Coach mark
+            if coachMarkVisible && !startWithSearch {
+                let section: CoachMarkSection = tasksOnly ? .inbox : .backlog
+                if coachMarkManager.shouldShow(section) {
+                    VStack {
+                        Spacer()
+                        CoachMarkCardView(section: section) {
+                            withAnimation(AppStyle.Anim.expand) {
+                                coachMarkManager.dismiss(section)
+                            }
+                        }
+                        .padding(.bottom, 80)
+                    }
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .zIndex(10)
+                    .allowsHitTesting(true)
                 }
             }
 
@@ -647,6 +668,14 @@ struct BacklogView: View {
             if startWithSearch {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                     searchFieldFocused = true
+                }
+            }
+            let section: CoachMarkSection = tasksOnly ? .inbox : .backlog
+            if !startWithSearch && coachMarkManager.shouldShow(section) {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+                    withAnimation(AppStyle.Anim.expand) {
+                        coachMarkVisible = true
+                    }
                 }
             }
         }

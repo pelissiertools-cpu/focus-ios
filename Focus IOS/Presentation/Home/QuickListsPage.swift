@@ -10,12 +10,14 @@ struct QuickListsPage: View {
     @ObservedObject var viewModel: HomeViewModel
     @StateObject private var listsViewModel: ListsViewModel
     @EnvironmentObject var focusViewModel: FocusTabViewModel
+    @EnvironmentObject var coachMarkManager: CoachMarkManager
     @Environment(\.dismiss) private var dismiss
     @State private var listToDelete: FocusTask?
     @State private var selectedList: FocusTask?
     @State private var editingSectionId: UUID?
     @State private var scrollToSectionId: UUID?
     @State private var showingAddBar = false
+    @State private var coachMarkVisible = false
 
     private let authService: AuthService
 
@@ -122,6 +124,22 @@ struct QuickListsPage: View {
                     }
                 }
             }
+            }
+
+            // Coach mark
+            if coachMarkVisible && coachMarkManager.shouldShow(.quickLists) {
+                VStack {
+                    Spacer()
+                    CoachMarkCardView(section: .quickLists) {
+                        withAnimation(AppStyle.Anim.expand) {
+                            coachMarkManager.dismiss(.quickLists)
+                        }
+                    }
+                    .padding(.bottom, 80)
+                }
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+                .zIndex(10)
+                .allowsHitTesting(true)
             }
 
             if listsViewModel.isEditMode {
@@ -248,6 +266,15 @@ struct QuickListsPage: View {
                 await viewModel.fetchLists()
             }
             await listsViewModel.fetchLists()
+        }
+        .onAppear {
+            if coachMarkManager.shouldShow(.quickLists) {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+                    withAnimation(AppStyle.Anim.expand) {
+                        coachMarkVisible = true
+                    }
+                }
+            }
         }
         .onChange(of: listsViewModel.selectedListForDetails) { _, newValue in
             if newValue == nil {

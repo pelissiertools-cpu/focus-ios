@@ -10,6 +10,7 @@ struct ProjectsListPage: View {
     @ObservedObject var viewModel: HomeViewModel
     @StateObject private var projectsViewModel: ProjectsViewModel
     @EnvironmentObject var focusViewModel: FocusTabViewModel
+    @EnvironmentObject var coachMarkManager: CoachMarkManager
     @Environment(\.dismiss) private var dismiss
     @State private var projectToDelete: FocusTask?
     @State private var selectedProject: FocusTask?
@@ -17,6 +18,7 @@ struct ProjectsListPage: View {
     @State private var scrollToSectionId: UUID?
     @State private var showingAddBar = false
     @State private var showArchiveConfirmation = false
+    @State private var coachMarkVisible = false
 
     private let authService: AuthService
 
@@ -189,6 +191,22 @@ struct ProjectsListPage: View {
             }
             }
 
+            // Coach mark
+            if coachMarkVisible && coachMarkManager.shouldShow(.projects) {
+                VStack {
+                    Spacer()
+                    CoachMarkCardView(section: .projects) {
+                        withAnimation(AppStyle.Anim.expand) {
+                            coachMarkManager.dismiss(.projects)
+                        }
+                    }
+                    .padding(.bottom, 80)
+                }
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+                .zIndex(10)
+                .allowsHitTesting(true)
+            }
+
             if projectsViewModel.isEditMode {
                 EditModeActionBar(viewModel: projectsViewModel)
                     .transition(.scale.combined(with: .opacity))
@@ -311,6 +329,15 @@ struct ProjectsListPage: View {
                 await viewModel.fetchProjects(showLoading: true)
             }
             await projectsViewModel.fetchProjects()
+        }
+        .onAppear {
+            if coachMarkManager.shouldShow(.projects) {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+                    withAnimation(AppStyle.Anim.expand) {
+                        coachMarkVisible = true
+                    }
+                }
+            }
         }
         .onChange(of: selectedProject) { _, newValue in
             if newValue == nil {

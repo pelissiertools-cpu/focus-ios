@@ -12,9 +12,11 @@ struct TodayView: View {
     @StateObject private var projectsVM: ProjectsViewModel
     @EnvironmentObject var focusViewModel: FocusTabViewModel
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject var coachMarkManager: CoachMarkManager
     @State private var isInlineAddFocused = false
     @State private var showingAddBar = false
     @State private var isLoading = true
+    @State private var coachMarkVisible = false
     @State private var todaySchedules: [UUID: (scheduleId: UUID, sortOrder: Int)] = [:]
     @State private var scheduleById: [UUID: Schedule] = [:]
     @State private var selectedScheduleForReschedule: Schedule?
@@ -185,6 +187,22 @@ struct TodayView: View {
                 }
             }
 
+            // Coach mark
+            if coachMarkVisible && coachMarkManager.shouldShow(.today) {
+                VStack {
+                    Spacer()
+                    CoachMarkCardView(section: .today) {
+                        withAnimation(AppStyle.Anim.expand) {
+                            coachMarkManager.dismiss(.today)
+                        }
+                    }
+                    .padding(.bottom, 80)
+                }
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+                .zIndex(10)
+                .allowsHitTesting(true)
+            }
+
             // Edit mode action bar
             if taskListVM.isEditMode {
                 EditModeActionBar(
@@ -293,6 +311,15 @@ struct TodayView: View {
                 }
                 .transition(.move(edge: .bottom).combined(with: .opacity))
                 .zIndex(51)
+            }
+        }
+        .onAppear {
+            if coachMarkManager.shouldShow(.today) {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+                    withAnimation(AppStyle.Anim.expand) {
+                        coachMarkVisible = true
+                    }
+                }
             }
         }
         .sheet(item: $taskListVM.selectedTaskForDetails) { task in

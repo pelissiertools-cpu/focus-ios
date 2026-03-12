@@ -16,6 +16,7 @@ struct Focus_IOSApp: App {
     @StateObject private var languageManager = LanguageManager.shared
     @StateObject private var appearanceManager = AppearanceManager.shared
     @StateObject private var notificationManager = NotificationManager.shared
+    @StateObject private var coachMarkManager = CoachMarkManager.shared
 
     init() {
         let auth = AuthService()
@@ -49,6 +50,7 @@ struct Focus_IOSApp: App {
             .environmentObject(languageManager)
             .environmentObject(appearanceManager)
             .environmentObject(notificationManager)
+            .environmentObject(coachMarkManager)
             .environment(\.locale, languageManager.locale)
             .preferredColorScheme(appearanceManager.currentAppearance.colorScheme)
             .onOpenURL { url in

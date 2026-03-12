@@ -11,9 +11,11 @@ struct ScheduledView: View {
     @StateObject private var projectsVM: ProjectsViewModel
     @StateObject private var listsVM: ListsViewModel
     @EnvironmentObject var focusViewModel: FocusTabViewModel
+    @EnvironmentObject var coachMarkManager: CoachMarkManager
     @Environment(\.dismiss) private var dismiss
     @State private var isInlineAddFocused = false
     @State private var isLoading = false
+    @State private var coachMarkVisible = false
     @State private var viewMode: ScheduleViewMode = .day
 
     // Schedule entries: item UUID → list of (scheduleId, date, timeframe, sortOrder) tuples
@@ -556,6 +558,15 @@ struct ScheduledView: View {
             await loadAllData()
             isLoading = false
         }
+        .onAppear {
+            if coachMarkManager.shouldShow(.upcoming) {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+                    withAnimation(AppStyle.Anim.expand) {
+                        coachMarkVisible = true
+                    }
+                }
+            }
+        }
         // Sheets
         .sheet(item: $taskListVM.selectedTaskForDetails) { task in
             TaskDetailsDrawer(task: task, viewModel: taskListVM, categories: taskListVM.categories)
@@ -848,6 +859,22 @@ struct ScheduledView: View {
 
     @ViewBuilder
     private var overlayContent: some View {
+        // Coach mark
+        if coachMarkVisible && coachMarkManager.shouldShow(.upcoming) {
+            VStack {
+                Spacer()
+                CoachMarkCardView(section: .upcoming) {
+                    withAnimation(AppStyle.Anim.expand) {
+                        coachMarkManager.dismiss(.upcoming)
+                    }
+                }
+                .padding(.bottom, 80)
+            }
+            .transition(.move(edge: .bottom).combined(with: .opacity))
+            .zIndex(10)
+            .allowsHitTesting(true)
+        }
+
         if taskListVM.isEditMode {
             EditModeActionBar(
                 viewModel: taskListVM,

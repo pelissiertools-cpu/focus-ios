@@ -314,7 +314,7 @@ struct AddBar: View {
                 isActive
                     ? .regular.tint(.black).interactive()
                     : .regular.interactive(),
-                in: .circle
+                in: .rect(cornerRadius: 10)
             )
         }
         .buttonStyle(.plain)

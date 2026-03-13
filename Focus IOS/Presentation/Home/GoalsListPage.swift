@@ -308,6 +308,12 @@ struct GoalsListPage: View {
                 }
             }
 
+            if goalsViewModel.sharedTaskIds.contains(goal.id) {
+                Image(systemName: "person.2.fill")
+                    .font(.inter(.caption2))
+                    .foregroundColor(.secondary)
+            }
+
             Spacer()
 
         }
@@ -327,6 +333,7 @@ struct GoalsListPage: View {
                 ContextMenuItems.pinButton(isPinned: goal.isPinned) {
                     _Concurrency.Task { await viewModel.togglePin(goal) }
                 }
+                ContextMenuItems.shareButton { ShareSheetHelper.share(task: goal) }
                 Divider()
                 ContextMenuItems.deleteButton { goalToDelete = goal }
             }

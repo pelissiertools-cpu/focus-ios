@@ -18,6 +18,7 @@ struct Focus_IOSApp: App {
     @StateObject private var appearanceManager = AppearanceManager.shared
     @StateObject private var notificationManager = NotificationManager.shared
     @StateObject private var coachMarkManager = CoachMarkManager.shared
+    @StateObject private var shareLinkHandler = ShareLinkHandler.shared
     @State private var showLaunchScreen = true
     @Environment(\.scenePhase) private var scenePhase
 
@@ -91,7 +92,30 @@ struct Focus_IOSApp: App {
                 }
             }
             .onOpenURL { url in
-                GIDSignIn.sharedInstance.handle(url)
+                if url.scheme == "focusapp", url.host == "share",
+                   let token = url.pathComponents.dropFirst().first {
+                    shareLinkHandler.pendingToken = String(token)
+                    if authService.isAuthenticated {
+                        shareLinkHandler.processPendingShare()
+                    }
+                } else {
+                    GIDSignIn.sharedInstance.handle(url)
+                }
+            }
+            .onChange(of: authService.isAuthenticated) { _, isAuth in
+                if isAuth, shareLinkHandler.pendingToken != nil {
+                    shareLinkHandler.processPendingShare()
+                }
+            }
+            .alert("Shared with you", isPresented: $shareLinkHandler.showAcceptedAlert) {
+                Button("OK") {}
+            } message: {
+                Text("\"\(shareLinkHandler.acceptedTaskName ?? "Item")\" has been added to your lists.")
+            }
+            .alert("Share Error", isPresented: $shareLinkHandler.showErrorAlert) {
+                Button("OK") {}
+            } message: {
+                Text(shareLinkHandler.errorMessage ?? "Could not accept the share link.")
             }
         }
     }

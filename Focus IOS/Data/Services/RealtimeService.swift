@@ -21,6 +21,7 @@ final class RealtimeService {
     private let taskChangeSubject = PassthroughSubject<Void, Never>()
     private let scheduleChangeSubject = PassthroughSubject<Void, Never>()
     private let categoryChangeSubject = PassthroughSubject<Void, Never>()
+    private let shareChangeSubject = PassthroughSubject<Void, Never>()
     private var cancellables = Set<AnyCancellable>()
 
     private init() {
@@ -50,6 +51,14 @@ final class RealtimeService {
                 NotificationCenter.default.post(name: .projectListChanged, object: nil)
             }
             .store(in: &cancellables)
+
+        shareChangeSubject
+            .debounce(for: .milliseconds(500), scheduler: DispatchQueue.main)
+            .sink {
+                NotificationCenter.default.post(name: .sharedItemsChanged, object: nil)
+                NotificationCenter.default.post(name: .projectListChanged, object: nil)
+            }
+            .store(in: &cancellables)
     }
 
     private func postTaskChangeNotifications() {
@@ -64,18 +73,18 @@ final class RealtimeService {
 
         let channel = supabase.realtimeV2.channel("db-changes")
 
+        // No explicit user_id filter — Supabase RLS handles access control.
+        // This ensures changes by OTHER users in shared projects/lists are also received.
         let taskChanges = channel.postgresChange(
             AnyAction.self,
             schema: "public",
-            table: "tasks",
-            filter: .eq("user_id", value: userId)
+            table: "tasks"
         )
 
         let scheduleChanges = channel.postgresChange(
             AnyAction.self,
             schema: "public",
-            table: "schedules",
-            filter: .eq("user_id", value: userId)
+            table: "schedules"
         )
 
         let categoryChanges = channel.postgresChange(
@@ -83,6 +92,22 @@ final class RealtimeService {
             schema: "public",
             table: "categories",
             filter: .eq("user_id", value: userId)
+        )
+
+        // Listen for shares where I'm the owner (someone accepted my share)
+        let shareOwnerChanges = channel.postgresChange(
+            AnyAction.self,
+            schema: "public",
+            table: "task_shares",
+            filter: .eq("owner_id", value: userId)
+        )
+
+        // Listen for shares where I'm the recipient (someone shared with me)
+        let shareRecipientChanges = channel.postgresChange(
+            AnyAction.self,
+            schema: "public",
+            table: "task_shares",
+            filter: .eq("shared_with_user_id", value: userId)
         )
 
         self.channel = channel
@@ -106,7 +131,19 @@ final class RealtimeService {
             }
         }
 
-        listenerTasks = [taskListener, scheduleListener, categoryListener]
+        let shareOwnerListener = _Concurrency.Task { @MainActor [weak self] in
+            for await _ in shareOwnerChanges {
+                self?.shareChangeSubject.send()
+            }
+        }
+
+        let shareRecipientListener = _Concurrency.Task { @MainActor [weak self] in
+            for await _ in shareRecipientChanges {
+                self?.shareChangeSubject.send()
+            }
+        }
+
+        listenerTasks = [taskListener, scheduleListener, categoryListener, shareOwnerListener, shareRecipientListener]
     }
 
     func disconnect() async {

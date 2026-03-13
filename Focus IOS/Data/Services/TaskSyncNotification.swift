@@ -14,6 +14,7 @@ extension Notification.Name {
     static let schedulesChanged = Notification.Name("schedulesChanged")
     static let sessionRefreshed = Notification.Name("sessionRefreshed")
     static let realtimeTasksChanged = Notification.Name("realtimeTasksChanged")
+    static let sharedItemsChanged = Notification.Name("sharedItemsChanged")
 }
 
 /// Keys for task sync notification userInfo

@@ -31,6 +31,11 @@ protocol LogFilterable: ObservableObject {
     func toggleScheduleFilter(_ filter: ScheduleFilter)
     func fetchScheduledTaskIds() async
 
+    // MARK: - Share tracking
+    var sharedTaskIds: Set<UUID> { get set }
+    var shareRepository: ShareRepository { get }
+    func fetchSharedTaskIds() async
+
     // MARK: - Edit mode
     var isEditMode: Bool { get }
     var selectedItemIds: Set<UUID> { get }
@@ -63,6 +68,14 @@ extension LogFilterable {
             scheduleFilter = nil
         } else {
             scheduleFilter = filter
+        }
+    }
+
+    func fetchSharedTaskIds() async {
+        do {
+            sharedTaskIds = try await shareRepository.fetchSharedTaskIds()
+        } catch {
+            // Silently handled — icon just won't show
         }
     }
 

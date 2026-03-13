@@ -352,3 +352,133 @@ CREATE INDEX IF NOT EXISTS idx_tasks_due_date ON tasks(due_date) WHERE due_date 
 
 ALTER TABLE tasks ADD COLUMN IF NOT EXISTS notification_enabled BOOLEAN DEFAULT false;
 ALTER TABLE tasks ADD COLUMN IF NOT EXISTS notification_date TIMESTAMPTZ;
+
+-- ==============================================
+-- SHARING SUPPORT
+-- Link-based sharing of projects, lists, and goals
+-- ==============================================
+
+-- 1. Shares table
+CREATE TABLE IF NOT EXISTS task_shares (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  task_id UUID REFERENCES tasks(id) ON DELETE CASCADE NOT NULL,
+  owner_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  shared_with_user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  share_token TEXT UNIQUE,
+  created_date TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_task_shares_task_id ON task_shares(task_id);
+CREATE INDEX IF NOT EXISTS idx_task_shares_owner ON task_shares(owner_id);
+CREATE INDEX IF NOT EXISTS idx_task_shares_recipient ON task_shares(shared_with_user_id);
+CREATE INDEX IF NOT EXISTS idx_task_shares_token ON task_shares(share_token) WHERE share_token IS NOT NULL;
+
+ALTER TABLE task_shares ENABLE ROW LEVEL SECURITY;
+
+-- 2. Helper function: returns task IDs accessible via sharing
+CREATE OR REPLACE FUNCTION shared_task_ids_for_user(uid UUID)
+RETURNS SETOF UUID AS $$
+  SELECT DISTINCT task_id FROM task_shares
+  WHERE shared_with_user_id = uid
+     OR (owner_id = uid AND shared_with_user_id IS NOT NULL)
+$$ LANGUAGE sql SECURITY DEFINER STABLE;
+
+-- 3. RLS on task_shares
+CREATE POLICY "Users can view their shares" ON task_shares FOR SELECT
+  USING (owner_id = auth.uid() OR shared_with_user_id = auth.uid());
+
+CREATE POLICY "Users can create shares" ON task_shares FOR INSERT
+  WITH CHECK (owner_id = auth.uid());
+
+CREATE POLICY "Users can delete their shares" ON task_shares FOR DELETE
+  USING (owner_id = auth.uid() OR shared_with_user_id = auth.uid());
+
+-- 4. Updated RLS on tasks (replace existing policies)
+DROP POLICY IF EXISTS "Users can view their own tasks" ON tasks;
+CREATE POLICY "Users can view accessible tasks" ON tasks FOR SELECT
+  USING (
+    user_id = auth.uid()
+    OR id IN (SELECT shared_task_ids_for_user(auth.uid()))
+    OR project_id IN (SELECT shared_task_ids_for_user(auth.uid()))
+    OR parent_task_id IN (SELECT shared_task_ids_for_user(auth.uid()))
+  );
+
+DROP POLICY IF EXISTS "Users can insert their own tasks" ON tasks;
+CREATE POLICY "Users can insert accessible tasks" ON tasks FOR INSERT
+  WITH CHECK (user_id = auth.uid());
+
+DROP POLICY IF EXISTS "Users can update their own tasks" ON tasks;
+CREATE POLICY "Users can update accessible tasks" ON tasks FOR UPDATE
+  USING (
+    user_id = auth.uid()
+    OR project_id IN (SELECT shared_task_ids_for_user(auth.uid()))
+    OR parent_task_id IN (SELECT shared_task_ids_for_user(auth.uid()))
+  );
+
+DROP POLICY IF EXISTS "Users can delete their own tasks" ON tasks;
+CREATE POLICY "Users can delete accessible tasks" ON tasks FOR DELETE
+  USING (
+    user_id = auth.uid()
+    OR project_id IN (SELECT shared_task_ids_for_user(auth.uid()))
+    OR parent_task_id IN (SELECT shared_task_ids_for_user(auth.uid()))
+  );
+
+-- 5. Updated RLS on schedules (for shared task schedules)
+DROP POLICY IF EXISTS "Users can view their own schedules" ON schedules;
+DROP POLICY IF EXISTS "Users can view accessible schedules" ON schedules;
+CREATE POLICY "Users can view accessible schedules" ON schedules FOR SELECT
+  USING (
+    user_id = auth.uid()
+    OR task_id IN (SELECT shared_task_ids_for_user(auth.uid()))
+    OR task_id IN (SELECT id FROM tasks WHERE project_id IN (SELECT shared_task_ids_for_user(auth.uid())) OR parent_task_id IN (SELECT shared_task_ids_for_user(auth.uid())))
+  );
+
+DROP POLICY IF EXISTS "Users can insert their own schedules" ON schedules;
+DROP POLICY IF EXISTS "Users can insert accessible schedules" ON schedules;
+CREATE POLICY "Users can insert accessible schedules" ON schedules FOR INSERT
+  WITH CHECK (user_id = auth.uid());
+
+DROP POLICY IF EXISTS "Users can update their own schedules" ON schedules;
+DROP POLICY IF EXISTS "Users can update accessible schedules" ON schedules;
+CREATE POLICY "Users can update accessible schedules" ON schedules FOR UPDATE
+  USING (
+    user_id = auth.uid()
+    OR task_id IN (SELECT shared_task_ids_for_user(auth.uid()))
+    OR task_id IN (SELECT id FROM tasks WHERE project_id IN (SELECT shared_task_ids_for_user(auth.uid())))
+  );
+
+DROP POLICY IF EXISTS "Users can delete their own schedules" ON schedules;
+DROP POLICY IF EXISTS "Users can delete accessible schedules" ON schedules;
+CREATE POLICY "Users can delete accessible schedules" ON schedules FOR DELETE
+  USING (
+    user_id = auth.uid()
+    OR task_id IN (SELECT shared_task_ids_for_user(auth.uid()))
+    OR task_id IN (SELECT id FROM tasks WHERE project_id IN (SELECT shared_task_ids_for_user(auth.uid())))
+  );
+
+-- 6. Accept share RPC
+CREATE OR REPLACE FUNCTION accept_share(p_token TEXT)
+RETURNS UUID AS $$
+DECLARE
+  v_task_id UUID;
+  v_owner_id UUID;
+BEGIN
+  SELECT task_id, owner_id INTO v_task_id, v_owner_id
+  FROM task_shares WHERE share_token = p_token LIMIT 1;
+
+  IF v_task_id IS NULL THEN
+    RAISE EXCEPTION 'Invalid share link';
+  END IF;
+
+  IF v_owner_id = auth.uid() THEN
+    RETURN v_task_id;
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM task_shares WHERE task_id = v_task_id AND shared_with_user_id = auth.uid()) THEN
+    INSERT INTO task_shares (task_id, owner_id, shared_with_user_id)
+    VALUES (v_task_id, v_owner_id, auth.uid());
+  END IF;
+
+  RETURN v_task_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;

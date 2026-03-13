@@ -58,6 +58,7 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
     @Published var scheduledTaskIds: Set<UUID> = []
     @Published var taskDueDates: [UUID: Date] = [:]
     @Published var taskScheduleDates: [UUID: Date] = [:]
+    @Published var sharedTaskIds: Set<UUID> = []
 
     // Edit mode (project cards)
     @Published var isEditMode: Bool = false
@@ -92,16 +93,19 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
 
     private let repository: TaskRepository
     let scheduleRepository: ScheduleRepository
+    let shareRepository: ShareRepository
     private let categoryRepository: CategoryRepository
     let authService: AuthService
     private var cancellables = Set<AnyCancellable>()
 
     init(repository: TaskRepository = TaskRepository(),
          scheduleRepository: ScheduleRepository = ScheduleRepository(),
+         shareRepository: ShareRepository = ShareRepository(),
          categoryRepository: CategoryRepository = CategoryRepository(),
          authService: AuthService) {
         self.repository = repository
         self.scheduleRepository = scheduleRepository
+        self.shareRepository = shareRepository
         self.categoryRepository = categoryRepository
         self.authService = authService
 
@@ -150,6 +154,16 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
                 guard let self else { return }
                 _Concurrency.Task { @MainActor in
                     await self.fetchScheduledTaskIds()
+                }
+            }
+            .store(in: &cancellables)
+
+        NotificationCenter.default.publisher(for: .sharedItemsChanged)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                guard let self else { return }
+                _Concurrency.Task { @MainActor in
+                    await self.fetchSharedTaskIds()
                 }
             }
             .store(in: &cancellables)
@@ -439,6 +453,7 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
             self.projects = fetchedProjects
             self.categories = try await categoryRepository.fetchCategories()
             await fetchScheduledTaskIds()
+            await fetchSharedTaskIds()
 
             // Update cache
             let cache = AppDataCache.shared

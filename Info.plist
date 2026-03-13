@@ -12,6 +12,16 @@
 				<string>com.googleusercontent.apps.928456128913-ortcj51chft2m3cu5sv65lc21bbeccsj</string>
 			</array>
 		</dict>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>focusapp</string>
+			</array>
+			<key>CFBundleURLName</key>
+			<string>com.focus.app.share</string>
+		</dict>
 	</array>
 	<key>GIDClientID</key>
 	<string>928456128913-ortcj51chft2m3cu5sv65lc21bbeccsj.apps.googleusercontent.com</string>

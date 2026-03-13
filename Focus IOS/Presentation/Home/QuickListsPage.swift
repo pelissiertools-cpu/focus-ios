@@ -389,6 +389,12 @@ struct QuickListsPage: View {
                 .foregroundColor(.primary)
                 .lineLimit(1)
 
+            if listsViewModel.sharedTaskIds.contains(list.id) {
+                Image(systemName: "person.2.fill")
+                    .font(.inter(.caption2))
+                    .foregroundColor(.secondary)
+            }
+
             Spacer()
 
         }
@@ -408,6 +414,7 @@ struct QuickListsPage: View {
                 ContextMenuItems.pinButton(isPinned: list.isPinned) {
                     _Concurrency.Task { await viewModel.togglePin(list) }
                 }
+                ContextMenuItems.shareButton { ShareSheetHelper.share(task: list) }
                 Divider()
                 ContextMenuItems.deleteButton { listToDelete = list }
             }

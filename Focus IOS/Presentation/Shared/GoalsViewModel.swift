@@ -58,6 +58,7 @@ class GoalsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
     @Published var scheduledTaskIds: Set<UUID> = []
     @Published var taskDueDates: [UUID: Date] = [:]
     @Published var taskScheduleDates: [UUID: Date] = [:]
+    @Published var sharedTaskIds: Set<UUID> = []
 
     // Edit mode (goal list)
     @Published var isEditMode: Bool = false
@@ -92,16 +93,19 @@ class GoalsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
 
     private let repository: TaskRepository
     let scheduleRepository: ScheduleRepository
+    let shareRepository: ShareRepository
     private let categoryRepository: CategoryRepository
     let authService: AuthService
     private var cancellables = Set<AnyCancellable>()
 
     init(repository: TaskRepository = TaskRepository(),
          scheduleRepository: ScheduleRepository = ScheduleRepository(),
+         shareRepository: ShareRepository = ShareRepository(),
          categoryRepository: CategoryRepository = CategoryRepository(),
          authService: AuthService) {
         self.repository = repository
         self.scheduleRepository = scheduleRepository
+        self.shareRepository = shareRepository
         self.categoryRepository = categoryRepository
         self.authService = authService
 
@@ -140,6 +144,16 @@ class GoalsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
                    LocalMutationTracker.isRecentlyMutated() { return }
                 _Concurrency.Task { @MainActor in
                     await self.fetchGoals()
+                }
+            }
+            .store(in: &cancellables)
+
+        NotificationCenter.default.publisher(for: .sharedItemsChanged)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                guard let self else { return }
+                _Concurrency.Task { @MainActor in
+                    await self.fetchSharedTaskIds()
                 }
             }
             .store(in: &cancellables)
@@ -360,6 +374,7 @@ class GoalsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
             self.goals = fetchedGoals
             self.categories = try await categoryRepository.fetchCategories()
             await fetchScheduledTaskIds()
+            await fetchSharedTaskIds()
 
             // Update cache
             let cache = AppDataCache.shared

@@ -138,6 +138,17 @@ enum ContextMenuItems {
         }
     }
 
+    // MARK: - Share
+
+    @ViewBuilder
+    static func shareButton(action: @escaping () -> Void) -> some View {
+        Button {
+            action()
+        } label: {
+            Label("Share", systemImage: "square.and.arrow.up")
+        }
+    }
+
     // MARK: - Delete
 
     @ViewBuilder

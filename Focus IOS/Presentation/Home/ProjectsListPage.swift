@@ -474,6 +474,12 @@ struct ProjectsListPage: View {
                 .foregroundColor(.primary)
                 .lineLimit(1)
 
+            if projectsViewModel.sharedTaskIds.contains(project.id) {
+                Image(systemName: "person.2.fill")
+                    .font(.inter(.caption2))
+                    .foregroundColor(.secondary)
+            }
+
             Spacer()
 
         }
@@ -493,6 +499,7 @@ struct ProjectsListPage: View {
                 ContextMenuItems.pinButton(isPinned: project.isPinned) {
                     _Concurrency.Task { await viewModel.togglePin(project) }
                 }
+                ContextMenuItems.shareButton { ShareSheetHelper.share(task: project) }
                 Divider()
                 ContextMenuItems.deleteButton { projectToDelete = project }
             }

@@ -58,6 +58,7 @@ class ListsViewModel: ObservableObject, LogFilterable, TaskEditingViewModel {
     @Published var scheduledTaskIds: Set<UUID> = []
     @Published var taskDueDates: [UUID: Date] = [:]
     @Published var taskScheduleDates: [UUID: Date] = [:]
+    @Published var sharedTaskIds: Set<UUID> = []
 
     // Edit mode
     @Published var isEditMode: Bool = false
@@ -85,16 +86,19 @@ class ListsViewModel: ObservableObject, LogFilterable, TaskEditingViewModel {
     private let repository: TaskRepository
     private let categoryRepository: CategoryRepository
     let scheduleRepository: ScheduleRepository
+    let shareRepository: ShareRepository
     private let authService: AuthService
     private var cancellables = Set<AnyCancellable>()
 
     init(repository: TaskRepository = TaskRepository(),
          categoryRepository: CategoryRepository = CategoryRepository(),
          scheduleRepository: ScheduleRepository = ScheduleRepository(),
+         shareRepository: ShareRepository = ShareRepository(),
          authService: AuthService) {
         self.repository = repository
         self.categoryRepository = categoryRepository
         self.scheduleRepository = scheduleRepository
+        self.shareRepository = shareRepository
         self.authService = authService
 
         // Pre-populate from cache for instant display
@@ -145,6 +149,16 @@ class ListsViewModel: ObservableObject, LogFilterable, TaskEditingViewModel {
                    LocalMutationTracker.isRecentlyMutated() { return }
                 _Concurrency.Task { @MainActor in
                     await self.fetchScheduledTaskIds()
+                }
+            }
+            .store(in: &cancellables)
+
+        NotificationCenter.default.publisher(for: .sharedItemsChanged)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                guard let self else { return }
+                _Concurrency.Task { @MainActor in
+                    await self.fetchSharedTaskIds()
                 }
             }
             .store(in: &cancellables)
@@ -382,6 +396,7 @@ class ListsViewModel: ObservableObject, LogFilterable, TaskEditingViewModel {
             self.lists = fetchedLists
             self.categories = try await categoryRepository.fetchCategories()
             await fetchScheduledTaskIds()
+            await fetchSharedTaskIds()
 
             // Update cache
             let cache = AppDataCache.shared

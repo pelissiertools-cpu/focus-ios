@@ -135,6 +135,19 @@ class ListsViewModel: ObservableObject, LogFilterable, TaskEditingViewModel {
                 }
             }
             .store(in: &cancellables)
+
+        NotificationCenter.default.publisher(for: .schedulesChanged)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] notification in
+                guard let self else { return }
+                if notification.object as AnyObject? === self { return }
+                if notification.object == nil,
+                   LocalMutationTracker.isRecentlyMutated() { return }
+                _Concurrency.Task { @MainActor in
+                    await self.fetchScheduledTaskIds()
+                }
+            }
+            .store(in: &cancellables)
     }
 
     private func notifyTasksChanged() {

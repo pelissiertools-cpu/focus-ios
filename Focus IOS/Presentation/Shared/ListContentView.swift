@@ -316,14 +316,23 @@ private struct ListContentItemRow: View {
 
     private var isPending: Bool { viewModel.isPendingCompletion(item.id) }
     private var displayCompleted: Bool { item.isCompleted || isPending }
+    private var isScheduled: Bool { viewModel.scheduledTaskIds.contains(item.id) }
 
     var body: some View {
         HStack(spacing: AppStyle.Spacing.comfortable) {
-            Text(item.title)
-                .font(AppStyle.Typography.itemTitle)
-                .strikethrough(displayCompleted)
-                .foregroundColor(displayCompleted ? .secondary : .primary)
-                .frame(maxWidth: .infinity, minHeight: AppStyle.Layout.iconButton, alignment: .leading)
+            VStack(alignment: .leading, spacing: AppStyle.Spacing.tiny) {
+                Text(item.title)
+                    .font(AppStyle.Typography.itemTitle)
+                    .strikethrough(displayCompleted)
+                    .foregroundColor(displayCompleted ? .secondary : .primary)
+
+                if isScheduled {
+                    Image(systemName: "calendar")
+                        .font(.inter(.caption2))
+                        .foregroundColor(.green)
+                }
+            }
+            .frame(maxWidth: .infinity, minHeight: AppStyle.Layout.iconButton, alignment: .leading)
 
             Button {
                 UIImpactFeedbackGenerator(style: isPending ? .light : .medium).impactOccurred()

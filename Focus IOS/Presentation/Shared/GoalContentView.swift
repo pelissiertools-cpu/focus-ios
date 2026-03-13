@@ -719,6 +719,9 @@ struct GoalSectionRow: View {
         .onChange(of: isEditing) { _, focused in
             if !focused { saveSectionTitle() }
         }
+        .onChange(of: section.title) { _, newTitle in
+            if !isEditing { sectionTitle = newTitle }
+        }
     }
 
     private func saveSectionTitle() {

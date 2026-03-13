@@ -91,6 +91,28 @@ class ShareRepository {
         return Set(rows.map { $0.taskId })
     }
 
+    // MARK: - Fetch Members
+
+    /// Fetch all members of a shared task via the get_share_members RPC.
+    func fetchMembers(taskId: UUID) async throws -> [ShareMember] {
+        let members: [ShareMember] = try await supabase
+            .rpc("get_share_members", params: ["p_task_id": taskId.uuidString])
+            .execute()
+            .value
+
+        return members
+    }
+
+    /// Remove a specific member from a shared task (owner action).
+    func removeMember(taskId: UUID, userId: UUID) async throws {
+        try await supabase
+            .from("task_shares")
+            .delete()
+            .eq("task_id", value: taskId.uuidString)
+            .eq("shared_with_user_id", value: userId.uuidString)
+            .execute()
+    }
+
     // MARK: - Remove Share (owner)
 
     /// Remove all shares for a task (owner unsharing).

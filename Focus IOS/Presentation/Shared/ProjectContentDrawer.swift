@@ -16,6 +16,7 @@ struct ProjectContentView: View {
     @State private var projectNotes: String
     @State private var editingSectionId: UUID?
     @State private var scrollToSectionId: UUID?
+    @State private var showManageSharing = false
     @FocusState private var isTitleFocused: Bool
     @FocusState private var isNotesFocused: Bool
 
@@ -50,6 +51,12 @@ struct ProjectContentView: View {
                                 .textFieldStyle(.plain)
                                 .focused($isTitleFocused)
                                 .onSubmit { saveProjectTitle() }
+                        }
+
+                        if viewModel.sharedTaskIds.contains(project.id) {
+                            Image(systemName: "person.2.fill")
+                                .font(.inter(.subheadline))
+                                .foregroundColor(.secondary)
                         }
 
                         let progress = viewModel.taskProgress(for: project.id)
@@ -328,6 +335,14 @@ struct ProjectContentView: View {
                     }
                 } else {
                     Menu {
+                        if viewModel.sharedTaskIds.contains(project.id) {
+                            Button {
+                                showManageSharing = true
+                            } label: {
+                                Label("Manage Sharing", systemImage: "person.2")
+                            }
+                        }
+
                         Button {
                             viewModel.enterContentEditMode()
                         } label: {
@@ -408,6 +423,10 @@ struct ProjectContentView: View {
                 task: task,
                 focusViewModel: focusViewModel
             )
+                .drawerStyle()
+        }
+        .sheet(isPresented: $showManageSharing) {
+            ManageSharingSheet(task: project)
                 .drawerStyle()
         }
     }
@@ -736,6 +755,9 @@ struct ProjectSectionRow: View {
         }
         .onChange(of: isEditing) { _, focused in
             if !focused { saveSectionTitle() }
+        }
+        .onChange(of: section.title) { _, newTitle in
+            if !isEditing { sectionTitle = newTitle }
         }
     }
 

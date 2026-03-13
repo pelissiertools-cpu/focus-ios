@@ -13,6 +13,7 @@ struct ListContentView: View {
     @State private var isInlineAddFocused = false
     @State private var listTitle: String
     @State private var listNotes: String
+    @State private var showManageSharing = false
     @FocusState private var isTitleFocused: Bool
     @FocusState private var isNotesFocused: Bool
 
@@ -27,17 +28,25 @@ struct ListContentView: View {
         ScrollViewReader { proxy in
             List {
                 // List title — editable inline
-                TextField("List name", text: $listTitle, axis: .vertical)
-                    .font(.inter(.title2, weight: .bold))
-                    .foregroundColor(.primary)
-                    .textFieldStyle(.plain)
-                    .focused($isTitleFocused)
-                    .onSubmit { saveListTitle() }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .listRowInsets(EdgeInsets(top: AppStyle.Spacing.section, leading: AppStyle.Spacing.page, bottom: AppStyle.Spacing.tiny, trailing: AppStyle.Spacing.page))
-                    .listRowBackground(Color.clear)
-                    .listRowSeparator(.hidden)
-                    .moveDisabled(true)
+                HStack(spacing: 8) {
+                    TextField("List name", text: $listTitle, axis: .vertical)
+                        .font(.inter(.title2, weight: .bold))
+                        .foregroundColor(.primary)
+                        .textFieldStyle(.plain)
+                        .focused($isTitleFocused)
+                        .onSubmit { saveListTitle() }
+
+                    if viewModel.sharedTaskIds.contains(list.id) {
+                        Image(systemName: "person.2.fill")
+                            .font(.inter(.subheadline))
+                            .foregroundColor(.secondary)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .listRowInsets(EdgeInsets(top: AppStyle.Spacing.section, leading: AppStyle.Spacing.page, bottom: AppStyle.Spacing.tiny, trailing: AppStyle.Spacing.page))
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
+                .moveDisabled(true)
 
                 // Notes
                 Group {
@@ -200,6 +209,23 @@ struct ListContentView: View {
                 }
                 .accessibilityLabel("Back")
             }
+            ToolbarItem(placement: .navigationBarTrailing) {
+                if viewModel.sharedTaskIds.contains(list.id) {
+                    Menu {
+                        Button {
+                            showManageSharing = true
+                        } label: {
+                            Label("Manage Sharing", systemImage: "person.2")
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis")
+                            .font(.inter(.body, weight: .semiBold))
+                            .foregroundColor(.primary)
+                            .frame(width: AppStyle.Layout.compactButton, height: AppStyle.Layout.compactButton)
+                            .background(Color.pillBackground, in: Circle())
+                    }
+                }
+            }
         }
         .task {
             await viewModel.fetchItems(for: list.id)
@@ -225,6 +251,10 @@ struct ListContentView: View {
                 task: item,
                 focusViewModel: focusViewModel
             )
+                .drawerStyle()
+        }
+        .sheet(isPresented: $showManageSharing) {
+            ManageSharingSheet(task: list)
                 .drawerStyle()
         }
     }

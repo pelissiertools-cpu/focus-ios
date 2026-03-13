@@ -482,3 +482,22 @@ BEGIN
   RETURN v_task_id;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Get members of a shared task (owner + accepted recipients)
+CREATE OR REPLACE FUNCTION get_share_members(p_task_id UUID)
+RETURNS TABLE(user_id UUID, email TEXT, is_owner BOOLEAN, joined_at TIMESTAMPTZ) AS $$
+  -- Owner
+  (SELECT ts.owner_id, au.email, TRUE, ts.created_date
+   FROM task_shares ts
+   JOIN auth.users au ON ts.owner_id = au.id
+   WHERE ts.task_id = p_task_id AND ts.share_token IS NOT NULL
+   LIMIT 1)
+
+  UNION ALL
+
+  -- Accepted members
+  SELECT ts.shared_with_user_id, au.email, FALSE, ts.created_date
+  FROM task_shares ts
+  JOIN auth.users au ON ts.shared_with_user_id = au.id
+  WHERE ts.task_id = p_task_id AND ts.shared_with_user_id IS NOT NULL
+$$ LANGUAGE sql SECURITY DEFINER STABLE;

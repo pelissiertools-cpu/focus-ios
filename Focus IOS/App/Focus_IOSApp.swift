@@ -19,6 +19,7 @@ struct Focus_IOSApp: App {
     @StateObject private var notificationManager = NotificationManager.shared
     @StateObject private var coachMarkManager = CoachMarkManager.shared
     @State private var showLaunchScreen = true
+    @Environment(\.scenePhase) private var scenePhase
 
     init() {
         let auth = AuthService()
@@ -82,6 +83,13 @@ struct Focus_IOSApp: App {
             .environmentObject(coachMarkManager)
             .environment(\.locale, languageManager.locale)
             .preferredColorScheme(appearanceManager.currentAppearance.colorScheme)
+            .onChange(of: scenePhase) { _, newPhase in
+                if newPhase == .active {
+                    _Concurrency.Task { @MainActor in
+                        await authService.refreshSession()
+                    }
+                }
+            }
             .onOpenURL { url in
                 GIDSignIn.sharedInstance.handle(url)
             }

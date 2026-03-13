@@ -42,6 +42,24 @@ class AuthService: ObservableObject {
         self.isCheckingSession = false
     }
 
+    /// Validate and refresh the session when the app returns to foreground.
+    /// If the session is stale/expired and cannot be refreshed, signs the user out
+    /// so they see the login screen instead of an empty app.
+    func refreshSession() async {
+        guard isAuthenticated else { return }
+        do {
+            let session = try await supabase.auth.session
+            self.currentUser = session.user
+            self.isAuthenticated = true
+            NotificationCenter.default.post(name: .sessionRefreshed, object: nil)
+        } catch {
+            // Session is truly expired — sign out so user sees login screen
+            AppDataCache.shared.invalidate()
+            self.currentUser = nil
+            self.isAuthenticated = false
+        }
+    }
+
     /// Wait until the initial session check completes
     func waitForSessionCheck() async {
         guard isCheckingSession else { return }

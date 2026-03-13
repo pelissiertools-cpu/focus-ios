@@ -549,6 +549,11 @@ struct HomeView: View {
                 await prefetchTodaySchedules()
                 await viewModel.fetchMainFocusTasks()
             }
+            .onReceive(NotificationCenter.default.publisher(for: .sessionRefreshed)) { _ in
+                _Concurrency.Task { @MainActor in
+                    await reloadAllData()
+                }
+            }
         }
         .overlay {
             if showSettings {
@@ -952,6 +957,23 @@ struct HomeView: View {
         }
     }
 
+
+    // MARK: - Full Data Reload (after session refresh)
+
+    private func reloadAllData() async {
+        await viewModel.fetchProjects(showLoading: false)
+        await viewModel.fetchLists()
+        await viewModel.fetchGoals()
+        await taskListVM.fetchScheduledTaskIds()
+        await taskListVM.fetchTasks()
+        await taskListVM.fetchCategories()
+        await viewModel.fetchCategories()
+        await projectsViewModel.fetchProjects()
+        await listsViewModel.fetchLists()
+        await goalsViewModel.fetchGoals()
+        await prefetchTodaySchedules()
+        await viewModel.fetchMainFocusTasks()
+    }
 
     // MARK: - Today Schedule Pre-fetch
 

@@ -95,6 +95,27 @@ extension Color {
             : UIColor(red: 0xF3/255.0, green: 0xE9/255.0, blue: 0xE1/255.0, alpha: 1)
     })
 
+    // MARK: - Priority Badge Colors
+
+    /// High priority badge background — priorityRed@15% light, priorityRed@20% dark
+    static let priorityHighBadge = Color(UIColor { traits in
+        traits.userInterfaceStyle == .dark
+            ? UIColor(red: 0xE8/255.0, green: 0x57/255.0, blue: 0x57/255.0, alpha: 0.2)
+            : UIColor(red: 0xE8/255.0, green: 0x57/255.0, blue: 0x57/255.0, alpha: 0.15)
+    })
+    /// Medium priority badge background — priorityOrange@15% light, priorityOrange@20% dark
+    static let priorityMediumBadge = Color(UIColor { traits in
+        traits.userInterfaceStyle == .dark
+            ? UIColor(red: 0xF2/255.0, green: 0x84/255.0, blue: 0x1E/255.0, alpha: 0.2)
+            : UIColor(red: 0xF2/255.0, green: 0x84/255.0, blue: 0x1E/255.0, alpha: 0.15)
+    })
+    /// Low priority badge background — priorityBlue@15% light, priorityBlue@20% dark
+    static let priorityLowBadge = Color(UIColor { traits in
+        traits.userInterfaceStyle == .dark
+            ? UIColor(red: 0x72/255.0, green: 0x9F/255.0, blue: 0xFF/255.0, alpha: 0.2)
+            : UIColor(red: 0x72/255.0, green: 0x9F/255.0, blue: 0xFF/255.0, alpha: 0.15)
+    })
+
     // MARK: - Named Foreground Colors
 
     /// Inbox green (#027B3A)

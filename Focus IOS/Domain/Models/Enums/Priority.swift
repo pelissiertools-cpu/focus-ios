@@ -43,4 +43,12 @@ enum Priority: String, Codable, CaseIterable {
         case .low: return .priorityBlue.opacity(0.10)
         }
     }
+
+    var badgeColor: Color {
+        switch self {
+        case .high: return .priorityHighBadge
+        case .medium: return .priorityMediumBadge
+        case .low: return .priorityLowBadge
+        }
+    }
 }

@@ -331,52 +331,48 @@ struct PrioritySectionHeader: View {
     var onAddTap: (() -> Void)? = nil
 
     var body: some View {
-        VStack(alignment: .leading, spacing: AppStyle.Spacing.small) {
-            Spacer(minLength: 0)
+        HStack {
+            HStack(spacing: AppStyle.Spacing.compact) {
+                Text(priority.displayName)
+                    .font(.inter(size: 14, weight: .medium))
+                    .foregroundColor(priority.dotColor)
 
-            HStack {
-                HStack(spacing: AppStyle.Spacing.compact) {
-                    Text(priority.displayName)
-                        .font(.inter(size: 14, weight: .medium))
-
-                    if count > 0 {
-                        Text("\(count)")
-                            .font(AppStyle.Typography.countBadge)
-                            .foregroundColor(.secondary)
-                    }
-
-                    Image(systemName: "chevron.right")
-                        .font(AppStyle.Typography.chevron)
-                        .foregroundColor(.secondary)
-                        .rotationEffect(.degrees(isCollapsed ? 0 : 90))
+                if count > 0 {
+                    Text("\(count)")
+                        .font(AppStyle.Typography.countBadge)
+                        .foregroundColor(priority.dotColor.opacity(0.6))
                 }
 
-                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(AppStyle.Typography.chevron)
+                    .foregroundColor(priority.dotColor.opacity(0.6))
+                    .rotationEffect(.degrees(isCollapsed ? 0 : 90))
+            }
+            .padding(.horizontal, AppStyle.Spacing.medium)
+            .padding(.vertical, AppStyle.Spacing.small)
+            .background(priority.badgeColor, in: RoundedRectangle(cornerRadius: AppStyle.CornerRadius.pill))
 
-                if let onAddTap {
-                    Button {
-                        onAddTap()
-                    } label: {
-                        Image(systemName: "plus")
-                            .font(.inter(.caption, weight: .semiBold))
-                            .foregroundColor(.white)
-                            .frame(width: 26, height: 26)
-                            .background(Color.darkGray, in: Circle())
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Add task")
+            Spacer()
+
+            if let onAddTap {
+                Button {
+                    onAddTap()
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.inter(.caption, weight: .semiBold))
+                        .foregroundColor(.white)
+                        .frame(width: 26, height: 26)
+                        .background(Color.darkGray, in: Circle())
                 }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Add task")
             }
-            .contentShape(Rectangle())
-            .onTapGesture {
-                onToggle()
-            }
-
-            Rectangle()
-                .fill(priority.dotColor)
-                .frame(height: 1.5)
         }
-        .frame(minHeight: 44, alignment: .bottom)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            onToggle()
+        }
+        .frame(minHeight: 44)
     }
 }
 

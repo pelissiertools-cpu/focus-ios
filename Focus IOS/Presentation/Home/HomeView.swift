@@ -85,7 +85,7 @@ struct HomeView: View {
                     VStack(alignment: .leading, spacing: AppStyle.Spacing.section) {
                         Color.clear.frame(height: 0).id("homeScrollTop")
                         // MARK: - Date Header
-                        HStack(alignment: .top, spacing: 10) {
+                        HStack(alignment: .center, spacing: 10) {
                             Button(action: {
                                 withAnimation(AppStyle.Anim.expand) {
                                     showSettings = true
@@ -95,19 +95,23 @@ struct HomeView: View {
                                     .font(.system(size: 14, weight: .medium))
                                     .foregroundColor(.secondary)
                                     .frame(width: 30, height: 30)
-                                    .background(Color.secondary.opacity(0.12), in: Circle())
+                                    .overlay(
+                                        Circle()
+                                            .stroke(Color.cardBorder, lineWidth: AppStyle.Border.thin)
+                                    )
                             }
                             .buttonStyle(.plain)
-                            .padding(.top, 2)
 
-                            VStack(alignment: .leading, spacing: 0) {
+                            HStack(spacing: 0) {
                                 Text(currentDayName)
-                                    .font(.helveticaNeue(size: 23.5))
-                                    .tracking(-0.245)
-                                    .foregroundColor(.secondary)
+                                Text(", ")
                                 formattedDateView
-                                    .foregroundColor(.secondary)
                             }
+                            .font(.helveticaNeue(size: 13.7, weight: .bold))
+                            .tracking(-0.158)
+                            .foregroundColor(.secondary)
+
+                            Spacer()
                         }
                         .padding(.horizontal, AppStyle.Spacing.page)
                         .padding(.top, AppStyle.Spacing.compact)
@@ -826,32 +830,14 @@ struct HomeView: View {
         let now = Date()
         let cal = Calendar.current
         let day = cal.component(.day, from: now)
-        let year = cal.component(.year, from: now)
 
         let monthFormatter = DateFormatter()
         monthFormatter.dateFormat = "MMMM"
         let month = monthFormatter.string(from: now)
 
-        let suffix: String
-        switch day {
-        case 1, 21, 31: suffix = "st"
-        case 2, 22:     suffix = "nd"
-        case 3, 23:     suffix = "rd"
-        default:        suffix = "th"
-        }
-
-        let baseSize: CGFloat = 13.7
-        let smallSize: CGFloat = baseSize - 1.8
-        let yearStr = String(format: "%d", year)
-
-        return HStack(alignment: .firstTextBaseline, spacing: 0) {
-            Text("\(month) \(day)")
-                .font(.helveticaNeue(size: baseSize))
-                .tracking(-0.158)
-            Text("\(suffix)__\(yearStr)")
-                .font(.helveticaNeue(size: smallSize))
-                .tracking(-0.158)
-        }
+        return Text("\(month) \(day)")
+            .font(.helveticaNeue(size: 13.7))
+            .tracking(-0.158)
     }
 
     private var currentWeekString: String {

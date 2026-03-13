@@ -24,114 +24,188 @@ struct ManageSharingSheet: View {
     var body: some View {
         DrawerContainer(
             title: "Sharing",
-            leadingButton: .done { dismiss() }
+            leadingButton: .close { dismiss() }
         ) {
-            contentList
-        }
-    }
+            ScrollView {
+                VStack(spacing: AppStyle.Spacing.comfortable) {
+                    // Members card
+                    membersCard
 
-    private var contentList: some View {
-        List {
-            // Members
-            SwiftUI.Section(header: Text(task.title)
-                .font(.inter(.headline, weight: .semiBold))
-                .foregroundColor(.primary)
-                .textCase(nil)
-            ) {
-                if isLoading {
-                    HStack {
-                        Spacer()
-                        ProgressView()
-                        Spacer()
-                    }
-                    .listRowBackground(Color.clear)
-                } else if members.isEmpty {
-                    Text("No members yet")
-                        .font(.inter(.body))
-                        .foregroundColor(.secondary)
-                        .listRowBackground(Color.clear)
-                } else {
-                    ForEach(members) { member in
-                        memberRow(member)
-                    }
+                    // Actions card
+                    actionsCard
                 }
+                .padding(.bottom, AppStyle.Spacing.page)
             }
-
-            // Actions
-            SwiftUI.Section {
-                Button {
-                    ShareSheetHelper.share(task: task)
-                } label: {
-                    Label("Share Link", systemImage: "square.and.arrow.up")
-                        .font(.inter(.body))
-                        .foregroundColor(.focusBlue)
-                }
-                .listRowBackground(Color.clear)
-
-                if isCurrentUserOwner {
-                    Button(role: .destructive) {
-                        showStopSharingConfirmation = true
-                    } label: {
-                        Label("Stop Sharing", systemImage: "xmark.circle")
-                            .font(.inter(.body))
-                    }
-                    .listRowBackground(Color.clear)
-                } else {
-                    Button(role: .destructive) {
-                        showLeaveConfirmation = true
-                    } label: {
-                        Label("Leave", systemImage: "arrow.right.circle")
-                            .font(.inter(.body))
-                    }
-                    .listRowBackground(Color.clear)
-                }
+            .background(Color.appBackground)
+            .task {
+                await loadMembers()
             }
-        }
-        .listStyle(.insetGrouped)
-        .scrollContentBackground(.hidden)
-        .background(Color.appBackground)
-        .task {
-            await loadMembers()
-        }
-        .confirmationDialog("Stop sharing?", isPresented: $showStopSharingConfirmation, titleVisibility: .visible) {
-            Button("Stop Sharing", role: .destructive) {
-                _Concurrency.Task {
-                    try? await shareRepository.removeShare(taskId: task.id)
-                    NotificationCenter.default.post(name: .sharedItemsChanged, object: nil)
-                    NotificationCenter.default.post(name: .projectListChanged, object: nil)
-                    dismiss()
-                }
-            }
-        } message: {
-            Text("All members will lose access to \"\(task.title)\".")
-        }
-        .confirmationDialog("Leave shared item?", isPresented: $showLeaveConfirmation, titleVisibility: .visible) {
-            Button("Leave", role: .destructive) {
-                _Concurrency.Task {
-                    if let userId = authService.currentUser?.id {
-                        try? await shareRepository.leaveShare(taskId: task.id, userId: userId)
+            .confirmationDialog("Stop sharing?", isPresented: $showStopSharingConfirmation, titleVisibility: .visible) {
+                Button("Stop Sharing", role: .destructive) {
+                    _Concurrency.Task {
+                        try? await shareRepository.removeShare(taskId: task.id)
                         NotificationCenter.default.post(name: .sharedItemsChanged, object: nil)
                         NotificationCenter.default.post(name: .projectListChanged, object: nil)
+                        dismiss()
                     }
-                    dismiss()
                 }
+            } message: {
+                Text("All members will lose access to \"\(task.title)\".")
             }
-        } message: {
-            Text("\"\(task.title)\" will be removed from your lists.")
+            .confirmationDialog("Leave shared item?", isPresented: $showLeaveConfirmation, titleVisibility: .visible) {
+                Button("Leave", role: .destructive) {
+                    _Concurrency.Task {
+                        if let userId = authService.currentUser?.id {
+                            try? await shareRepository.leaveShare(taskId: task.id, userId: userId)
+                            NotificationCenter.default.post(name: .sharedItemsChanged, object: nil)
+                            NotificationCenter.default.post(name: .projectListChanged, object: nil)
+                        }
+                        dismiss()
+                    }
+                }
+            } message: {
+                Text("\"\(task.title)\" will be removed from your lists.")
+            }
         }
     }
 
-    @ViewBuilder
+    // MARK: - Members Card
+
+    private var membersCard: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // Header
+            Text(task.title)
+                .font(.inter(.headline, weight: .semiBold))
+                .foregroundColor(.primary)
+                .padding(.horizontal, AppStyle.Spacing.content)
+                .padding(.top, AppStyle.Spacing.section)
+                .padding(.bottom, AppStyle.Spacing.compact)
+
+            Rectangle()
+                .fill(Color.cardBorder)
+                .frame(height: AppStyle.Border.thin)
+                .padding(.horizontal, AppStyle.Spacing.content)
+
+            // Content
+            if isLoading {
+                HStack {
+                    Spacer()
+                    ProgressView()
+                    Spacer()
+                }
+                .padding(.vertical, AppStyle.Spacing.expanded)
+            } else if members.isEmpty {
+                Text("No members yet")
+                    .font(.inter(.body))
+                    .foregroundColor(.secondary)
+                    .padding(.horizontal, AppStyle.Spacing.content)
+                    .padding(.vertical, AppStyle.Spacing.section)
+            } else {
+                VStack(spacing: 0) {
+                    ForEach(members) { member in
+                        memberRow(member)
+
+                        if member.id != members.last?.id {
+                            Rectangle()
+                                .fill(Color.cardBorder)
+                                .frame(height: AppStyle.Border.thin)
+                                .padding(.leading, 52)
+                                .padding(.trailing, AppStyle.Spacing.content)
+                        }
+                    }
+                }
+            }
+        }
+        .background(Color(.secondarySystemGroupedBackground))
+        .clipShape(RoundedRectangle(cornerRadius: AppStyle.CornerRadius.card))
+        .padding(.horizontal, AppStyle.Spacing.section)
+        .padding(.top, AppStyle.Spacing.compact)
+    }
+
+    // MARK: - Actions Card
+
+    private var actionsCard: some View {
+        VStack(spacing: 0) {
+            // Share Link
+            Button {
+                ShareSheetHelper.share(task: task)
+            } label: {
+                HStack(spacing: AppStyle.Spacing.medium) {
+                    Image(systemName: "square.and.arrow.up")
+                        .font(.inter(.body))
+                        .foregroundColor(.focusBlue)
+                        .frame(width: AppStyle.Layout.pillButton)
+                    Text("Share Link")
+                        .font(.inter(.body))
+                        .foregroundColor(.primary)
+                    Spacer()
+                }
+                .padding(.horizontal, AppStyle.Spacing.content)
+                .padding(.vertical, AppStyle.Spacing.comfortable)
+                .contentShape(Rectangle())
+            }
+
+            Rectangle()
+                .fill(Color.cardBorder)
+                .frame(height: AppStyle.Border.thin)
+                .padding(.horizontal, AppStyle.Spacing.content)
+
+            // Stop Sharing / Leave
+            if isCurrentUserOwner {
+                Button {
+                    showStopSharingConfirmation = true
+                } label: {
+                    HStack(spacing: AppStyle.Spacing.medium) {
+                        Image(systemName: "xmark.circle")
+                            .font(.inter(.body))
+                            .foregroundColor(.red)
+                            .frame(width: AppStyle.Layout.pillButton)
+                        Text("Stop Sharing")
+                            .font(.inter(.body))
+                            .foregroundColor(.red)
+                        Spacer()
+                    }
+                    .padding(.horizontal, AppStyle.Spacing.content)
+                    .padding(.vertical, AppStyle.Spacing.comfortable)
+                    .contentShape(Rectangle())
+                }
+            } else {
+                Button {
+                    showLeaveConfirmation = true
+                } label: {
+                    HStack(spacing: AppStyle.Spacing.medium) {
+                        Image(systemName: "arrow.right.circle")
+                            .font(.inter(.body))
+                            .foregroundColor(.red)
+                            .frame(width: AppStyle.Layout.pillButton)
+                        Text("Leave")
+                            .font(.inter(.body))
+                            .foregroundColor(.red)
+                        Spacer()
+                    }
+                    .padding(.horizontal, AppStyle.Spacing.content)
+                    .padding(.vertical, AppStyle.Spacing.comfortable)
+                    .contentShape(Rectangle())
+                }
+            }
+        }
+        .background(Color(.secondarySystemGroupedBackground))
+        .clipShape(RoundedRectangle(cornerRadius: AppStyle.CornerRadius.card))
+        .padding(.horizontal, AppStyle.Spacing.section)
+    }
+
+    // MARK: - Member Row
+
     private func memberRow(_ member: ShareMember) -> some View {
-        HStack(spacing: 12) {
+        HStack(spacing: AppStyle.Spacing.comfortable) {
             let initial = String(member.email.prefix(1)).uppercased()
             Text(initial)
                 .font(.inter(.subheadline, weight: .semiBold))
                 .foregroundColor(.white)
                 .frame(width: 32, height: 32)
-                .background(member.isOwner ? Color.accentColor : Color.secondary, in: Circle())
+                .background(member.isOwner ? Color.focusBlue : Color.secondary.opacity(0.6), in: Circle())
 
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: AppStyle.Spacing.micro) {
                 Text(member.email)
                     .font(.inter(.body))
                     .foregroundColor(.primary)
@@ -153,13 +227,17 @@ struct ManageSharingSheet: View {
                     }
                 } label: {
                     Image(systemName: "xmark.circle.fill")
-                        .foregroundColor(.secondary)
+                        .font(.inter(.body))
+                        .foregroundColor(.secondary.opacity(0.5))
                 }
                 .buttonStyle(.plain)
             }
         }
-        .listRowBackground(Color.clear)
+        .padding(.horizontal, AppStyle.Spacing.content)
+        .padding(.vertical, AppStyle.Spacing.compact)
     }
+
+    // MARK: - Data
 
     private func loadMembers() async {
         isLoading = true

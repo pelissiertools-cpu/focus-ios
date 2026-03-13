@@ -284,13 +284,25 @@ struct TodayView: View {
                                             userId: userId
                                         )
                                     }
-                                    let today = Calendar.current.startOfDay(for: Date())
+                                    let scheduleDate: Date
+                                    let timeframe: Timeframe
+                                    let section: Section
+                                    if let info = r.schedule {
+                                        scheduleDate = info.dates.sorted().first ?? Calendar.current.startOfDay(for: Date())
+                                        timeframe = info.timeframe
+                                        section = info.section
+                                        info.scheduleNotificationIfNeeded(taskId: created.id, taskTitle: r.title)
+                                    } else {
+                                        scheduleDate = Calendar.current.startOfDay(for: Date())
+                                        timeframe = .daily
+                                        section = .todo
+                                    }
                                     let schedule = Schedule(
                                         userId: userId,
                                         taskId: created.id,
-                                        timeframe: .daily,
-                                        section: .todo,
-                                        scheduleDate: today,
+                                        timeframe: timeframe,
+                                        section: section,
+                                        scheduleDate: scheduleDate,
                                         sortOrder: 0
                                     )
                                     _ = try await scheduleRepo.createSchedule(schedule)

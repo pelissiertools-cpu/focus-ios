@@ -7,6 +7,7 @@ import SwiftUI
 
 struct OnboardingNotificationsStep: View {
     @EnvironmentObject var notificationManager: NotificationManager
+    @Environment(\.scenePhase) private var scenePhase
     let onContinue: () -> Void
 
     @State private var hasRequested = false
@@ -85,6 +86,11 @@ struct OnboardingNotificationsStep: View {
                 .padding(.bottom, 40)
             }
         }
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase == .active {
+                notificationManager.checkSystemAuthorization()
+            }
+        }
     }
 
     // MARK: - Notification Preview
@@ -125,10 +131,12 @@ struct OnboardingNotificationsStep: View {
     // MARK: - Actions
 
     private func requestNotifications() {
-        notificationManager.isEnabled = true
-        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-        withAnimation(AppStyle.Anim.toggle) {
-            hasRequested = true
+        _Concurrency.Task { @MainActor in
+            await notificationManager.enableNotifications()
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            withAnimation(AppStyle.Anim.toggle) {
+                hasRequested = true
+            }
         }
     }
 }

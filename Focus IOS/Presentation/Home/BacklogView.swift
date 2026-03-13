@@ -298,9 +298,9 @@ struct BacklogView: View {
                     .padding(.horizontal, AppStyle.Spacing.page)
                 } else if isEmpty {
                     VStack(spacing: AppStyle.Spacing.tiny) {
-                        Text("No items yet")
+                        Text("No tasks yet")
                             .font(AppStyle.Typography.emptyTitle)
-                        Text("All your tasks, projects, and lists will appear here")
+                        Text("All your tasks will appear here")
                             .font(AppStyle.Typography.emptySubtitle)
                             .foregroundColor(.secondary)
                             .multilineTextAlignment(.center)

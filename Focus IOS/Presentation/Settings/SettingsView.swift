@@ -30,6 +30,7 @@ struct SettingsView: View {
     @State private var showAppearancePicker = false
     @EnvironmentObject var appearanceManager: AppearanceManager
     @EnvironmentObject var notificationManager: NotificationManager
+    @Environment(\.scenePhase) private var scenePhase
 
     private var userEmail: String {
         authService.currentUser?.email ?? ""
@@ -122,17 +123,23 @@ struct SettingsView: View {
 
                             Spacer()
 
-                            Toggle("", isOn: $notificationManager.isEnabled)
-                                .labelsHidden()
-                                .tint(Color.appRed)
+                            Toggle("", isOn: Binding(
+                                get: { notificationManager.isEnabled },
+                                set: { newValue in
+                                    if newValue {
+                                        _Concurrency.Task { @MainActor in
+                                            await notificationManager.enableNotifications()
+                                        }
+                                    } else {
+                                        notificationManager.disableNotifications()
+                                    }
+                                }
+                            ))
+                            .labelsHidden()
+                            .tint(Color.appRed)
                         }
                         .padding(.horizontal, AppStyle.Spacing.section)
                         .padding(.vertical, AppStyle.Spacing.content)
-                        .onChange(of: notificationManager.isEnabled) { _, newValue in
-                            if newValue && !notificationManager.systemAuthorized {
-                                notificationManager.checkSystemAuthorization()
-                            }
-                        }
                     }
                     .clipShape(RoundedRectangle(cornerRadius: 12))
                     .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 12))
@@ -378,6 +385,11 @@ struct SettingsView: View {
                 } hasInput: {
                     !newPassword.isEmpty
                 }
+            }
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase == .active {
+                notificationManager.checkSystemAuthorization()
             }
         }
         .alert("Email Updated", isPresented: $emailChangeSuccess) {

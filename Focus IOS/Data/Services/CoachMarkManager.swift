@@ -62,6 +62,8 @@ enum CoachMarkSection: String, CaseIterable {
 class CoachMarkManager: ObservableObject {
     static let shared = CoachMarkManager()
 
+    private static let lastUserIdKey = "coach_mark_last_user_id"
+
     @Published private var dismissedSections: Set<String>
 
     private init() {
@@ -72,6 +74,15 @@ class CoachMarkManager: ObservableObject {
             }
         }
         self.dismissedSections = dismissed
+    }
+
+    /// Call when a user signs in. Resets all coach marks if the user changed.
+    func handleUserSignIn(userId: String) {
+        let lastUserId = UserDefaults.standard.string(forKey: Self.lastUserIdKey)
+        if lastUserId != userId {
+            resetAll()
+            UserDefaults.standard.set(userId, forKey: Self.lastUserIdKey)
+        }
     }
 
     func shouldShow(_ section: CoachMarkSection) -> Bool {

@@ -7,6 +7,7 @@
 
 import SwiftUI
 import GoogleSignIn
+import Auth
 
 @main
 struct Focus_IOSApp: App {
@@ -68,6 +69,11 @@ struct Focus_IOSApp: App {
                 _ = await minDelay
                 withAnimation(.easeInOut(duration: 0.5)) {
                     showLaunchScreen = false
+                }
+            }
+            .onChange(of: authService.currentUser?.id.uuidString) { _, newId in
+                if let userId = newId {
+                    coachMarkManager.handleUserSignIn(userId: userId)
                 }
             }
             .environmentObject(languageManager)

@@ -37,7 +37,8 @@ struct AddBarConfig {
     }
 
     static var today: AddBarConfig {
-        AddBarConfig(availableModes: [.task], showSchedule: false, showAIBreakdown: true)
+        let todayDate = Calendar.current.startOfDay(for: Date())
+        return AddBarConfig(availableModes: [.task], showSchedule: true, showAIBreakdown: true, initialDates: [todayDate], initialTimeframe: .daily)
     }
 
     static var quickLists: AddBarConfig {
@@ -854,7 +855,8 @@ struct AddBar: View {
         subtasks = []
         listItems = []
         draftTasks = []
-        scheduleDates = []
+        scheduleDates = config.initialDates
+        timeframe = config.initialTimeframe
         scheduleExpanded = false
         optionsExpanded = false
         notificationEnabled = false

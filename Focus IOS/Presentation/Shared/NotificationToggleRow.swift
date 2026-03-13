@@ -9,8 +9,13 @@ struct NotificationToggleRow: View {
     @Binding var isEnabled: Bool
     @Binding var selectedTime: Date
     @Binding var isExpanded: Bool
+    @EnvironmentObject var notificationManager: NotificationManager
+    @Environment(\.scenePhase) private var scenePhase
 
     @State private var hasAppeared = false
+    @State private var showPermissionAlert = false
+    /// Tracks that the user wanted to enable this reminder but was sent to Settings first
+    @State private var pendingReminderEnable = false
 
     private var formattedTime: String {
         let formatter = DateFormatter()
@@ -61,9 +66,22 @@ struct NotificationToggleRow: View {
 
                 Spacer()
 
-                Toggle("", isOn: $isEnabled)
-                    .labelsHidden()
-                    .tint(.focusBlue)
+                Toggle("", isOn: Binding(
+                    get: { isEnabled },
+                    set: { newValue in
+                        if newValue {
+                            if notificationManager.isEnabled {
+                                isEnabled = true
+                            } else {
+                                showPermissionAlert = true
+                            }
+                        } else {
+                            isEnabled = false
+                        }
+                    }
+                ))
+                .labelsHidden()
+                .tint(.focusBlue)
             }
             .padding(.horizontal, AppStyle.Spacing.content)
             .padding(.vertical, AppStyle.Spacing.comfortable)
@@ -92,6 +110,32 @@ struct NotificationToggleRow: View {
                 }
             } else {
                 isExpanded = false
+            }
+        }
+        .alert("Notifications are off", isPresented: $showPermissionAlert) {
+            Button("Cancel", role: .cancel) {}
+            Button("Enable Notifications") {
+                pendingReminderEnable = true
+                _Concurrency.Task { @MainActor in
+                    let enabled = await notificationManager.enableNotifications()
+                    if enabled {
+                        pendingReminderEnable = false
+                        isEnabled = true
+                    }
+                }
+            }
+        } message: {
+            Text("Enable notifications to set reminders for your tasks.")
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase == .active {
+                notificationManager.checkSystemAuthorization()
+            }
+        }
+        .onChange(of: notificationManager.isEnabled) { _, nowEnabled in
+            if nowEnabled && pendingReminderEnable {
+                pendingReminderEnable = false
+                isEnabled = true
             }
         }
     }

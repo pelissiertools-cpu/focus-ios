@@ -17,6 +17,7 @@ struct Focus_IOSApp: App {
     @StateObject private var appearanceManager = AppearanceManager.shared
     @StateObject private var notificationManager = NotificationManager.shared
     @StateObject private var coachMarkManager = CoachMarkManager.shared
+    @State private var showLaunchScreen = true
 
     init() {
         let auth = AuthService()
@@ -37,14 +38,31 @@ struct Focus_IOSApp: App {
 
     var body: some Scene {
         WindowGroup {
-            Group {
-                if authService.isAuthenticated {
-                    MainTabView()
-                        .environmentObject(authService)
-                        .environmentObject(focusViewModel)
-                } else {
-                    SignInView()
-                        .environmentObject(authService)
+            ZStack {
+                Group {
+                    if authService.isAuthenticated {
+                        MainTabView()
+                            .environmentObject(authService)
+                            .environmentObject(focusViewModel)
+                    } else if !authService.isCheckingSession {
+                        SignInView()
+                            .environmentObject(authService)
+                    }
+                }
+                .opacity(showLaunchScreen ? 0 : 1)
+
+                if showLaunchScreen {
+                    LaunchScreenView()
+                        .zIndex(1)
+                }
+            }
+            .task {
+                // Hold splash for at least 1.5s, then wait for session check
+                async let minDelay: Void? = try? await _Concurrency.Task.sleep(for: .seconds(1.5))
+                await authService.waitForSessionCheck()
+                _ = await minDelay
+                withAnimation(.easeInOut(duration: 0.5)) {
+                    showLaunchScreen = false
                 }
             }
             .environmentObject(languageManager)

@@ -16,6 +16,7 @@ import CryptoKit
 class AuthService: ObservableObject {
     @Published var currentUser: User?
     @Published var isAuthenticated = false
+    @Published var isCheckingSession = true
     @Published var isLoading = false
     @Published var errorMessage: String?
 
@@ -37,6 +38,15 @@ class AuthService: ObservableObject {
         } catch {
             self.isAuthenticated = false
             self.currentUser = nil
+        }
+        self.isCheckingSession = false
+    }
+
+    /// Wait until the initial session check completes
+    func waitForSessionCheck() async {
+        guard isCheckingSession else { return }
+        for await checking in $isCheckingSession.values where !checking {
+            break
         }
     }
 

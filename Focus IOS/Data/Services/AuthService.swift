@@ -35,6 +35,7 @@ class AuthService: ObservableObject {
             let session = try await supabase.auth.session
             self.currentUser = session.user
             self.isAuthenticated = true
+            await RealtimeService.shared.connect(userId: session.user.id)
         } catch {
             self.isAuthenticated = false
             self.currentUser = nil
@@ -54,6 +55,7 @@ class AuthService: ObservableObject {
             NotificationCenter.default.post(name: .sessionRefreshed, object: nil)
         } catch {
             // Session is truly expired — sign out so user sees login screen
+            await RealtimeService.shared.disconnect()
             AppDataCache.shared.invalidate()
             self.currentUser = nil
             self.isAuthenticated = false
@@ -81,6 +83,7 @@ class AuthService: ObservableObject {
 
             self.currentUser = response.user
             self.isAuthenticated = true
+            await RealtimeService.shared.connect(userId: response.user.id)
             self.isLoading = false
         } catch {
             self.isLoading = false
@@ -102,6 +105,7 @@ class AuthService: ObservableObject {
 
             self.currentUser = response.user
             self.isAuthenticated = true
+            await RealtimeService.shared.connect(userId: response.user.id)
             self.isLoading = false
         } catch {
             self.isLoading = false
@@ -170,6 +174,7 @@ class AuthService: ObservableObject {
             )
             self.currentUser = session.user
             self.isAuthenticated = true
+            await RealtimeService.shared.connect(userId: session.user.id)
             self.isLoading = false
         } catch {
             self.isLoading = false
@@ -194,6 +199,7 @@ class AuthService: ObservableObject {
             )
             self.currentUser = session.user
             self.isAuthenticated = true
+            await RealtimeService.shared.connect(userId: session.user.id)
             self.isLoading = false
         } catch {
             self.isLoading = false
@@ -269,6 +275,7 @@ class AuthService: ObservableObject {
 
         do {
             try await supabase.auth.signOut()
+            await RealtimeService.shared.disconnect()
             AppDataCache.shared.invalidate()
             self.currentUser = nil
             self.isAuthenticated = false

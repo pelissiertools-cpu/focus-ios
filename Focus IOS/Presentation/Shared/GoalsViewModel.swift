@@ -133,13 +133,21 @@ class GoalsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
 
         NotificationCenter.default.publisher(for: .projectListChanged)
             .receive(on: DispatchQueue.main)
-            .sink { [weak self] _ in
+            .sink { [weak self] notification in
                 guard let self else { return }
+                if notification.object as AnyObject? === self { return }
+                if notification.object == nil,
+                   LocalMutationTracker.isRecentlyMutated() { return }
                 _Concurrency.Task { @MainActor in
                     await self.fetchGoals()
                 }
             }
             .store(in: &cancellables)
+    }
+
+    private func notifyTasksChanged() {
+        LocalMutationTracker.markMutation()
+        NotificationCenter.default.post(name: .projectListChanged, object: self)
     }
 
     private func handleTaskCompletionNotification(_ notification: Notification) {
@@ -317,6 +325,7 @@ class GoalsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
             for goalId in completedIds {
                 goalTasksMap.removeValue(forKey: goalId)
             }
+            notifyTasksChanged()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -452,7 +461,8 @@ class GoalsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
 
             goals.insert(goal, at: 0)
             await fetchGoalTasks(for: goal.id)
-            NotificationCenter.default.post(name: .projectListChanged, object: nil)
+            LocalMutationTracker.markMutation()
+            NotificationCenter.default.post(name: .projectListChanged, object: self)
             return goal.id
         } catch {
             errorMessage = error.localizedDescription
@@ -466,6 +476,7 @@ class GoalsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
             try await repository.deleteTask(id: goal.id)
             goals.removeAll { $0.id == goal.id }
             goalTasksMap.removeValue(forKey: goal.id)
+            notifyTasksChanged()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -478,6 +489,7 @@ class GoalsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
             try await repository.deleteTask(id: goal.id)
             goals.removeAll { $0.id == goal.id }
             goalTasksMap.removeValue(forKey: goal.id)
+            notifyTasksChanged()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -508,6 +520,7 @@ class GoalsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
                 goalTasksMap[goalId] = [task]
             }
             subtasksMap[task.id] = []
+            notifyTasksChanged()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -521,6 +534,7 @@ class GoalsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
                 goalTasksMap[goalId] = tasks
             }
             subtasksMap.removeValue(forKey: task.id)
+            notifyTasksChanged()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -575,6 +589,20 @@ class GoalsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
                 goalTasksMap[goalId] = tasks
 
                 try await checkGoalAutoComplete(goalId: goalId)
+
+                // Notify other views
+                NotificationCenter.default.post(
+                    name: .taskCompletionChanged,
+                    object: nil,
+                    userInfo: [
+                        TaskNotificationKeys.taskId: task.id,
+                        TaskNotificationKeys.isCompleted: tasks[index].isCompleted,
+                        TaskNotificationKeys.completedDate: tasks[index].completedDate as Any,
+                        TaskNotificationKeys.source: TaskNotificationSource.log.rawValue,
+                        TaskNotificationKeys.subtasksChanged: true
+                    ]
+                )
+                notifyTasksChanged()
             }
         } catch {
             errorMessage = error.localizedDescription
@@ -674,6 +702,20 @@ class GoalsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
                 if let goalId = goalTasksMap.first(where: { $0.value.contains(where: { $0.id == parentId }) })?.key {
                     try await checkGoalAutoComplete(goalId: goalId)
                 }
+
+                // Notify other views
+                NotificationCenter.default.post(
+                    name: .taskCompletionChanged,
+                    object: nil,
+                    userInfo: [
+                        TaskNotificationKeys.taskId: subtask.id,
+                        TaskNotificationKeys.isCompleted: subtasks[index].isCompleted,
+                        TaskNotificationKeys.completedDate: subtasks[index].completedDate as Any,
+                        TaskNotificationKeys.source: TaskNotificationSource.log.rawValue,
+                        TaskNotificationKeys.subtasksChanged: false
+                    ]
+                )
+                notifyTasksChanged()
             }
         } catch {
             errorMessage = error.localizedDescription
@@ -728,6 +770,7 @@ class GoalsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
             } else {
                 subtasksMap[parentId] = [newSubtask]
             }
+            notifyTasksChanged()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -740,6 +783,7 @@ class GoalsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
                 subtasks.removeAll { $0.id == subtask.id }
                 subtasksMap[parentId] = subtasks
             }
+            notifyTasksChanged()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -764,6 +808,7 @@ class GoalsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
             } else {
                 goalTasksMap[goalId] = [section]
             }
+            notifyTasksChanged()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -838,6 +883,7 @@ class GoalsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
                 subtasksMap.removeValue(forKey: id)
             }
             exitContentEditMode()
+            notifyTasksChanged()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -889,6 +935,7 @@ class GoalsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
                 goalTasksMap.removeValue(forKey: goalId)
             }
             exitEditMode()
+            notifyTasksChanged()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -907,6 +954,7 @@ class GoalsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
                 }
             }
             exitEditMode()
+            notifyTasksChanged()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -1172,7 +1220,8 @@ class GoalsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
                 subtasksMap[parentId] = subtasks
             }
 
-            NotificationCenter.default.post(name: .projectListChanged, object: nil)
+            LocalMutationTracker.markMutation()
+            NotificationCenter.default.post(name: .projectListChanged, object: self)
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -1206,7 +1255,8 @@ class GoalsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
                 subtasksMap[parentId] = subtasks
             }
 
-            NotificationCenter.default.post(name: .projectListChanged, object: nil)
+            LocalMutationTracker.markMutation()
+            NotificationCenter.default.post(name: .projectListChanged, object: self)
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -1228,6 +1278,7 @@ class GoalsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
                 goals[index].priority = priority
                 goals[index].modifiedDate = Date()
             }
+            notifyTasksChanged()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -1247,6 +1298,7 @@ class GoalsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
                 tasks[index].modifiedDate = Date()
                 goalTasksMap[goalId] = tasks
             }
+            notifyTasksChanged()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -1284,6 +1336,7 @@ class GoalsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
                 goals[index].dueDate = dueDate
                 goals[index].modifiedDate = Date()
             }
+            notifyTasksChanged()
         } catch {
             errorMessage = error.localizedDescription
         }

@@ -168,6 +168,31 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
                 self?.handleTaskCompletionNotification(notification)
             }
             .store(in: &cancellables)
+
+        NotificationCenter.default.publisher(for: .realtimeTasksChanged)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] notification in
+                guard let self else { return }
+                if notification.object == nil,
+                   LocalMutationTracker.isRecentlyMutated() { return }
+                _Concurrency.Task { @MainActor in
+                    await self.fetchTasks()
+                }
+            }
+            .store(in: &cancellables)
+
+        NotificationCenter.default.publisher(for: .schedulesChanged)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] notification in
+                guard let self else { return }
+                if notification.object as AnyObject? === self { return }
+                if notification.object == nil,
+                   LocalMutationTracker.isRecentlyMutated() { return }
+                _Concurrency.Task { @MainActor in
+                    await self.fetchScheduledTaskIds()
+                }
+            }
+            .store(in: &cancellables)
     }
 
     private func handleTaskCompletionNotification(_ notification: Notification) {
@@ -221,6 +246,11 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
                 TaskNotificationKeys.subtasksChanged: subtasksChanged
             ]
         )
+    }
+
+    private func notifyTasksChanged() {
+        LocalMutationTracker.markMutation()
+        NotificationCenter.default.post(name: .projectListChanged, object: self)
     }
 
     // MARK: - LogFilterable Conformance
@@ -533,6 +563,7 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
             }
             await persistSortOrders(updates)
 
+            notifyTasksChanged()
             return createdTask.id
         } catch {
             errorMessage = error.localizedDescription
@@ -736,6 +767,7 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
             // Delete the task
             try await repository.deleteTask(id: task.id)
             tasks.removeAll { $0.id == task.id }
+            notifyTasksChanged()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -749,6 +781,7 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
         do {
             try await repository.clearTasks(ids: completedIds)
             tasks.removeAll { completedIds.contains($0.id) }
+            notifyTasksChanged()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -767,6 +800,7 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
                 tasks[index].priority = priority
                 tasks[index].modifiedDate = Date()
             }
+            notifyTasksChanged()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -794,7 +828,7 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
                 subtasksMap[parentId] = subtasks
             }
 
-            NotificationCenter.default.post(name: .projectListChanged, object: nil)
+            notifyTasksChanged()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -829,7 +863,7 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
                 subtasksMap[parentId] = subtasks
             }
 
-            NotificationCenter.default.post(name: .projectListChanged, object: nil)
+            notifyTasksChanged()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -1108,6 +1142,7 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
             } else {
                 subtasksMap[parentId] = [newSubtask]
             }
+            notifyTasksChanged()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -1123,6 +1158,7 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
                 subtasks.removeAll { $0.id == subtask.id }
                 subtasksMap[parentId] = subtasks
             }
+            notifyTasksChanged()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -1208,6 +1244,7 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
             let created = try await categoryRepository.createCategory(newCategory)
             categories.append(created)
             selectedCategoryId = created.id
+            notifyTasksChanged()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -1225,6 +1262,7 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
                 try await categoryRepository.updateCategory(updated)
                 categories[index].name = trimmed
             }
+            notifyTasksChanged()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -1254,6 +1292,7 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
             if let selected = selectedCategoryId, ids.contains(selected) {
                 selectedCategoryId = nil
             }
+            notifyTasksChanged()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -1287,6 +1326,7 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
             if let selected = selectedCategoryId, sourceIds.contains(selected) {
                 selectedCategoryId = target.id
             }
+            notifyTasksChanged()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -1301,6 +1341,7 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
                 categories[index].sortOrder = index
                 try await categoryRepository.updateCategory(cat)
             }
+            notifyTasksChanged()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -1327,6 +1368,7 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
                 tasks[index].categoryId = categoryId
                 tasks[index].modifiedDate = Date()
             }
+            notifyTasksChanged()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -1389,6 +1431,7 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
             for taskId in idsToDelete {
                 subtasksMap.removeValue(forKey: taskId)
             }
+            notifyTasksChanged()
             exitEditMode()
         } catch {
             errorMessage = error.localizedDescription
@@ -1407,6 +1450,7 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
                     tasks[index].modifiedDate = Date()
                 }
             }
+            notifyTasksChanged()
             exitEditMode()
         } catch {
             errorMessage = error.localizedDescription
@@ -1444,7 +1488,7 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
             }
 
             exitEditMode()
-            NotificationCenter.default.post(name: .projectListChanged, object: nil)
+            notifyTasksChanged()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -1480,7 +1524,7 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
             }
 
             exitEditMode()
-            NotificationCenter.default.post(name: .projectListChanged, object: nil)
+            notifyTasksChanged()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -1506,7 +1550,7 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
             }
 
             exitEditMode()
-            NotificationCenter.default.post(name: .projectListChanged, object: nil)
+            notifyTasksChanged()
         } catch {
             errorMessage = error.localizedDescription
         }

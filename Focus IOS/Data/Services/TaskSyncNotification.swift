@@ -13,6 +13,7 @@ extension Notification.Name {
     static let projectListChanged = Notification.Name("projectListChanged")
     static let schedulesChanged = Notification.Name("schedulesChanged")
     static let sessionRefreshed = Notification.Name("sessionRefreshed")
+    static let realtimeTasksChanged = Notification.Name("realtimeTasksChanged")
 }
 
 /// Keys for task sync notification userInfo
@@ -28,4 +29,22 @@ enum TaskNotificationKeys {
 enum TaskNotificationSource: String {
     case focus = "focus"
     case log = "log"
+    case realtime = "realtime"
+}
+
+/// Tracks when any ViewModel last performed a local mutation.
+/// Used to suppress Realtime echo notifications (object == nil) that arrive
+/// shortly after the user's own change, preventing redundant re-fetches and UI flashes.
+@MainActor
+enum LocalMutationTracker {
+    static var lastMutationDate: Date?
+
+    static func markMutation() {
+        lastMutationDate = Date()
+    }
+
+    static func isRecentlyMutated(within seconds: TimeInterval = 2.0) -> Bool {
+        guard let last = lastMutationDate else { return false }
+        return Date().timeIntervalSince(last) < seconds
+    }
 }

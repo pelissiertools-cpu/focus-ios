@@ -133,13 +133,31 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
 
         NotificationCenter.default.publisher(for: .projectListChanged)
             .receive(on: DispatchQueue.main)
-            .sink { [weak self] _ in
+            .sink { [weak self] notification in
                 guard let self else { return }
+                if notification.object as AnyObject? === self { return }
+                if notification.object == nil,
+                   LocalMutationTracker.isRecentlyMutated() { return }
                 _Concurrency.Task { @MainActor in
                     await self.fetchProjects()
                 }
             }
             .store(in: &cancellables)
+
+        NotificationCenter.default.publisher(for: .schedulesChanged)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                guard let self else { return }
+                _Concurrency.Task { @MainActor in
+                    await self.fetchScheduledTaskIds()
+                }
+            }
+            .store(in: &cancellables)
+    }
+
+    private func notifyTasksChanged() {
+        LocalMutationTracker.markMutation()
+        NotificationCenter.default.post(name: .projectListChanged, object: self)
     }
 
     private func handleTaskCompletionNotification(_ notification: Notification) {
@@ -372,6 +390,7 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
             for projectId in completedIds {
                 projectTasksMap.removeValue(forKey: projectId)
             }
+            notifyTasksChanged()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -582,6 +601,7 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
             // 3. Refresh projects list
             projects.insert(project, at: 0)
             await fetchProjectTasks(for: project.id)
+            notifyTasksChanged()
             return project.id
         } catch {
             errorMessage = error.localizedDescription
@@ -596,7 +616,7 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
             try await repository.deleteTask(id: project.id)
             projects.removeAll { $0.id == project.id }
             projectTasksMap.removeValue(forKey: project.id)
-
+            notifyTasksChanged()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -610,7 +630,7 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
             try await repository.deleteTask(id: project.id)
             projects.removeAll { $0.id == project.id }
             projectTasksMap.removeValue(forKey: project.id)
-
+            notifyTasksChanged()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -641,6 +661,7 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
                 projectTasksMap[projectId] = [task]
             }
             subtasksMap[task.id] = []
+            notifyTasksChanged()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -710,6 +731,7 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
                 projectTasksMap[projectId] = [task]
             }
             subtasksMap[task.id] = []
+            notifyTasksChanged()
 
             // Persist the bumped sort orders
             if !updates.isEmpty {
@@ -728,6 +750,7 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
                 projectTasksMap[projectId] = tasks
             }
             subtasksMap.removeValue(forKey: task.id)
+            notifyTasksChanged()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -787,6 +810,20 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
 
                 // Auto-complete/uncomplete project based on task states
                 try await checkProjectAutoComplete(projectId: projectId)
+
+                // Notify other views
+                NotificationCenter.default.post(
+                    name: .taskCompletionChanged,
+                    object: nil,
+                    userInfo: [
+                        TaskNotificationKeys.taskId: task.id,
+                        TaskNotificationKeys.isCompleted: tasks[index].isCompleted,
+                        TaskNotificationKeys.completedDate: tasks[index].completedDate as Any,
+                        TaskNotificationKeys.source: TaskNotificationSource.log.rawValue,
+                        TaskNotificationKeys.subtasksChanged: true
+                    ]
+                )
+                notifyTasksChanged()
             }
         } catch {
             errorMessage = error.localizedDescription
@@ -892,6 +929,20 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
                 if let projectId = projectTasksMap.first(where: { $0.value.contains(where: { $0.id == parentId }) })?.key {
                     try await checkProjectAutoComplete(projectId: projectId)
                 }
+
+                // Notify other views
+                NotificationCenter.default.post(
+                    name: .taskCompletionChanged,
+                    object: nil,
+                    userInfo: [
+                        TaskNotificationKeys.taskId: subtask.id,
+                        TaskNotificationKeys.isCompleted: subtasks[index].isCompleted,
+                        TaskNotificationKeys.completedDate: subtasks[index].completedDate as Any,
+                        TaskNotificationKeys.source: TaskNotificationSource.log.rawValue,
+                        TaskNotificationKeys.subtasksChanged: false
+                    ]
+                )
+                notifyTasksChanged()
             }
         } catch {
             errorMessage = error.localizedDescription
@@ -954,6 +1005,7 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
             } else {
                 subtasksMap[parentId] = [newSubtask]
             }
+            notifyTasksChanged()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -966,6 +1018,7 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
                 subtasks.removeAll { $0.id == subtask.id }
                 subtasksMap[parentId] = subtasks
             }
+            notifyTasksChanged()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -990,6 +1043,7 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
             } else {
                 projectTasksMap[projectId] = [section]
             }
+            notifyTasksChanged()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -1064,6 +1118,7 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
                 subtasksMap.removeValue(forKey: id)
             }
             exitContentEditMode()
+            notifyTasksChanged()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -1166,7 +1221,8 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
             }
 
             exitContentEditMode()
-            NotificationCenter.default.post(name: .projectListChanged, object: nil)
+            LocalMutationTracker.markMutation()
+            NotificationCenter.default.post(name: .projectListChanged, object: self)
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -1216,9 +1272,9 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
             projects.removeAll { idsToDelete.contains($0.id) }
             for projectId in idsToDelete {
                 projectTasksMap.removeValue(forKey: projectId)
-
             }
             exitEditMode()
+            notifyTasksChanged()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -1240,9 +1296,9 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
             projects.removeAll { idsToDelete.contains($0.id) }
             for projectId in idsToDelete {
                 projectTasksMap.removeValue(forKey: projectId)
-
             }
             exitEditMode()
+            notifyTasksChanged()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -1261,6 +1317,7 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
                 }
             }
             exitEditMode()
+            notifyTasksChanged()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -1533,6 +1590,7 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
             updatedTask.title = newTitle
             updatedTask.modifiedDate = now
             try await repository.updateTask(updatedTask)
+            notifyTasksChanged()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -1567,6 +1625,7 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
             updatedTask.description = newNote
             updatedTask.modifiedDate = now
             try await repository.updateTask(updatedTask)
+            notifyTasksChanged()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -1606,6 +1665,7 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
             updated.priority = priority
             updated.modifiedDate = now
             try await repository.updateTask(updated)
+            notifyTasksChanged()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -1636,6 +1696,7 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
             updated.categoryId = categoryId
             updated.modifiedDate = now
             try await repository.updateTask(updated)
+            notifyTasksChanged()
         } catch {
             errorMessage = error.localizedDescription
         }

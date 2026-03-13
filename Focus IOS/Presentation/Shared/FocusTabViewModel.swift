@@ -146,6 +146,31 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
                 self?.handleTaskCompletionNotification(notification)
             }
             .store(in: &cancellables)
+
+        NotificationCenter.default.publisher(for: .schedulesChanged)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] notification in
+                guard let self else { return }
+                if notification.object as AnyObject? === self { return }
+                if notification.object == nil,
+                   LocalMutationTracker.isRecentlyMutated() { return }
+                _Concurrency.Task { @MainActor in
+                    await self.fetchSchedules()
+                }
+            }
+            .store(in: &cancellables)
+
+        NotificationCenter.default.publisher(for: .realtimeTasksChanged)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] notification in
+                guard let self else { return }
+                if notification.object == nil,
+                   LocalMutationTracker.isRecentlyMutated() { return }
+                _Concurrency.Task { @MainActor in
+                    await self.fetchSchedules()
+                }
+            }
+            .store(in: &cancellables)
     }
 
     private func handleTaskCompletionNotification(_ notification: Notification) {
@@ -245,6 +270,16 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
                 TaskNotificationKeys.subtasksChanged: subtasksChanged
             ]
         )
+    }
+
+    private func notifyTasksChanged() {
+        LocalMutationTracker.markMutation()
+        NotificationCenter.default.post(name: .projectListChanged, object: self)
+    }
+
+    private func notifySchedulesChanged() {
+        LocalMutationTracker.markMutation()
+        NotificationCenter.default.post(name: .schedulesChanged, object: self)
     }
 
     /// Fetch schedules for selected timeframe and date
@@ -378,6 +413,8 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
                 subtasks[index].modifiedDate = Date()
                 subtasksMap[parentId] = subtasks
             }
+
+            notifyTasksChanged()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -404,6 +441,8 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
                 subtasks[index].modifiedDate = Date()
                 subtasksMap[parentId] = subtasks
             }
+
+            notifyTasksChanged()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -429,6 +468,9 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
             // Remove from local state
             tasksMap.removeValue(forKey: task.id)
             subtasksMap.removeValue(forKey: task.id)
+
+            notifyTasksChanged()
+            notifySchedulesChanged()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -459,6 +501,9 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
             }
             let deletedTaskIds = Set([task.id] + subtasks.map { $0.id })
             schedules.removeAll { deletedTaskIds.contains($0.taskId) }
+
+            notifyTasksChanged()
+            notifySchedulesChanged()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -474,6 +519,8 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
                 subtasks.removeAll { $0.id == subtask.id }
                 subtasksMap[parentId] = subtasks
             }
+
+            notifyTasksChanged()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -504,6 +551,8 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
             } else {
                 subtasksMap[parentId] = [newSubtask]
             }
+
+            notifyTasksChanged()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -558,6 +607,9 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
 
             // Add subtask to tasksMap so it can be displayed independently
             tasksMap[newSubtask.id] = newSubtask
+
+            notifyTasksChanged()
+            notifySchedulesChanged()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -643,6 +695,8 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
                 schedules[index].scheduledTime = nil
                 schedules[index].durationMinutes = nil
             }
+
+            notifySchedulesChanged()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -652,6 +706,7 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
     func removeSchedule(_ schedule: Schedule) async {
         do {
             try await deleteScheduleWithDescendants(schedule)
+            notifySchedulesChanged()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -683,6 +738,11 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
 
             // Refresh to update view
             await fetchSchedules()
+
+            // Notify other views (e.g. TaskListViewModel) to refresh schedule dates
+            LocalMutationTracker.markMutation()
+            NotificationCenter.default.post(name: .schedulesChanged, object: self)
+
             return true
         } catch {
             errorMessage = error.localizedDescription
@@ -771,6 +831,8 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
             if let index = schedules.firstIndex(where: { $0.id == schedule.id }) {
                 schedules[index] = updatedSchedule
             }
+
+            notifySchedulesChanged()
             return true
         } catch {
             errorMessage = error.localizedDescription
@@ -1607,6 +1669,7 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
 
         do {
             try await taskRepository.updateTask(updatedTask)
+            notifyTasksChanged()
         } catch {
             errorMessage = "Failed to update priority: \(error.localizedDescription)"
             tasksMap[task.id] = task
@@ -1696,6 +1759,8 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
             tasksMap[createdTask.id] = createdTask
             schedules.append(createdSchedule)
 
+            notifyTasksChanged()
+            notifySchedulesChanged()
             return (taskId: createdTask.id, schedule: createdSchedule)
         } catch {
             errorMessage = error.localizedDescription
@@ -1768,6 +1833,9 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
                     }
                 }
             }
+
+            notifyTasksChanged()
+            notifySchedulesChanged()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -1837,6 +1905,9 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
                     }
                 }
             }
+
+            notifyTasksChanged()
+            notifySchedulesChanged()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -1914,6 +1985,9 @@ class FocusTabViewModel: ObservableObject, TaskEditingViewModel {
                 tasksMap[createdProject.id] = createdProject
                 schedules.append(createdSchedule)
             }
+
+            notifyTasksChanged()
+            notifySchedulesChanged()
         } catch {
             errorMessage = error.localizedDescription
         }

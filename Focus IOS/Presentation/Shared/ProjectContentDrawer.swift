@@ -102,7 +102,7 @@ struct ProjectContentView: View {
                     .moveDisabled(true)
 
                     // Content
-                    if viewModel.isLoadingProjectTasks.contains(project.id) {
+                    if viewModel.isLoadingProjectTasks.contains(project.id) && viewModel.projectTasksMap[project.id] == nil {
                         HStack {
                             Spacer()
                             ProgressView()

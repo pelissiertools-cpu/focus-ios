@@ -71,6 +71,7 @@ class ArchiveViewModel: ObservableObject {
             selectedIds = []
             isEditMode = false
             await fetchCompletedItems()
+            notifyTasksChanged()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -82,6 +83,7 @@ class ArchiveViewModel: ObservableObject {
         do {
             try await repository.deleteTasks(ids: allIds)
             await fetchCompletedItems()
+            notifyTasksChanged()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -99,8 +101,11 @@ class ArchiveViewModel: ObservableObject {
         NotificationCenter.default.publisher(for: .taskCompletionChanged)
             .merge(with: NotificationCenter.default.publisher(for: .projectListChanged))
             .receive(on: DispatchQueue.main)
-            .sink { [weak self] _ in
+            .sink { [weak self] notification in
                 guard let self else { return }
+                if notification.object as AnyObject? === self { return }
+                if notification.object == nil,
+                   LocalMutationTracker.isRecentlyMutated() { return }
                 _Concurrency.Task { @MainActor in
                     await self.fetchCompletedItems()
                 }
@@ -199,6 +204,11 @@ class ArchiveViewModel: ObservableObject {
         }
 
         return result
+    }
+
+    private func notifyTasksChanged() {
+        LocalMutationTracker.markMutation()
+        NotificationCenter.default.post(name: .projectListChanged, object: self)
     }
 
     private func sortByCompletedDate(_ items: [FocusTask]) -> [FocusTask] {

@@ -66,8 +66,11 @@ class HomeViewModel: ObservableObject {
     private func setupNotificationObserver() {
         NotificationCenter.default.publisher(for: .projectListChanged)
             .receive(on: DispatchQueue.main)
-            .sink { [weak self] _ in
+            .sink { [weak self] notification in
                 guard let self else { return }
+                if notification.object as AnyObject? === self { return }
+                if notification.object == nil,
+                   LocalMutationTracker.isRecentlyMutated() { return }
                 _Concurrency.Task { @MainActor in
                     await self.fetchProjects()
                     await self.fetchLists()
@@ -137,6 +140,7 @@ class HomeViewModel: ObservableObject {
         do {
             let created = try await categoryRepository.createCategory(category)
             categories.append(created)
+            notifyTasksChanged()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -151,6 +155,7 @@ class HomeViewModel: ObservableObject {
             if let index = categories.firstIndex(where: { $0.id == category.id }) {
                 categories[index].name = newName
             }
+            notifyTasksChanged()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -160,6 +165,7 @@ class HomeViewModel: ObservableObject {
         do {
             try await categoryRepository.deleteCategory(id: id)
             categories.removeAll { $0.id == id }
+            notifyTasksChanged()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -196,6 +202,7 @@ class HomeViewModel: ObservableObject {
         do {
             try await repository.deleteTask(id: project.id)
             projects.removeAll { $0.id == project.id }
+            notifyTasksChanged()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -205,6 +212,7 @@ class HomeViewModel: ObservableObject {
         do {
             try await repository.deleteTask(id: list.id)
             lists.removeAll { $0.id == list.id }
+            notifyTasksChanged()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -214,6 +222,7 @@ class HomeViewModel: ObservableObject {
         do {
             try await repository.deleteTask(id: goal.id)
             goals.removeAll { $0.id == goal.id }
+            notifyTasksChanged()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -238,6 +247,7 @@ class HomeViewModel: ObservableObject {
                     lists[index].isPinned = newPinned
                 }
             }
+            notifyTasksChanged()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -255,6 +265,7 @@ class HomeViewModel: ObservableObject {
             } else {
                 lists.append(section)
             }
+            notifyTasksChanged()
             return section
         } catch {
             errorMessage = error.localizedDescription
@@ -281,6 +292,7 @@ class HomeViewModel: ObservableObject {
                     lists[index] = updated
                 }
             }
+            notifyTasksChanged()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -296,6 +308,7 @@ class HomeViewModel: ObservableObject {
             } else {
                 lists.removeAll { $0.id == section.id }
             }
+            notifyTasksChanged()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -310,6 +323,7 @@ class HomeViewModel: ObservableObject {
             projects[index].sortOrder = index
             updates.append((id: project.id, sortOrder: index))
         }
+        notifyTasksChanged()
         _Concurrency.Task { await persistSortOrders(updates) }
     }
 
@@ -320,6 +334,7 @@ class HomeViewModel: ObservableObject {
             goals[index].sortOrder = index
             updates.append((id: goal.id, sortOrder: index))
         }
+        notifyTasksChanged()
         _Concurrency.Task { await persistSortOrders(updates) }
     }
 
@@ -330,6 +345,7 @@ class HomeViewModel: ObservableObject {
             lists[index].sortOrder = index
             updates.append((id: list.id, sortOrder: index))
         }
+        notifyTasksChanged()
         _Concurrency.Task { await persistSortOrders(updates) }
     }
 
@@ -339,5 +355,10 @@ class HomeViewModel: ObservableObject {
         } catch {
             errorMessage = "Failed to save order: \(error.localizedDescription)"
         }
+    }
+
+    private func notifyTasksChanged() {
+        LocalMutationTracker.markMutation()
+        NotificationCenter.default.post(name: .projectListChanged, object: self)
     }
 }

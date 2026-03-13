@@ -249,8 +249,14 @@ struct ScheduleSelectionSheet: View {
             // Save notification
             await saveNotification()
 
+            // Suppress Realtime echo and notify schedule listeners
+            LocalMutationTracker.markMutation()
+
             // Refresh focus view
             await focusViewModel.fetchSchedules()
+
+            // Notify other views (e.g. ProjectsVM) to update schedule indicators
+            NotificationCenter.default.post(name: .schedulesChanged, object: self)
 
             dismiss()
         } catch {

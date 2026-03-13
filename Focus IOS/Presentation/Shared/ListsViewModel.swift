@@ -125,13 +125,21 @@ class ListsViewModel: ObservableObject, LogFilterable, TaskEditingViewModel {
 
         NotificationCenter.default.publisher(for: .projectListChanged)
             .receive(on: DispatchQueue.main)
-            .sink { [weak self] _ in
+            .sink { [weak self] notification in
                 guard let self else { return }
+                if notification.object as AnyObject? === self { return }
+                if notification.object == nil,
+                   LocalMutationTracker.isRecentlyMutated() { return }
                 _Concurrency.Task { @MainActor in
                     await self.fetchLists()
                 }
             }
             .store(in: &cancellables)
+    }
+
+    private func notifyTasksChanged() {
+        LocalMutationTracker.markMutation()
+        NotificationCenter.default.post(name: .projectListChanged, object: self)
     }
 
     private func handleTaskCompletionNotification(_ notification: Notification) {
@@ -499,6 +507,7 @@ class ListsViewModel: ObservableObject, LogFilterable, TaskEditingViewModel {
                         TaskNotificationKeys.subtasksChanged: false
                     ]
                 )
+                notifyTasksChanged()
             }
         } catch {
             errorMessage = error.localizedDescription
@@ -539,6 +548,7 @@ class ListsViewModel: ObservableObject, LogFilterable, TaskEditingViewModel {
                 updates.append((id: list.id, sortOrder: index))
             }
             await persistSortOrders(updates)
+            notifyTasksChanged()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -559,6 +569,7 @@ class ListsViewModel: ObservableObject, LogFilterable, TaskEditingViewModel {
             lists.removeAll { $0.id == list.id }
             itemsMap.removeValue(forKey: list.id)
             expandedLists.remove(list.id)
+            notifyTasksChanged()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -587,6 +598,7 @@ class ListsViewModel: ObservableObject, LogFilterable, TaskEditingViewModel {
             } else {
                 itemsMap[listId] = [newItem]
             }
+            notifyTasksChanged()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -601,6 +613,7 @@ class ListsViewModel: ObservableObject, LogFilterable, TaskEditingViewModel {
                 items.removeAll { $0.id == item.id }
                 itemsMap[listId] = items
             }
+            notifyTasksChanged()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -618,6 +631,7 @@ class ListsViewModel: ObservableObject, LogFilterable, TaskEditingViewModel {
             try await repository.clearTasks(ids: completedIds)
             itemsMap[listId] = items.filter { !completedIds.contains($0.id) }
             doneSectionCollapsed.removeValue(forKey: listId)
+            notifyTasksChanged()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -816,6 +830,7 @@ class ListsViewModel: ObservableObject, LogFilterable, TaskEditingViewModel {
                 expandedLists.remove(listId)
             }
             exitEditMode()
+            notifyTasksChanged()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -834,6 +849,7 @@ class ListsViewModel: ObservableObject, LogFilterable, TaskEditingViewModel {
                 }
             }
             exitEditMode()
+            notifyTasksChanged()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -881,7 +897,8 @@ class ListsViewModel: ObservableObject, LogFilterable, TaskEditingViewModel {
                 itemsMap[parentId] = items
             }
 
-            NotificationCenter.default.post(name: .projectListChanged, object: nil)
+            LocalMutationTracker.markMutation()
+            NotificationCenter.default.post(name: .projectListChanged, object: self)
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -907,7 +924,8 @@ class ListsViewModel: ObservableObject, LogFilterable, TaskEditingViewModel {
                 itemsMap[parentId] = items
             }
 
-            NotificationCenter.default.post(name: .projectListChanged, object: nil)
+            LocalMutationTracker.markMutation()
+            NotificationCenter.default.post(name: .projectListChanged, object: self)
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -944,6 +962,7 @@ class ListsViewModel: ObservableObject, LogFilterable, TaskEditingViewModel {
                 lists[index].priority = priority
                 lists[index].modifiedDate = Date()
             }
+            notifyTasksChanged()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -960,6 +979,7 @@ class ListsViewModel: ObservableObject, LogFilterable, TaskEditingViewModel {
                 lists[index].categoryId = categoryId
                 lists[index].modifiedDate = Date()
             }
+            notifyTasksChanged()
         } catch {
             errorMessage = error.localizedDescription
         }

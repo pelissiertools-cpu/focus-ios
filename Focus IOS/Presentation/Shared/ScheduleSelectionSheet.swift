@@ -169,9 +169,6 @@ struct ScheduleSelectionSheet: View {
             .onChange(of: selectedTimeframe) {
                 if !isPendingMode { fetchTaskSchedules() }
             }
-            .onChange(of: selectedSection) {
-                if !isPendingMode { fetchTaskSchedules() }
-            }
             .onChange(of: selectedDates) { oldValue, newValue in
                 // Enforce single-date selection — selecting a new date replaces the previous one
                 if newValue.count > 1 {
@@ -218,9 +215,10 @@ struct ScheduleSelectionSheet: View {
             // Find dates to remove (in original but not in current)
             let datesToRemove = originalDates.subtracting(currentDates)
 
-            // Delete removed schedules from current section
+            // Delete removed schedules (all matching, to clean up any cross-section duplicates)
             for date in datesToRemove {
-                if let schedule = originalSchedules.first(where: { normalizeDate($0.scheduleDate) == date }) {
+                let matching = originalSchedules.filter { normalizeDate($0.scheduleDate) == date }
+                for schedule in matching {
                     try await scheduleRepository.deleteSchedule(id: schedule.id)
                 }
             }
@@ -319,14 +317,20 @@ struct ScheduleSelectionSheet: View {
                 let scheduleRepository = ScheduleRepository()
                 let schedules = try await scheduleRepository.fetchSchedules(forTask: task.id)
 
-                // Filter by current timeframe AND section
+                // Filter by current timeframe only — don't filter by section so
+                // schedules created from any context (focus/todo) are shown
                 let filtered = schedules.filter {
-                    $0.timeframe == selectedTimeframe && $0.section == selectedSection
+                    $0.timeframe == selectedTimeframe
                 }
 
                 await MainActor.run {
                     originalSchedules = filtered
                     selectedDates = Set(filtered.map { $0.scheduleDate })
+
+                    // Inherit section from existing schedule so saves go to the right section
+                    if let existingSection = filtered.first?.section {
+                        selectedSection = existingSection
+                    }
                 }
             } catch {
                 // Silently fail

@@ -32,7 +32,7 @@ struct OnboardingNotificationsStep: View {
             Image(systemName: "bell.badge.fill")
                 .font(.system(size: 56))
                 .symbolRenderingMode(.palette)
-                .foregroundStyle(Color.focusBlue, Color.focusBlue.opacity(0.4))
+                .foregroundStyle(.red, Color(.systemGray5))
                 .padding(.bottom, AppStyle.Spacing.expanded)
 
             Text("Never miss a task")
@@ -57,44 +57,28 @@ struct OnboardingNotificationsStep: View {
 
             if !hasRequested {
                 Button(action: requestNotifications) {
-                    HStack {
-                        Text("Enable Notifications")
-                            .font(.helveticaNeue(size: 15.22, weight: .medium))
-                            .tracking(-0.158)
-                            .foregroundColor(.focusBlue)
-                        Spacer()
-                        Image(systemName: "bell.fill")
-                            .font(.helveticaNeue(size: 17.3, weight: .medium))
-                            .foregroundColor(.focusBlue)
-                            .frame(width: AppStyle.Layout.pillButton, alignment: .center)
-                    }
-                    .padding(AppStyle.Spacing.section)
-                    .frame(maxWidth: .infinity, minHeight: AppStyle.Layout.fab)
-                    .background(Color.todayBadge, in: RoundedRectangle(cornerRadius: AppStyle.CornerRadius.card))
-                    .cardBorderOverlay()
-                    .cardShadow()
+                    Text("Enable Notifications")
+                        .font(.helveticaNeue(size: 15.22, weight: .medium))
+                        .tracking(-0.158)
+                        .foregroundColor(.focusBlue)
+                        .frame(maxWidth: .infinity, minHeight: AppStyle.Layout.fab)
+                        .background(Color.cardBackground, in: RoundedRectangle(cornerRadius: AppStyle.CornerRadius.card))
+                        .cardBorderOverlay()
+                        .cardShadow()
                 }
                 .buttonStyle(.plain)
                 .padding(.horizontal, AppStyle.Spacing.page)
                 .padding(.bottom, 40)
             } else {
                 Button(action: onContinue) {
-                    HStack {
-                        Text("Continue")
-                            .font(.helveticaNeue(size: 15.22, weight: .medium))
-                            .tracking(-0.158)
-                            .foregroundColor(.focusBlue)
-                        Spacer()
-                        Image(systemName: "arrow.right")
-                            .font(.helveticaNeue(size: 17.3, weight: .medium))
-                            .foregroundColor(.focusBlue)
-                            .frame(width: AppStyle.Layout.pillButton, alignment: .center)
-                    }
-                    .padding(AppStyle.Spacing.section)
-                    .frame(maxWidth: .infinity, minHeight: AppStyle.Layout.fab)
-                    .background(Color.todayBadge, in: RoundedRectangle(cornerRadius: AppStyle.CornerRadius.card))
-                    .cardBorderOverlay()
-                    .cardShadow()
+                    Text("Start planning")
+                        .font(.helveticaNeue(size: 15.22, weight: .medium))
+                        .tracking(-0.158)
+                        .foregroundColor(.focusBlue)
+                        .frame(maxWidth: .infinity, minHeight: AppStyle.Layout.fab)
+                        .background(Color.cardBackground, in: RoundedRectangle(cornerRadius: AppStyle.CornerRadius.card))
+                        .cardBorderOverlay()
+                        .cardShadow()
                 }
                 .buttonStyle(.plain)
                 .padding(.horizontal, AppStyle.Spacing.page)
@@ -108,7 +92,7 @@ struct OnboardingNotificationsStep: View {
     private var notificationPreview: some View {
         HStack(spacing: AppStyle.Spacing.comfortable) {
             RoundedRectangle(cornerRadius: AppStyle.CornerRadius.iconBadge)
-                .fill(Color.focusBlue)
+                .fill(Color.black)
                 .frame(width: 38, height: 38)
                 .overlay(
                     Image(systemName: "scope")

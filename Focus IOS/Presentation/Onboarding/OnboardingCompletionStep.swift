@@ -54,7 +54,7 @@ struct OnboardingCompletionStep: View {
             Spacer()
 
             Button(action: onFinish) {
-                HStack {
+                Group {
                     if authService.isLoading {
                         ProgressView()
                             .tint(.focusBlue)
@@ -64,15 +64,9 @@ struct OnboardingCompletionStep: View {
                             .tracking(-0.158)
                             .foregroundColor(.focusBlue)
                     }
-                    Spacer()
-                    Image(systemName: "arrow.right")
-                        .font(.helveticaNeue(size: 17.3, weight: .medium))
-                        .foregroundColor(.focusBlue)
-                        .frame(width: AppStyle.Layout.pillButton, alignment: .center)
                 }
-                .padding(AppStyle.Spacing.section)
                 .frame(maxWidth: .infinity, minHeight: AppStyle.Layout.fab)
-                .background(Color.todayBadge, in: RoundedRectangle(cornerRadius: AppStyle.CornerRadius.card))
+                .background(Color.cardBackground, in: RoundedRectangle(cornerRadius: AppStyle.CornerRadius.card))
                 .cardBorderOverlay()
                 .cardShadow()
             }

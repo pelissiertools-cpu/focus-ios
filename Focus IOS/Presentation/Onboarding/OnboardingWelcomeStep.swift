@@ -13,10 +13,10 @@ struct OnboardingWelcomeStep: View {
     @State private var showButton = false
 
     private let benefits: [String] = [
-        "Create lists to capture your ideas",
-        "Build projects to tackle big goals",
+        "Gather all your tasks in one place",
         "Categorize everything to stay organized",
         "Schedule tasks so nothing falls through",
+        "Build projects to tackle bigger goals",
     ]
 
     var body: some View {
@@ -24,8 +24,8 @@ struct OnboardingWelcomeStep: View {
             Spacer()
 
             // Title
-            Text("Welcome to Focus!")
-                .font(AppStyle.Typography.pageTitle)
+            Text("Welcome to Focus")
+                .font(.helveticaNeue(size: 26.14, weight: .medium))
                 .tracking(AppStyle.Typography.pageTitleTracking)
                 .foregroundColor(.appText)
                 .opacity(showTitle ? 1 : 0)
@@ -51,7 +51,7 @@ struct OnboardingWelcomeStep: View {
                                 .foregroundStyle(Color.focusBlue, Color.todayBadge)
 
                             Text(text)
-                                .font(.inter(.body))
+                                .font(.helveticaNeue(size: 15.22))
                                 .foregroundColor(.appText)
                         }
                         .opacity(index < visibleItems ? 1 : 0)
@@ -68,24 +68,15 @@ struct OnboardingWelcomeStep: View {
 
             Spacer()
 
-            // "Let's go!" button — homeCard style with todayBadge bg, focusBlue text
             Button(action: onContinue) {
-                HStack {
-                    Text("Let's go!")
-                        .font(.helveticaNeue(size: 15.22, weight: .medium))
-                        .tracking(-0.158)
-                        .foregroundColor(.focusBlue)
-                    Spacer()
-                    Image(systemName: "arrow.right")
-                        .font(.helveticaNeue(size: 17.3, weight: .medium))
-                        .foregroundColor(.focusBlue)
-                        .frame(width: AppStyle.Layout.pillButton, alignment: .center)
-                }
-                .padding(AppStyle.Spacing.section)
-                .frame(maxWidth: .infinity, minHeight: AppStyle.Layout.fab)
-                .background(Color.todayBadge, in: RoundedRectangle(cornerRadius: AppStyle.CornerRadius.card))
-                .cardBorderOverlay()
-                .cardShadow()
+                Text("Let's go!")
+                    .font(.helveticaNeue(size: 15.22, weight: .medium))
+                    .tracking(-0.158)
+                    .foregroundColor(.focusBlue)
+                    .frame(maxWidth: .infinity, minHeight: AppStyle.Layout.fab)
+                    .background(Color.cardBackground, in: RoundedRectangle(cornerRadius: AppStyle.CornerRadius.card))
+                    .cardBorderOverlay()
+                    .cardShadow()
             }
             .buttonStyle(.plain)
             .opacity(showButton ? 1 : 0)

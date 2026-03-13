@@ -41,9 +41,14 @@ struct Focus_IOSApp: App {
             ZStack {
                 Group {
                     if authService.isAuthenticated {
-                        MainTabView()
-                            .environmentObject(authService)
-                            .environmentObject(focusViewModel)
+                        if authService.hasCompletedOnboarding {
+                            MainTabView()
+                                .environmentObject(authService)
+                                .environmentObject(focusViewModel)
+                        } else {
+                            OnboardingContainerView()
+                                .environmentObject(authService)
+                        }
                     } else if !authService.isCheckingSession {
                         SignInView()
                             .environmentObject(authService)

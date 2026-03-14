@@ -24,6 +24,9 @@ struct SettingsView: View {
     @State private var confirmNewPassword = ""
     @State private var passwordChangeSuccess = false
 
+    // Sign out confirmation
+    @State private var showSignOutConfirmation = false
+
     // Language picker state
     @State private var showLanguagePicker = false
     // Appearance picker state
@@ -115,11 +118,12 @@ struct SettingsView: View {
                         HStack(spacing: AppStyle.Spacing.comfortable) {
                             Image(systemName: notificationManager.isEnabled ? "bell.badge" : "bell")
                                 .font(.inter(.body))
-                                .foregroundStyle(.primary)
+                                .foregroundColor(.appText)
                                 .frame(width: AppStyle.Layout.pillButton)
 
                             Text("Notifications")
                                 .font(.inter(.body))
+                                .foregroundColor(.appText)
 
                             Spacer()
 
@@ -136,13 +140,14 @@ struct SettingsView: View {
                                 }
                             ))
                             .labelsHidden()
-                            .tint(Color.appRed)
+                            .tint(.green)
                         }
                         .padding(.horizontal, AppStyle.Spacing.section)
                         .padding(.vertical, AppStyle.Spacing.content)
                     }
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
-                    .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 12))
+                    .background(Color.cardBackground, in: RoundedRectangle(cornerRadius: AppStyle.CornerRadius.card))
+                    .cardBorderOverlay()
+                    .cardShadow()
                 }
                 .padding(.horizontal, AppStyle.Spacing.section)
 
@@ -163,11 +168,12 @@ struct SettingsView: View {
                             HStack(spacing: AppStyle.Spacing.comfortable) {
                                 Image(systemName: "globe")
                                     .font(.inter(.body))
-                                    .foregroundStyle(.primary)
+                                    .foregroundColor(.appText)
                                     .frame(width: AppStyle.Layout.pillButton)
 
                                 Text("App Language")
                                     .font(.inter(.body))
+                                    .foregroundColor(.appText)
 
                                 Spacer()
 
@@ -205,7 +211,7 @@ struct SettingsView: View {
 
                                         Text(language.displayName)
                                             .font(.inter(.body))
-                                            .foregroundStyle(.primary)
+                                            .foregroundColor(.appText)
 
                                         Spacer()
 
@@ -235,12 +241,12 @@ struct SettingsView: View {
                             HStack(spacing: AppStyle.Spacing.comfortable) {
                                 Image(systemName: "sun.min")
                                     .font(.inter(.body))
-                                    .foregroundStyle(.primary)
+                                    .foregroundColor(.appText)
                                     .frame(width: AppStyle.Layout.pillButton, alignment: .center)
 
                                 Text("Appearance")
                                     .font(.inter(.body))
-                                    .foregroundStyle(.primary)
+                                    .foregroundColor(.appText)
 
                                 Spacer()
 
@@ -277,7 +283,7 @@ struct SettingsView: View {
 
                                         Text(appearance.displayName)
                                             .font(.inter(.body))
-                                            .foregroundStyle(.primary)
+                                            .foregroundColor(.appText)
 
                                         Spacer()
 
@@ -295,8 +301,9 @@ struct SettingsView: View {
                             }
                         }
                     }
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
-                    .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 12))
+                    .background(Color.cardBackground, in: RoundedRectangle(cornerRadius: AppStyle.CornerRadius.card))
+                    .cardBorderOverlay()
+                    .cardShadow()
                 }
                 .padding(.horizontal, AppStyle.Spacing.section)
                 .padding(.top, AppStyle.Spacing.page)
@@ -304,30 +311,37 @@ struct SettingsView: View {
                 // Sign Out
                 VStack(spacing: 0) {
                     Button {
-                        _Concurrency.Task { @MainActor in
-                            do {
-                                try await authService.signOut()
-                            } catch {
-                                // Error handled in AuthService
-                            }
-                        }
+                        showSignOutConfirmation = true
                     } label: {
-                        HStack {
-                            Spacer()
+                        HStack(spacing: AppStyle.Spacing.comfortable) {
                             if authService.isLoading {
                                 ProgressView()
+                                    .frame(width: AppStyle.Layout.pillButton)
                             } else {
+                                Image("SignOutIcon")
+                                    .renderingMode(.template)
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(width: 20, height: 20)
+                                    .foregroundColor(.red)
+                                    .frame(width: AppStyle.Layout.pillButton)
+
                                 Text("Sign Out")
+                                    .font(.inter(.body))
                                     .foregroundColor(.red)
                             }
                             Spacer()
                         }
+                        .padding(.horizontal, AppStyle.Spacing.section)
                         .padding(.vertical, AppStyle.Spacing.content)
+                        .contentShape(Rectangle())
                     }
+                    .buttonStyle(.plain)
                     .disabled(authService.isLoading)
                 }
-                .clipShape(RoundedRectangle(cornerRadius: 12))
-                .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 12))
+                .background(Color.cardBackground, in: RoundedRectangle(cornerRadius: AppStyle.CornerRadius.card))
+                .cardBorderOverlay()
+                .cardShadow()
                 .padding(.horizontal, AppStyle.Spacing.section)
                 .padding(.top, AppStyle.Spacing.page)
             }
@@ -402,6 +416,20 @@ struct SettingsView: View {
         } message: {
             Text("Your password has been changed successfully.")
         }
+        .alert("Signing out of Focus", isPresented: $showSignOutConfirmation) {
+            Button("Cancel", role: .cancel) {}
+            Button("Yes", role: .destructive) {
+                _Concurrency.Task { @MainActor in
+                    do {
+                        try await authService.signOut()
+                    } catch {
+                        // Error handled in AuthService
+                    }
+                }
+            }
+        } message: {
+            Text(userEmail)
+        }
     }
 
     // MARK: - Row Builder
@@ -415,11 +443,12 @@ struct SettingsView: View {
         HStack(spacing: AppStyle.Spacing.comfortable) {
             Image(systemName: icon)
                 .font(.inter(.body))
-                .foregroundStyle(.primary)
+                .foregroundColor(.appText)
                 .frame(width: AppStyle.Layout.pillButton)
 
             Text(title)
                 .font(.inter(.body))
+                .foregroundColor(.appText)
 
             Spacer()
 

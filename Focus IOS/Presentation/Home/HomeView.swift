@@ -606,6 +606,10 @@ struct HomeView: View {
             }
             .navigationBarHidden(true)
             .task {
+                // Run progress card + main data in parallel so the card appears instantly
+                async let progressTask: () = viewModel.fetchTodayTaskCount()
+                async let focusTask: () = viewModel.fetchMainFocusTasks()
+
                 // Fetch projects/lists for count badges
                 if viewModel.projects.isEmpty {
                     await viewModel.fetchProjects(showLoading: true)
@@ -627,8 +631,9 @@ struct HomeView: View {
 
                 // Pre-fetch today schedules so TodayView opens instantly
                 await prefetchTodaySchedules()
-                await viewModel.fetchMainFocusTasks()
-                await viewModel.fetchTodayTaskCount()
+
+                // Ensure progress fetches complete
+                _ = await (progressTask, focusTask)
             }
             .onReceive(NotificationCenter.default.publisher(for: .sessionRefreshed)) { _ in
                 _Concurrency.Task { @MainActor in
@@ -675,43 +680,48 @@ struct HomeView: View {
         let completed = viewModel.todayCompletedCount
         let progress = total > 0 ? Double(completed) / Double(total) : 0
 
-        return HStack(spacing: AppStyle.Spacing.section) {
-            // Progress ring
-            ZStack {
-                Circle()
-                    .stroke(Color.cardBorder, lineWidth: 4)
-                Circle()
-                    .trim(from: 0, to: progress)
-                    .stroke(Color.accentOrange, style: StrokeStyle(lineWidth: 4, lineCap: .round))
-                    .rotationEffect(.degrees(-90))
+        return Button {
+            viewModel.selectedMenuItem = .today
+        } label: {
+            HStack(spacing: AppStyle.Spacing.section) {
+                // Progress ring
+                ZStack {
+                    Circle()
+                        .stroke(Color.cardBorder, lineWidth: 4)
+                    Circle()
+                        .trim(from: 0, to: progress)
+                        .stroke(Color.accentOrange, style: StrokeStyle(lineWidth: 4, lineCap: .round))
+                        .rotationEffect(.degrees(-90))
 
-                Text("\(completed)/\(total)")
-                    .font(.helveticaNeue(size: 13, weight: .bold))
-                    .tracking(-0.135)
-                    .foregroundColor(.appText)
-            }
-            .frame(width: 40, height: 40)
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Tasks completed today")
-                    .font(.helveticaNeue(size: 13, weight: .medium))
-                    .tracking(-0.135)
-                    .foregroundColor(.secondary)
-
-                if completed == total && total > 0 {
-                    Text("All done!")
-                        .font(.inter(size: 12, weight: .medium))
-                        .foregroundColor(.accentOrange)
+                    Text("\(completed)/\(total)")
+                        .font(.helveticaNeue(size: 13, weight: .bold))
+                        .tracking(-0.135)
+                        .foregroundColor(.appText)
                 }
-            }
+                .frame(width: 40, height: 40)
 
-            Spacer()
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Tasks completed today")
+                        .font(.helveticaNeue(size: 13, weight: .medium))
+                        .tracking(-0.135)
+                        .foregroundColor(.secondary)
+
+                    if completed == total && total > 0 {
+                        Text("All done!")
+                            .font(.inter(size: 12, weight: .medium))
+                            .foregroundColor(.accentOrange)
+                    }
+                }
+
+                Spacer()
+            }
+            .padding(AppStyle.Spacing.section)
+            .frame(maxWidth: .infinity, minHeight: AppStyle.Layout.fab)
+            .background(Color.cardBackground, in: RoundedRectangle(cornerRadius: AppStyle.CornerRadius.card))
+            .cardBorderOverlay()
+            .cardShadow()
         }
-        .padding(AppStyle.Spacing.section)
-        .frame(maxWidth: .infinity, minHeight: AppStyle.Layout.fab)
-        .background(Color.cardBackground, in: RoundedRectangle(cornerRadius: AppStyle.CornerRadius.card))
-        .cardBorderOverlay()
-        .cardShadow()
+        .buttonStyle(.plain)
     }
 
     // MARK: - Home Card

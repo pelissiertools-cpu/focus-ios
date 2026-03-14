@@ -125,6 +125,13 @@ class GoalsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
         setupNotificationObserver()
     }
 
+    deinit {
+        let manager = pendingCompletion
+        MainActor.assumeIsolated {
+            manager.flushAll()
+        }
+    }
+
     // MARK: - Notification Sync
 
     private func setupNotificationObserver() {
@@ -633,13 +640,17 @@ class GoalsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
         }
 
         let taskId = task.id
-        pendingCompletion.scheduleCompletion(for: taskId) { [weak self] in
+        let repo = repository
+        pendingCompletion.scheduleCompletion(for: taskId, action: { [weak self] in
             guard let self,
                   let tasks = self.goalTasksMap[goalId],
                   let currentTask = tasks.first(where: { $0.id == taskId }),
-                  !currentTask.isCompleted else { return }
+                  !currentTask.isCompleted else { return false }
             await self.toggleTaskCompletion(currentTask, goalId: goalId)
-        }
+            return true
+        }, fallback: {
+            try? await repo.completeTask(id: taskId)
+        })
     }
 
     func requestToggleSubtaskCompletion(_ subtask: FocusTask, parentId: UUID) {
@@ -649,13 +660,17 @@ class GoalsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
         }
 
         let subtaskId = subtask.id
-        pendingCompletion.scheduleCompletion(for: subtaskId) { [weak self] in
+        let repo = repository
+        pendingCompletion.scheduleCompletion(for: subtaskId, action: { [weak self] in
             guard let self,
                   let subtasks = self.subtasksMap[parentId],
                   let currentSubtask = subtasks.first(where: { $0.id == subtaskId }),
-                  !currentSubtask.isCompleted else { return }
+                  !currentSubtask.isCompleted else { return false }
             await self.toggleSubtaskCompletion(currentSubtask, parentId: parentId)
-        }
+            return true
+        }, fallback: {
+            try? await repo.completeTask(id: subtaskId)
+        })
     }
 
     func cancelPendingCompletion(_ taskId: UUID) {

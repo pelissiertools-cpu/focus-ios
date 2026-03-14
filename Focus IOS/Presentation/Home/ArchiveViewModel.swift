@@ -70,7 +70,17 @@ class ArchiveViewModel: ObservableObject {
             try await repository.deleteTasks(ids: selectedIds)
             selectedIds = []
             isEditMode = false
-            await fetchCompletedItems()
+            await fetchCompletedItems(showLoading: false)
+            notifyTasksChanged()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func uncompleteTask(_ task: FocusTask) async {
+        do {
+            try await repository.uncompleteTask(id: task.id)
+            await fetchCompletedItems(showLoading: false)
             notifyTasksChanged()
         } catch {
             errorMessage = error.localizedDescription
@@ -82,7 +92,7 @@ class ArchiveViewModel: ObservableObject {
         guard !allIds.isEmpty else { return }
         do {
             try await repository.deleteTasks(ids: allIds)
-            await fetchCompletedItems()
+            await fetchCompletedItems(showLoading: false)
             notifyTasksChanged()
         } catch {
             errorMessage = error.localizedDescription
@@ -107,21 +117,21 @@ class ArchiveViewModel: ObservableObject {
                 if notification.object == nil,
                    LocalMutationTracker.isRecentlyMutated() { return }
                 _Concurrency.Task { @MainActor in
-                    await self.fetchCompletedItems()
+                    await self.fetchCompletedItems(showLoading: false)
                 }
             }
             .store(in: &cancellables)
     }
 
-    func fetchCompletedItems() async {
-        isLoading = true
+    func fetchCompletedItems(showLoading: Bool = true) async {
+        if showLoading { isLoading = true }
         do {
             let completedItems = try await repository.fetchCompletedTopLevelTasks()
             sections = groupIntoSections(completedItems)
         } catch {
             errorMessage = error.localizedDescription
         }
-        isLoading = false
+        if showLoading { isLoading = false }
     }
 
     private func groupIntoSections(_ items: [FocusTask]) -> [ArchiveSection] {

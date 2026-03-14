@@ -117,6 +117,13 @@ class ListsViewModel: ObservableObject, LogFilterable, TaskEditingViewModel {
         setupNotificationObserver()
     }
 
+    deinit {
+        let manager = pendingCompletion
+        MainActor.assumeIsolated {
+            manager.flushAll()
+        }
+    }
+
     // MARK: - Notification Sync
 
     private func setupNotificationObserver() {
@@ -481,13 +488,17 @@ class ListsViewModel: ObservableObject, LogFilterable, TaskEditingViewModel {
         }
 
         let itemId = item.id
-        pendingCompletion.scheduleCompletion(for: itemId) { [weak self] in
+        let repo = repository
+        pendingCompletion.scheduleCompletion(for: itemId, action: { [weak self] in
             guard let self,
                   let items = self.itemsMap[listId],
                   let currentItem = items.first(where: { $0.id == itemId }),
-                  !currentItem.isCompleted else { return }
+                  !currentItem.isCompleted else { return false }
             await self.toggleItemCompletion(currentItem, listId: listId)
-        }
+            return true
+        }, fallback: {
+            try? await repo.completeTask(id: itemId)
+        })
     }
 
     func cancelPendingCompletion(_ taskId: UUID) {

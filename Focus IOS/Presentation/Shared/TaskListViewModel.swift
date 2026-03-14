@@ -165,6 +165,13 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
         setupNotificationObserver()
     }
 
+    deinit {
+        let manager = pendingCompletion
+        MainActor.assumeIsolated {
+            manager.flushAll()
+        }
+    }
+
     private func setupNotificationObserver() {
         NotificationCenter.default.publisher(for: .taskCompletionChanged)
             .receive(on: DispatchQueue.main)
@@ -597,12 +604,16 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
         }
 
         let taskId = task.id
-        pendingCompletion.scheduleCompletion(for: taskId) { [weak self] in
+        let repo = repository
+        pendingCompletion.scheduleCompletion(for: taskId, action: { [weak self] in
             guard let self,
                   let currentTask = self.tasks.first(where: { $0.id == taskId }),
-                  !currentTask.isCompleted else { return }
+                  !currentTask.isCompleted else { return false }
             await self.toggleCompletion(currentTask)
-        }
+            return true
+        }, fallback: {
+            try? await repo.completeTask(id: taskId)
+        })
     }
 
     /// Request subtask completion with a grace period for undo.
@@ -613,18 +624,28 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
         }
 
         let subtaskId = subtask.id
-        pendingCompletion.scheduleCompletion(for: subtaskId) { [weak self] in
+        let repo = repository
+        pendingCompletion.scheduleCompletion(for: subtaskId, action: { [weak self] in
             guard let self,
                   let subtasks = self.subtasksMap[parentId],
                   let currentSubtask = subtasks.first(where: { $0.id == subtaskId }),
-                  !currentSubtask.isCompleted else { return }
+                  !currentSubtask.isCompleted else { return false }
             await self.toggleSubtaskCompletion(currentSubtask, parentId: parentId)
-        }
+            return true
+        }, fallback: {
+            try? await repo.completeTask(id: subtaskId)
+        })
     }
 
     /// Generic pending completion for external items (projects, lists) not in this ViewModel's tasks array.
-    func requestExternalCompletion(id: UUID, onComplete: @escaping @MainActor () async -> Void) {
-        pendingCompletion.scheduleCompletion(for: id, action: onComplete)
+    func requestExternalCompletion(id: UUID, fallbackRepo: TaskRepository? = nil, onComplete: @escaping @MainActor () async -> Void) {
+        let repo = fallbackRepo ?? repository
+        pendingCompletion.scheduleCompletion(for: id, action: {
+            await onComplete()
+            return true
+        }, fallback: {
+            try? await repo.completeTask(id: id)
+        })
     }
 
     func cancelPendingCompletion(_ taskId: UUID) {

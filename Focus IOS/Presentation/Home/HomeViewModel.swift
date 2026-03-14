@@ -61,6 +61,15 @@ class HomeViewModel: ObservableObject {
 
     init() {
         self.repository = TaskRepository()
+
+        // Pre-populate from cache so first render shows progress card instantly
+        let cache = AppDataCache.shared
+        if cache.hasLoadedTodayProgress {
+            todayTaskCount = cache.todayTaskCount
+            todayCompletedCount = cache.todayCompletedCount
+            mainFocusTasks = cache.mainFocusTasks
+        }
+
         setupNotificationObserver()
     }
 
@@ -77,6 +86,18 @@ class HomeViewModel: ObservableObject {
                     await self.fetchLists()
                     await self.fetchGoals()
                     await self.fetchCategories()
+                }
+            }
+            .store(in: &cancellables)
+
+        NotificationCenter.default.publisher(for: .taskCompletionChanged)
+            .merge(with: NotificationCenter.default.publisher(for: .schedulesChanged))
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                guard let self else { return }
+                _Concurrency.Task { @MainActor in
+                    await self.fetchTodayTaskCount()
+                    await self.fetchMainFocusTasks()
                 }
             }
             .store(in: &cancellables)
@@ -183,11 +204,13 @@ class HomeViewModel: ObservableObject {
             let taskIds = Array(Set(allSchedules.map(\.taskId)))
             guard !taskIds.isEmpty else {
                 todayCompletedCount = 0
+                updateProgressCache()
                 return
             }
             let tasks = try await repository.fetchTasksByIds(taskIds)
             let taskMap = Dictionary(uniqueKeysWithValues: tasks.map { ($0.id, $0) })
             todayCompletedCount = allSchedules.filter { taskMap[$0.taskId]?.isCompleted == true }.count
+            updateProgressCache()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -199,15 +222,24 @@ class HomeViewModel: ObservableObject {
             let taskIds = focusSchedules.sorted(by: { $0.sortOrder < $1.sortOrder }).map(\.taskId)
             guard !taskIds.isEmpty else {
                 mainFocusTasks = []
+                AppDataCache.shared.mainFocusTasks = []
                 return
             }
             let tasks = try await repository.fetchTasksByIds(taskIds)
             // Preserve schedule sort order and exclude completed
             let taskMap = Dictionary(uniqueKeysWithValues: tasks.map { ($0.id, $0) })
             mainFocusTasks = taskIds.compactMap { taskMap[$0] }.filter { !$0.isCompleted }
+            AppDataCache.shared.mainFocusTasks = mainFocusTasks
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+
+    private func updateProgressCache() {
+        let cache = AppDataCache.shared
+        cache.todayTaskCount = todayTaskCount
+        cache.todayCompletedCount = todayCompletedCount
+        cache.hasLoadedTodayProgress = true
     }
 
     func deleteProject(_ project: FocusTask) async {

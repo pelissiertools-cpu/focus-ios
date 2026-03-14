@@ -40,6 +40,12 @@ final class AppDataCache {
     var overdueSchedules: [Schedule] = []
     var todayScheduleDate: Date? = nil
 
+    // Today progress card (cached per-day)
+    var todayTaskCount: Int = 0
+    var todayCompletedCount: Int = 0
+    var mainFocusTasks: [FocusTask] = []
+    var hasLoadedTodayProgress = false
+
     /// Reset all cached data (call on sign-out or account switch)
     func invalidate() {
         allTasks = []
@@ -59,6 +65,10 @@ final class AppDataCache {
         todayTodoSchedules = []
         overdueSchedules = []
         todayScheduleDate = nil
+        todayTaskCount = 0
+        todayCompletedCount = 0
+        mainFocusTasks = []
+        hasLoadedTodayProgress = false
     }
 
     private init() {}

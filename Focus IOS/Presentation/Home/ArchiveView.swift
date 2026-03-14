@@ -87,6 +87,9 @@ struct ArchiveView: View {
                                 isEditMode: viewModel.isEditMode,
                                 isSelected: viewModel.selectedIds.contains(task.id),
                                 onToggleSelection: { viewModel.toggleSelection(task.id) },
+                                onUncomplete: {
+                                    _Concurrency.Task { await viewModel.uncompleteTask(task) }
+                                },
                                 onNavigate: task.type == .project ? {
                                     navigateToProject(task)
                                 } : nil
@@ -250,6 +253,7 @@ private struct ArchiveItemRow: View {
     let isEditMode: Bool
     let isSelected: Bool
     let onToggleSelection: () -> Void
+    let onUncomplete: () -> Void
     let onNavigate: (() -> Void)?
 
     var body: some View {
@@ -259,14 +263,19 @@ private struct ArchiveItemRow: View {
                     .font(.inter(.title3))
                     .foregroundColor(isSelected ? .appRed : .secondary)
             } else {
-                ZStack {
-                    Circle()
-                        .fill(Color.todayBadge)
-                        .frame(width: 24, height: 24)
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 12, weight: .bold))
-                        .foregroundColor(.focusBlue)
+                Button {
+                    onUncomplete()
+                } label: {
+                    ZStack {
+                        Circle()
+                            .fill(Color.todayBadge)
+                            .frame(width: 24, height: 24)
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundColor(.focusBlue)
+                    }
                 }
+                .buttonStyle(.plain)
             }
 
             Text(task.title)

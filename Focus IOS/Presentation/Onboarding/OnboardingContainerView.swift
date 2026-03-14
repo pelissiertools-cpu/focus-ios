@@ -10,7 +10,7 @@ struct OnboardingContainerView: View {
     @EnvironmentObject var notificationManager: NotificationManager
 
     @State private var currentStep = 0
-    private let totalSteps = 2
+    private let totalSteps = 3
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -25,6 +25,8 @@ struct OnboardingContainerView: View {
                     case 0:
                         OnboardingWelcomeStep(onContinue: nextStep)
                     case 1:
+                        OnboardingNameStep(onContinue: nextStep)
+                    case 2:
                         OnboardingNotificationsStep(onContinue: completeOnboarding)
                     default:
                         EmptyView()

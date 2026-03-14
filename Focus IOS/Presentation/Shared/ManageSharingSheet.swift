@@ -198,15 +198,14 @@ struct ManageSharingSheet: View {
 
     private func memberRow(_ member: ShareMember) -> some View {
         HStack(spacing: AppStyle.Spacing.comfortable) {
-            let initial = String(member.email.prefix(1)).uppercased()
-            Text(initial)
-                .font(.inter(.subheadline, weight: .semiBold))
-                .foregroundColor(.white)
+            Image(systemName: "person")
+                .font(.system(size: 14, weight: .medium))
+                .foregroundColor(.focusBlue)
                 .frame(width: 32, height: 32)
-                .background(member.isOwner ? Color.focusBlue : Color.secondary.opacity(0.6), in: Circle())
+                .background(Color.focusBlue.opacity(0.12), in: Circle())
 
             VStack(alignment: .leading, spacing: AppStyle.Spacing.micro) {
-                Text(member.email)
+                Text(member.firstName)
                     .font(.inter(.body))
                     .foregroundColor(.primary)
                     .lineLimit(1)

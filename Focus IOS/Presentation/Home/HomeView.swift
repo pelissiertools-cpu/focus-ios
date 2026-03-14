@@ -307,14 +307,22 @@ struct HomeView: View {
                         }
                         .buttonStyle(.plain)
 
-                        HStack(spacing: 0) {
-                            Text(currentDayName)
-                            Text(", ")
-                            formattedDateView
+                        VStack(alignment: .leading, spacing: 2) {
+                            if let name = authService.displayName {
+                                Text(name.components(separatedBy: " ").first ?? name)
+                                    .font(.inter(size: 22, weight: .bold))
+                                    .foregroundColor(.appText)
+                            }
+
+                            HStack(spacing: 0) {
+                                Text(currentDayName)
+                                Text(", ")
+                                formattedDateView
+                            }
+                            .font(.helveticaNeue(size: 13.7, weight: .bold))
+                            .tracking(-0.158)
+                            .foregroundColor(.secondary)
                         }
-                        .font(.helveticaNeue(size: 13.7, weight: .bold))
-                        .tracking(-0.158)
-                        .foregroundColor(.secondary)
 
                         Spacer()
                     }
@@ -974,7 +982,7 @@ struct HomeView: View {
         let day = cal.component(.day, from: now)
 
         let monthFormatter = DateFormatter()
-        monthFormatter.dateFormat = "MMMM"
+        monthFormatter.dateFormat = "MMM"
         let month = monthFormatter.string(from: now)
 
         return Text("\(month) \(day)")

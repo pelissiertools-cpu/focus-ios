@@ -27,6 +27,10 @@ struct SettingsView: View {
     // Sign out confirmation
     @State private var showSignOutConfirmation = false
 
+    // Edit name state
+    @State private var showEditName = false
+    @State private var editedName = ""
+
     // Language picker state
     @State private var showLanguagePicker = false
     // Appearance picker state
@@ -39,14 +43,44 @@ struct SettingsView: View {
         authService.currentUser?.email ?? ""
     }
 
-    var body: some View {
+var body: some View {
         ScrollView {
             VStack(spacing: 0) {
-                // App branding
-                Text("Focus")
-                    .font(.inter(size: 48, weight: .bold))
-                    .padding(.top, AppStyle.Spacing.expanded)
-                    .padding(.bottom, 28)
+                // Profile icon + name + edit
+                VStack(spacing: AppStyle.Spacing.comfortable) {
+                    Image(systemName: "person")
+                        .font(.system(size: 28, weight: .medium))
+                        .foregroundColor(.secondary)
+                        .frame(width: 64, height: 64)
+                        .overlay(
+                            Circle()
+                                .stroke(Color.cardBorder, lineWidth: AppStyle.Border.thin)
+                        )
+
+                    if let name = authService.displayName {
+                        Text(name)
+                            .font(.inter(size: 18, weight: .semiBold))
+                            .foregroundColor(.appText)
+                    }
+
+                    Button {
+                        editedName = authService.displayName ?? ""
+                        showEditName = true
+                    } label: {
+                        Text("Edit profile")
+                            .font(.inter(.caption, weight: .medium))
+                            .foregroundColor(.secondary)
+                            .padding(.horizontal, AppStyle.Spacing.content)
+                            .padding(.vertical, AppStyle.Spacing.tiny)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: AppStyle.CornerRadius.pill)
+                                    .stroke(Color.cardBorder, lineWidth: AppStyle.Border.standard)
+                            )
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.top, AppStyle.Spacing.expanded)
+                .padding(.bottom, 28)
 
                 // Account section
                 VStack(alignment: .leading, spacing: AppStyle.Spacing.compact) {
@@ -350,6 +384,31 @@ struct SettingsView: View {
         .navigationTitle("Settings")
         .navigationBarTitleDisplayMode(.inline)
         .overlay {
+            if showEditName {
+                SettingsAlertOverlay(
+                    title: "Edit Name",
+                    message: "This name will be displayed on your profile.",
+                    isPresented: $showEditName
+                ) {
+                    TextField("Your name", text: $editedName)
+                        .textContentType(.name)
+                        .autocorrectionDisabled()
+                } onUpdate: {
+                    let trimmed = editedName.trimmingCharacters(in: .whitespaces)
+                    guard !trimmed.isEmpty else { return }
+                    _Concurrency.Task { @MainActor in
+                        do {
+                            try await authService.updateDisplayName(trimmed)
+                            showEditName = false
+                        } catch {
+                            // Error handled in AuthService
+                        }
+                    }
+                } hasInput: {
+                    !editedName.trimmingCharacters(in: .whitespaces).isEmpty
+                }
+            }
+
             if showChangeEmail {
                 SettingsAlertOverlay(
                     title: "Change Email",

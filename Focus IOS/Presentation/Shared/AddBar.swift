@@ -566,7 +566,7 @@ struct AddBar: View {
                     }
                 } label: {
                     Image(systemName: "xmark")
-                        .font(.inter(.body, weight: .semiBold))
+                        .font(.inter(.body, weight: .medium))
                         .foregroundColor(.primary)
                         .frame(width: AppStyle.Layout.iconButton, height: AppStyle.Layout.iconButton)
                         .background(Color(.systemGray4), in: Circle())
@@ -584,7 +584,7 @@ struct AddBar: View {
                     }
                 } label: {
                     Image(systemName: "checkmark")
-                        .font(.inter(.body, weight: .semiBold))
+                        .font(.inter(.body, weight: .medium))
                         .foregroundColor(hasDateChanges ? .white : .secondary)
                         .frame(width: AppStyle.Layout.iconButton, height: AppStyle.Layout.iconButton)
                         .background(
@@ -610,9 +610,9 @@ struct AddBar: View {
             } label: {
                 HStack(spacing: AppStyle.Spacing.tiny) {
                     Image(systemName: "plus")
-                        .font(.inter(size: 14, weight: .semiBold))
+                        .font(.inter(size: 14, weight: .medium))
                     Text(addButtonLabel)
-                        .font(.inter(size: 14, weight: .semiBold))
+                        .font(.inter(size: 14, weight: .medium))
                 }
                 .foregroundColor(.white)
                 .padding(.horizontal, AppStyle.Spacing.comfortable)
@@ -642,9 +642,9 @@ struct AddBar: View {
                 } label: {
                     HStack(spacing: AppStyle.Spacing.tiny) {
                         Image(systemName: "calendar")
-                            .font(.inter(size: 14, weight: .semiBold))
+                            .font(.inter(size: 14, weight: .medium))
                         Text(scheduleDateLabel)
-                            .font(.inter(size: 14, weight: .semiBold))
+                            .font(.inter(size: 14, weight: .medium))
                     }
                     .foregroundColor(!scheduleDates.isEmpty ? .focusBlue : .black)
                     .padding(.horizontal, AppStyle.Spacing.medium)
@@ -673,7 +673,7 @@ struct AddBar: View {
                         .fill(priority.dotColor)
                         .frame(width: AppStyle.Layout.dotSize, height: AppStyle.Layout.dotSize)
                     Text(priority.displayName)
-                        .font(.inter(size: 14, weight: .semiBold))
+                        .font(.inter(size: 14, weight: .medium))
                 }
                 .foregroundColor(.black)
                 .padding(.horizontal, AppStyle.Spacing.comfortable)
@@ -688,7 +688,7 @@ struct AddBar: View {
                 }
             } label: {
                 Image(systemName: "ellipsis")
-                    .font(.inter(size: 14, weight: .semiBold))
+                    .font(.inter(size: 14, weight: .medium))
                     .foregroundColor(.black)
                     .frame(minHeight: UIFont.preferredFont(forTextStyle: .caption1).lineHeight)
                     .padding(.horizontal, AppStyle.Spacing.medium)
@@ -705,7 +705,7 @@ struct AddBar: View {
                 save()
             } label: {
                 Image(systemName: "checkmark")
-                    .font(.inter(.body, weight: .semiBold))
+                    .font(.inter(.body, weight: .medium))
                     .foregroundColor(isTitleEmpty ? .secondary : .white)
                     .frame(width: AppStyle.Layout.iconButton, height: AppStyle.Layout.iconButton)
                     .background(
@@ -750,9 +750,9 @@ struct AddBar: View {
             } label: {
                 HStack(spacing: AppStyle.Spacing.tiny) {
                     Image(systemName: "folder")
-                        .font(.inter(size: 14, weight: .semiBold))
+                        .font(.inter(size: 14, weight: .medium))
                     Text(LocalizedStringKey(categoryPillLabel))
-                        .font(.inter(size: 14, weight: .semiBold))
+                        .font(.inter(size: 14, weight: .medium))
                 }
                 .foregroundColor(.black)
                 .padding(.horizontal, AppStyle.Spacing.comfortable)
@@ -771,11 +771,11 @@ struct AddBar: View {
                                 .tint(.primary)
                         } else {
                             Image(systemName: hasGeneratedBreakdown ? "arrow.clockwise" : "sparkles")
-                                .font(.inter(size: 14, weight: .semiBold))
+                                .font(.inter(size: 14, weight: .medium))
                                 .foregroundColor(!isTitleEmpty ? .blue : .primary)
                         }
                         Text(LocalizedStringKey(hasGeneratedBreakdown ? "Regenerate" : "Suggest Breakdown"))
-                            .font(.inter(size: 14, weight: .semiBold))
+                            .font(.inter(size: 14, weight: .medium))
                             .foregroundColor(.primary)
                     }
                     .padding(.horizontal, AppStyle.Spacing.comfortable)

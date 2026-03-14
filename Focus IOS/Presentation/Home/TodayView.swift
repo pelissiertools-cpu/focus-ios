@@ -22,6 +22,7 @@ struct TodayView: View {
     @State private var selectedScheduleForReschedule: Schedule?
     @State private var overdueScheduleDates: [UUID: Date] = [:]
     @State private var focusTaskIds: Set<UUID> = []
+    @State private var isCompletedCollapsed = true
 
     // Navigation
     @State private var selectedListForNavigation: FocusTask?
@@ -112,6 +113,19 @@ struct TodayView: View {
         allTodayEntries.filter { !focusTaskIds.contains($0.id) }
     }
 
+    private var completedTodayEntries: [TodayItemEntry] {
+        let calendar = Calendar.current
+        var entries: [TodayItemEntry] = []
+        for task in taskListVM.completedTasks {
+            guard let completedDate = task.completedDate,
+                  calendar.isDateInToday(completedDate) else { continue }
+            if let schedule = todaySchedules[task.id] {
+                entries.append(.task(task, scheduleId: schedule.scheduleId, sortOrder: schedule.sortOrder))
+            }
+        }
+        return entries
+    }
+
     private var flattenedTodayItems: [TodayFlatItem] {
         var result: [TodayFlatItem] = []
 
@@ -136,6 +150,17 @@ struct TodayView: View {
             result.append(.todoDropPlaceholder)
         }
         result.append(.todoInlineAdd)
+
+        // Completed section
+        if !completedTodayEntries.isEmpty {
+            result.append(.completedSectionHeader)
+            if !isCompletedCollapsed {
+                for entry in completedTodayEntries {
+                    result.append(.completedItem(entry))
+                }
+            }
+        }
+
         result.append(.bottomSpacer)
         return result
     }
@@ -704,7 +729,7 @@ struct TodayView: View {
                         Image(systemName: "target")
                             .font(.helveticaNeue(size: AppStyle.Layout.sectionDividerIcon, weight: .medium))
                             .foregroundColor(.focusBlue)
-                        Text("Main Focus")
+                        Text("Focus")
                             .font(.inter(.headline, weight: .bold))
                             .foregroundColor(.focusBlue)
                     }
@@ -802,6 +827,45 @@ struct TodayView: View {
                         .listRowBackground(Color.clear)
                         .listRowSeparator(.hidden)
                         .moveDisabled(true)
+
+                case .completedSectionHeader:
+                    HStack(spacing: AppStyle.Spacing.compact) {
+                        Button {
+                            withAnimation(AppStyle.Anim.expand) {
+                                isCompletedCollapsed.toggle()
+                            }
+                        } label: {
+                            HStack(spacing: AppStyle.Spacing.tiny) {
+                                Text("Completed")
+                                    .font(.inter(size: 12, weight: .medium))
+                                    .foregroundColor(.secondary)
+
+                                Text("\(completedTodayEntries.count)")
+                                    .font(.inter(size: 12))
+                                    .foregroundColor(.secondary)
+
+                                Image(systemName: isCompletedCollapsed ? "chevron.right" : "chevron.down")
+                                    .font(AppStyle.Typography.chevron)
+                                    .foregroundColor(.secondary)
+                            }
+                            .padding(.horizontal, AppStyle.Spacing.medium)
+                            .padding(.vertical, AppStyle.Spacing.small)
+                            .clipShape(Capsule())
+                            .glassEffect(.regular.tint(.glassTint).interactive(), in: .capsule)
+                        }
+                        .buttonStyle(.plain)
+
+                        Spacer()
+                    }
+                    .padding(.top, AppStyle.Spacing.section)
+                    .padding(.vertical, AppStyle.Spacing.medium)
+                    .listRowInsets(AppStyle.Insets.row)
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+                    .moveDisabled(true)
+
+                case .completedItem(let entry):
+                    completedItemRow(entry)
 
                 case .bottomSpacer:
                     Color.clear
@@ -915,6 +979,64 @@ struct TodayView: View {
         .listRowInsets(AppStyle.Insets.row)
         .listRowBackground(Color.clear)
         .listRowSeparator(.hidden)
+    }
+
+    // MARK: - Completed Item Row
+
+    @ViewBuilder
+    private func completedItemRow(_ entry: TodayItemEntry) -> some View {
+        Group {
+            switch entry {
+            case .task(let task, _, _):
+                FlatTaskRow(
+                    task: task,
+                    viewModel: taskListVM,
+                    isEditMode: false,
+                    isSelected: false,
+                    onSelectToggle: nil,
+                    onToggleCompletion: { t in
+                        taskListVM.requestToggleCompletion(t)
+                    },
+                    showCategoryOption: false
+                )
+
+            case .project(let project, _, _):
+                HStack(spacing: AppStyle.Spacing.comfortable) {
+                    Image("ProjectIcon")
+                        .renderingMode(.template)
+                        .resizable().scaledToFit()
+                        .frame(width: 16, height: 16)
+                        .foregroundColor(.secondary.opacity(0.5))
+                        .frame(width: AppStyle.Layout.pillButton)
+                    Text(project.title)
+                        .font(.inter(.body))
+                        .strikethrough()
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
+                    Spacer()
+                }
+                .padding(.vertical, AppStyle.Spacing.compact)
+
+            case .list(let list, _, _):
+                HStack(spacing: AppStyle.Spacing.comfortable) {
+                    Image(systemName: "checklist")
+                        .font(.inter(.body, weight: .medium))
+                        .foregroundColor(.secondary.opacity(0.5))
+                        .frame(width: AppStyle.Layout.pillButton)
+                    Text(list.title)
+                        .font(.inter(.body))
+                        .strikethrough()
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
+                    Spacer()
+                }
+                .padding(.vertical, AppStyle.Spacing.compact)
+            }
+        }
+        .listRowInsets(AppStyle.Insets.row)
+        .listRowBackground(Color.clear)
+        .listRowSeparator(.hidden)
+        .moveDisabled(true)
     }
 
     // MARK: - Reorder
@@ -1105,6 +1227,8 @@ private enum TodayFlatItem: Identifiable {
     case focusDivider
     case todoInlineAdd
     case todoDropPlaceholder
+    case completedSectionHeader
+    case completedItem(TodayItemEntry)
     case bottomSpacer
 
     var id: String {
@@ -1118,6 +1242,8 @@ private enum TodayFlatItem: Identifiable {
         case .focusDivider: return "focus-divider"
         case .todoInlineAdd: return "todo-inline-add"
         case .todoDropPlaceholder: return "todo-drop-placeholder"
+        case .completedSectionHeader: return "completed-section-header"
+        case .completedItem(let e): return "completed-\(e.id.uuidString)"
         case .bottomSpacer: return "bottom-spacer"
         }
     }

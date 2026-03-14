@@ -84,38 +84,15 @@ struct HomeView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: AppStyle.Spacing.section) {
                         Color.clear.frame(height: 0).id("homeScrollTop")
-                        // MARK: - Date Header
-                        HStack(alignment: .center, spacing: 10) {
-                            Button(action: {
-                                withAnimation(AppStyle.Anim.expand) {
-                                    showSettings = true
-                                }
-                            }) {
-                                Image(systemName: "person")
-                                    .font(.system(size: 14, weight: .medium))
-                                    .foregroundColor(.secondary)
-                                    .frame(width: 30, height: 30)
-                                    .overlay(
-                                        Circle()
-                                            .stroke(Color.cardBorder, lineWidth: AppStyle.Border.thin)
-                                    )
-                            }
-                            .buttonStyle(.plain)
+                        // Space for fixed header + fade gradient
+                        Color.clear.frame(height: 90)
 
-                            HStack(spacing: 0) {
-                                Text(currentDayName)
-                                Text(", ")
-                                formattedDateView
-                            }
-                            .font(.helveticaNeue(size: 13.7, weight: .bold))
-                            .tracking(-0.158)
-                            .foregroundColor(.secondary)
-
-                            Spacer()
+                        // MARK: - Daily Progress
+                        if viewModel.todayTaskCount > 0 {
+                            dailyProgressCard
+                                .padding(.horizontal, AppStyle.Spacing.page)
+                                .padding(.bottom, AppStyle.Spacing.section)
                         }
-                        .padding(.horizontal, AppStyle.Spacing.page)
-                        .padding(.top, AppStyle.Spacing.compact)
-                        .padding(.bottom, 60)
 
                         // MARK: - Today / Inbox
                         HStack(spacing: AppStyle.Spacing.comfortable) {
@@ -164,7 +141,10 @@ struct HomeView: View {
                         .padding(.horizontal, AppStyle.Spacing.page)
 
                         // MARK: - Library Divider
-                        homeSectionDivider(title: "LIBRARY")
+                        Rectangle()
+                            .fill(Color.cardBorder)
+                            .frame(height: AppStyle.Border.thin)
+                            .padding(.horizontal, AppStyle.Spacing.page)
 
                         // MARK: - Projects / Quick Lists / Goals
                         HStack(spacing: AppStyle.Spacing.compact) {
@@ -194,27 +174,6 @@ struct HomeView: View {
                         }
                         .padding(.horizontal, AppStyle.Spacing.page)
 
-
-                        // MARK: - Categories Section
-                        categoriesSectionHeader
-
-                        if !viewModel.categories.isEmpty {
-                            GeometryReader { geo in
-                                ScrollView(.horizontal, showsIndicators: false) {
-                                    HStack(spacing: AppStyle.Spacing.comfortable) {
-                                        ForEach(viewModel.categories) { category in
-                                            categoryCard(category, containerWidth: geo.size.width)
-                                        }
-                                    }
-                                    .padding(.horizontal, AppStyle.Spacing.page)
-                                    .padding(.vertical, 3)
-                                }
-                            }
-                            .frame(height: AppStyle.Layout.touchTarget + 6)
-                            .padding(.top, -AppStyle.Spacing.compact)
-                            .padding(.bottom, -AppStyle.Spacing.compact)
-                        }
-
                         // MARK: - Main Focus Section
                         if !viewModel.mainFocusTasks.isEmpty {
                             // Divider + header
@@ -233,7 +192,7 @@ struct HomeView: View {
                                             .frame(width: AppStyle.Layout.iconBadge, height: AppStyle.Layout.iconBadge)
                                             .background(Color.todayBadge, in: RoundedRectangle(cornerRadius: AppStyle.CornerRadius.iconBadge))
 
-                                        Text("Main Focus")
+                                        Text("Today's Focus")
                                             .font(.inter(size: 14, weight: .bold))
                                             .foregroundColor(.focusBlue)
                                     }
@@ -272,7 +231,26 @@ struct HomeView: View {
 
                         // MARK: - Pinned Section
                         if !viewModel.pinnedItems.isEmpty {
-                            homeSectionDivider(title: "PINNED", assetIcon: "PushPin")
+                            VStack(alignment: .leading, spacing: AppStyle.Spacing.compact) {
+                                Rectangle()
+                                    .fill(Color.cardBorder)
+                                    .frame(height: AppStyle.Border.thin)
+
+                                HStack(spacing: AppStyle.Spacing.compact) {
+                                    Image("PushPin")
+                                        .resizable()
+                                        .scaledToFit()
+                                        .frame(width: AppStyle.Layout.sectionDividerIcon, height: AppStyle.Layout.sectionDividerIcon)
+                                        .foregroundColor(.appText)
+                                        .frame(width: AppStyle.Layout.iconBadge, height: AppStyle.Layout.iconBadge)
+                                        .background(Color.iconBadgeBackground, in: RoundedRectangle(cornerRadius: AppStyle.CornerRadius.iconBadge))
+
+                                    Text("Pinboard")
+                                        .font(.inter(size: 14, weight: .bold))
+                                        .foregroundColor(.appText)
+                                }
+                            }
+                            .padding(.horizontal, AppStyle.Spacing.page)
 
                             VStack(spacing: 0) {
                                 ForEach(viewModel.pinnedItems) { item in
@@ -282,6 +260,26 @@ struct HomeView: View {
                             .padding(.horizontal, AppStyle.Spacing.page)
                             .padding(.top, -(AppStyle.Spacing.section / 2))
                         }
+
+                        // MARK: - Categories Section
+                        categoriesSectionHeader
+
+                        if !viewModel.categories.isEmpty {
+                            GeometryReader { geo in
+                                ScrollView(.horizontal, showsIndicators: false) {
+                                    HStack(spacing: AppStyle.Spacing.comfortable) {
+                                        ForEach(viewModel.categories) { category in
+                                            categoryCard(category, containerWidth: geo.size.width)
+                                        }
+                                    }
+                                    .padding(.horizontal, AppStyle.Spacing.page)
+                                    .padding(.vertical, 3)
+                                }
+                            }
+                            .frame(height: AppStyle.Layout.touchTarget + 6)
+                            .padding(.top, -AppStyle.Spacing.compact)
+                            .padding(.bottom, -AppStyle.Spacing.compact)
+                        }
                     }
                     .padding(.bottom, 120)
                 }
@@ -289,6 +287,88 @@ struct HomeView: View {
                     scrollProxy.scrollTo("homeScrollTop", anchor: .top)
                 }
                 } // ScrollViewReader
+
+                // MARK: - Fixed Header
+                VStack(spacing: 0) {
+                    HStack(alignment: .center, spacing: 10) {
+                        Button(action: {
+                            withAnimation(AppStyle.Anim.expand) {
+                                showSettings = true
+                            }
+                        }) {
+                            Image(systemName: "person")
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(.secondary)
+                                .frame(width: 30, height: 30)
+                                .overlay(
+                                    Circle()
+                                        .stroke(Color.cardBorder, lineWidth: AppStyle.Border.thin)
+                                )
+                        }
+                        .buttonStyle(.plain)
+
+                        HStack(spacing: 0) {
+                            Text(currentDayName)
+                            Text(", ")
+                            formattedDateView
+                        }
+                        .font(.helveticaNeue(size: 13.7, weight: .bold))
+                        .tracking(-0.158)
+                        .foregroundColor(.secondary)
+
+                        Spacer()
+                    }
+                    .padding(.horizontal, AppStyle.Spacing.page)
+                    .padding(.top, AppStyle.Spacing.compact)
+                    .padding(.bottom, AppStyle.Spacing.comfortable)
+                    .background(
+                        Color.appBackground
+                            .overlay(
+                                LinearGradient(
+                                    colors: [
+                                        Color(UIColor { traits in
+                                            traits.userInterfaceStyle == .dark
+                                                ? UIColor(red: 0x2E/255.0, green: 0x59/255.0, blue: 0xF4/255.0, alpha: 0.08)
+                                                : UIColor(red: 0xFF/255.0, green: 0x8D/255.0, blue: 0x00/255.0, alpha: 0.064)
+                                        }),
+                                        Color(UIColor { traits in
+                                            traits.userInterfaceStyle == .dark
+                                                ? UIColor(red: 0x2E/255.0, green: 0x59/255.0, blue: 0xF4/255.0, alpha: 0.03)
+                                                : UIColor(red: 0xFF/255.0, green: 0x8D/255.0, blue: 0x00/255.0, alpha: 0.024)
+                                        }),
+                                    ],
+                                    startPoint: .top,
+                                    endPoint: .bottom
+                                )
+                            )
+                            .ignoresSafeArea(edges: .top)
+                    )
+
+                    // Smooth fade transition
+                    ZStack {
+                        LinearGradient(
+                            colors: [Color.appBackground, Color.appBackground.opacity(0)],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                        LinearGradient(
+                            colors: [
+                                Color(UIColor { traits in
+                                    traits.userInterfaceStyle == .dark
+                                        ? UIColor(red: 0x2E/255.0, green: 0x59/255.0, blue: 0xF4/255.0, alpha: 0.03)
+                                        : UIColor(red: 0xFF/255.0, green: 0x8D/255.0, blue: 0x00/255.0, alpha: 0.024)
+                                }),
+                                Color.clear
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    }
+                    .frame(height: 40)
+                    .allowsHitTesting(false)
+
+                    Spacer()
+                }
 
                 // MARK: - Bottom Bar
                 if !showingAddBar {
@@ -548,6 +628,7 @@ struct HomeView: View {
                 // Pre-fetch today schedules so TodayView opens instantly
                 await prefetchTodaySchedules()
                 await viewModel.fetchMainFocusTasks()
+                await viewModel.fetchTodayTaskCount()
             }
             .onReceive(NotificationCenter.default.publisher(for: .sessionRefreshed)) { _ in
                 _Concurrency.Task { @MainActor in
@@ -585,6 +666,52 @@ struct HomeView: View {
                     }
                 }
         }
+    }
+
+    // MARK: - Daily Progress Card
+
+    private var dailyProgressCard: some View {
+        let total = viewModel.todayTaskCount
+        let completed = viewModel.todayCompletedCount
+        let progress = total > 0 ? Double(completed) / Double(total) : 0
+
+        return HStack(spacing: AppStyle.Spacing.section) {
+            // Progress ring
+            ZStack {
+                Circle()
+                    .stroke(Color.cardBorder, lineWidth: 4)
+                Circle()
+                    .trim(from: 0, to: progress)
+                    .stroke(Color.accentOrange, style: StrokeStyle(lineWidth: 4, lineCap: .round))
+                    .rotationEffect(.degrees(-90))
+
+                Text("\(completed)/\(total)")
+                    .font(.helveticaNeue(size: 13, weight: .bold))
+                    .tracking(-0.135)
+                    .foregroundColor(.appText)
+            }
+            .frame(width: 40, height: 40)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Tasks completed today")
+                    .font(.helveticaNeue(size: 13, weight: .medium))
+                    .tracking(-0.135)
+                    .foregroundColor(.secondary)
+
+                if completed == total && total > 0 {
+                    Text("All done!")
+                        .font(.inter(size: 12, weight: .medium))
+                        .foregroundColor(.accentOrange)
+                }
+            }
+
+            Spacer()
+        }
+        .padding(AppStyle.Spacing.section)
+        .frame(maxWidth: .infinity, minHeight: AppStyle.Layout.fab)
+        .background(Color.cardBackground, in: RoundedRectangle(cornerRadius: AppStyle.CornerRadius.card))
+        .cardBorderOverlay()
+        .cardShadow()
     }
 
     // MARK: - Home Card
@@ -973,6 +1100,7 @@ struct HomeView: View {
         await goalsViewModel.fetchGoals()
         await prefetchTodaySchedules()
         await viewModel.fetchMainFocusTasks()
+        await viewModel.fetchTodayTaskCount()
     }
 
     // MARK: - Today Schedule Pre-fetch

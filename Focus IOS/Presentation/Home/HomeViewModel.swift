@@ -41,6 +41,7 @@ class HomeViewModel: ObservableObject {
     @Published var isLoading = false
     @Published var errorMessage: String?
     @Published var todayTaskCount: Int = 0
+    @Published var todayCompletedCount: Int = 0
     @Published var mainFocusTasks: [FocusTask] = []
 
     // Navigation state
@@ -175,7 +176,18 @@ class HomeViewModel: ObservableObject {
         do {
             let focus = try await scheduleRepository.fetchSchedules(timeframe: .daily, date: Date(), section: .focus)
             let todo = try await scheduleRepository.fetchSchedules(timeframe: .daily, date: Date(), section: .todo)
-            todayTaskCount = focus.count + todo.count
+            let allSchedules = focus + todo
+            todayTaskCount = allSchedules.count
+
+            // Fetch actual tasks to count completed ones
+            let taskIds = Array(Set(allSchedules.map(\.taskId)))
+            guard !taskIds.isEmpty else {
+                todayCompletedCount = 0
+                return
+            }
+            let tasks = try await repository.fetchTasksByIds(taskIds)
+            let taskMap = Dictionary(uniqueKeysWithValues: tasks.map { ($0.id, $0) })
+            todayCompletedCount = allSchedules.filter { taskMap[$0.taskId]?.isCompleted == true }.count
         } catch {
             errorMessage = error.localizedDescription
         }

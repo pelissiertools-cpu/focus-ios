@@ -790,8 +790,8 @@ struct TodayView: View {
                     Text("Drag and drop tasks that you want to focus on here")
                         .font(.inter(.subheadline))
                         .foregroundColor(.secondary.opacity(0.4))
-                        .multilineTextAlignment(.center)
-                        .frame(maxWidth: .infinity, minHeight: 60, alignment: .center)
+                        .multilineTextAlignment(.leading)
+                        .frame(maxWidth: .infinity, minHeight: 60, alignment: .leading)
                         .contentShape(Rectangle())
                         .listRowInsets(AppStyle.Insets.row)
                         .listRowBackground(Color.clear)
@@ -820,13 +820,15 @@ struct TodayView: View {
                     .moveDisabled(true)
 
                 case .todoDropPlaceholder:
-                    Text("No tasks yet")
-                        .font(.inter(.subheadline, weight: .semiBold))
-                        .foregroundColor(.primary)
+                    Text(focusEntries.isEmpty ? "No task yet" : "Drag task here to remove from focus section")
+                        .font(.inter(.subheadline))
+                        .foregroundColor(.secondary.opacity(0.4))
+                        .multilineTextAlignment(.leading)
+                        .frame(maxWidth: .infinity, minHeight: 60, alignment: .leading)
+                        .contentShape(Rectangle())
                         .listRowInsets(AppStyle.Insets.row)
                         .listRowBackground(Color.clear)
                         .listRowSeparator(.hidden)
-                        .moveDisabled(true)
 
                 case .completedSectionHeader:
                     HStack(spacing: AppStyle.Spacing.compact) {

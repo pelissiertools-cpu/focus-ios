@@ -24,9 +24,12 @@ struct ListDetailsDrawer: View {
     @FocusState private var isTitleFocused: Bool
     @Environment(\.dismiss) private var dismiss
 
-    init(list: FocusTask, viewModel: ListsViewModel) {
+    var onGoToList: (() -> Void)?
+
+    init(list: FocusTask, viewModel: ListsViewModel, onGoToList: (() -> Void)? = nil) {
         self.list = list
         self.viewModel = viewModel
+        self.onGoToList = onGoToList
         _listTitle = State(initialValue: list.title)
         _noteText = State(initialValue: list.description ?? "")
         _selectedCategoryId = State(initialValue: list.categoryId)
@@ -78,6 +81,11 @@ struct ListDetailsDrawer: View {
 
                     // ─── NOTE ───
                     noteCard
+
+                    // ─── GO TO LIST ───
+                    if let onGoToList {
+                        goToListButton(action: onGoToList)
+                    }
                 }
                 .padding(.bottom, AppStyle.Spacing.page)
             }
@@ -425,6 +433,36 @@ struct ListDetailsDrawer: View {
             .padding(.horizontal, AppStyle.Spacing.compact)
             .padding(.bottom, AppStyle.Spacing.medium)
         }
+        .background(Color(.secondarySystemGroupedBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .padding(.horizontal, AppStyle.Spacing.section)
+    }
+
+    // MARK: - Go to List Button
+
+    @ViewBuilder
+    private func goToListButton(action: @escaping () -> Void) -> some View {
+        Button {
+            dismiss()
+            action()
+        } label: {
+            HStack(spacing: AppStyle.Spacing.medium) {
+                Image(systemName: "checklist")
+                    .font(.inter(.body))
+                    .foregroundColor(.secondary)
+                    .frame(width: AppStyle.Layout.pillButton)
+                Text("Go to List")
+                    .font(.inter(.body))
+                    .foregroundColor(.primary)
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.inter(.caption))
+                    .foregroundColor(.secondary)
+            }
+            .padding(.horizontal, AppStyle.Spacing.content)
+            .padding(.vertical, AppStyle.Spacing.comfortable)
+        }
+        .buttonStyle(.plain)
         .background(Color(.secondarySystemGroupedBackground))
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .padding(.horizontal, AppStyle.Spacing.section)

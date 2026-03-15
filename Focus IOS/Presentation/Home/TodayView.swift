@@ -406,7 +406,9 @@ struct TodayView: View {
             .drawerStyle()
         }
         .sheet(item: $listsVM.selectedListForDetails) { list in
-            ListDetailsDrawer(list: list, viewModel: listsVM)
+            ListDetailsDrawer(list: list, viewModel: listsVM, onGoToList: {
+                selectedListForNavigation = list
+            })
                 .drawerStyle()
         }
         .sheet(item: $listsVM.selectedItemForSchedule) { item in
@@ -417,7 +419,9 @@ struct TodayView: View {
                 .drawerStyle()
         }
         .sheet(item: $projectsVM.selectedProjectForDetails) { project in
-            ProjectDetailsDrawer(project: project, viewModel: projectsVM)
+            ProjectDetailsDrawer(project: project, viewModel: projectsVM, onGoToProject: {
+                selectedProjectForNavigation = project
+            })
                 .drawerStyle()
         }
         .sheet(item: $projectsVM.selectedTaskForSchedule) { task in

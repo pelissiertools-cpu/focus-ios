@@ -327,7 +327,9 @@ struct CategoryDetailView: View {
         }
         // List sheets
         .sheet(item: $listsVM.selectedListForDetails) { list in
-            ListDetailsDrawer(list: list, viewModel: listsVM)
+            ListDetailsDrawer(list: list, viewModel: listsVM, onGoToList: {
+                selectedListForNavigation = list
+            })
                 .drawerStyle()
         }
         .sheet(item: $listsVM.selectedItemForSchedule) { item in
@@ -339,7 +341,9 @@ struct CategoryDetailView: View {
         }
         // Project sheets
         .sheet(item: $projectsVM.selectedProjectForDetails) { project in
-            ProjectDetailsDrawer(project: project, viewModel: projectsVM)
+            ProjectDetailsDrawer(project: project, viewModel: projectsVM, onGoToProject: {
+                selectedProjectForNavigation = project
+            })
                 .drawerStyle()
         }
         .sheet(item: $projectsVM.selectedTaskForSchedule) { task in

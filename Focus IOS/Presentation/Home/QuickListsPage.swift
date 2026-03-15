@@ -243,7 +243,9 @@ struct QuickListsPage: View {
             ListContentView(list: list, viewModel: listsViewModel)
         }
         .sheet(item: $listsViewModel.selectedListForDetails) { list in
-            ListDetailsDrawer(list: list, viewModel: listsViewModel)
+            ListDetailsDrawer(list: list, viewModel: listsViewModel, onGoToList: {
+                selectedList = list
+            })
                 .drawerStyle()
         }
         .sheet(item: $listsViewModel.selectedItemForSchedule) { item in

@@ -306,7 +306,9 @@ struct ProjectsListPage: View {
             ProjectContentView(project: project, viewModel: projectsViewModel)
         }
         .sheet(item: $projectsViewModel.selectedProjectForDetails) { project in
-            ProjectDetailsDrawer(project: project, viewModel: projectsViewModel)
+            ProjectDetailsDrawer(project: project, viewModel: projectsViewModel, onGoToProject: {
+                selectedProject = project
+            })
                 .drawerStyle()
         }
         .sheet(item: $projectsViewModel.selectedTaskForSchedule) { task in

@@ -27,9 +27,12 @@ struct ProjectDetailsDrawer: View {
     @FocusState private var focusedTaskId: UUID?
     @Environment(\.dismiss) private var dismiss
 
-    init(project: FocusTask, viewModel: ProjectsViewModel) {
+    var onGoToProject: (() -> Void)?
+
+    init(project: FocusTask, viewModel: ProjectsViewModel, onGoToProject: (() -> Void)? = nil) {
         self.project = project
         self.viewModel = viewModel
+        self.onGoToProject = onGoToProject
         _projectTitle = State(initialValue: project.title)
         _noteText = State(initialValue: project.description ?? "")
         _selectedCategoryId = State(initialValue: project.categoryId)
@@ -85,6 +88,11 @@ struct ProjectDetailsDrawer: View {
 
                     // ─── NOTE ───
                     noteCard
+
+                    // ─── GO TO PROJECT ───
+                    if let onGoToProject {
+                        goToProjectButton(action: onGoToProject)
+                    }
                 }
                 .padding(.bottom, AppStyle.Spacing.page)
             }
@@ -439,6 +447,36 @@ struct ProjectDetailsDrawer: View {
             .padding(.horizontal, AppStyle.Spacing.compact)
             .padding(.bottom, AppStyle.Spacing.medium)
         }
+        .background(Color(.secondarySystemGroupedBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .padding(.horizontal, AppStyle.Spacing.section)
+    }
+
+    // MARK: - Go to Project Button
+
+    @ViewBuilder
+    private func goToProjectButton(action: @escaping () -> Void) -> some View {
+        Button {
+            dismiss()
+            action()
+        } label: {
+            HStack(spacing: AppStyle.Spacing.medium) {
+                Image(systemName: "folder")
+                    .font(.inter(.body))
+                    .foregroundColor(.secondary)
+                    .frame(width: AppStyle.Layout.pillButton)
+                Text("Go to Project")
+                    .font(.inter(.body))
+                    .foregroundColor(.primary)
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.inter(.caption))
+                    .foregroundColor(.secondary)
+            }
+            .padding(.horizontal, AppStyle.Spacing.content)
+            .padding(.vertical, AppStyle.Spacing.comfortable)
+        }
+        .buttonStyle(.plain)
         .background(Color(.secondarySystemGroupedBackground))
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .padding(.horizontal, AppStyle.Spacing.section)

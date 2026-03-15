@@ -256,6 +256,15 @@ class HomeViewModel: ObservableObject {
             let focusTaskIds = focus.sorted(by: { $0.sortOrder < $1.sortOrder }).map(\.taskId)
             mainFocusTasks = focusTaskIds.compactMap { taskMap[$0] }.filter { !$0.isCompleted }
             AppDataCache.shared.mainFocusTasks = mainFocusTasks
+
+            // Pre-fetch subtasks for focus tasks
+            let focusTaskOnlyIds = mainFocusTasks.filter { $0.type == .task }.map(\.id)
+            if !focusTaskOnlyIds.isEmpty {
+                let subtasksByParent = try await repository.fetchSubtasksByParentIds(focusTaskOnlyIds)
+                for (parentId, subtasks) in subtasksByParent {
+                    pinnedSubtasksMap[parentId] = subtasks
+                }
+            }
         } catch {
             errorMessage = error.localizedDescription
         }

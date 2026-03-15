@@ -5,15 +5,43 @@
 
 import SwiftUI
 
+// MARK: - Source type enum
+
+enum ContentBatchMoveSource {
+    case project(id: UUID, viewModel: ProjectsViewModel)
+    case list(id: UUID, viewModel: ListsViewModel)
+}
+
 struct ContentBatchMoveSheet: View {
-    @ObservedObject var viewModel: ProjectsViewModel
-    let projectId: UUID
+    let source: ContentBatchMoveSource
     @Environment(\.dismiss) private var dismiss
     @State private var showNewProjectAlert = false
     @State private var newProjectName = ""
+    @State private var projects: [FocusTask] = []
+    @State private var lists: [FocusTask] = []
 
+    // Toast state
+    @State private var toastMessage = ""
+    @State private var showToast = false
+
+    private var selectedCount: Int {
+        switch source {
+        case .project(_, let vm): return vm.selectedContentTaskIds.count
+        case .list(_, let vm): return vm.selectedContentItemIds.count
+        }
+    }
+
+    private var sourceId: UUID {
+        switch source {
+        case .project(let id, _): return id
+        case .list(let id, _): return id
+        }
+    }
+
+    // Sections only apply for project source
     private var sections: [FocusTask] {
-        let tasks = viewModel.projectTasksMap[projectId] ?? []
+        guard case .project(let id, let vm) = source else { return [] }
+        let tasks = vm.projectTasksMap[id] ?? []
         return tasks
             .filter { $0.isSection && !$0.isCompleted && $0.parentTaskId == nil }
             .sorted { $0.sortOrder < $1.sortOrder }
@@ -22,106 +50,284 @@ struct ContentBatchMoveSheet: View {
     private var hasSections: Bool { !sections.isEmpty }
 
     private var otherProjects: [FocusTask] {
-        viewModel.projects.filter { !$0.isCompleted && !$0.isCleared && $0.id != projectId }
+        projects.filter { $0.id != sourceId }
     }
 
-    private var selectedCount: Int { viewModel.selectedContentTaskIds.count }
+    private var otherLists: [FocusTask] {
+        lists.filter { $0.id != sourceId }
+    }
 
     var body: some View {
-        DrawerContainer(
-            title: "Move \(selectedCount) Task\(selectedCount == 1 ? "" : "s")",
-            leadingButton: .cancel { dismiss() }
-        ) {
-            List {
-                if hasSections {
-                    SwiftUI.Section("Section") {
-                        Button {
-                            _Concurrency.Task {
-                                await viewModel.batchMoveContentTasksToSection(sectionId: nil, projectId: projectId)
-                                dismiss()
-                            }
-                        } label: {
-                            Label("No section", systemImage: "minus.circle")
-                                .font(.inter(.body))
-                                .foregroundColor(.primary)
+        ZStack {
+            DrawerContainer(
+                title: "Move \(selectedCount) Item\(selectedCount == 1 ? "" : "s")",
+                leadingButton: .cancel { dismiss() }
+            ) {
+                ScrollView {
+                    VStack(spacing: AppStyle.Spacing.comfortable) {
+                        // Sections (project source only)
+                        if hasSections {
+                            sectionCard
                         }
-                        .listRowBackground(Color(.secondarySystemGroupedBackground))
 
-                        ForEach(sections) { section in
-                            Button {
-                                _Concurrency.Task {
-                                    await viewModel.batchMoveContentTasksToSection(sectionId: section.id, projectId: projectId)
-                                    dismiss()
-                                }
-                            } label: {
-                                Label(section.title.isEmpty ? "Untitled section" : section.title, systemImage: "rectangle.split.3x1")
-                                    .font(.inter(.body))
-                                    .foregroundColor(.primary)
-                            }
-                            .listRowBackground(Color(.secondarySystemGroupedBackground))
-                        }
+                        // Projects
+                        projectCard
+
+                        // Lists
+                        listCard
                     }
+                    .padding(.bottom, AppStyle.Spacing.page)
                 }
-
-                SwiftUI.Section("Project") {
-                    ForEach(otherProjects) { project in
-                        Button {
-                            _Concurrency.Task {
-                                await viewModel.batchMoveContentTasksToProject(targetProjectId: project.id, sourceProjectId: projectId)
-                                dismiss()
-                            }
-                        } label: {
-                            HStack(spacing: 8) {
-                                Image("ProjectIcon")
-                                    .renderingMode(.template)
-                                    .resizable()
-                                    .scaledToFit()
-                                    .frame(width: 20, height: 20)
-                                    .foregroundColor(.primary)
-                                Text(project.title)
-                                    .font(.inter(.body))
-                                    .foregroundColor(.primary)
-                            }
-                        }
-                        .listRowBackground(Color(.secondarySystemGroupedBackground))
-                    }
-
-                    if otherProjects.isEmpty {
-                        Text("No other projects")
-                            .font(.inter(.body))
-                            .foregroundColor(.secondary)
-                            .listRowBackground(Color(.secondarySystemGroupedBackground))
-                    }
-
-                    Button {
-                        showNewProjectAlert = true
-                    } label: {
-                        Label("New Project", systemImage: "plus")
-                            .font(.inter(.body))
-                            .foregroundColor(.appRed)
-                    }
-                    .listRowBackground(Color(.secondarySystemGroupedBackground))
+                .background(.clear)
+                .task {
+                    let repo = TaskRepository(supabase: SupabaseClientManager.shared.client)
+                    do {
+                        projects = try await repo.fetchProjects(isCleared: false, isCompleted: false)
+                    } catch { }
+                    do {
+                        lists = try await repo.fetchTasks(ofType: .list, isCleared: false, isCompleted: false)
+                    } catch { }
                 }
-            }
-            .listStyle(.insetGrouped)
-            .scrollContentBackground(.hidden)
-            .alert("New Project", isPresented: $showNewProjectAlert) {
-                TextField("Project name", text: $newProjectName)
-                Button("Cancel", role: .cancel) { newProjectName = "" }
-                Button("Create") {
-                    let name = newProjectName
-                    newProjectName = ""
-                    _Concurrency.Task {
-                        guard let newId = await viewModel.saveNewProject(
-                            title: name,
-                            categoryId: nil,
-                            draftTasks: []
-                        ) else { return }
-                        await viewModel.batchMoveContentTasksToProject(targetProjectId: newId, sourceProjectId: projectId)
-                        dismiss()
+                .alert("New Project", isPresented: $showNewProjectAlert) {
+                    TextField("Project name", text: $newProjectName)
+                    Button("Cancel", role: .cancel) { newProjectName = "" }
+                    Button("Create") {
+                        let name = newProjectName
+                        newProjectName = ""
+                        handleNewProject(name: name)
                     }
                 }
             }
+            .allowsHitTesting(!showToast)
+
+            // Toast overlay
+            if showToast {
+                Color.black.opacity(0.3)
+                    .ignoresSafeArea()
+                    .transition(.opacity)
+
+                Text(toastMessage)
+                    .font(.inter(.body, weight: .semiBold))
+                    .foregroundColor(.primary)
+                    .padding(.horizontal, AppStyle.Spacing.section)
+                    .padding(.vertical, AppStyle.Spacing.comfortable)
+                    .glassEffect(.regular.interactive(), in: .capsule)
+                    .transition(.scale.combined(with: .opacity))
+            }
+        }
+    }
+
+    // MARK: - Section Card (project source only)
+
+    private var sectionCard: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text("Section")
+                .font(.inter(.subheadline, weight: .medium))
+                .foregroundColor(.secondary)
+                .padding(.horizontal, AppStyle.Spacing.content)
+                .padding(.top, AppStyle.Spacing.comfortable)
+                .padding(.bottom, AppStyle.Spacing.small)
+
+            moveRow(icon: "minus.circle", title: "No section") {
+                guard case .project(let id, let vm) = source else { return }
+                performMove(message: "Moved to no section") {
+                    await vm.batchMoveContentTasksToSection(sectionId: nil, projectId: id)
+                }
+            }
+
+            ForEach(sections) { section in
+                Divider()
+                    .padding(.leading, AppStyle.Spacing.section + AppStyle.Spacing.medium + AppStyle.Layout.pillButton)
+                moveRow(icon: "rectangle.split.3x1", title: section.title.isEmpty ? "Untitled section" : section.title) {
+                    guard case .project(let id, let vm) = source else { return }
+                    performMove(message: "Moved to section") {
+                        await vm.batchMoveContentTasksToSection(sectionId: section.id, projectId: id)
+                    }
+                }
+            }
+        }
+        .background(Color(.secondarySystemGroupedBackground))
+        .clipShape(RoundedRectangle(cornerRadius: AppStyle.Spacing.comfortable))
+        .padding(.horizontal, AppStyle.Spacing.section)
+        .padding(.top, AppStyle.Spacing.compact)
+    }
+
+    // MARK: - Project Card
+
+    private var projectCard: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text("Project")
+                .font(.inter(.subheadline, weight: .medium))
+                .foregroundColor(.secondary)
+                .padding(.horizontal, AppStyle.Spacing.content)
+                .padding(.top, AppStyle.Spacing.comfortable)
+                .padding(.bottom, AppStyle.Spacing.small)
+
+            if otherProjects.isEmpty {
+                Text("No projects")
+                    .font(.inter(.body))
+                    .foregroundColor(.secondary)
+                    .padding(.horizontal, AppStyle.Spacing.content)
+                    .padding(.bottom, AppStyle.Spacing.comfortable)
+            } else {
+                ForEach(Array(otherProjects.enumerated()), id: \.element.id) { index, project in
+                    if index > 0 {
+                        Divider()
+                            .padding(.leading, AppStyle.Spacing.section + AppStyle.Spacing.medium + AppStyle.Layout.pillButton)
+                    }
+                    moveRow(customImage: "ProjectIcon", title: project.title) {
+                        performMove(message: "Moved to project") {
+                            await moveToProject(project.id)
+                        }
+                    }
+                }
+            }
+
+            Divider()
+                .padding(.leading, AppStyle.Spacing.section + AppStyle.Spacing.medium + AppStyle.Layout.pillButton)
+
+            Button {
+                showNewProjectAlert = true
+            } label: {
+                HStack(spacing: AppStyle.Spacing.medium) {
+                    Image(systemName: "plus")
+                        .font(.inter(.body))
+                        .foregroundColor(.focusBlue)
+                        .frame(width: AppStyle.Layout.pillButton)
+                    Text("New Project")
+                        .font(.inter(.body))
+                        .foregroundColor(.focusBlue)
+                    Spacer()
+                }
+                .padding(.horizontal, AppStyle.Spacing.content)
+                .padding(.vertical, AppStyle.Spacing.comfortable)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+        }
+        .background(Color(.secondarySystemGroupedBackground))
+        .clipShape(RoundedRectangle(cornerRadius: AppStyle.Spacing.comfortable))
+        .padding(.horizontal, AppStyle.Spacing.section)
+    }
+
+    // MARK: - List Card
+
+    private var listCard: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text("List")
+                .font(.inter(.subheadline, weight: .medium))
+                .foregroundColor(.secondary)
+                .padding(.horizontal, AppStyle.Spacing.content)
+                .padding(.top, AppStyle.Spacing.comfortable)
+                .padding(.bottom, AppStyle.Spacing.small)
+
+            if otherLists.isEmpty {
+                Text("No lists")
+                    .font(.inter(.body))
+                    .foregroundColor(.secondary)
+                    .padding(.horizontal, AppStyle.Spacing.content)
+                    .padding(.bottom, AppStyle.Spacing.comfortable)
+            } else {
+                ForEach(Array(otherLists.enumerated()), id: \.element.id) { index, list in
+                    if index > 0 {
+                        Divider()
+                            .padding(.leading, AppStyle.Spacing.section + AppStyle.Spacing.medium + AppStyle.Layout.pillButton)
+                    }
+                    moveRow(icon: "checklist", title: list.title) {
+                        performMove(message: "Moved to list") {
+                            await moveToList(list.id)
+                        }
+                    }
+                }
+            }
+        }
+        .background(Color(.secondarySystemGroupedBackground))
+        .clipShape(RoundedRectangle(cornerRadius: AppStyle.Spacing.comfortable))
+        .padding(.horizontal, AppStyle.Spacing.section)
+    }
+
+    // MARK: - Shared Row
+
+    private func moveRow(icon: String? = nil, customImage: String? = nil, title: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: AppStyle.Spacing.medium) {
+                if let customImage {
+                    Image(customImage)
+                        .renderingMode(.template)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 20, height: 20)
+                        .foregroundColor(.primary)
+                        .frame(width: AppStyle.Layout.pillButton)
+                } else if let icon {
+                    Image(systemName: icon)
+                        .font(.inter(.body))
+                        .foregroundColor(.primary)
+                        .frame(width: AppStyle.Layout.pillButton)
+                }
+                Text(title)
+                    .font(.inter(.body))
+                    .foregroundColor(.primary)
+                Spacer()
+            }
+            .padding(.horizontal, AppStyle.Spacing.content)
+            .padding(.vertical, AppStyle.Spacing.comfortable)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    // MARK: - Actions
+
+    private func moveToProject(_ projectId: UUID) async {
+        switch source {
+        case .project(let srcId, let vm):
+            await vm.batchMoveContentTasksToProject(targetProjectId: projectId, sourceProjectId: srcId)
+        case .list(let srcId, let vm):
+            await vm.batchMoveContentItemsToProject(projectId: projectId, sourceListId: srcId)
+        }
+    }
+
+    private func moveToList(_ listId: UUID) async {
+        switch source {
+        case .project(let srcId, let vm):
+            await vm.batchMoveContentTasksToList(targetListId: listId, sourceProjectId: srcId)
+        case .list(let srcId, let vm):
+            await vm.batchMoveContentItemsToList(targetListId: listId, sourceListId: srcId)
+        }
+    }
+
+    private func handleNewProject(name: String) {
+        switch source {
+        case .project(let srcId, let vm):
+            _Concurrency.Task {
+                guard let newId = await vm.saveNewProject(
+                    title: name,
+                    categoryId: nil,
+                    draftTasks: []
+                ) else { return }
+                await vm.batchMoveContentTasksToProject(targetProjectId: newId, sourceProjectId: srcId)
+                dismiss()
+            }
+        case .list(let srcId, let vm):
+            _Concurrency.Task {
+                guard let projectId = await vm.createProjectAndReturnId(title: name) else { return }
+                await vm.batchMoveContentItemsToProject(projectId: projectId, sourceListId: srcId)
+                dismiss()
+            }
+        }
+    }
+
+    private func performMove(message: String, action: @escaping () async -> Void) {
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        withAnimation(AppStyle.Anim.modeSwitch) {
+            toastMessage = message
+            showToast = true
+        }
+        _Concurrency.Task {
+            await action()
+            try? await _Concurrency.Task.sleep(nanoseconds: 600_000_000)
+            dismiss()
         }
     }
 }

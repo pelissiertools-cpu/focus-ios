@@ -101,6 +101,36 @@ class TaskRepository {
         }
     }
 
+    /// Helper struct for moving a task from a list to a project (sets project_id, clears parent_task_id)
+    private struct MoveToProjectUpdate: Encodable {
+        let projectId: UUID
+        let parentTaskId: UUID?
+        let sortOrder: Int
+        let modifiedDate: Date
+
+        enum CodingKeys: String, CodingKey {
+            case projectId = "project_id"
+            case parentTaskId = "parent_task_id"
+            case sortOrder = "sort_order"
+            case modifiedDate = "modified_date"
+        }
+    }
+
+    /// Helper struct for moving a task from a project to a list (sets parent_task_id, clears project_id)
+    private struct MoveToListUpdate: Encodable {
+        let parentTaskId: UUID
+        let projectId: UUID?
+        let sortOrder: Int
+        let modifiedDate: Date
+
+        enum CodingKeys: String, CodingKey {
+            case parentTaskId = "parent_task_id"
+            case projectId = "project_id"
+            case sortOrder = "sort_order"
+            case modifiedDate = "modified_date"
+        }
+    }
+
     /// Fetch all tasks for the current user
     func fetchTasks() async throws -> [FocusTask] {
         let tasks: [FocusTask] = try await supabase
@@ -416,6 +446,36 @@ class TaskRepository {
     func assignToList(taskId: UUID, listId: UUID, sortOrder: Int) async throws {
         let update = ListItemAssignmentUpdate(
             parentTaskId: listId,
+            sortOrder: sortOrder,
+            modifiedDate: Date()
+        )
+        try await supabase
+            .from("tasks")
+            .update(update)
+            .eq("id", value: taskId.uuidString)
+            .execute()
+    }
+
+    /// Move a task from a list to a project (sets project_id, clears parent_task_id)
+    func moveFromListToProject(taskId: UUID, projectId: UUID, sortOrder: Int) async throws {
+        let update = MoveToProjectUpdate(
+            projectId: projectId,
+            parentTaskId: nil,
+            sortOrder: sortOrder,
+            modifiedDate: Date()
+        )
+        try await supabase
+            .from("tasks")
+            .update(update)
+            .eq("id", value: taskId.uuidString)
+            .execute()
+    }
+
+    /// Move a task from a project to a list (sets parent_task_id, clears project_id)
+    func moveFromProjectToList(taskId: UUID, listId: UUID, sortOrder: Int) async throws {
+        let update = MoveToListUpdate(
+            parentTaskId: listId,
+            projectId: nil,
             sortOrder: sortOrder,
             modifiedDate: Date()
         )

@@ -1258,6 +1258,47 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
         }
     }
 
+    /// Move selected content tasks to a list.
+    func batchMoveContentTasksToList(targetListId: UUID, sourceProjectId: UUID) async {
+        guard !selectedContentTaskIds.isEmpty else { return }
+        let selectedIds = selectedContentTaskIds
+
+        do {
+            let existingItems = try await repository.fetchSubtasks(parentId: targetListId)
+            let newCount = selectedIds.count
+
+            // Shift existing items down
+            let shiftUpdates = existingItems.map { (id: $0.id, sortOrder: $0.sortOrder + newCount) }
+            if !shiftUpdates.isEmpty {
+                try await repository.updateSortOrders(shiftUpdates)
+            }
+
+            let sourceTasks = projectTasksMap[sourceProjectId] ?? []
+            let tasksToMove = sourceTasks.filter { selectedIds.contains($0.id) && !$0.isSection }
+
+            // Move selected tasks from project to list (clears project_id, sets parent_task_id)
+            for (offset, task) in tasksToMove.enumerated() {
+                try await repository.moveFromProjectToList(taskId: task.id, listId: targetListId, sortOrder: offset)
+            }
+
+            // Update local state: remove from source project
+            let movedIds = Set(tasksToMove.map(\.id))
+            if var tasks = projectTasksMap[sourceProjectId] {
+                tasks.removeAll { movedIds.contains($0.id) }
+                projectTasksMap[sourceProjectId] = tasks
+            }
+            for id in movedIds {
+                subtasksMap.removeValue(forKey: id)
+            }
+
+            exitContentEditMode()
+            LocalMutationTracker.markMutation()
+            NotificationCenter.default.post(name: .projectListChanged, object: self)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
     // MARK: - Edit Mode (project cards)
 
     func enterEditMode() {

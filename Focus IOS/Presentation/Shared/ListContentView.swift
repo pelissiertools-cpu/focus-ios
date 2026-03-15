@@ -25,170 +25,182 @@ struct ListContentView: View {
     }
 
     var body: some View {
-        ScrollViewReader { proxy in
-            List {
-                // List title — editable inline
-                HStack(spacing: 8) {
-                    TextField("List name", text: $listTitle, axis: .vertical)
-                        .font(.inter(.title2, weight: .bold))
-                        .foregroundColor(.primary)
-                        .textFieldStyle(.plain)
-                        .focused($isTitleFocused)
-                        .onSubmit { saveListTitle() }
+        ZStack {
+            Color.appBackground.ignoresSafeArea()
 
-                    if viewModel.sharedTaskIds.contains(list.id) {
-                        Image(systemName: "person.2.fill")
-                            .font(.inter(.subheadline))
-                            .foregroundColor(.secondary)
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .listRowInsets(EdgeInsets(top: AppStyle.Spacing.section, leading: AppStyle.Spacing.page, bottom: AppStyle.Spacing.tiny, trailing: AppStyle.Spacing.page))
-                .listRowBackground(Color.clear)
-                .listRowSeparator(.hidden)
-                .moveDisabled(true)
-
-                // Notes
-                Group {
-                    if isNotesFocused || listNotes.isEmpty {
-                        TextField("Notes", text: $listNotes, axis: .vertical)
-                            .font(.inter(.body))
-                            .foregroundColor(.secondary)
+            ScrollViewReader { proxy in
+                List {
+                    // List title — editable inline
+                    HStack(spacing: 8) {
+                        TextField("List name", text: $listTitle, axis: .vertical)
+                            .font(.inter(.title2, weight: .bold))
+                            .foregroundColor(.primary)
                             .textFieldStyle(.plain)
-                            .focused($isNotesFocused)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    } else {
-                        Text(linkifiedText(listNotes))
-                            .font(.inter(.body))
-                            .foregroundColor(.secondary)
-                            .tint(.blue.opacity(0.5))
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .contentShape(Rectangle())
-                            .onTapGesture {
-                                isNotesFocused = true
-                            }
-                    }
-                }
-                .listRowInsets(EdgeInsets(top: 0, leading: AppStyle.Spacing.page, bottom: AppStyle.Spacing.comfortable, trailing: AppStyle.Spacing.page))
-                .listRowBackground(Color.clear)
-                .listRowSeparator(.hidden)
-                .moveDisabled(true)
+                            .focused($isTitleFocused)
+                            .onSubmit { saveListTitle() }
 
-                // Content
-                let uncompletedItems = viewModel.getUncompletedItems(for: list.id)
-                let completedItems = viewModel.getCompletedItems(for: list.id)
-                let allEmpty = uncompletedItems.isEmpty && completedItems.isEmpty
-
-                if allEmpty && viewModel.isLoadingItems.contains(list.id) {
-                    HStack {
-                        Spacer()
-                        ProgressView()
-                            .scaleEffect(0.8)
-                        Spacer()
+                        if viewModel.sharedTaskIds.contains(list.id) {
+                            Image(systemName: "person.2.fill")
+                                .font(.inter(.subheadline))
+                                .foregroundColor(.secondary)
+                        }
                     }
-                    .padding()
-                    .listRowInsets(AppStyle.Insets.row)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .listRowInsets(EdgeInsets(top: AppStyle.Spacing.section, leading: AppStyle.Spacing.page, bottom: AppStyle.Spacing.tiny, trailing: AppStyle.Spacing.page))
                     .listRowBackground(Color.clear)
                     .listRowSeparator(.hidden)
                     .moveDisabled(true)
-                } else if allEmpty {
-                    Text("No items yet")
-                        .font(AppStyle.Typography.emptyTitle)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .listRowInsets(EdgeInsets(top: 0, leading: AppStyle.Spacing.page, bottom: AppStyle.Spacing.compact, trailing: AppStyle.Spacing.page))
+
+                    // Notes
+                    Group {
+                        if isNotesFocused || listNotes.isEmpty {
+                            TextField("Notes", text: $listNotes, axis: .vertical)
+                                .font(.inter(.body))
+                                .foregroundColor(.secondary)
+                                .textFieldStyle(.plain)
+                                .focused($isNotesFocused)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        } else {
+                            Text(linkifiedText(listNotes))
+                                .font(.inter(.body))
+                                .foregroundColor(.secondary)
+                                .tint(.blue.opacity(0.5))
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .contentShape(Rectangle())
+                                .onTapGesture {
+                                    isNotesFocused = true
+                                }
+                        }
+                    }
+                    .listRowInsets(EdgeInsets(top: 0, leading: AppStyle.Spacing.page, bottom: AppStyle.Spacing.comfortable, trailing: AppStyle.Spacing.page))
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+                    .moveDisabled(true)
+
+                    // Content
+                    let uncompletedItems = viewModel.getUncompletedItems(for: list.id)
+                    let completedItems = viewModel.getCompletedItems(for: list.id)
+                    let allEmpty = uncompletedItems.isEmpty && completedItems.isEmpty
+
+                    if allEmpty && viewModel.isLoadingItems.contains(list.id) {
+                        HStack {
+                            Spacer()
+                            ProgressView()
+                                .scaleEffect(0.8)
+                            Spacer()
+                        }
+                        .padding()
+                        .listRowInsets(AppStyle.Insets.row)
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                        .moveDisabled(true)
+                    } else if allEmpty {
+                        Text("No items yet")
+                            .font(AppStyle.Typography.emptyTitle)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .listRowInsets(EdgeInsets(top: 0, leading: AppStyle.Spacing.page, bottom: AppStyle.Spacing.compact, trailing: AppStyle.Spacing.page))
+                            .listRowBackground(Color.clear)
+                            .listRowSeparator(.hidden)
+                            .moveDisabled(true)
+
+                        InlineAddRow(
+                            placeholder: "Item title",
+                            buttonLabel: "Add item",
+                            onSubmit: { title in await viewModel.createItem(title: title, listId: list.id) },
+                            isAnyAddFieldActive: $isInlineAddFocused,
+                            verticalPadding: AppStyle.Spacing.compact
+                        )
+                        .listRowInsets(AppStyle.Insets.row)
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                        .moveDisabled(true)
+                    } else {
+                        let items = flattenedDisplayItems()
+
+                        ForEach(items) { displayItem in
+                            switch displayItem {
+                            case .item(let item):
+                                ListContentItemRow(
+                                    item: item,
+                                    listId: list.id,
+                                    viewModel: viewModel
+                                )
+                                .moveDisabled(item.isCompleted || viewModel.contentEditMode)
+                                .listRowInsets(AppStyle.Insets.row)
+                                .listRowBackground(Color.clear)
+                                .listRowSeparator(.hidden)
+
+                            case .addItemRow:
+                                if !viewModel.contentEditMode {
+                                    InlineAddRow(
+                                        placeholder: "Item title",
+                                        buttonLabel: "Add item",
+                                        onSubmit: { title in await viewModel.createItem(title: title, listId: list.id) },
+                                        isAnyAddFieldActive: $isInlineAddFocused,
+                                        verticalPadding: AppStyle.Spacing.compact
+                                    )
+                                    .moveDisabled(true)
+                                    .listRowInsets(AppStyle.Insets.row)
+                                    .listRowBackground(Color.clear)
+                                    .listRowSeparator(.hidden)
+                                }
+
+                            case .completedHeader(let count):
+                                ListContentDonePill(
+                                    count: count,
+                                    isCollapsed: viewModel.isDoneSectionCollapsed(for: list.id),
+                                    onToggle: { viewModel.toggleDoneSectionCollapsed(for: list.id) },
+                                    onClear: {
+                                        _Concurrency.Task {
+                                            await viewModel.clearCompletedItems(for: list.id)
+                                        }
+                                    }
+                                )
+                                .moveDisabled(true)
+                                .listRowInsets(AppStyle.Insets.row)
+                                .listRowBackground(Color.clear)
+                                .listRowSeparator(.hidden)
+                            }
+                        }
+                        .onMove { from, to in
+                            if !viewModel.contentEditMode {
+                                viewModel.handleListContentFlatMove(from: from, to: to, listId: list.id)
+                            }
+                        }
+                    }
+
+                    Color.clear
+                        .frame(height: 1)
+                        .id("inline-add-anchor")
+                        .listRowInsets(EdgeInsets())
                         .listRowBackground(Color.clear)
                         .listRowSeparator(.hidden)
                         .moveDisabled(true)
 
-                    InlineAddRow(
-                        placeholder: "Item title",
-                        buttonLabel: "Add item",
-                        onSubmit: { title in await viewModel.createItem(title: title, listId: list.id) },
-                        isAnyAddFieldActive: $isInlineAddFocused,
-                        verticalPadding: AppStyle.Spacing.compact
-                    )
-                    .listRowInsets(AppStyle.Insets.row)
-                    .listRowBackground(Color.clear)
-                    .listRowSeparator(.hidden)
-                    .moveDisabled(true)
-                } else {
-                    let items = flattenedDisplayItems()
-
-                    ForEach(items) { displayItem in
-                        switch displayItem {
-                        case .item(let item):
-                            ListContentItemRow(
-                                item: item,
-                                listId: list.id,
-                                viewModel: viewModel
-                            )
-                            .moveDisabled(item.isCompleted)
-                            .listRowInsets(AppStyle.Insets.row)
-                            .listRowBackground(Color.clear)
-                            .listRowSeparator(.hidden)
-
-                        case .addItemRow:
-                            InlineAddRow(
-                                placeholder: "Item title",
-                                buttonLabel: "Add item",
-                                onSubmit: { title in await viewModel.createItem(title: title, listId: list.id) },
-                                isAnyAddFieldActive: $isInlineAddFocused,
-                                verticalPadding: AppStyle.Spacing.compact
-                            )
-                            .moveDisabled(true)
-                            .listRowInsets(AppStyle.Insets.row)
-                            .listRowBackground(Color.clear)
-                            .listRowSeparator(.hidden)
-
-                        case .completedHeader(let count):
-                            ListContentDonePill(
-                                count: count,
-                                isCollapsed: viewModel.isDoneSectionCollapsed(for: list.id),
-                                onToggle: { viewModel.toggleDoneSectionCollapsed(for: list.id) },
-                                onClear: {
-                                    _Concurrency.Task {
-                                        await viewModel.clearCompletedItems(for: list.id)
-                                    }
-                                }
-                            )
-                            .moveDisabled(true)
-                            .listRowInsets(AppStyle.Insets.row)
-                            .listRowBackground(Color.clear)
-                            .listRowSeparator(.hidden)
+                    Color.clear
+                        .frame(height: 500)
+                        .listRowInsets(EdgeInsets())
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                        .moveDisabled(true)
+                }
+                .listStyle(.plain)
+                .scrollContentBackground(.hidden)
+                .scrollDismissesKeyboard(.immediately)
+                .onChange(of: isInlineAddFocused) { _, focused in
+                    if focused {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                            withAnimation(.easeInOut(duration: 0.25)) {
+                                proxy.scrollTo("inline-add-anchor", anchor: .bottom)
+                            }
                         }
                     }
-                    .onMove { from, to in
-                        viewModel.handleListContentFlatMove(from: from, to: to, listId: list.id)
-                    }
                 }
-
-                Color.clear
-                    .frame(height: 1)
-                    .id("inline-add-anchor")
-                    .listRowInsets(EdgeInsets())
-                    .listRowBackground(Color.clear)
-                    .listRowSeparator(.hidden)
-                    .moveDisabled(true)
-
-                Color.clear
-                    .frame(height: 200)
-                    .listRowInsets(EdgeInsets())
-                    .listRowBackground(Color.clear)
-                    .listRowSeparator(.hidden)
-                    .moveDisabled(true)
             }
-            .listStyle(.plain)
-            .scrollContentBackground(.hidden)
-            .background(Color.appBackground.ignoresSafeArea())
-            .scrollDismissesKeyboard(.immediately)
-            .onChange(of: isInlineAddFocused) { _, focused in
-                if focused {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                        withAnimation(.easeInOut(duration: 0.25)) {
-                            proxy.scrollTo("inline-add-anchor", anchor: .bottom)
-                        }
-                    }
-                }
+
+            // Edit mode action bar
+            if viewModel.contentEditMode {
+                ListContentEditModeActionBar(viewModel: viewModel, listId: list.id)
             }
         }
         .navigationBarTitleDisplayMode(.inline)
@@ -196,26 +208,56 @@ struct ListContentView: View {
         .toolbarBackground(.hidden, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .navigationBarLeading) {
-                Button {
-                    saveListTitle()
-                    saveListNotes()
-                    dismiss()
-                } label: {
-                    Image(systemName: "chevron.left")
-                        .font(.inter(.body, weight: .semiBold))
-                        .foregroundColor(.primary)
-                        .frame(width: AppStyle.Layout.touchTarget, height: AppStyle.Layout.touchTarget)
-                        .contentShape(Rectangle())
+                if viewModel.contentEditMode {
+                    Button {
+                        viewModel.exitContentEditMode()
+                    } label: {
+                        Text("Done")
+                            .font(.inter(.body, weight: .medium))
+                            .foregroundColor(.focusBlue)
+                    }
+                } else {
+                    Button {
+                        saveListTitle()
+                        saveListNotes()
+                        dismiss()
+                    } label: {
+                        Image(systemName: "chevron.left")
+                            .font(.inter(.body, weight: .semiBold))
+                            .foregroundColor(.primary)
+                            .frame(width: AppStyle.Layout.touchTarget, height: AppStyle.Layout.touchTarget)
+                            .contentShape(Rectangle())
+                    }
+                    .accessibilityLabel("Back")
                 }
-                .accessibilityLabel("Back")
             }
             ToolbarItem(placement: .navigationBarTrailing) {
-                if viewModel.sharedTaskIds.contains(list.id) {
+                if viewModel.contentEditMode {
+                    Button {
+                        if viewModel.allContentItemsSelected(for: list.id) {
+                            viewModel.deselectAllContentItems()
+                        } else {
+                            viewModel.selectAllContentItems(listId: list.id)
+                        }
+                    } label: {
+                        Text(viewModel.allContentItemsSelected(for: list.id) ? "Deselect All" : "Select All")
+                            .font(.inter(.body, weight: .medium))
+                            .foregroundColor(.focusBlue)
+                    }
+                } else {
                     Menu {
                         Button {
-                            showManageSharing = true
+                            viewModel.enterContentEditMode()
                         } label: {
-                            Label("Manage Sharing", systemImage: "person.2")
+                            Label("Select", systemImage: "checkmark.circle")
+                        }
+
+                        if viewModel.sharedTaskIds.contains(list.id) {
+                            Button {
+                                showManageSharing = true
+                            } label: {
+                                Label("Manage Sharing", systemImage: "person.2")
+                            }
                         }
                     } label: {
                         Image(systemName: "ellipsis")
@@ -239,6 +281,9 @@ struct ListContentView: View {
         }
         .onDisappear {
             saveListNotes()
+            if viewModel.contentEditMode {
+                viewModel.exitContentEditMode()
+            }
         }
         // Item edit drawer
         .sheet(item: $viewModel.selectedItemForDetails) { item in
@@ -256,6 +301,32 @@ struct ListContentView: View {
         .sheet(isPresented: $showManageSharing) {
             ManageSharingSheet(task: list)
                 .drawerStyle()
+        }
+        // Batch delete confirmation
+        .alert("Delete \(viewModel.selectedContentItemIds.count) item\(viewModel.selectedContentItemIds.count == 1 ? "" : "s")?",
+               isPresented: $viewModel.showContentBatchDeleteConfirmation) {
+            Button("Cancel", role: .cancel) { }
+            Button("Delete", role: .destructive) {
+                _Concurrency.Task {
+                    await viewModel.batchDeleteContentItems(listId: list.id)
+                }
+            }
+        } message: {
+            Text("This will permanently delete the selected items and their schedules.")
+        }
+        // Batch move sheet
+        .sheet(isPresented: $viewModel.showContentBatchMovePicker) {
+            ContentBatchMoveSheet(source: .list(id: list.id, viewModel: viewModel))
+                .drawerStyle()
+        }
+        // Batch schedule sheet
+        .sheet(isPresented: $viewModel.showContentBatchScheduleSheet) {
+            BatchScheduleSheet(
+                viewModel: viewModel,
+                tasks: (viewModel.itemsMap[list.id] ?? []).filter { viewModel.selectedContentItemIds.contains($0.id) },
+                onComplete: { viewModel.exitContentEditMode() }
+            )
+            .drawerStyle()
         }
     }
 
@@ -350,6 +421,13 @@ private struct ListContentItemRow: View {
 
     var body: some View {
         HStack(spacing: AppStyle.Spacing.comfortable) {
+            if viewModel.contentEditMode {
+                Image(systemName: viewModel.selectedContentItemIds.contains(item.id) ? "checkmark.circle.fill" : "circle.dashed")
+                    .font(.inter(.title3))
+                    .foregroundColor(viewModel.selectedContentItemIds.contains(item.id) ? .appRed : .secondary)
+                    .accessibilityLabel(viewModel.selectedContentItemIds.contains(item.id) ? "Selected" : "Select")
+            }
+
             VStack(alignment: .leading, spacing: AppStyle.Spacing.tiny) {
                 Text(item.title)
                     .font(AppStyle.Typography.itemTitle)
@@ -364,25 +442,33 @@ private struct ListContentItemRow: View {
             }
             .frame(maxWidth: .infinity, minHeight: AppStyle.Layout.iconButton, alignment: .leading)
 
-            Button {
-                UIImpactFeedbackGenerator(style: isPending ? .light : .medium).impactOccurred()
-                viewModel.requestToggleItemCompletion(item, listId: listId)
-            } label: {
-                Image(systemName: displayCompleted ? "checkmark.circle.fill" : "circle")
-                    .font(.inter(.title3))
-                    .foregroundColor(displayCompleted ? Color.focusBlue.opacity(0.6) : .gray)
-                    .symbolEffect(.pulse, isActive: isPending)
+            if !viewModel.contentEditMode {
+                Button {
+                    UIImpactFeedbackGenerator(style: isPending ? .light : .medium).impactOccurred()
+                    viewModel.requestToggleItemCompletion(item, listId: listId)
+                } label: {
+                    Image(systemName: displayCompleted ? "checkmark.circle.fill" : "circle")
+                        .font(.inter(.title3))
+                        .foregroundColor(displayCompleted ? Color.focusBlue.opacity(0.6) : .gray)
+                        .symbolEffect(.pulse, isActive: isPending)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(displayCompleted ? "Completed" : "Mark complete")
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel(displayCompleted ? "Completed" : "Mark complete")
         }
         .padding(.vertical, AppStyle.Spacing.compact)
         .contentShape(Rectangle())
         .onTapGesture {
-            viewModel.selectedItemForDetails = item
+            if viewModel.contentEditMode {
+                if !item.isCompleted {
+                    viewModel.toggleContentItemSelection(item.id)
+                }
+            } else {
+                viewModel.selectedItemForDetails = item
+            }
         }
         .contextMenu {
-            if !item.isCompleted {
+            if !viewModel.contentEditMode && !item.isCompleted {
                 ContextMenuItems.editButton {
                     viewModel.selectedItemForDetails = item
                 }
@@ -418,7 +504,7 @@ private struct ListContentItemRow: View {
             Text("Are you sure you want to delete \"\(item.title)\"?")
         }
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-            if !item.isCompleted {
+            if !viewModel.contentEditMode && !item.isCompleted {
                 Button(role: .destructive) {
                     _Concurrency.Task {
                         await viewModel.deleteItem(item, listId: listId)
@@ -427,6 +513,90 @@ private struct ListContentItemRow: View {
                     Label("Delete", systemImage: "trash")
                 }
             }
+        }
+    }
+}
+
+// MARK: - List Content Edit Mode Action Bar
+
+struct ListContentEditModeActionBar: View {
+    @ObservedObject var viewModel: ListsViewModel
+    let listId: UUID
+
+    private var hasSelection: Bool { !viewModel.selectedContentItemIds.isEmpty }
+
+    private struct ActionItem: Identifiable {
+        let id = UUID()
+        let icon: String
+        let label: String
+        let isDestructive: Bool
+        let action: () -> Void
+    }
+
+    private var actions: [ActionItem] {
+        [
+            ActionItem(icon: "trash", label: "Delete", isDestructive: true) {
+                viewModel.showContentBatchDeleteConfirmation = true
+            },
+            ActionItem(icon: "arrow.right", label: "Move", isDestructive: false) {
+                viewModel.showContentBatchMovePicker = true
+            },
+            ActionItem(icon: "calendar", label: "Schedule", isDestructive: false) {
+                viewModel.showContentBatchScheduleSheet = true
+            },
+        ]
+    }
+
+    var body: some View {
+        VStack {
+            HStack {
+                Spacer()
+
+                HStack(alignment: .top, spacing: AppStyle.Spacing.content) {
+                    // Floating labels
+                    VStack(alignment: .trailing, spacing: 0) {
+                        ForEach(Array(actions.reversed().enumerated()), id: \.element.id) { _, item in
+                            Text(LocalizedStringKey(item.label))
+                                .font(.inter(.subheadline, weight: .medium))
+                                .foregroundColor(item.isDestructive ? .red : .primary)
+                                .frame(height: AppStyle.Layout.largeButton)
+                                .contentShape(Rectangle())
+                                .onTapGesture {
+                                    if hasSelection { item.action() }
+                                }
+                        }
+                    }
+
+                    // Vertical glass capsule with icons
+                    VStack(spacing: 0) {
+                        ForEach(Array(actions.reversed().enumerated()), id: \.element.id) { index, item in
+                            Button {
+                                item.action()
+                            } label: {
+                                Image(systemName: item.icon)
+                                    .font(.inter(.title3))
+                                    .foregroundColor(item.isDestructive ? .red : .primary)
+                                    .frame(width: AppStyle.Layout.largeButton, height: AppStyle.Layout.largeButton)
+                                    .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                            .disabled(!hasSelection)
+
+                            if index < actions.count - 1 {
+                                Divider()
+                                    .frame(width: 28)
+                            }
+                        }
+                    }
+                    .padding(.vertical, AppStyle.Spacing.small)
+                    .glassEffect(.regular, in: .capsule)
+                    .shadow(radius: 4, y: 2)
+                }
+                .opacity(hasSelection ? 1.0 : 0.5)
+                .padding(.trailing, AppStyle.Spacing.page)
+                .padding(.top, 62)
+            }
+            Spacer()
         }
     }
 }

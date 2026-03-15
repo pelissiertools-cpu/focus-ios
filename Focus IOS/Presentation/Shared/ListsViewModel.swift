@@ -69,6 +69,13 @@ class ListsViewModel: ObservableObject, LogFilterable, TaskEditingViewModel {
     @Published var showBatchMovePicker: Bool = false
     @Published var showBatchScheduleSheet: Bool = false
 
+    // Content edit mode (items within a list)
+    @Published var contentEditMode: Bool = false
+    @Published var selectedContentItemIds: Set<UUID> = []
+    @Published var showContentBatchDeleteConfirmation: Bool = false
+    @Published var showContentBatchMovePicker: Bool = false
+    @Published var showContentBatchScheduleSheet: Bool = false
+
     // Add list
     @Published var showingAddList: Bool = false
 
@@ -87,7 +94,7 @@ class ListsViewModel: ObservableObject, LogFilterable, TaskEditingViewModel {
     private let categoryRepository: CategoryRepository
     let scheduleRepository: ScheduleRepository
     let shareRepository: ShareRepository
-    private let authService: AuthService
+    let authService: AuthService
     private var cancellables = Set<AnyCancellable>()
 
     init(repository: TaskRepository = TaskRepository(),
@@ -1038,6 +1045,161 @@ class ListsViewModel: ObservableObject, LogFilterable, TaskEditingViewModel {
             let created = try await categoryRepository.createCategory(newCategory)
             categories.append(created)
             await moveTaskToCategory(task, categoryId: created.id)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    // MARK: - Content Edit Mode (items within a list)
+
+    func enterContentEditMode() {
+        withAnimation(.easeInOut(duration: 0.25)) {
+            contentEditMode = true
+            selectedContentItemIds = []
+        }
+    }
+
+    func exitContentEditMode() {
+        withAnimation(.easeInOut(duration: 0.25)) {
+            contentEditMode = false
+            selectedContentItemIds = []
+        }
+    }
+
+    func toggleContentItemSelection(_ itemId: UUID) {
+        if selectedContentItemIds.contains(itemId) {
+            selectedContentItemIds.remove(itemId)
+        } else {
+            selectedContentItemIds.insert(itemId)
+        }
+    }
+
+    func selectAllContentItems(listId: UUID) {
+        let items = getUncompletedItems(for: listId)
+        selectedContentItemIds = Set(items.map { $0.id })
+    }
+
+    func deselectAllContentItems() {
+        selectedContentItemIds = []
+    }
+
+    var allContentItemsSelected: Bool {
+        false // Will be computed per-list in the view
+    }
+
+    func allContentItemsSelected(for listId: UUID) -> Bool {
+        let items = getUncompletedItems(for: listId)
+        return !items.isEmpty && Set(items.map { $0.id }).isSubset(of: selectedContentItemIds)
+    }
+
+    func batchDeleteContentItems(listId: UUID) async {
+        let idsToDelete = selectedContentItemIds
+        do {
+            for id in idsToDelete {
+                try await scheduleRepository.deleteSchedules(forTask: id)
+                try await repository.deleteTask(id: id)
+            }
+            if var items = itemsMap[listId] {
+                items.removeAll { idsToDelete.contains($0.id) }
+                itemsMap[listId] = items
+            }
+            exitContentEditMode()
+            notifyTasksChanged()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    /// Move selected content items to a different list.
+    func batchMoveContentItemsToList(targetListId: UUID, sourceListId: UUID) async {
+        guard !selectedContentItemIds.isEmpty else { return }
+        let selectedIds = selectedContentItemIds
+
+        do {
+            let existingItems = try await repository.fetchSubtasks(parentId: targetListId)
+            let newCount = selectedIds.count
+
+            // Shift existing items down
+            let shiftUpdates = existingItems.map { (id: $0.id, sortOrder: $0.sortOrder + newCount) }
+            if !shiftUpdates.isEmpty {
+                try await repository.updateSortOrders(shiftUpdates)
+            }
+
+            // Move selected items
+            for (offset, itemId) in selectedIds.enumerated() {
+                try await repository.assignToList(taskId: itemId, listId: targetListId, sortOrder: offset)
+            }
+
+            // Update local state: remove from source
+            if var items = itemsMap[sourceListId] {
+                items.removeAll { selectedIds.contains($0.id) }
+                itemsMap[sourceListId] = items
+            }
+
+            // Refresh target list items if loaded
+            if itemsMap[targetListId] != nil {
+                await fetchItems(for: targetListId)
+            }
+
+            exitContentEditMode()
+            notifyTasksChanged()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    /// Create a new project and return its ID.
+    func createProjectAndReturnId(title: String) async -> UUID? {
+        guard let userId = authService.currentUser?.id else { return nil }
+        let trimmed = title.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return nil }
+
+        do {
+            let newProject = FocusTask(
+                userId: userId,
+                title: trimmed,
+                type: .project,
+                isCompleted: false,
+                sortOrder: 0,
+                priority: .low
+            )
+            let created = try await repository.createTask(newProject)
+            notifyTasksChanged()
+            return created.id
+        } catch {
+            errorMessage = error.localizedDescription
+            return nil
+        }
+    }
+
+    /// Move selected content items to a project.
+    func batchMoveContentItemsToProject(projectId: UUID, sourceListId: UUID) async {
+        guard !selectedContentItemIds.isEmpty else { return }
+        let selectedIds = selectedContentItemIds
+
+        do {
+            let existingTasks = try await repository.fetchProjectTasks(projectId: projectId)
+            let newCount = selectedIds.count
+
+            // Shift existing items down
+            let shiftUpdates = existingTasks.map { (id: $0.id, sortOrder: $0.sortOrder + newCount) }
+            if !shiftUpdates.isEmpty {
+                try await repository.updateSortOrders(shiftUpdates)
+            }
+
+            // Move selected items from list to project (clears parent_task_id, sets project_id)
+            for (offset, itemId) in selectedIds.enumerated() {
+                try await repository.moveFromListToProject(taskId: itemId, projectId: projectId, sortOrder: offset)
+            }
+
+            // Update local state: remove from source
+            if var items = itemsMap[sourceListId] {
+                items.removeAll { selectedIds.contains($0.id) }
+                itemsMap[sourceListId] = items
+            }
+
+            exitContentEditMode()
+            notifyTasksChanged()
         } catch {
             errorMessage = error.localizedDescription
         }

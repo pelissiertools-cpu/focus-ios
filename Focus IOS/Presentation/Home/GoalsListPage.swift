@@ -230,7 +230,7 @@ struct GoalsListPage: View {
                     } label: {
                         Text(goalsViewModel.allUncompletedSelected ? "Deselect All" : "Select All")
                             .font(.inter(.body, weight: .medium))
-                            .foregroundColor(.appRed)
+                            .foregroundColor(.focusBlue)
                     }
                 } else {
                     HStack(spacing: AppStyle.Spacing.compact) {

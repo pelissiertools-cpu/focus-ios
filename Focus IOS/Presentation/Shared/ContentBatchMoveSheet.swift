@@ -71,9 +71,17 @@ struct ContentBatchMoveSheet: View {
                                 dismiss()
                             }
                         } label: {
-                            Label(project.title, systemImage: "folder")
-                                .font(.inter(.body))
-                                .foregroundColor(.primary)
+                            HStack(spacing: 8) {
+                                Image("ProjectIcon")
+                                    .renderingMode(.template)
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(width: 20, height: 20)
+                                    .foregroundColor(.primary)
+                                Text(project.title)
+                                    .font(.inter(.body))
+                                    .foregroundColor(.primary)
+                            }
                         }
                         .listRowBackground(Color(.secondarySystemGroupedBackground))
                     }

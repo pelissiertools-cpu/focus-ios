@@ -66,7 +66,7 @@ struct TasksListView: View {
                         } label: {
                             Text(LocalizedStringKey(viewModel.allUncompletedSelected ? "Deselect All" : "Select All"))
                                 .font(.inter(.subheadline, weight: .medium))
-                                .foregroundColor(.appRed)
+                                .foregroundColor(.focusBlue)
                         }
                         .buttonStyle(.plain)
 

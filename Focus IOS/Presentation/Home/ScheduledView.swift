@@ -1612,7 +1612,7 @@ private extension ScheduledView {
             } label: {
                 Text(taskListVM.allUncompletedSelected ? "Deselect All" : "Select All")
                     .font(.inter(.body, weight: .medium))
-                    .foregroundColor(.appRed)
+                    .foregroundColor(.focusBlue)
             }
         } else {
             trailingMenu

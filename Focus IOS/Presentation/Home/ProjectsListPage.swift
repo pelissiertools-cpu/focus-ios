@@ -418,7 +418,7 @@ struct ProjectsListPage: View {
                     } label: {
                         Text(projectsViewModel.allUncompletedSelected ? "Deselect All" : "Select All")
                             .font(.inter(.body, weight: .medium))
-                            .foregroundColor(.appRed)
+                            .foregroundColor(.focusBlue)
                     }
                 } else {
                     Menu {
@@ -473,6 +473,12 @@ struct ProjectsListPage: View {
                 .font(.inter(.body))
                 .foregroundColor(.primary)
                 .lineLimit(1)
+
+            if project.isPinned {
+                Image(systemName: "pin.fill")
+                    .font(.inter(.caption2))
+                    .foregroundColor(.secondary)
+            }
 
             if projectsViewModel.sharedTaskIds.contains(project.id) {
                 Image(systemName: "person.2.fill")

@@ -141,7 +141,7 @@ struct ArchiveView: View {
                     } label: {
                         Text(viewModel.allSelected ? "Deselect All" : "Select All")
                             .font(.inter(.body, weight: .medium))
-                            .foregroundColor(.appRed)
+                            .foregroundColor(.focusBlue)
                     }
                 } else {
                     Menu {

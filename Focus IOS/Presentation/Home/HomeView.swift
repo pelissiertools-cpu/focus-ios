@@ -616,6 +616,7 @@ struct HomeView: View {
                 await taskListVM.fetchTasks()
                 await taskListVM.fetchCategories()
                 await viewModel.fetchCategories()
+                await viewModel.fetchSharedTaskIds()
                 // Pre-load categories for add bar
                 await projectsViewModel.fetchProjects()
                 await listsViewModel.fetchLists()
@@ -845,6 +846,12 @@ struct HomeView: View {
                     .font(.helveticaNeue(.body, weight: .regular))
                     .foregroundColor(.appText)
                     .lineLimit(1)
+
+                if viewModel.sharedTaskIds.contains(item.id) {
+                    Image(systemName: "person.2.fill")
+                        .font(.inter(.caption2))
+                        .foregroundColor(.secondary)
+                }
 
                 Spacer()
             }
@@ -1086,6 +1093,7 @@ struct HomeView: View {
         await taskListVM.fetchTasks()
         await taskListVM.fetchCategories()
         await viewModel.fetchCategories()
+        await viewModel.fetchSharedTaskIds()
         await projectsViewModel.fetchProjects()
         await listsViewModel.fetchLists()
         await prefetchTodaySchedules()

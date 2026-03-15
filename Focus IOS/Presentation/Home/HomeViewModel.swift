@@ -46,6 +46,8 @@ class HomeViewModel: ObservableObject {
     @Published var categories: [Category] = []
     @Published var selectedCategory: Category?
 
+    @Published var sharedTaskIds: Set<UUID> = []
+
     var pinnedItems: [FocusTask] {
         (projects + lists).filter { $0.isPinned && !$0.isSection }
     }
@@ -53,6 +55,7 @@ class HomeViewModel: ObservableObject {
     private let repository: TaskRepository
     private let scheduleRepository = ScheduleRepository()
     private let categoryRepository = CategoryRepository()
+    private let shareRepository = ShareRepository()
     private var cancellables = Set<AnyCancellable>()
 
     init() {
@@ -141,6 +144,14 @@ class HomeViewModel: ObservableObject {
             lists = try await repository.fetchTasks(ofType: .list, isCleared: false, isCompleted: false)
         } catch {
             errorMessage = error.localizedDescription
+        }
+    }
+
+    func fetchSharedTaskIds() async {
+        do {
+            sharedTaskIds = try await shareRepository.fetchSharedTaskIds()
+        } catch {
+            // Silently handled — icon just won't show
         }
     }
 

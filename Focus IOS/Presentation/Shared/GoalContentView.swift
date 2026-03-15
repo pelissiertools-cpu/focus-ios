@@ -304,7 +304,7 @@ struct GoalContentView: View {
                     } label: {
                         Text(viewModel.allContentTasksSelected ? "Deselect All" : "Select All")
                             .font(.inter(.body, weight: .medium))
-                            .foregroundColor(.appRed)
+                            .foregroundColor(.focusBlue)
                     }
                 } else {
                     Menu {

@@ -336,7 +336,7 @@ struct QuickListsPage: View {
                     } label: {
                         Text(listsViewModel.allUncompletedSelected ? "Deselect All" : "Select All")
                             .font(.inter(.body, weight: .medium))
-                            .foregroundColor(.appRed)
+                            .foregroundColor(.focusBlue)
                     }
                 } else {
                     Menu {
@@ -388,6 +388,12 @@ struct QuickListsPage: View {
                 .font(.inter(.body))
                 .foregroundColor(.primary)
                 .lineLimit(1)
+
+            if list.isPinned {
+                Image(systemName: "pin.fill")
+                    .font(.inter(.caption2))
+                    .foregroundColor(.secondary)
+            }
 
             if listsViewModel.sharedTaskIds.contains(list.id) {
                 Image(systemName: "person.2.fill")

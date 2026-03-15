@@ -46,10 +46,22 @@ struct ListContentView: View {
                         }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .listRowInsets(EdgeInsets(top: AppStyle.Spacing.section, leading: AppStyle.Spacing.page, bottom: AppStyle.Spacing.tiny, trailing: AppStyle.Spacing.page))
+                    .listRowInsets(EdgeInsets(top: AppStyle.Spacing.section, leading: AppStyle.Spacing.page, bottom: 0, trailing: AppStyle.Spacing.page))
                     .listRowBackground(Color.clear)
                     .listRowSeparator(.hidden)
                     .moveDisabled(true)
+
+                    // Item count
+                    let totalItems = (viewModel.itemsMap[list.id] ?? []).count
+                    if totalItems > 0 {
+                        Text("\(totalItems) item\(totalItems == 1 ? "" : "s")")
+                            .font(.inter(.subheadline))
+                            .foregroundColor(.secondary)
+                            .listRowInsets(EdgeInsets(top: 0, leading: AppStyle.Spacing.page, bottom: AppStyle.Spacing.tiny, trailing: AppStyle.Spacing.page))
+                            .listRowBackground(Color.clear)
+                            .listRowSeparator(.hidden)
+                            .moveDisabled(true)
+                    }
 
                     // Notes
                     Group {
@@ -230,6 +242,11 @@ struct ListContentView: View {
                     }
                     .accessibilityLabel("Back")
                 }
+            }
+            ToolbarItem(placement: .principal) {
+                Text("List")
+                    .font(.inter(.subheadline, weight: .medium))
+                    .foregroundColor(.secondary)
             }
             ToolbarItem(placement: .navigationBarTrailing) {
                 if viewModel.contentEditMode {

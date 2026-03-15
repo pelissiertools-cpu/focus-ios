@@ -61,6 +61,9 @@ struct ProjectContentView: View {
 
                         let progress = viewModel.taskProgress(for: project.id)
                         if progress.total > 0 {
+                            Text("\(Int(Double(progress.completed) / Double(progress.total) * 100))%")
+                                .font(.inter(.subheadline))
+                                .foregroundColor(.secondary)
                             ProjectProgressRing(
                                 completed: progress.completed,
                                 total: progress.total,
@@ -69,10 +72,22 @@ struct ProjectContentView: View {
                         }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .listRowInsets(EdgeInsets(top: AppStyle.Spacing.section, leading: AppStyle.Spacing.page, bottom: AppStyle.Spacing.tiny, trailing: AppStyle.Spacing.page))
+                    .listRowInsets(EdgeInsets(top: AppStyle.Spacing.section, leading: AppStyle.Spacing.page, bottom: 0, trailing: AppStyle.Spacing.page))
                     .listRowBackground(Color.clear)
                     .listRowSeparator(.hidden)
                     .moveDisabled(true)
+
+                    // Task count
+                    let totalTasks = (viewModel.projectTasksMap[project.id] ?? []).filter { !$0.isSection }.count
+                    if totalTasks > 0 {
+                        Text("\(totalTasks) task\(totalTasks == 1 ? "" : "s")")
+                            .font(.inter(.subheadline))
+                            .foregroundColor(.secondary)
+                            .listRowInsets(EdgeInsets(top: 0, leading: AppStyle.Spacing.page, bottom: AppStyle.Spacing.tiny, trailing: AppStyle.Spacing.page))
+                            .listRowBackground(Color.clear)
+                            .listRowSeparator(.hidden)
+                            .moveDisabled(true)
+                    }
 
                     // Notes
                     Group {
@@ -308,7 +323,9 @@ struct ProjectContentView: View {
                 }
             }
             ToolbarItem(placement: .principal) {
-                Color.clear
+                Text("Project")
+                    .font(.inter(.subheadline, weight: .medium))
+                    .foregroundColor(.secondary)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .contentShape(Rectangle())
                     .onTapGesture {

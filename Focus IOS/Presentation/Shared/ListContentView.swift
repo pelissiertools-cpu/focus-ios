@@ -486,6 +486,10 @@ private struct ListContentItemRow: View {
                     }
                 }
 
+                ContextMenuItems.pinButton(isPinned: item.isPinned) {
+                    _Concurrency.Task { await viewModel.togglePin(item, listId: listId) }
+                }
+
                 Divider()
 
                 ContextMenuItems.deleteButton {

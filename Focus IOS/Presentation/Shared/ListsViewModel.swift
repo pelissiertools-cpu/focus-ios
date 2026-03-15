@@ -650,6 +650,22 @@ class ListsViewModel: ObservableObject, LogFilterable, TaskEditingViewModel {
         }
     }
 
+    func togglePin(_ item: FocusTask, listId: UUID) async {
+        let newPinned = !item.isPinned
+        do {
+            try await repository.togglePin(id: item.id, isPinned: newPinned)
+            if var items = itemsMap[listId] {
+                if let index = items.firstIndex(where: { $0.id == item.id }) {
+                    items[index].isPinned = newPinned
+                    itemsMap[listId] = items
+                }
+            }
+            notifyTasksChanged()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
     func deleteItem(_ item: FocusTask, listId: UUID) async {
         do {
             try await scheduleRepository.deleteSchedules(forTask: item.id)

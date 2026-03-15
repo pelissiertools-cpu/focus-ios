@@ -543,6 +543,20 @@ class TaskRepository {
 
     // MARK: - Pin Operations
 
+    /// Fetch all pinned tasks (type = .task) that are not cleared
+    func fetchPinnedTasks() async throws -> [FocusTask] {
+        let tasks: [FocusTask] = try await supabase
+            .from("tasks")
+            .select()
+            .eq("is_pinned", value: true)
+            .eq("type", value: "task")
+            .eq("is_cleared", value: false)
+            .order("modified_date", ascending: false)
+            .execute()
+            .value
+        return tasks
+    }
+
     /// Toggle the pinned state of a task
     func togglePin(id: UUID, isPinned: Bool) async throws {
         let update = PinUpdate(isPinned: isPinned, modifiedDate: Date())

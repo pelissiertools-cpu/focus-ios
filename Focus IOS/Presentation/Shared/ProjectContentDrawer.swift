@@ -564,6 +564,10 @@ private struct ContentTaskRow: View {
                     }
                 }
 
+                ContextMenuItems.pinButton(isPinned: task.isPinned) {
+                    _Concurrency.Task { await viewModel.togglePin(task, projectId: projectId) }
+                }
+
                 Divider()
 
                 ContextMenuItems.deleteButton {

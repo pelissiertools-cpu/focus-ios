@@ -601,6 +601,11 @@ struct FlatTaskRow: View {
                         Text("List item")
                             .font(.inter(.caption))
                             .foregroundColor(.secondary)
+                        if task.isPinned {
+                            Image(systemName: "pin.fill")
+                                .font(.system(size: 8))
+                                .foregroundColor(.secondary)
+                        }
                         if let display = scheduleDateDisplay {
                             Text(display.text)
                                 .font(.inter(.caption))
@@ -617,6 +622,11 @@ struct FlatTaskRow: View {
                         Text("Project")
                             .font(.inter(.caption))
                             .foregroundColor(.secondary)
+                        if task.isPinned {
+                            Image(systemName: "pin.fill")
+                                .font(.system(size: 8))
+                                .foregroundColor(.secondary)
+                        }
                         Image("line-segment")
                             .renderingMode(.template)
                             .resizable().scaledToFit()
@@ -630,6 +640,11 @@ struct FlatTaskRow: View {
                     }
                 } else if isParent, let subtasks = viewModel.subtasksMap[task.id], !subtasks.isEmpty {
                     HStack(spacing: AppStyle.Spacing.small) {
+                        if task.isPinned {
+                            Image(systemName: "pin.fill")
+                                .font(.system(size: 8))
+                                .foregroundColor(.secondary)
+                        }
                         Text("\(subtasks.count) subtask\(subtasks.count == 1 ? "" : "s")")
                             .font(.inter(.caption))
                             .foregroundColor(.secondary)
@@ -639,10 +654,19 @@ struct FlatTaskRow: View {
                                 .foregroundColor(display.color)
                         }
                     }
-                } else if let display = scheduleDateDisplay {
-                    Text(display.text)
-                        .font(.inter(.caption))
-                        .foregroundColor(display.color)
+                } else if task.isPinned || scheduleDateDisplay != nil {
+                    HStack(spacing: 3) {
+                        if task.isPinned {
+                            Image(systemName: "pin.fill")
+                                .font(.system(size: 8))
+                                .foregroundColor(.secondary)
+                        }
+                        if let display = scheduleDateDisplay {
+                            Text(display.text)
+                                .font(.inter(.caption))
+                                .foregroundColor(display.color)
+                        }
+                    }
                 }
             }
             .frame(maxWidth: .infinity, minHeight: isTopLevel ? AppStyle.Layout.iconButton : nil, alignment: .leading)
@@ -741,6 +765,10 @@ struct FlatTaskRow: View {
                             _Concurrency.Task { await viewModel.moveTaskToCategory(task, categoryId: categoryId) }
                         }
                     }
+                }
+
+                ContextMenuItems.pinButton(isPinned: task.isPinned) {
+                    _Concurrency.Task { await viewModel.togglePin(task) }
                 }
 
                 Divider()
@@ -859,6 +887,10 @@ struct ExpandableTaskRow: View {
                     ) { categoryId in
                         _Concurrency.Task { await viewModel.moveTaskToCategory(task, categoryId: categoryId) }
                     }
+                }
+
+                ContextMenuItems.pinButton(isPinned: task.isPinned) {
+                    _Concurrency.Task { await viewModel.togglePin(task) }
                 }
 
                 Divider()

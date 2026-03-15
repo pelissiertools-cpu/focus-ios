@@ -34,6 +34,7 @@ enum HomeMenuItem: String, CaseIterable, Identifiable, Hashable {
 class HomeViewModel: ObservableObject {
     @Published var projects: [FocusTask] = []
     @Published var lists: [FocusTask] = []
+    @Published var pinnedTasks: [FocusTask] = []
     @Published var isLoading = false
     @Published var errorMessage: String?
     @Published var todayTaskCount: Int = 0
@@ -48,8 +49,14 @@ class HomeViewModel: ObservableObject {
 
     @Published var sharedTaskIds: Set<UUID> = []
 
+    // Pinned task subtask support
+    @Published var pinnedSubtasksMap: [UUID: [FocusTask]] = [:]
+    @Published var expandedPinnedTasks: Set<UUID> = []
+    @Published var selectedPinnedTaskForDetails: FocusTask?
+    @Published var selectedPinnedTaskForSchedule: FocusTask?
+
     var pinnedItems: [FocusTask] {
-        (projects + lists).filter { $0.isPinned && !$0.isSection }
+        (projects + lists + pinnedTasks).filter { $0.isPinned && !$0.isSection }
     }
 
     private let repository: TaskRepository
@@ -83,6 +90,7 @@ class HomeViewModel: ObservableObject {
                 _Concurrency.Task { @MainActor in
                     await self.fetchProjects()
                     await self.fetchLists()
+                    await self.fetchPinnedTasks()
                     await self.fetchCategories()
                 }
             }
@@ -142,6 +150,22 @@ class HomeViewModel: ObservableObject {
     func fetchLists() async {
         do {
             lists = try await repository.fetchTasks(ofType: .list, isCleared: false, isCompleted: false)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func fetchPinnedTasks() async {
+        do {
+            pinnedTasks = try await repository.fetchPinnedTasks()
+            // Pre-fetch subtask counts for pinned tasks
+            let taskIds = pinnedTasks.map(\.id)
+            if !taskIds.isEmpty {
+                let subtasksByParent = try await repository.fetchSubtasksByParentIds(taskIds)
+                for (parentId, subtasks) in subtasksByParent {
+                    pinnedSubtasksMap[parentId] = subtasks
+                }
+            }
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -274,11 +298,89 @@ class HomeViewModel: ObservableObject {
                 if let index = projects.firstIndex(where: { $0.id == task.id }) {
                     projects[index].isPinned = newPinned
                 }
-            } else {
+            } else if task.type == .list {
                 if let index = lists.firstIndex(where: { $0.id == task.id }) {
                     lists[index].isPinned = newPinned
                 }
+            } else {
+                // Task type — add/remove from pinnedTasks
+                if newPinned {
+                    var pinned = task
+                    pinned.isPinned = true
+                    pinnedTasks.append(pinned)
+                } else {
+                    pinnedTasks.removeAll { $0.id == task.id }
+                }
             }
+            notifyTasksChanged()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func togglePinnedTaskCompletion(_ task: FocusTask) async {
+        do {
+            if task.isCompleted {
+                try await repository.uncompleteTask(id: task.id)
+            } else {
+                try await repository.completeTask(id: task.id)
+            }
+            if let index = pinnedTasks.firstIndex(where: { $0.id == task.id }) {
+                pinnedTasks[index].isCompleted = !task.isCompleted
+            }
+            // Also check subtasks
+            for (parentId, subtasks) in pinnedSubtasksMap {
+                if let index = subtasks.firstIndex(where: { $0.id == task.id }) {
+                    pinnedSubtasksMap[parentId]?[index].isCompleted = !task.isCompleted
+                }
+            }
+            notifyTasksChanged()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    // MARK: - Pinned Task Subtasks
+
+    func togglePinnedTaskExpanded(_ taskId: UUID) async {
+        if expandedPinnedTasks.contains(taskId) {
+            expandedPinnedTasks.remove(taskId)
+        } else {
+            expandedPinnedTasks.insert(taskId)
+            if pinnedSubtasksMap[taskId] == nil {
+                await fetchPinnedSubtasks(for: taskId)
+            }
+        }
+    }
+
+    func fetchPinnedSubtasks(for taskId: UUID) async {
+        do {
+            let subtasks = try await repository.fetchSubtasks(parentId: taskId)
+            pinnedSubtasksMap[taskId] = subtasks
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func getUncompletedPinnedSubtasks(for taskId: UUID) -> [FocusTask] {
+        (pinnedSubtasksMap[taskId] ?? []).filter { !$0.isCompleted }.sorted { $0.sortOrder < $1.sortOrder }
+    }
+
+    func getCompletedPinnedSubtasks(for taskId: UUID) -> [FocusTask] {
+        (pinnedSubtasksMap[taskId] ?? []).filter { $0.isCompleted }.sorted { $0.sortOrder < $1.sortOrder }
+    }
+
+    func deletePinnedTask(_ task: FocusTask) async {
+        do {
+            try await repository.deleteTask(id: task.id)
+            pinnedTasks.removeAll { $0.id == task.id }
+            // Also remove from subtasks if it's a subtask
+            for (parentId, subtasks) in pinnedSubtasksMap {
+                if subtasks.contains(where: { $0.id == task.id }) {
+                    pinnedSubtasksMap[parentId]?.removeAll { $0.id == task.id }
+                }
+            }
+            pinnedSubtasksMap.removeValue(forKey: task.id)
             notifyTasksChanged()
         } catch {
             errorMessage = error.localizedDescription

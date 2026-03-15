@@ -195,26 +195,14 @@ struct HomeView: View {
 
                             // Task list
                             VStack(spacing: 0) {
-                                ForEach(viewModel.mainFocusTasks) { task in
-                                    Button {
-                                        viewModel.selectedMenuItem = .today
-                                    } label: {
-                                        HStack(spacing: AppStyle.Spacing.compact) {
-                                            Circle()
-                                                .stroke(Color.gray, lineWidth: 1.5)
-                                                .frame(width: AppStyle.Layout.dotSize, height: AppStyle.Layout.dotSize)
-                                                .frame(width: AppStyle.Layout.iconBadge)
-
-                                            Text(task.title)
-                                                .font(AppStyle.Typography.itemTitle)
-                                                .foregroundColor(.primary)
-                                                .lineLimit(2)
-
-                                            Spacer()
+                                ForEach(viewModel.mainFocusTasks) { item in
+                                    focusItemRow(item)
+                                    if item.type == .task && viewModel.expandedPinnedTasks.contains(item.id) {
+                                        let subtasks = viewModel.getUncompletedPinnedSubtasks(for: item.id) + viewModel.getCompletedPinnedSubtasks(for: item.id)
+                                        ForEach(subtasks) { subtask in
+                                            pinnedSubtaskRow(subtask)
                                         }
-                                        .padding(.vertical, AppStyle.Spacing.compact)
                                     }
-                                    .buttonStyle(.plain)
                                 }
                             }
                             .padding(.horizontal, AppStyle.Spacing.page)
@@ -247,6 +235,13 @@ struct HomeView: View {
                             VStack(spacing: 0) {
                                 ForEach(viewModel.pinnedItems) { item in
                                     pinnedItemRow(item)
+                                    // Show subtasks if expanded
+                                    if item.type == .task && viewModel.expandedPinnedTasks.contains(item.id) {
+                                        let subtasks = viewModel.getUncompletedPinnedSubtasks(for: item.id) + viewModel.getCompletedPinnedSubtasks(for: item.id)
+                                        ForEach(subtasks) { subtask in
+                                            pinnedSubtaskRow(subtask)
+                                        }
+                                    }
                                 }
                             }
                             .padding(.horizontal, AppStyle.Spacing.page)
@@ -549,6 +544,17 @@ struct HomeView: View {
                     ListContentView(list: item, viewModel: listsViewModel)
                 }
             }
+            .sheet(item: $viewModel.selectedPinnedTaskForDetails) { task in
+                TaskDetailsDrawer(task: task, viewModel: taskListVM, categories: taskListVM.categories)
+                    .drawerStyle()
+            }
+            .sheet(item: $viewModel.selectedPinnedTaskForSchedule) { task in
+                ScheduleSelectionSheet(
+                    task: task,
+                    focusViewModel: focusViewModel
+                )
+                    .drawerStyle()
+            }
             .navigationDestination(item: $viewModel.selectedCategory) { category in
                 CategoryDetailView(category: category, authService: authService)
             }
@@ -617,6 +623,7 @@ struct HomeView: View {
                 await taskListVM.fetchCategories()
                 await viewModel.fetchCategories()
                 await viewModel.fetchSharedTaskIds()
+                await viewModel.fetchPinnedTasks()
                 // Pre-load categories for add bar
                 await projectsViewModel.fetchProjects()
                 await listsViewModel.fetchLists()
@@ -823,45 +830,266 @@ struct HomeView: View {
     // MARK: - Pinned Item Row
 
     @ViewBuilder
-    private func pinnedItemRow(_ item: FocusTask) -> some View {
-        Button {
-            viewModel.selectedPinnedItem = item
-        } label: {
-            HStack(spacing: AppStyle.Spacing.compact) {
-                if item.type == .project {
-                    Image("ProjectIcon")
-                        .renderingMode(.template)
-                        .resizable().scaledToFit()
-                        .frame(width: 16, height: 16)
-                        .foregroundColor(.secondary)
-                        .frame(width: AppStyle.Layout.iconBadge)
-                } else {
-                    Image(systemName: "checklist")
-                        .font(.inter(.body, weight: .medium))
-                        .foregroundColor(.secondary)
-                        .frame(width: AppStyle.Layout.iconBadge)
-                }
+    // MARK: - Today's Focus Item Row
 
+    private func focusItemRow(_ item: FocusTask) -> some View {
+        HStack(spacing: AppStyle.Spacing.compact) {
+            // Left icon: type-appropriate
+            if item.type == .project {
+                Image("ProjectIcon")
+                    .renderingMode(.template)
+                    .resizable().scaledToFit()
+                    .frame(width: 16, height: 16)
+                    .foregroundColor(.secondary)
+                    .frame(width: AppStyle.Layout.iconBadge)
+            } else if item.type == .list {
+                Image(systemName: "checklist")
+                    .font(.inter(.body, weight: .medium))
+                    .foregroundColor(.secondary)
+                    .frame(width: AppStyle.Layout.iconBadge)
+            } else {
+                Color.clear
+                    .frame(width: AppStyle.Layout.iconBadge)
+            }
+
+            VStack(alignment: .leading, spacing: AppStyle.Spacing.tiny) {
+                Text(item.title)
+                    .font(AppStyle.Typography.itemTitle)
+                    .strikethrough(item.isCompleted && item.type == .task)
+                    .foregroundColor(item.isCompleted && item.type == .task ? .secondary : .primary)
+                    .lineLimit(2)
+
+                // Subtitle for tasks only
+                if item.type == .task, let subtasks = viewModel.pinnedSubtasksMap[item.id], !subtasks.isEmpty {
+                    Text("\(subtasks.count) subtask\(subtasks.count == 1 ? "" : "s")")
+                        .font(.inter(.caption))
+                        .foregroundColor(.secondary)
+                }
+            }
+
+            Spacer()
+
+            // Right side: chevron for project/list, checkbox for task
+            if item.type == .project || item.type == .list {
+                Image(systemName: "chevron.right")
+                    .font(.inter(size: 12, weight: .semiBold))
+                    .foregroundColor(.secondary)
+                    .frame(minWidth: 22, minHeight: 22)
+            } else {
+                Button {
+                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                    _Concurrency.Task { await viewModel.togglePinnedTaskCompletion(item) }
+                } label: {
+                    Image(systemName: item.isCompleted ? "checkmark.circle.fill" : "circle")
+                        .font(.inter(.title3))
+                        .foregroundColor(item.isCompleted ? Color.focusBlue.opacity(0.6) : .gray)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.vertical, AppStyle.Spacing.compact)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            if item.type == .task {
+                _Concurrency.Task { await viewModel.togglePinnedTaskExpanded(item.id) }
+            } else {
+                viewModel.selectedPinnedItem = item
+            }
+        }
+        .contextMenu {
+            ContextMenuItems.editButton {
+                viewModel.selectedPinnedTaskForDetails = item
+            }
+
+            ContextMenuItems.scheduleButton {
+                viewModel.selectedPinnedTaskForSchedule = item
+            }
+
+            ContextMenuItems.pinButton(isPinned: item.isPinned) {
+                _Concurrency.Task { await viewModel.togglePin(item) }
+            }
+
+            Divider()
+
+            ContextMenuItems.deleteButton {
+                _Concurrency.Task { await viewModel.deletePinnedTask(item) }
+            }
+        }
+        .task {
+            if item.type == .task, viewModel.pinnedSubtasksMap[item.id] == nil {
+                await viewModel.fetchPinnedSubtasks(for: item.id)
+            }
+        }
+    }
+
+    // MARK: - Pinned Item Row
+
+    @ViewBuilder
+    private func pinnedItemRow(_ item: FocusTask) -> some View {
+        HStack(spacing: AppStyle.Spacing.compact) {
+            if item.type == .project {
+                Image("ProjectIcon")
+                    .renderingMode(.template)
+                    .resizable().scaledToFit()
+                    .frame(width: 16, height: 16)
+                    .foregroundColor(.secondary)
+                    .frame(width: AppStyle.Layout.iconBadge)
+            } else if item.type == .list {
+                Image(systemName: "checklist")
+                    .font(.inter(.body, weight: .medium))
+                    .foregroundColor(.secondary)
+                    .frame(width: AppStyle.Layout.iconBadge)
+            } else {
+                Color.clear
+                    .frame(width: AppStyle.Layout.iconBadge)
+            }
+
+            VStack(alignment: .leading, spacing: AppStyle.Spacing.tiny) {
                 Text(item.title)
                     .font(.helveticaNeue(.body, weight: .regular))
-                    .foregroundColor(.appText)
+                    .foregroundColor(item.isCompleted ? .secondary : .appText)
+                    .strikethrough(item.isCompleted && item.type == .task)
                     .lineLimit(1)
 
-                if viewModel.sharedTaskIds.contains(item.id) {
-                    Image(systemName: "person.2.fill")
-                        .font(.inter(.caption2))
+                // Subtitle: origin label + subtask count
+                if item.type == .task && item.projectId != nil {
+                    HStack(spacing: 3) {
+                        Image("ProjectIcon")
+                            .renderingMode(.template)
+                            .resizable().scaledToFit()
+                            .frame(width: 10, height: 10)
+                            .foregroundColor(.secondary)
+                        Text("Project")
+                            .font(.inter(.caption))
+                            .foregroundColor(.secondary)
+                        Image("line-segment")
+                            .renderingMode(.template)
+                            .resizable().scaledToFit()
+                            .frame(width: 10, height: 10)
+                            .foregroundColor(.secondary)
+                    }
+                } else if item.type == .task && item.parentTaskId != nil {
+                    HStack(spacing: 3) {
+                        Image(systemName: "checklist")
+                            .font(.system(size: 10))
+                            .foregroundColor(.secondary)
+                        Text("List item")
+                            .font(.inter(.caption))
+                            .foregroundColor(.secondary)
+                    }
+                } else if item.type == .task, let subtasks = viewModel.pinnedSubtasksMap[item.id], !subtasks.isEmpty {
+                    Text("\(subtasks.count) subtask\(subtasks.count == 1 ? "" : "s")")
+                        .font(.inter(.caption))
                         .foregroundColor(.secondary)
                 }
-
-                Spacer()
             }
-            .padding(.vertical, AppStyle.Spacing.medium)
-            .contentShape(Rectangle())
+
+            if viewModel.sharedTaskIds.contains(item.id) {
+                Image(systemName: "person.2.fill")
+                    .font(.inter(.caption2))
+                    .foregroundColor(.secondary)
+            }
+
+            Spacer()
+
+            if item.type == .project || item.type == .list {
+                Image(systemName: "chevron.right")
+                    .font(.inter(size: 12, weight: .semiBold))
+                    .foregroundColor(.secondary)
+                    .frame(minWidth: 22, minHeight: 22)
+            } else if item.type == .task {
+                Button {
+                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                    _Concurrency.Task { await viewModel.togglePinnedTaskCompletion(item) }
+                } label: {
+                    Image(systemName: item.isCompleted ? "checkmark.circle.fill" : "circle")
+                        .font(.inter(.title3))
+                        .foregroundColor(item.isCompleted ? Color.focusBlue.opacity(0.6) : .gray)
+                }
+                .buttonStyle(.plain)
+            }
         }
-        .buttonStyle(.plain)
+        .padding(.vertical, AppStyle.Spacing.medium)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            if item.type == .task {
+                _Concurrency.Task { await viewModel.togglePinnedTaskExpanded(item.id) }
+            } else {
+                viewModel.selectedPinnedItem = item
+            }
+        }
         .contextMenu {
-            ContextMenuItems.pinButton(isPinned: true) {
-                _Concurrency.Task { await viewModel.togglePin(item) }
+            if item.type == .task {
+                ContextMenuItems.editButton {
+                    viewModel.selectedPinnedTaskForDetails = item
+                }
+
+                ContextMenuItems.scheduleButton {
+                    viewModel.selectedPinnedTaskForSchedule = item
+                }
+
+                ContextMenuItems.pinButton(isPinned: true) {
+                    _Concurrency.Task { await viewModel.togglePin(item) }
+                }
+
+                Divider()
+
+                ContextMenuItems.deleteButton {
+                    _Concurrency.Task { await viewModel.deletePinnedTask(item) }
+                }
+            } else {
+                ContextMenuItems.pinButton(isPinned: true) {
+                    _Concurrency.Task { await viewModel.togglePin(item) }
+                }
+            }
+        }
+    }
+
+    // MARK: - Pinned Subtask Row
+
+    @ViewBuilder
+    private func pinnedSubtaskRow(_ subtask: FocusTask) -> some View {
+        HStack(spacing: AppStyle.Spacing.compact) {
+            // Indent to align with parent title
+            Color.clear
+                .frame(width: AppStyle.Layout.iconBadge)
+
+            Text(subtask.title)
+                .font(AppStyle.Typography.itemSubtitle)
+                .strikethrough(subtask.isCompleted)
+                .foregroundColor(subtask.isCompleted ? .secondary : .primary)
+                .lineLimit(1)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            Button {
+                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                _Concurrency.Task { await viewModel.togglePinnedTaskCompletion(subtask) }
+            } label: {
+                Image(systemName: subtask.isCompleted ? "checkmark.circle.fill" : "circle")
+                    .font(.inter(.subheadline))
+                    .foregroundColor(subtask.isCompleted ? Color.focusBlue.opacity(0.6) : .gray)
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.vertical, AppStyle.Spacing.small)
+        .contentShape(Rectangle())
+        .contextMenu {
+            ContextMenuItems.editButton {
+                viewModel.selectedPinnedTaskForDetails = subtask
+            }
+
+            ContextMenuItems.scheduleButton {
+                viewModel.selectedPinnedTaskForSchedule = subtask
+            }
+
+            ContextMenuItems.pinButton(isPinned: subtask.isPinned) {
+                _Concurrency.Task { await viewModel.togglePin(subtask) }
+            }
+
+            Divider()
+
+            ContextMenuItems.deleteButton {
+                _Concurrency.Task { await viewModel.deletePinnedTask(subtask) }
             }
         }
     }
@@ -1094,6 +1322,7 @@ struct HomeView: View {
         await taskListVM.fetchCategories()
         await viewModel.fetchCategories()
         await viewModel.fetchSharedTaskIds()
+        await viewModel.fetchPinnedTasks()
         await projectsViewModel.fetchProjects()
         await listsViewModel.fetchLists()
         await prefetchTodaySchedules()

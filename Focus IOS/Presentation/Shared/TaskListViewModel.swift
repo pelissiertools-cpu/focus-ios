@@ -822,6 +822,26 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
         }
     }
 
+    /// Toggle pin state of a task
+    func togglePin(_ task: FocusTask) async {
+        let newPinned = !task.isPinned
+        do {
+            try await repository.togglePin(id: task.id, isPinned: newPinned)
+            if let index = tasks.firstIndex(where: { $0.id == task.id }) {
+                tasks[index].isPinned = newPinned
+            }
+            // Also check subtasks
+            for (parentId, subtasks) in subtasksMap {
+                if let index = subtasks.firstIndex(where: { $0.id == task.id }) {
+                    subtasksMap[parentId]?[index].isPinned = newPinned
+                }
+            }
+            notifyTasksChanged()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
     /// Update task priority
     func updateTaskPriority(_ task: FocusTask, priority: Priority) async {
         do {

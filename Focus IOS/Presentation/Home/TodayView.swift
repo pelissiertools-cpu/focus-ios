@@ -877,7 +877,7 @@ struct TodayView: View {
                     .moveDisabled(true)
 
                 case .focusEmptyPlaceholder:
-                    Text("Drag and drop tasks that you want to focus on here")
+                    Text("Drag tasks here")
                         .font(.inter(.subheadline))
                         .foregroundColor(.secondary.opacity(0.4))
                         .multilineTextAlignment(.leading)

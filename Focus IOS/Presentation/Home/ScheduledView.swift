@@ -70,6 +70,26 @@ struct ScheduledView: View {
         return tasks
     }
 
+    private var listIdSet: Set<UUID> {
+        Set(listsVM.lists.map(\.id))
+    }
+
+    private func parentList(for task: FocusTask) -> FocusTask? {
+        guard let parentId = task.parentTaskId,
+              listIdSet.contains(parentId) else { return nil }
+        return listsVM.lists.first { $0.id == parentId }
+    }
+
+    private var projectIdSet: Set<UUID> {
+        Set(projectsVM.projects.map(\.id))
+    }
+
+    private func parentProject(for task: FocusTask) -> FocusTask? {
+        guard let projId = task.projectId,
+              projectIdSet.contains(projId) else { return nil }
+        return projectsVM.projects.first { $0.id == projId }
+    }
+
     private var allScheduledLists: [FocusTask] {
         listsVM.lists
             .filter { !$0.isCompleted && !$0.isCleared }
@@ -1192,6 +1212,14 @@ struct ScheduledView: View {
                         },
                         onUnschedule: {
                             unscheduleItem(scheduleId: scheduleId)
+                        },
+                        isListItem: parentList(for: task) != nil,
+                        isProjectItem: parentProject(for: task) != nil,
+                        onEditListParent: parentList(for: task).map { list in
+                            { listsVM.selectedListForDetails = list }
+                        },
+                        onEditProjectParent: parentProject(for: task).map { project in
+                            { projectsVM.selectedProjectForDetails = project }
                         },
                         overdueDate: overdueDate(for: entry)
                     )

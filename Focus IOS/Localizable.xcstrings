@@ -1945,7 +1945,6 @@
       }
     },
     "Item" : {
-      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -2028,6 +2027,9 @@
           }
         }
       }
+    },
+    "List item" : {
+
     },
     "List name" : {
       "comment" : "A label for the title of a list.",

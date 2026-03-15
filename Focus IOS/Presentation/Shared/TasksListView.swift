@@ -542,14 +542,19 @@ struct FlatTaskRow: View {
     var onPushToTomorrow: (() -> Void)? = nil
     var onUnschedule: (() -> Void)? = nil
     var showCategoryOption: Bool = true
+    var isListItem: Bool = false
+    var isProjectItem: Bool = false
+    var onEditListParent: (() -> Void)? = nil
+    var onEditProjectParent: (() -> Void)? = nil
     var appearCompleted: Bool? = nil
     var overdueDate: Date? = nil
     var scheduleDate: Date? = nil
     @State private var showDeleteConfirmation = false
 
-    private var isParent: Bool { task.parentTaskId == nil }
+    private var isParent: Bool { task.parentTaskId == nil && !isListItem && !isProjectItem }
     private var isPending: Bool { viewModel.isPendingCompletion(task.id) }
     private var displayCompleted: Bool { appearCompleted ?? (task.isCompleted || isPending) }
+    private var isTopLevel: Bool { task.parentTaskId == nil || isListItem || isProjectItem }
 
     private var scheduleDateDisplay: (text: String, color: Color)? {
         // Priority: notification date > overdue date > schedule date
@@ -569,8 +574,8 @@ struct FlatTaskRow: View {
 
     var body: some View {
         HStack(spacing: AppStyle.Spacing.comfortable) {
-            // Edit mode: selection circle (uncompleted parent tasks only)
-            if isEditMode && !displayCompleted && isParent {
+            // Edit mode: selection circle (uncompleted top-level tasks only)
+            if isEditMode && !displayCompleted && isTopLevel {
                 Image(systemName: isSelected ? "checkmark.circle.fill" : "circle.dashed")
                     .font(.inter(.title3))
                     .foregroundColor(isSelected ? .appRed : .secondary)
@@ -580,12 +585,47 @@ struct FlatTaskRow: View {
             // Task content
             VStack(alignment: .leading, spacing: AppStyle.Spacing.tiny) {
                 Text(task.title)
-                    .font(isParent ? AppStyle.Typography.itemTitle : AppStyle.Typography.itemSubtitle)
+                    .font(isTopLevel ? AppStyle.Typography.itemTitle : AppStyle.Typography.itemSubtitle)
                     .strikethrough(displayCompleted)
                     .foregroundColor(displayCompleted ? .secondary : .primary)
 
-                // Subtask count + schedule/notification/overdue date
-                if isParent, let subtasks = viewModel.subtasksMap[task.id], !subtasks.isEmpty {
+                // List/Project item label / Subtask count + schedule/notification/overdue date
+                if isListItem {
+                    HStack(spacing: 3) {
+                        Image(systemName: "checklist")
+                            .font(.system(size: 10))
+                            .foregroundColor(.secondary)
+                        Text("List item")
+                            .font(.inter(.caption))
+                            .foregroundColor(.secondary)
+                        if let display = scheduleDateDisplay {
+                            Text(display.text)
+                                .font(.inter(.caption))
+                                .foregroundColor(display.color)
+                        }
+                    }
+                } else if isProjectItem {
+                    HStack(spacing: 3) {
+                        Image("ProjectIcon")
+                            .renderingMode(.template)
+                            .resizable().scaledToFit()
+                            .frame(width: 10, height: 10)
+                            .foregroundColor(.secondary)
+                        Text("Project")
+                            .font(.inter(.caption))
+                            .foregroundColor(.secondary)
+                        Image("line-segment")
+                            .renderingMode(.template)
+                            .resizable().scaledToFit()
+                            .frame(width: 10, height: 10)
+                            .foregroundColor(.secondary)
+                        if let display = scheduleDateDisplay {
+                            Text(display.text)
+                                .font(.inter(.caption))
+                                .foregroundColor(display.color)
+                        }
+                    }
+                } else if isParent, let subtasks = viewModel.subtasksMap[task.id], !subtasks.isEmpty {
                     HStack(spacing: AppStyle.Spacing.small) {
                         Text("\(subtasks.count) subtask\(subtasks.count == 1 ? "" : "s")")
                             .font(.inter(.caption))
@@ -602,7 +642,7 @@ struct FlatTaskRow: View {
                         .foregroundColor(display.color)
                 }
             }
-            .frame(maxWidth: .infinity, minHeight: isParent ? AppStyle.Layout.iconButton : nil, alignment: .leading)
+            .frame(maxWidth: .infinity, minHeight: isTopLevel ? AppStyle.Layout.iconButton : nil, alignment: .leading)
 
             // Completion checkbox (hidden in edit mode)
             if !isEditMode {
@@ -619,7 +659,7 @@ struct FlatTaskRow: View {
                     }
                 } label: {
                     Image(systemName: displayCompleted ? "checkmark.circle.fill" : "circle")
-                        .font(isParent ? .inter(.title3) : .inter(.subheadline))
+                        .font(isTopLevel ? .inter(.title3) : .inter(.subheadline))
                         .foregroundColor(displayCompleted ? Color.focusBlue.opacity(0.6) : .gray)
                         .symbolEffect(.pulse, isActive: isPending)
                 }
@@ -627,14 +667,16 @@ struct FlatTaskRow: View {
                 .accessibilityLabel(displayCompleted ? "Completed" : "Mark complete")
             }
         }
-        .padding(.vertical, isParent ? AppStyle.Spacing.compact : AppStyle.Spacing.small)
+        .padding(.vertical, isTopLevel ? AppStyle.Spacing.compact : AppStyle.Spacing.small)
         .contentShape(Rectangle())
         .onTapGesture {
-            if isEditMode && !displayCompleted && isParent {
+            if isEditMode && !displayCompleted && isTopLevel {
                 onSelectToggle?()
             } else if !isEditMode {
-                if isParent {
-                    // Parent tap: expand/collapse subtasks
+                if isListItem {
+                    // List items can't have subtasks, no-op on tap
+                } else if isTopLevel {
+                    // Parent/project item tap: expand/collapse subtasks
                     _Concurrency.Task {
                         await viewModel.toggleExpanded(task.id)
                     }
@@ -647,7 +689,13 @@ struct FlatTaskRow: View {
         .contextMenu {
             if !isEditMode && !displayCompleted {
                 ContextMenuItems.editButton {
-                    viewModel.selectedTaskForDetails = task
+                    if isListItem, let onEditListParent {
+                        onEditListParent()
+                    } else if isProjectItem, let onEditProjectParent {
+                        onEditProjectParent()
+                    } else {
+                        viewModel.selectedTaskForDetails = task
+                    }
                 }
 
                 if let onReschedule {
@@ -664,7 +712,7 @@ struct FlatTaskRow: View {
                     }
                 }
 
-                if isParent {
+                if isTopLevel {
                     // Priority submenu
                     Menu {
                         ForEach(Priority.allCases, id: \.self) { priority in
@@ -695,7 +743,7 @@ struct FlatTaskRow: View {
                 Divider()
 
                 ContextMenuItems.deleteButton {
-                    if isParent {
+                    if isTopLevel {
                         showDeleteConfirmation = true
                     } else {
                         _Concurrency.Task {
@@ -717,7 +765,7 @@ struct FlatTaskRow: View {
             if !isEditMode && !displayCompleted {
                 Button(role: .destructive) {
                     _Concurrency.Task {
-                        if isParent {
+                        if isTopLevel {
                             await viewModel.deleteTask(task)
                         } else if let parentId = task.parentTaskId {
                             await viewModel.deleteSubtask(task, parentId: parentId)

@@ -16,6 +16,10 @@ struct ListDetailsDrawer: View {
     @State private var noteText: String
     @State private var showingScheduleSheet = false
     @State private var showingDeleteConfirmation = false
+    @State private var isItemsExpanded = false
+    @State private var newItemTitle = ""
+    @State private var showNewItemField = false
+    @FocusState private var isNewItemFocused: Bool
     @EnvironmentObject var focusViewModel: FocusTabViewModel
     @FocusState private var isTitleFocused: Bool
     @Environment(\.dismiss) private var dismiss
@@ -35,6 +39,10 @@ struct ListDetailsDrawer: View {
 
     private var hasChanges: Bool {
         listTitle != list.title || selectedCategoryId != list.categoryId || selectedPriority != list.priority || hasNoteChanges
+    }
+
+    private var listItems: [FocusTask] {
+        viewModel.itemsMap[list.id] ?? []
     }
 
     private var currentCategoryName: String {
@@ -65,6 +73,9 @@ struct ListDetailsDrawer: View {
                     // ─── PILL ACTIONS ───
                     actionPillsRow
 
+                    // ─── ITEMS ───
+                    itemsCard
+
                     // ─── NOTE ───
                     noteCard
                 }
@@ -85,6 +96,9 @@ struct ListDetailsDrawer: View {
                     task: list,
                     focusViewModel: focusViewModel
                 )
+            }
+            .task {
+                await viewModel.fetchItems(for: list.id)
             }
             .alert("Delete list?", isPresented: $showingDeleteConfirmation) {
                 Button("Cancel", role: .cancel) { }
@@ -232,6 +246,153 @@ struct ListDetailsDrawer: View {
             .buttonStyle(.plain)
         }
         .padding(.horizontal, AppStyle.Spacing.section)
+    }
+
+    // MARK: - Items Card
+
+    @ViewBuilder
+    private var itemsCard: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // Header: "Items" label + count + collapse toggle
+            HStack {
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        isItemsExpanded.toggle()
+                    }
+                } label: {
+                    HStack(spacing: AppStyle.Spacing.small) {
+                        Text("Items")
+                            .font(.inter(.subheadline, weight: .medium))
+                            .foregroundColor(.primary)
+
+                        if !listItems.isEmpty {
+                            Text("\(listItems.count)")
+                                .font(.inter(.caption, weight: .medium))
+                                .foregroundColor(.secondary)
+                        }
+
+                        Image(systemName: "chevron.down")
+                            .font(.inter(.caption2, weight: .semiBold))
+                            .foregroundColor(.secondary)
+                            .rotationEffect(.degrees(isItemsExpanded ? 0 : -90))
+                    }
+                }
+                .buttonStyle(.plain)
+
+                Spacer()
+            }
+            .padding(.horizontal, AppStyle.Spacing.content)
+            .padding(.top, AppStyle.Spacing.comfortable)
+            .padding(.bottom, AppStyle.Spacing.medium)
+
+            if isItemsExpanded {
+                VStack(spacing: AppStyle.Spacing.content) {
+                    ForEach(listItems) { item in
+                        compactItemRow(item)
+                    }
+
+                    // New item entry
+                    if showNewItemField || !newItemTitle.isEmpty {
+                        HStack(spacing: AppStyle.Spacing.compact) {
+                            Image(systemName: "circle")
+                                .font(.inter(.caption2))
+                                .foregroundColor(.secondary.opacity(0.5))
+
+                            TextField("Item", text: $newItemTitle)
+                                .font(.inter(.body))
+                                .textFieldStyle(.plain)
+                                .focused($isNewItemFocused)
+                                .onAppear { isNewItemFocused = true }
+                                .onSubmit { addItem() }
+
+                            Button {
+                                newItemTitle = ""
+                                showNewItemField = false
+                                isNewItemFocused = false
+                            } label: {
+                                Image(systemName: "xmark.circle.fill")
+                                    .font(.inter(.caption))
+                                    .foregroundColor(.secondary)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+
+                    // "+ Item" pill button
+                    HStack {
+                        Button {
+                            if !newItemTitle.trimmingCharacters(in: .whitespaces).isEmpty {
+                                addItem()
+                            }
+                            showNewItemField = true
+                            isNewItemFocused = true
+                        } label: {
+                            HStack(spacing: AppStyle.Spacing.tiny) {
+                                Image(systemName: "plus")
+                                    .font(.inter(size: 14, weight: .semiBold))
+                                Text("Item")
+                                    .font(.inter(size: 14, weight: .semiBold))
+                            }
+                            .foregroundColor(.white)
+                            .padding(.horizontal, AppStyle.Spacing.comfortable)
+                            .padding(.vertical, AppStyle.Spacing.medium)
+                            .glassEffect(.regular.tint(.black).interactive(), in: .capsule)
+                        }
+                        .buttonStyle(.plain)
+                        Spacer()
+                    }
+                }
+                .padding(.horizontal, AppStyle.Spacing.content)
+                .padding(.vertical, AppStyle.Spacing.medium)
+            }
+        }
+        .background(Color(.secondarySystemGroupedBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .padding(.horizontal, AppStyle.Spacing.section)
+    }
+
+    @ViewBuilder
+    private func compactItemRow(_ item: FocusTask) -> some View {
+        HStack(spacing: AppStyle.Spacing.compact) {
+            Image(systemName: item.isCompleted ? "checkmark.circle.fill" : "circle")
+                .font(.inter(.caption2))
+                .foregroundColor(item.isCompleted ? Color.focusBlue.opacity(0.6) : .secondary.opacity(0.5))
+
+            Text(item.title)
+                .font(.inter(.body))
+                .strikethrough(item.isCompleted)
+                .foregroundColor(item.isCompleted ? .secondary : .primary)
+
+            Spacer()
+
+            if !item.isCompleted {
+                Button {
+                    _Concurrency.Task {
+                        await viewModel.deleteItem(item, listId: list.id)
+                    }
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.inter(.caption))
+                        .foregroundColor(.secondary)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .contentShape(Rectangle())
+        .onTapGesture {
+            _Concurrency.Task {
+                await viewModel.toggleItemCompletion(item, listId: list.id)
+            }
+        }
+    }
+
+    private func addItem() {
+        let title = newItemTitle.trimmingCharacters(in: .whitespaces)
+        guard !title.isEmpty else { return }
+        newItemTitle = ""
+        _Concurrency.Task {
+            await viewModel.createItem(title: title, listId: list.id)
+        }
     }
 
     // MARK: - Note Card

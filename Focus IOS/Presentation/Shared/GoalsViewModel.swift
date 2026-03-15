@@ -1089,6 +1089,16 @@ class GoalsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
 
     // MARK: - Reordering
 
+    func reorderGoalsOnMove(from source: IndexSet, to destination: Int) {
+        goals.move(fromOffsets: source, toOffset: destination)
+        var updates: [(id: UUID, sortOrder: Int)] = []
+        for (index, goal) in goals.enumerated() {
+            goals[index].sortOrder = index
+            updates.append((id: goal.id, sortOrder: index))
+        }
+        _Concurrency.Task { await persistSortOrders(updates) }
+    }
+
     func reorderGoal(droppedId: UUID, targetId: UUID) {
         guard let updates = ReorderUtility.reorderItems(
             &goals, droppedId: droppedId, targetId: targetId

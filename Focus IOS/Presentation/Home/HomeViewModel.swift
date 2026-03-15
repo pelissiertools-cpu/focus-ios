@@ -15,8 +15,6 @@ enum HomeMenuItem: String, CaseIterable, Identifiable, Hashable {
     case archive = "Archive"
     case projects = "Projects"
     case quickLists = "Quick Lists"
-    case goals = "Goals"
-
     var id: String { rawValue }
 
     var iconName: String {
@@ -28,7 +26,6 @@ enum HomeMenuItem: String, CaseIterable, Identifiable, Hashable {
         case .archive:    return "archivebox"
         case .projects:   return "folder"
         case .quickLists: return "checklist"
-        case .goals:      return "target"
         }
     }
 }
@@ -37,7 +34,6 @@ enum HomeMenuItem: String, CaseIterable, Identifiable, Hashable {
 class HomeViewModel: ObservableObject {
     @Published var projects: [FocusTask] = []
     @Published var lists: [FocusTask] = []
-    @Published var goals: [FocusTask] = []
     @Published var isLoading = false
     @Published var errorMessage: String?
     @Published var todayTaskCount: Int = 0
@@ -51,7 +47,7 @@ class HomeViewModel: ObservableObject {
     @Published var selectedCategory: Category?
 
     var pinnedItems: [FocusTask] {
-        (projects + lists + goals).filter { $0.isPinned && !$0.isSection }
+        (projects + lists).filter { $0.isPinned && !$0.isSection }
     }
 
     private let repository: TaskRepository
@@ -84,7 +80,6 @@ class HomeViewModel: ObservableObject {
                 _Concurrency.Task { @MainActor in
                     await self.fetchProjects()
                     await self.fetchLists()
-                    await self.fetchGoals()
                     await self.fetchCategories()
                 }
             }
@@ -144,14 +139,6 @@ class HomeViewModel: ObservableObject {
     func fetchLists() async {
         do {
             lists = try await repository.fetchTasks(ofType: .list, isCleared: false, isCompleted: false)
-        } catch {
-            errorMessage = error.localizedDescription
-        }
-    }
-
-    func fetchGoals() async {
-        do {
-            goals = try await repository.fetchGoals(isCompleted: false)
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -266,16 +253,6 @@ class HomeViewModel: ObservableObject {
         }
     }
 
-    func deleteGoal(_ goal: FocusTask) async {
-        do {
-            try await repository.deleteTask(id: goal.id)
-            goals.removeAll { $0.id == goal.id }
-            notifyTasksChanged()
-        } catch {
-            errorMessage = error.localizedDescription
-        }
-    }
-
     // MARK: - Pin
 
     func togglePin(_ task: FocusTask) async {
@@ -285,10 +262,6 @@ class HomeViewModel: ObservableObject {
             if task.type == .project {
                 if let index = projects.firstIndex(where: { $0.id == task.id }) {
                     projects[index].isPinned = newPinned
-                }
-            } else if task.type == .goal {
-                if let index = goals.firstIndex(where: { $0.id == task.id }) {
-                    goals[index].isPinned = newPinned
                 }
             } else {
                 if let index = lists.firstIndex(where: { $0.id == task.id }) {
@@ -308,8 +281,6 @@ class HomeViewModel: ObservableObject {
             let section = try await repository.createTopLevelSection(title: "", type: type, userId: userId)
             if type == .project {
                 projects.append(section)
-            } else if type == .goal {
-                goals.append(section)
             } else {
                 lists.append(section)
             }
@@ -331,10 +302,6 @@ class HomeViewModel: ObservableObject {
                 if let index = projects.firstIndex(where: { $0.id == section.id }) {
                     projects[index] = updated
                 }
-            } else if section.type == .goal {
-                if let index = goals.firstIndex(where: { $0.id == section.id }) {
-                    goals[index] = updated
-                }
             } else {
                 if let index = lists.firstIndex(where: { $0.id == section.id }) {
                     lists[index] = updated
@@ -351,8 +318,6 @@ class HomeViewModel: ObservableObject {
             try await repository.deleteTask(id: section.id)
             if section.type == .project {
                 projects.removeAll { $0.id == section.id }
-            } else if section.type == .goal {
-                goals.removeAll { $0.id == section.id }
             } else {
                 lists.removeAll { $0.id == section.id }
             }
@@ -370,17 +335,6 @@ class HomeViewModel: ObservableObject {
         for (index, project) in projects.enumerated() {
             projects[index].sortOrder = index
             updates.append((id: project.id, sortOrder: index))
-        }
-        notifyTasksChanged()
-        _Concurrency.Task { await persistSortOrders(updates) }
-    }
-
-    func reorderGoals(from source: IndexSet, to destination: Int) {
-        goals.move(fromOffsets: source, toOffset: destination)
-        var updates: [(id: UUID, sortOrder: Int)] = []
-        for (index, goal) in goals.enumerated() {
-            goals[index].sortOrder = index
-            updates.append((id: goal.id, sortOrder: index))
         }
         notifyTasksChanged()
         _Concurrency.Task { await persistSortOrders(updates) }

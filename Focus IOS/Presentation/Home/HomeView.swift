@@ -11,7 +11,6 @@ struct HomeView: View {
     @EnvironmentObject var focusViewModel: FocusTabViewModel
     @StateObject private var projectsViewModel: ProjectsViewModel
     @StateObject private var listsViewModel: ListsViewModel
-    @StateObject private var goalsViewModel: GoalsViewModel
     @State private var showSettings = false
     @State private var showSearch = false
 
@@ -48,7 +47,6 @@ struct HomeView: View {
         self.authService = authService
         _projectsViewModel = StateObject(wrappedValue: ProjectsViewModel(authService: authService))
         _listsViewModel = StateObject(wrappedValue: ListsViewModel(authService: authService))
-        _goalsViewModel = StateObject(wrappedValue: GoalsViewModel(authService: authService))
         _taskListVM = StateObject(wrappedValue: TaskListViewModel(authService: authService))
     }
 
@@ -146,12 +144,16 @@ struct HomeView: View {
                             .frame(height: AppStyle.Border.thin)
                             .padding(.horizontal, AppStyle.Spacing.page)
 
-                        // MARK: - Projects / Quick Lists / Goals
-                        HStack(spacing: AppStyle.Spacing.compact) {
-                            homeCardCompact(title: "Quick lists", icon: "checklist") {
+                        // MARK: - Projects / Quick Lists
+                        HStack(spacing: AppStyle.Spacing.comfortable) {
+                            homeCard(title: "Quick lists", customIcon: {
+                                Image(systemName: "checklist")
+                                    .font(.helveticaNeue(size: 15, weight: .medium))
+                                    .foregroundColor(.appText)
+                            }) {
                                 viewModel.selectedMenuItem = .quickLists
                             }
-                            homeCardCompact(title: "Projects", customIcon: {
+                            homeCard(title: "Projects", customIcon: {
                                 Image("ProjectIcon")
                                     .renderingMode(.template)
                                     .resizable()
@@ -160,16 +162,6 @@ struct HomeView: View {
                                     .foregroundColor(.appText)
                             }) {
                                 viewModel.selectedMenuItem = .projects
-                            }
-                            homeCardCompact(title: "Goals", customIcon: {
-                                Image("TargetIcon")
-                                    .renderingMode(.template)
-                                    .resizable()
-                                    .scaledToFit()
-                                    .frame(width: AppStyle.Layout.tinyIcon, height: AppStyle.Layout.tinyIcon)
-                                    .foregroundColor(.appText)
-                            }) {
-                                viewModel.selectedMenuItem = .goals
                             }
                         }
                         .padding(.horizontal, AppStyle.Spacing.page)
@@ -546,8 +538,6 @@ struct HomeView: View {
                     ProjectsListPage(viewModel: viewModel, authService: authService)
                 } else if menuItem == .quickLists {
                     QuickListsPage(viewModel: viewModel, authService: authService)
-                } else if menuItem == .goals {
-                    GoalsListPage(viewModel: viewModel, authService: authService)
                 } else {
                     HomePlaceholderPage(title: menuItem.rawValue)
                 }
@@ -555,8 +545,6 @@ struct HomeView: View {
             .navigationDestination(item: $viewModel.selectedPinnedItem) { item in
                 if item.type == .project {
                     ProjectContentView(project: item, viewModel: projectsViewModel)
-                } else if item.type == .goal {
-                    GoalContentView(goal: item, viewModel: goalsViewModel)
                 } else {
                     ListContentView(list: item, viewModel: listsViewModel)
                 }
@@ -624,9 +612,6 @@ struct HomeView: View {
                 if viewModel.lists.isEmpty {
                     await viewModel.fetchLists()
                 }
-                if viewModel.goals.isEmpty {
-                    await viewModel.fetchGoals()
-                }
                 await taskListVM.fetchScheduledTaskIds()
                 await taskListVM.fetchTasks()
                 await taskListVM.fetchCategories()
@@ -634,8 +619,6 @@ struct HomeView: View {
                 // Pre-load categories for add bar
                 await projectsViewModel.fetchProjects()
                 await listsViewModel.fetchLists()
-                await goalsViewModel.fetchGoals()
-
                 // Pre-fetch today schedules so TodayView opens instantly
                 await prefetchTodaySchedules()
 
@@ -849,14 +832,6 @@ struct HomeView: View {
                         .renderingMode(.template)
                         .resizable().scaledToFit()
                         .frame(width: 16, height: 16)
-                        .foregroundColor(.secondary)
-                        .frame(width: AppStyle.Layout.iconBadge)
-                } else if item.type == .goal {
-                    Image("TargetIcon")
-                        .renderingMode(.template)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: AppStyle.Layout.smallIcon, height: AppStyle.Layout.smallIcon)
                         .foregroundColor(.secondary)
                         .frame(width: AppStyle.Layout.iconBadge)
                 } else {
@@ -1107,14 +1082,12 @@ struct HomeView: View {
     private func reloadAllData() async {
         await viewModel.fetchProjects(showLoading: false)
         await viewModel.fetchLists()
-        await viewModel.fetchGoals()
         await taskListVM.fetchScheduledTaskIds()
         await taskListVM.fetchTasks()
         await taskListVM.fetchCategories()
         await viewModel.fetchCategories()
         await projectsViewModel.fetchProjects()
         await listsViewModel.fetchLists()
-        await goalsViewModel.fetchGoals()
         await prefetchTodaySchedules()
         await viewModel.fetchTodayProgress()
     }

@@ -101,7 +101,7 @@ struct GoalsListPage: View {
                         }
                     }
                     .onMove { from, to in
-                        viewModel.reorderGoals(from: from, to: to)
+                        goalsViewModel.reorderGoalsOnMove(from: from, to: to)
                     }
 
                 }
@@ -167,12 +167,12 @@ struct GoalsListPage: View {
         }
         .onChange(of: goalsViewModel.selectedGoalForDetails) { _, newValue in
             if newValue == nil {
-                _Concurrency.Task { await viewModel.fetchGoals() }
+                _Concurrency.Task { await goalsViewModel.fetchGoals() }
             }
         }
         .onChange(of: showingCreateGoal) { _, newValue in
             if !newValue {
-                _Concurrency.Task { await viewModel.fetchGoals() }
+                _Concurrency.Task { await goalsViewModel.fetchGoals() }
             }
         }
         .alert("Delete Goal", isPresented: Binding(
@@ -181,7 +181,7 @@ struct GoalsListPage: View {
         )) {
             Button("Delete", role: .destructive) {
                 if let goal = goalToDelete {
-                    _Concurrency.Task { await viewModel.deleteGoal(goal) }
+                    _Concurrency.Task { await goalsViewModel.deleteGoal(goal) }
                 }
             }
             Button("Cancel", role: .cancel) { goalToDelete = nil }
@@ -192,7 +192,7 @@ struct GoalsListPage: View {
             Button("Delete", role: .destructive) {
                 _Concurrency.Task {
                     await goalsViewModel.batchDeleteGoals()
-                    await viewModel.fetchGoals()
+                    await goalsViewModel.fetchGoals()
                 }
             }
             Button("Cancel", role: .cancel) {}

@@ -104,7 +104,6 @@ class TaskRepository {
     /// Helper struct for moving a task from a list to a project (sets project_id, clears parent_task_id)
     private struct MoveToProjectUpdate: Encodable {
         let projectId: UUID
-        let parentTaskId: UUID?
         let sortOrder: Int
         let modifiedDate: Date
 
@@ -114,12 +113,19 @@ class TaskRepository {
             case sortOrder = "sort_order"
             case modifiedDate = "modified_date"
         }
+
+        func encode(to encoder: Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encode(projectId, forKey: .projectId)
+            try container.encodeNil(forKey: .parentTaskId)
+            try container.encode(sortOrder, forKey: .sortOrder)
+            try container.encode(modifiedDate, forKey: .modifiedDate)
+        }
     }
 
     /// Helper struct for moving a task from a project to a list (sets parent_task_id, clears project_id)
     private struct MoveToListUpdate: Encodable {
         let parentTaskId: UUID
-        let projectId: UUID?
         let sortOrder: Int
         let modifiedDate: Date
 
@@ -128,6 +134,32 @@ class TaskRepository {
             case projectId = "project_id"
             case sortOrder = "sort_order"
             case modifiedDate = "modified_date"
+        }
+
+        func encode(to encoder: Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encode(parentTaskId, forKey: .parentTaskId)
+            try container.encodeNil(forKey: .projectId)
+            try container.encode(sortOrder, forKey: .sortOrder)
+            try container.encode(modifiedDate, forKey: .modifiedDate)
+        }
+    }
+
+    /// Helper struct for moving a task to inbox (clears both project_id and parent_task_id)
+    private struct MoveToInboxUpdate: Encodable {
+        let modifiedDate: Date
+
+        enum CodingKeys: String, CodingKey {
+            case projectId = "project_id"
+            case parentTaskId = "parent_task_id"
+            case modifiedDate = "modified_date"
+        }
+
+        func encode(to encoder: Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encodeNil(forKey: .projectId)
+            try container.encodeNil(forKey: .parentTaskId)
+            try container.encode(modifiedDate, forKey: .modifiedDate)
         }
     }
 
@@ -460,7 +492,6 @@ class TaskRepository {
     func moveFromListToProject(taskId: UUID, projectId: UUID, sortOrder: Int) async throws {
         let update = MoveToProjectUpdate(
             projectId: projectId,
-            parentTaskId: nil,
             sortOrder: sortOrder,
             modifiedDate: Date()
         )
@@ -475,8 +506,19 @@ class TaskRepository {
     func moveFromProjectToList(taskId: UUID, listId: UUID, sortOrder: Int) async throws {
         let update = MoveToListUpdate(
             parentTaskId: listId,
-            projectId: nil,
             sortOrder: sortOrder,
+            modifiedDate: Date()
+        )
+        try await supabase
+            .from("tasks")
+            .update(update)
+            .eq("id", value: taskId.uuidString)
+            .execute()
+    }
+
+    /// Move a task to inbox (clears both project_id and parent_task_id)
+    func moveToInbox(taskId: UUID) async throws {
+        let update = MoveToInboxUpdate(
             modifiedDate: Date()
         )
         try await supabase

@@ -65,6 +65,9 @@ struct ContentBatchMoveSheet: View {
             ) {
                 ScrollView {
                     VStack(spacing: AppStyle.Spacing.comfortable) {
+                        // Inbox
+                        inboxCard
+
                         // Sections (project source only)
                         if hasSections {
                             sectionCard
@@ -115,6 +118,22 @@ struct ContentBatchMoveSheet: View {
                     .transition(.scale.combined(with: .opacity))
             }
         }
+    }
+
+    // MARK: - Inbox Card
+
+    private var inboxCard: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            moveRow(icon: "tray", title: "Inbox") {
+                performMove(message: "Moved to Inbox") {
+                    await moveToInbox()
+                }
+            }
+        }
+        .background(Color(.secondarySystemGroupedBackground))
+        .clipShape(RoundedRectangle(cornerRadius: AppStyle.Spacing.comfortable))
+        .padding(.horizontal, AppStyle.Spacing.section)
+        .padding(.top, AppStyle.Spacing.compact)
     }
 
     // MARK: - Section Card (project source only)
@@ -278,6 +297,15 @@ struct ContentBatchMoveSheet: View {
     }
 
     // MARK: - Actions
+
+    private func moveToInbox() async {
+        switch source {
+        case .project(let srcId, let vm):
+            await vm.batchMoveContentTasksToInbox(sourceProjectId: srcId)
+        case .list(let srcId, let vm):
+            await vm.batchMoveContentItemsToInbox(sourceListId: srcId)
+        }
+    }
 
     private func moveToProject(_ projectId: UUID) async {
         switch source {

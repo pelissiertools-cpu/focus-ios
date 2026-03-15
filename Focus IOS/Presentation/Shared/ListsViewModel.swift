@@ -1204,4 +1204,27 @@ class ListsViewModel: ObservableObject, LogFilterable, TaskEditingViewModel {
             errorMessage = error.localizedDescription
         }
     }
+
+    /// Move selected content items to inbox (standalone tasks).
+    func batchMoveContentItemsToInbox(sourceListId: UUID) async {
+        guard !selectedContentItemIds.isEmpty else { return }
+        let selectedIds = selectedContentItemIds
+
+        do {
+            for itemId in selectedIds {
+                try await repository.moveToInbox(taskId: itemId)
+            }
+
+            // Update local state: remove from source
+            if var items = itemsMap[sourceListId] {
+                items.removeAll { selectedIds.contains($0.id) }
+                itemsMap[sourceListId] = items
+            }
+
+            exitContentEditMode()
+            notifyTasksChanged()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
 }

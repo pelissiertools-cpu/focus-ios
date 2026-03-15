@@ -1299,6 +1299,37 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
         }
     }
 
+    /// Move selected content tasks to inbox (standalone tasks).
+    func batchMoveContentTasksToInbox(sourceProjectId: UUID) async {
+        guard !selectedContentTaskIds.isEmpty else { return }
+        let selectedIds = selectedContentTaskIds
+
+        do {
+            let sourceTasks = projectTasksMap[sourceProjectId] ?? []
+            let tasksToMove = sourceTasks.filter { selectedIds.contains($0.id) && !$0.isSection }
+
+            for task in tasksToMove {
+                try await repository.moveToInbox(taskId: task.id)
+            }
+
+            // Update local state: remove from source project
+            let movedIds = Set(tasksToMove.map(\.id))
+            if var tasks = projectTasksMap[sourceProjectId] {
+                tasks.removeAll { movedIds.contains($0.id) }
+                projectTasksMap[sourceProjectId] = tasks
+            }
+            for id in movedIds {
+                subtasksMap.removeValue(forKey: id)
+            }
+
+            exitContentEditMode()
+            LocalMutationTracker.markMutation()
+            NotificationCenter.default.post(name: .projectListChanged, object: self)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
     // MARK: - Edit Mode (project cards)
 
     func enterEditMode() {

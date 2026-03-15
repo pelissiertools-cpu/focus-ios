@@ -314,7 +314,7 @@ struct HomeView: View {
                         Spacer()
                     }
                     .padding(.horizontal, AppStyle.Spacing.page)
-                    .padding(.top, AppStyle.Spacing.compact)
+                    .padding(.top, 24)
                     .padding(.bottom, AppStyle.Spacing.comfortable)
                     .background(
                         Color.appBackground

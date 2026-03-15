@@ -43,7 +43,7 @@ struct SettingsView: View {
         authService.currentUser?.email ?? ""
     }
 
-var body: some View {
+    var body: some View {
         ScrollView {
             VStack(spacing: 0) {
                 // Profile icon + name + edit

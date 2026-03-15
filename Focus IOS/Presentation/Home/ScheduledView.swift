@@ -21,6 +21,7 @@ struct ScheduledView: View {
     // Schedule entries: item UUID → list of (scheduleId, date, timeframe, sortOrder) tuples
     @State private var itemSchedules: [UUID: [(scheduleId: UUID, date: Date, timeframe: Timeframe, sortOrder: Int)]] = [:]
     @State private var itemTimeframes: [UUID: Set<Timeframe>] = [:]
+    @State private var scheduledTasksById: [UUID: FocusTask] = [:]
 
     // Batch create alerts
     @State private var showCreateProjectAlert = false
@@ -58,7 +59,15 @@ struct ScheduledView: View {
     // MARK: - Computed: All scheduled items (no type separation)
 
     private var allScheduledTasks: [FocusTask] {
-        taskListVM.uncompletedTasks
+        var tasks = taskListVM.uncompletedTasks
+        let existingIds = Set(tasks.map(\.id))
+        // Include tasks that are in lists/projects but still scheduled
+        for (taskId, task) in scheduledTasksById {
+            if !existingIds.contains(taskId) && !task.isCompleted && task.type == .task {
+                tasks.append(task)
+            }
+        }
+        return tasks
     }
 
     private var allScheduledLists: [FocusTask] {
@@ -556,7 +565,6 @@ struct ScheduledView: View {
                 isLoading = true
             }
             await loadAllData()
-            isLoading = false
         }
         .onAppear {
             if coachMarkManager.shouldShow(.upcoming) {
@@ -1275,15 +1283,33 @@ struct ScheduledView: View {
     // MARK: - Data Loading
 
     private func loadAllData() async {
+        // Start heavy background fetches early (lists/projects have per-item sub-queries)
+        async let p: () = projectsVM.fetchProjects()
+        async let l: () = listsVM.fetchLists()
+
+        // Fast calls needed for initial render
         async let c: () = taskListVM.fetchScheduledTaskIds()
         async let cats: () = taskListVM.fetchCategories()
         _ = await (c, cats)
 
         async let t: () = taskListVM.fetchTasks()
-        async let p: () = projectsVM.fetchProjects()
-        async let l: () = listsVM.fetchLists()
         async let s: () = fetchScheduledDates()
-        _ = await (t, p, l, s)
+        _ = await (t, s)
+
+        // Fetch all scheduled tasks by ID so items in lists/projects still appear
+        let scheduledIds = Array(itemSchedules.keys)
+        if !scheduledIds.isEmpty {
+            let taskRepo = TaskRepository()
+            if let allTasks = try? await taskRepo.fetchTasksByIds(scheduledIds) {
+                scheduledTasksById = Dictionary(uniqueKeysWithValues: allTasks.map { ($0.id, $0) })
+            }
+        }
+
+        // Unblock the UI now — tasks + schedules are ready
+        isLoading = false
+
+        // Let lists/projects finish in the background
+        _ = await (l, p)
     }
 
     private func fetchScheduledDates() async {

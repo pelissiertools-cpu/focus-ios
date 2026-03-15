@@ -1492,13 +1492,14 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
         }
     }
 
-    func createProjectFromSelected(title: String) async {
+    @discardableResult
+    func createProjectFromSelected(title: String) async -> UUID? {
         guard let userId = authService.currentUser?.id else {
             errorMessage = "No authenticated user"
-            return
+            return nil
         }
         let trimmed = title.trimmingCharacters(in: .whitespaces)
-        guard !trimmed.isEmpty else { return }
+        guard !trimmed.isEmpty else { return nil }
 
         do {
             let projectTask = FocusTask(
@@ -1524,18 +1525,21 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
 
             exitEditMode()
             notifyTasksChanged()
+            return createdProject.id
         } catch {
             errorMessage = error.localizedDescription
+            return nil
         }
     }
 
-    func createListFromSelected(title: String) async {
+    @discardableResult
+    func createListFromSelected(title: String) async -> UUID? {
         guard let userId = authService.currentUser?.id else {
             errorMessage = "No authenticated user"
-            return
+            return nil
         }
         let trimmed = title.trimmingCharacters(in: .whitespaces)
-        guard !trimmed.isEmpty else { return }
+        guard !trimmed.isEmpty else { return nil }
 
         do {
             let listTask = FocusTask(
@@ -1560,8 +1564,10 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
 
             exitEditMode()
             notifyTasksChanged()
+            return createdList.id
         } catch {
             errorMessage = error.localizedDescription
+            return nil
         }
     }
 

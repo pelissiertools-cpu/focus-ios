@@ -615,8 +615,7 @@ struct HomeView: View {
             .navigationBarHidden(true)
             .task {
                 // Run progress card + main data in parallel so the card appears instantly
-                async let progressTask: () = viewModel.fetchTodayTaskCount()
-                async let focusTask: () = viewModel.fetchMainFocusTasks()
+                async let progressTask: () = viewModel.fetchTodayProgress()
 
                 // Fetch projects/lists for count badges
                 if viewModel.projects.isEmpty {
@@ -640,8 +639,8 @@ struct HomeView: View {
                 // Pre-fetch today schedules so TodayView opens instantly
                 await prefetchTodaySchedules()
 
-                // Ensure progress fetches complete
-                _ = await (progressTask, focusTask)
+                // Ensure progress fetch completes
+                _ = await progressTask
             }
             .onReceive(NotificationCenter.default.publisher(for: .sessionRefreshed)) { _ in
                 _Concurrency.Task { @MainActor in
@@ -1117,8 +1116,7 @@ struct HomeView: View {
         await listsViewModel.fetchLists()
         await goalsViewModel.fetchGoals()
         await prefetchTodaySchedules()
-        await viewModel.fetchMainFocusTasks()
-        await viewModel.fetchTodayTaskCount()
+        await viewModel.fetchTodayProgress()
     }
 
     // MARK: - Today Schedule Pre-fetch

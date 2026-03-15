@@ -22,6 +22,7 @@ struct TodayView: View {
     @State private var selectedScheduleForReschedule: Schedule?
     @State private var overdueScheduleDates: [UUID: Date] = [:]
     @State private var focusTaskIds: Set<UUID> = []
+    @State private var scheduledTasks: [UUID: FocusTask] = [:]
     @State private var isCompletedCollapsed = true
 
     // Navigation
@@ -83,11 +84,28 @@ struct TodayView: View {
 
     private var allTodayEntries: [TodayItemEntry] {
         var entries: [TodayItemEntry] = []
+        var addedTaskIds: Set<UUID> = []
 
+        // Tasks from the ViewModel (standalone tasks)
         for task in taskListVM.uncompletedTasks {
             if let schedule = todaySchedules[task.id] {
                 entries.append(.task(task, scheduleId: schedule.scheduleId, sortOrder: schedule.sortOrder))
+                addedTaskIds.insert(task.id)
             }
+        }
+
+        // Tasks that are scheduled for today but not in taskListVM
+        // (e.g. moved into a list/project after being scheduled)
+        let listIds = Set(scheduledLists.map(\.id))
+        let projectIds = Set(scheduledProjects.map(\.id))
+        for (taskId, schedule) in todaySchedules {
+            guard !addedTaskIds.contains(taskId),
+                  !listIds.contains(taskId),
+                  !projectIds.contains(taskId),
+                  let task = scheduledTasks[taskId],
+                  !task.isCompleted,
+                  task.type == .task else { continue }
+            entries.append(.task(task, scheduleId: schedule.scheduleId, sortOrder: schedule.sortOrder))
         }
 
         for list in scheduledLists {
@@ -445,7 +463,10 @@ struct TodayView: View {
                 let title = newProjectTitle
                 newProjectTitle = ""
                 _Concurrency.Task { @MainActor in
-                    await taskListVM.createProjectFromSelected(title: title)
+                    let selectedIds = taskListVM.selectedTaskIds
+                    if let projectId = await taskListVM.createProjectFromSelected(title: title) {
+                        await scheduleContainerForToday(containerId: projectId, replacingTaskIds: selectedIds)
+                    }
                     await fetchTodayData()
                 }
             }
@@ -459,7 +480,10 @@ struct TodayView: View {
                 let title = newListTitle
                 newListTitle = ""
                 _Concurrency.Task { @MainActor in
-                    await taskListVM.createListFromSelected(title: title)
+                    let selectedIds = taskListVM.selectedTaskIds
+                    if let listId = await taskListVM.createListFromSelected(title: title) {
+                        await scheduleContainerForToday(containerId: listId, replacingTaskIds: selectedIds)
+                    }
                     await fetchTodayData()
                 }
             }
@@ -566,7 +590,6 @@ struct TodayView: View {
         }
         .task {
             await fetchTodayData()
-            isLoading = false
         }
         .onReceive(NotificationCenter.default.publisher(for: .schedulesChanged)) { _ in
             _Concurrency.Task {
@@ -608,18 +631,29 @@ struct TodayView: View {
     }
 
     private func fetchTodayData() async {
+        // Start heavy background fetches (lists/projects have per-item sub-queries)
+        // These run concurrently but we don't block the UI on them.
+        async let l: () = listsVM.fetchLists()
+        async let p: () = projectsVM.fetchProjects()
+
+        // Fast calls: schedules + tasks + categories (~200ms each)
+        async let focusResult = scheduleRepository.fetchSchedules(
+            timeframe: .daily,
+            date: Date(),
+            section: .focus
+        )
+        async let todoResult = scheduleRepository.fetchSchedules(
+            timeframe: .daily,
+            date: Date(),
+            section: .todo
+        )
+        async let overdueResult = scheduleRepository.fetchOverdueSchedules()
+        async let c: () = taskListVM.fetchCategories()
+        async let t: () = taskListVM.fetchTasks()
+
+        // Await schedules (needed for state population)
         do {
-            let focusSchedules = try await scheduleRepository.fetchSchedules(
-                timeframe: .daily,
-                date: Date(),
-                section: .focus
-            )
-            let todoSchedules = try await scheduleRepository.fetchSchedules(
-                timeframe: .daily,
-                date: Date(),
-                section: .todo
-            )
-            let overdueSchedules = try await scheduleRepository.fetchOverdueSchedules()
+            let (focusSchedules, todoSchedules, overdueSchedules) = try await (focusResult, todoResult, overdueResult)
 
             populateScheduleState(
                 focusSchedules: focusSchedules,
@@ -640,11 +674,45 @@ struct TodayView: View {
             taskListVM.scheduleFilter = .scheduled
         }
 
-        await taskListVM.fetchCategories()
-        async let t: () = taskListVM.fetchTasks()
-        async let l: () = listsVM.fetchLists()
-        async let p: () = projectsVM.fetchProjects()
-        _ = await (t, l, p)
+        // Await tasks + categories (fast), then unblock the UI
+        _ = await (c, t)
+
+        // Fetch all scheduled tasks by ID so items in lists/projects still appear
+        if !todaySchedules.isEmpty {
+            let taskRepo = TaskRepository()
+            if let allScheduledTasks = try? await taskRepo.fetchTasksByIds(Array(todaySchedules.keys)) {
+                scheduledTasks = Dictionary(uniqueKeysWithValues: allScheduledTasks.map { ($0.id, $0) })
+            }
+        }
+
+        isLoading = false
+
+        // Let lists/projects finish in the background
+        _ = await (l, p)
+    }
+
+    // MARK: - Batch Create Container (List/Project) & Schedule for Today
+
+    /// After creating a list/project from selected tasks, remove individual task schedules
+    /// and schedule the new container for today instead.
+    private func scheduleContainerForToday(containerId: UUID, replacingTaskIds taskIds: Set<UUID>) async {
+        guard let userId = authService.currentUser?.id else { return }
+        do {
+            // Delete individual task schedules
+            try await scheduleRepository.deleteSchedules(forTasks: taskIds)
+
+            // Schedule the container for today
+            let maxSort = todoEntries.map { $0.sortOrder }.max() ?? -1
+            let schedule = Schedule(
+                userId: userId,
+                taskId: containerId,
+                timeframe: .daily,
+                section: .todo,
+                scheduleDate: Calendar.current.startOfDay(for: Date()),
+                sortOrder: maxSort + 1
+            )
+            _ = try await scheduleRepository.createSchedule(schedule)
+        } catch { }
     }
 
     // MARK: - Focus Task Creation

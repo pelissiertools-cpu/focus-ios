@@ -20,56 +20,61 @@ struct BatchMoveCategorySheet<VM: LogFilterable>: View {
             title: "Move \(viewModel.selectedCount) Items",
             leadingButton: .cancel { dismiss() }
         ) {
-            VStack(spacing: 0) {
-                List {
-                    SwiftUI.Section("Category") {
+            List {
+                SwiftUI.Section("Category") {
+                    Button {
+                        _Concurrency.Task {
+                            await viewModel.batchMoveToCategory(nil)
+                            dismiss()
+                        }
+                    } label: {
+                        Label("None", systemImage: "xmark.circle")
+                            .foregroundColor(.primary)
+                    }
+
+                    ForEach(viewModel.categories) { category in
                         Button {
                             _Concurrency.Task {
-                                await viewModel.batchMoveToCategory(nil)
+                                await viewModel.batchMoveToCategory(category.id)
                                 dismiss()
                             }
                         } label: {
-                            Label("None", systemImage: "xmark.circle")
+                            Text(category.name)
                                 .foregroundColor(.primary)
-                        }
-
-                        ForEach(viewModel.categories) { category in
-                            Button {
-                                _Concurrency.Task {
-                                    await viewModel.batchMoveToCategory(category.id)
-                                    dismiss()
-                                }
-                            } label: {
-                                Text(category.name)
-                                    .foregroundColor(.primary)
-                            }
-                        }
-
-                        Button {
-                            showingNewCategoryAlert = true
-                        } label: {
-                            Label("New Category", systemImage: "plus")
-                                .foregroundColor(.appRed)
                         }
                     }
 
-                    if onMoveToProject != nil {
-                        SwiftUI.Section("Project") {
+                    Button {
+                        showingNewCategoryAlert = true
+                    } label: {
+                        Label("New Category", systemImage: "plus")
+                            .foregroundColor(.appRed)
+                    }
+                }
+
+                if onMoveToProject != nil {
+                    SwiftUI.Section("Project") {
+                        if projects.isEmpty {
+                            Text("No projects")
+                                .foregroundColor(.secondary)
+                        } else {
                             ForEach(projects) { project in
-                                Button {
+                                HStack(spacing: 10) {
+                                    Image(systemName: "folder")
+                                        .foregroundColor(.primary)
+                                    Text(project.title)
+                                        .foregroundColor(.primary)
+                                    Spacer()
+                                }
+                                .contentShape(Rectangle())
+                                .onTapGesture {
+                                    let moveToProject = onMoveToProject
+                                    let id = project.id
                                     _Concurrency.Task {
-                                        await onMoveToProject?(project.id)
+                                        await moveToProject?(id)
                                         dismiss()
                                     }
-                                } label: {
-                                    Label(project.title, systemImage: "folder")
-                                        .foregroundColor(.primary)
                                 }
-                            }
-
-                            if projects.isEmpty {
-                                Text("No projects")
-                                    .foregroundColor(.secondary)
                             }
                         }
                     }
@@ -94,7 +99,7 @@ struct BatchMoveCategorySheet<VM: LogFilterable>: View {
                 if onMoveToProject != nil {
                     do {
                         let repo = TaskRepository(supabase: SupabaseClientManager.shared.client)
-                        projects = try await repo.fetchProjects()
+                        projects = try await repo.fetchProjects(isCleared: false, isCompleted: false)
                     } catch { }
                 }
             }

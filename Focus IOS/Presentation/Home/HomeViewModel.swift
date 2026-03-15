@@ -93,11 +93,20 @@ class HomeViewModel: ObservableObject {
         NotificationCenter.default.publisher(for: .taskCompletionChanged)
             .merge(with: NotificationCenter.default.publisher(for: .schedulesChanged))
             .receive(on: DispatchQueue.main)
-            .sink { [weak self] _ in
+            .sink { [weak self] notification in
                 guard let self else { return }
+                // Optimistically adjust completed count for instant feedback
+                if notification.name == .taskCompletionChanged,
+                   let isCompleted = notification.userInfo?[TaskNotificationKeys.isCompleted] as? Bool {
+                    if isCompleted {
+                        self.todayCompletedCount = min(self.todayCompletedCount + 1, self.todayTaskCount)
+                    } else {
+                        self.todayCompletedCount = max(self.todayCompletedCount - 1, 0)
+                    }
+                    self.updateProgressCache()
+                }
                 _Concurrency.Task { @MainActor in
-                    await self.fetchTodayTaskCount()
-                    await self.fetchMainFocusTasks()
+                    await self.fetchTodayProgress()
                 }
             }
             .store(in: &cancellables)
@@ -193,42 +202,37 @@ class HomeViewModel: ObservableObject {
         }
     }
 
-    func fetchTodayTaskCount() async {
+    /// Combined fetch for progress count + focus tasks (shares schedule data, single pass)
+    func fetchTodayProgress() async {
         do {
-            let focus = try await scheduleRepository.fetchSchedules(timeframe: .daily, date: Date(), section: .focus)
-            let todo = try await scheduleRepository.fetchSchedules(timeframe: .daily, date: Date(), section: .todo)
+            // Parallel schedule fetches (was 3 sequential calls before)
+            async let focusResult = scheduleRepository.fetchSchedules(timeframe: .daily, date: Date(), section: .focus)
+            async let todoResult = scheduleRepository.fetchSchedules(timeframe: .daily, date: Date(), section: .todo)
+            let (focus, todo) = try await (focusResult, todoResult)
+
             let allSchedules = focus + todo
             todayTaskCount = allSchedules.count
 
-            // Fetch actual tasks to count completed ones
-            let taskIds = Array(Set(allSchedules.map(\.taskId)))
-            guard !taskIds.isEmpty else {
+            let allTaskIds = Array(Set(allSchedules.map(\.taskId)))
+            guard !allTaskIds.isEmpty else {
                 todayCompletedCount = 0
+                mainFocusTasks = []
+                AppDataCache.shared.mainFocusTasks = []
                 updateProgressCache()
                 return
             }
-            let tasks = try await repository.fetchTasksByIds(taskIds)
+
+            // Single tasks fetch for both progress count and focus task list
+            let tasks = try await repository.fetchTasksByIds(allTaskIds)
             let taskMap = Dictionary(uniqueKeysWithValues: tasks.map { ($0.id, $0) })
+
+            // Update completed count
             todayCompletedCount = allSchedules.filter { taskMap[$0.taskId]?.isCompleted == true }.count
             updateProgressCache()
-        } catch {
-            errorMessage = error.localizedDescription
-        }
-    }
 
-    func fetchMainFocusTasks() async {
-        do {
-            let focusSchedules = try await scheduleRepository.fetchSchedules(timeframe: .daily, date: Date(), section: .focus)
-            let taskIds = focusSchedules.sorted(by: { $0.sortOrder < $1.sortOrder }).map(\.taskId)
-            guard !taskIds.isEmpty else {
-                mainFocusTasks = []
-                AppDataCache.shared.mainFocusTasks = []
-                return
-            }
-            let tasks = try await repository.fetchTasksByIds(taskIds)
-            // Preserve schedule sort order and exclude completed
-            let taskMap = Dictionary(uniqueKeysWithValues: tasks.map { ($0.id, $0) })
-            mainFocusTasks = taskIds.compactMap { taskMap[$0] }.filter { !$0.isCompleted }
+            // Update main focus tasks
+            let focusTaskIds = focus.sorted(by: { $0.sortOrder < $1.sortOrder }).map(\.taskId)
+            mainFocusTasks = focusTaskIds.compactMap { taskMap[$0] }.filter { !$0.isCompleted }
             AppDataCache.shared.mainFocusTasks = mainFocusTasks
         } catch {
             errorMessage = error.localizedDescription

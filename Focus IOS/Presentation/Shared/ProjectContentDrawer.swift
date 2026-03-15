@@ -555,6 +555,15 @@ private struct ContentTaskRow: View {
                     viewModel.selectedTaskForSchedule = task
                 }
 
+                if isScheduled {
+                    ContextMenuItems.unscheduleButton {
+                        _Concurrency.Task {
+                            try? await ScheduleRepository().deleteSchedules(forTask: task.id)
+                            await viewModel.fetchScheduledTaskIds()
+                        }
+                    }
+                }
+
                 Divider()
 
                 ContextMenuItems.deleteButton {

@@ -1597,6 +1597,32 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
         }
     }
 
+    func batchMoveToList(_ listId: UUID) async {
+        do {
+            let existingItems = try await repository.fetchSubtasks(parentId: listId)
+            let newCount = selectedTaskIds.count
+
+            // Shift existing items down to make room at the top
+            let shiftUpdates = existingItems.map { (id: $0.id, sortOrder: $0.sortOrder + newCount) }
+            if !shiftUpdates.isEmpty {
+                try await repository.updateSortOrders(shiftUpdates)
+            }
+
+            // Insert new tasks at the top (sort orders 0..<newCount)
+            for (offset, taskId) in selectedTaskIds.enumerated() {
+                try await repository.assignToList(taskId: taskId, listId: listId, sortOrder: offset)
+                if let idx = tasks.firstIndex(where: { $0.id == taskId }) {
+                    tasks[idx].parentTaskId = listId
+                }
+            }
+
+            exitEditMode()
+            notifyTasksChanged()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
     func createCategoryAndMove(name: String, task: FocusTask) async {
         guard let userId = authService.currentUser?.id else {
             errorMessage = "No authenticated user"

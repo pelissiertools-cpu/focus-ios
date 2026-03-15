@@ -63,6 +63,10 @@ struct BacklogView: View {
     // Add bar state
     @State private var showingAddBar = false
 
+    // Toast notification state
+    @State private var toastMessage = ""
+    @State private var showToast = false
+
     // MARK: - Computed Properties
 
     /// True when at least one type pill (Task / Project / Quick List) is active
@@ -426,6 +430,21 @@ struct BacklogView: View {
                 .transition(.move(edge: .bottom).combined(with: .opacity))
                 .zIndex(100)
             }
+
+            // MARK: - Toast Notification
+            if showToast {
+                VStack {
+                    Text(toastMessage)
+                        .font(.inter(.subheadline, weight: .medium))
+                        .foregroundColor(.primary)
+                        .padding(.horizontal, AppStyle.Spacing.section)
+                        .padding(.vertical, AppStyle.Spacing.compact)
+                        .glassEffect(.regular.interactive(), in: .capsule)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                    Spacer()
+                }
+                .zIndex(200)
+            }
         }
         .onChange(of: filterUnscheduled) { _, newValue in
             if tasksOnly {
@@ -482,6 +501,10 @@ struct BacklogView: View {
                 onMoveToProject: { projectId in
                     await taskListVM.batchMoveToProject(projectId)
                     await refreshAllData()
+                },
+                onMoveToList: { listId in
+                    await taskListVM.batchMoveToList(listId)
+                    await refreshAllData()
                 }
             )
             .drawerStyle()
@@ -529,6 +552,8 @@ struct BacklogView: View {
                 newProjectTitle = ""
                 _Concurrency.Task { @MainActor in
                     await taskListVM.createProjectFromSelected(title: title)
+                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                    presentToast("Project was created")
                     await refreshAllData()
                 }
             }
@@ -543,6 +568,8 @@ struct BacklogView: View {
                 newListTitle = ""
                 _Concurrency.Task { @MainActor in
                     await taskListVM.createListFromSelected(title: title)
+                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                    presentToast("Quicklist was created")
                     await refreshAllData()
                 }
             }
@@ -561,26 +588,20 @@ struct BacklogView: View {
         .toolbarBackground(.hidden, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .navigationBarLeading) {
-                if taskListVM.isEditMode {
-                    Button {
+                Button {
+                    if taskListVM.isEditMode {
                         taskListVM.exitEditMode()
-                    } label: {
-                        Text("Done")
-                            .font(.inter(.body, weight: .medium))
-                            .foregroundColor(.appRed)
-                    }
-                } else {
-                    Button {
+                    } else {
                         dismiss()
-                    } label: {
-                        Image(systemName: "chevron.left")
-                            .font(.inter(.body, weight: .semiBold))
-                            .foregroundColor(.primary)
-                            .frame(width: AppStyle.Layout.touchTarget, height: AppStyle.Layout.touchTarget)
-                            .contentShape(Rectangle())
                     }
-                    .accessibilityLabel("Back")
+                } label: {
+                    Image(systemName: taskListVM.isEditMode ? "xmark" : "chevron.left")
+                        .font(.inter(.body, weight: .semiBold))
+                        .foregroundColor(.primary)
+                        .frame(width: AppStyle.Layout.touchTarget, height: AppStyle.Layout.touchTarget)
+                        .contentShape(Rectangle())
                 }
+                .accessibilityLabel(taskListVM.isEditMode ? "Cancel" : "Back")
             }
             ToolbarItem(placement: .navigationBarTrailing) {
                 if taskListVM.isEditMode {
@@ -696,6 +717,20 @@ struct BacklogView: View {
 
     private func refreshAllData() async {
         await loadAllData()
+    }
+
+    // MARK: - Toast
+
+    private func presentToast(_ message: String) {
+        withAnimation(AppStyle.Anim.modeSwitch) {
+            toastMessage = message
+            showToast = true
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+            withAnimation(AppStyle.Anim.modeSwitch) {
+                showToast = false
+            }
+        }
     }
 
     // MARK: - Drag & Drop

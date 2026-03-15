@@ -624,6 +624,10 @@ struct ScheduledView: View {
                 onMoveToProject: { projectId in
                     await taskListVM.batchMoveToProject(projectId)
                     await refreshAllData()
+                },
+                onMoveToList: { listId in
+                    await taskListVM.batchMoveToList(listId)
+                    await refreshAllData()
                 }
             )
             .drawerStyle()
@@ -1583,22 +1587,20 @@ struct ScheduledView: View {
 private extension ScheduledView {
     @ViewBuilder
     var leadingToolbarContent: some View {
-        if taskListVM.isEditMode {
-            Button { taskListVM.exitEditMode() } label: {
-                Text("Done")
-                    .font(.inter(.body, weight: .medium))
-                    .foregroundColor(.appRed)
+        Button {
+            if taskListVM.isEditMode {
+                taskListVM.exitEditMode()
+            } else {
+                dismiss()
             }
-        } else {
-            Button { dismiss() } label: {
-                Image(systemName: "chevron.left")
-                    .font(.inter(.body, weight: .semiBold))
-                    .foregroundColor(.primary)
-                    .frame(width: AppStyle.Layout.touchTarget, height: AppStyle.Layout.touchTarget)
-                    .contentShape(Rectangle())
-            }
-            .accessibilityLabel("Back")
+        } label: {
+            Image(systemName: taskListVM.isEditMode ? "xmark" : "chevron.left")
+                .font(.inter(.body, weight: .semiBold))
+                .foregroundColor(.primary)
+                .frame(width: AppStyle.Layout.touchTarget, height: AppStyle.Layout.touchTarget)
+                .contentShape(Rectangle())
         }
+        .accessibilityLabel(taskListVM.isEditMode ? "Cancel" : "Back")
     }
 
     @ViewBuilder

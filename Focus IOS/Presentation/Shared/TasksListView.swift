@@ -77,9 +77,9 @@ struct TasksListView: View {
                         Button {
                             viewModel.exitEditMode()
                         } label: {
-                            Text("Done")
-                                .font(.inter(.subheadline, weight: .medium))
-                                .foregroundColor(.appRed)
+                            Image(systemName: "xmark")
+                                .font(.inter(.subheadline, weight: .semiBold))
+                                .foregroundColor(.primary)
                         }
                         .buttonStyle(.plain)
                     }
@@ -170,6 +170,9 @@ struct TasksListView: View {
                 viewModel: viewModel,
                 onMoveToProject: { projectId in
                     await viewModel.batchMoveToProject(projectId)
+                },
+                onMoveToList: { listId in
+                    await viewModel.batchMoveToList(listId)
                 }
             )
             .drawerStyle()

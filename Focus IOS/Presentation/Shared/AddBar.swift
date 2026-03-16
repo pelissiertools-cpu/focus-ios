@@ -604,101 +604,104 @@ struct AddBar: View {
 
     private var buttonRow: some View {
         HStack(spacing: AppStyle.Spacing.compact) {
-            // Add sub-item button
-            Button {
-                addNewSubItem()
-            } label: {
-                HStack(spacing: AppStyle.Spacing.tiny) {
-                    Image(systemName: "plus")
-                        .font(.inter(size: 14, weight: .medium))
-                    Text(addButtonLabel)
-                        .font(.inter(size: 14, weight: .medium))
-                }
-                .foregroundColor(.white)
-                .padding(.horizontal, AppStyle.Spacing.comfortable)
-                .padding(.vertical, AppStyle.Spacing.medium)
-                .background(Color.black, in: Capsule())
-            }
-            .buttonStyle(.plain)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: AppStyle.Spacing.compact) {
+                    // Add sub-item button
+                    Button {
+                        addNewSubItem()
+                    } label: {
+                        HStack(spacing: AppStyle.Spacing.tiny) {
+                            Image(systemName: "plus")
+                                .font(.inter(size: 14, weight: .medium))
+                            Text(addButtonLabel)
+                                .font(.inter(size: 14, weight: .medium))
+                        }
+                        .foregroundColor(.white)
+                        .padding(.horizontal, AppStyle.Spacing.comfortable)
+                        .padding(.vertical, AppStyle.Spacing.medium)
+                        .background(Color.black, in: Capsule())
+                    }
+                    .buttonStyle(.plain)
 
-            // Schedule button
-            if config.showSchedule {
-                Button {
-                    scheduleDatesSnapshot = scheduleDates
-                    if !scheduleExpanded {
-                        // Dismiss keyboard first, then expand schedule in one smooth step
-                        titleFocused = false
-                        focusedSubItemId = nil
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                            withAnimation(.easeInOut(duration: 0.25)) {
-                                scheduleExpanded = true
+                    // Schedule button
+                    if config.showSchedule {
+                        Button {
+                            scheduleDatesSnapshot = scheduleDates
+                            if !scheduleExpanded {
+                                // Dismiss keyboard first, then expand schedule in one smooth step
+                                titleFocused = false
+                                focusedSubItemId = nil
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                                    withAnimation(.easeInOut(duration: 0.25)) {
+                                        scheduleExpanded = true
+                                    }
+                                }
+                            } else {
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    scheduleExpanded = false
+                                }
+                            }
+                        } label: {
+                            HStack(spacing: AppStyle.Spacing.tiny) {
+                                Image(systemName: "calendar")
+                                    .font(.inter(size: 14, weight: .medium))
+                                Text(scheduleDateLabel)
+                                    .font(.inter(size: 14, weight: .medium))
+                            }
+                            .foregroundColor(!scheduleDates.isEmpty ? .focusBlue : .black)
+                            .padding(.horizontal, AppStyle.Spacing.medium)
+                            .padding(.vertical, AppStyle.Spacing.medium)
+                            .background(!scheduleDates.isEmpty ? Color.todayBadge : Color.white, in: Capsule())
+                        }
+                        .buttonStyle(.plain)
+                    }
+
+                    // Priority menu
+                    Menu {
+                        ForEach(Priority.allCases, id: \.self) { p in
+                            Button {
+                                priority = p
+                            } label: {
+                                if priority == p {
+                                    Label(p.displayName, systemImage: "checkmark")
+                                } else {
+                                    Text(p.displayName)
+                                }
                             }
                         }
-                    } else {
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            scheduleExpanded = false
-                        }
-                    }
-                } label: {
-                    HStack(spacing: AppStyle.Spacing.tiny) {
-                        Image(systemName: "calendar")
-                            .font(.inter(size: 14, weight: .medium))
-                        Text(scheduleDateLabel)
-                            .font(.inter(size: 14, weight: .medium))
-                    }
-                    .foregroundColor(!scheduleDates.isEmpty ? .focusBlue : .black)
-                    .padding(.horizontal, AppStyle.Spacing.medium)
-                    .padding(.vertical, AppStyle.Spacing.medium)
-                    .background(!scheduleDates.isEmpty ? Color.todayBadge : Color.white, in: Capsule())
-                }
-                .buttonStyle(.plain)
-            }
-
-            // Priority menu
-            Menu {
-                ForEach(Priority.allCases, id: \.self) { p in
-                    Button {
-                        priority = p
                     } label: {
-                        if priority == p {
-                            Label(p.displayName, systemImage: "checkmark")
-                        } else {
-                            Text(p.displayName)
+                        HStack(spacing: AppStyle.Spacing.tiny) {
+                            Circle()
+                                .fill(priority.dotColor)
+                                .frame(width: AppStyle.Layout.dotSize, height: AppStyle.Layout.dotSize)
+                            Text(priority.displayName)
+                                .font(.inter(size: 14, weight: .medium))
                         }
+                        .foregroundColor(.black)
+                        .padding(.horizontal, AppStyle.Spacing.comfortable)
+                        .padding(.vertical, AppStyle.Spacing.medium)
+                        .background(Color.white, in: Capsule())
                     }
-                }
-            } label: {
-                HStack(spacing: AppStyle.Spacing.tiny) {
-                    Circle()
-                        .fill(priority.dotColor)
-                        .frame(width: AppStyle.Layout.dotSize, height: AppStyle.Layout.dotSize)
-                    Text(priority.displayName)
-                        .font(.inter(size: 14, weight: .medium))
-                }
-                .foregroundColor(.black)
-                .padding(.horizontal, AppStyle.Spacing.comfortable)
-                .padding(.vertical, AppStyle.Spacing.medium)
-                .background(Color.white, in: Capsule())
-            }
 
-            // More options
-            Button {
-                withAnimation(.easeInOut(duration: 0.2)) {
-                    optionsExpanded.toggle()
+                    // More options
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            optionsExpanded.toggle()
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis")
+                            .font(.inter(size: 14, weight: .medium))
+                            .foregroundColor(.black)
+                            .frame(minHeight: UIFont.preferredFont(forTextStyle: .caption1).lineHeight)
+                            .padding(.horizontal, AppStyle.Spacing.medium)
+                            .padding(.vertical, AppStyle.Spacing.medium)
+                            .background(Color.white, in: Capsule())
+                    }
+                    .accessibilityLabel("More options")
+                    .buttonStyle(.plain)
                 }
-            } label: {
-                Image(systemName: "ellipsis")
-                    .font(.inter(size: 14, weight: .medium))
-                    .foregroundColor(.black)
-                    .frame(minHeight: UIFont.preferredFont(forTextStyle: .caption1).lineHeight)
-                    .padding(.horizontal, AppStyle.Spacing.medium)
-                    .padding(.vertical, AppStyle.Spacing.medium)
-                    .background(Color.white, in: Capsule())
+                .fixedSize(horizontal: true, vertical: false)
             }
-            .accessibilityLabel("More options")
-            .buttonStyle(.plain)
-
-            Spacer()
 
             // Save button
             Button {

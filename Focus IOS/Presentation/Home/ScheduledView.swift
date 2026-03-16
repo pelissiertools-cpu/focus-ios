@@ -580,7 +580,22 @@ struct ScheduledView: View {
         }
         .task {
             taskListVM.scheduleFilter = .scheduled
-            // Only show loading if no cached data
+
+            // Pre-populate from cache for instant first render
+            let cache = AppDataCache.shared
+            if cache.hasLoadedScheduleSummaries && itemSchedules.isEmpty {
+                applyScheduleSummaries(cache.scheduleSummaries)
+                taskListVM.applyScheduleSummaries(cache.scheduleSummaries)
+            }
+            if cache.hasLoadedTasks && taskListVM.tasks.isEmpty {
+                let allTasks = cache.allTasks
+                taskListVM.tasks = allTasks.filter { $0.parentTaskId == nil }
+                // Build scheduledTasksById from cached tasks
+                let scheduledIds = Set(itemSchedules.keys)
+                scheduledTasksById = Dictionary(uniqueKeysWithValues: allTasks.filter { scheduledIds.contains($0.id) }.map { ($0.id, $0) })
+            }
+
+            // Only show loading if still no data after cache
             if isEmpty {
                 isLoading = true
             }
@@ -986,11 +1001,12 @@ struct ScheduledView: View {
                 onSave: { result in
                     guard case .task(let r) = result else { return }
                     _Concurrency.Task { @MainActor in
-                        // Default to today if no dates selected
                         let dates = r.schedule?.dates ?? [Calendar.current.startOfDay(for: Date())]
                         let timeframe = r.schedule?.timeframe ?? .daily
                         let section = r.schedule?.section ?? .todo
+                        let calendar = Calendar.current
 
+                        // Create on server (now fast: sort orders deferred, schedules parallel)
                         let taskId = await taskListVM.createTaskWithSchedules(
                             title: r.title,
                             categoryId: r.categoryId,
@@ -1003,11 +1019,30 @@ struct ScheduledView: View {
                             hasScheduledTime: false,
                             scheduledTime: nil
                         )
-                        if let taskId {
-                            r.schedule?.scheduleNotificationIfNeeded(taskId: taskId, taskTitle: r.title)
+                        guard let taskId else { return }
+
+                        r.schedule?.scheduleNotificationIfNeeded(taskId: taskId, taskTitle: r.title)
+
+                        // Local insert of the REAL task — already in taskListVM.tasks from createTask
+                        if let createdTask = taskListVM.tasks.first(where: { $0.id == taskId }) {
+                            scheduledTasksById[taskId] = createdTask
                         }
-                        await focusViewModel.fetchSchedules()
-                        await refreshAllData()
+                        // Insert schedule entries locally so the item appears in the right date sections
+                        var entries: [(scheduleId: UUID, date: Date, timeframe: Timeframe, sortOrder: Int)] = []
+                        var timeframes: Set<Timeframe> = []
+                        for date in dates {
+                            let day = calendar.startOfDay(for: date)
+                            entries.append((scheduleId: UUID(), date: day, timeframe: timeframe, sortOrder: 0))
+                            timeframes.insert(timeframe)
+                        }
+                        itemSchedules[taskId] = entries
+                        itemTimeframes[taskId] = timeframes
+
+                        // Background sync to get real schedule IDs (for reorder/reschedule)
+                        _Concurrency.Task { @MainActor in
+                            await focusViewModel.fetchSchedules()
+                            await refreshAllData()
+                        }
                     }
                 },
                 onDismiss: {
@@ -1319,27 +1354,38 @@ struct ScheduledView: View {
     // MARK: - Data Loading
 
     private func loadAllData() async {
-        // Start heavy background fetches early (lists/projects have per-item sub-queries)
+        // Fire ALL network calls in parallel — no sequential groups
+        async let summariesResult = ScheduleRepository().fetchScheduleSummaries()
+        async let t: () = taskListVM.fetchTasks()
+        async let cats: () = taskListVM.fetchCategories()
         async let p: () = projectsVM.fetchProjects()
         async let l: () = listsVM.fetchLists()
 
-        // Fast calls needed for initial render
-        async let c: () = taskListVM.fetchScheduledTaskIds()
-        async let cats: () = taskListVM.fetchCategories()
-        _ = await (c, cats)
+        // Wait for summaries (single call replaces two duplicate fetches)
+        let summaries = (try? await summariesResult) ?? []
+        applyScheduleSummaries(summaries)
+        taskListVM.applyScheduleSummaries(summaries)
 
-        async let t: () = taskListVM.fetchTasks()
-        async let s: () = fetchScheduledDates()
-        _ = await (t, s)
+        // Wait for tasks (needed for scheduledTasksById)
+        _ = await (t, cats)
 
-        // Fetch all scheduled tasks by ID so items in lists/projects still appear
-        let scheduledIds = Array(itemSchedules.keys)
-        if !scheduledIds.isEmpty {
-            let taskRepo = TaskRepository()
-            if let allTasks = try? await taskRepo.fetchTasksByIds(scheduledIds) {
-                scheduledTasksById = Dictionary(uniqueKeysWithValues: allTasks.map { ($0.id, $0) })
+        // Build scheduledTasksById from already-fetched tasks to avoid extra network call
+        let fetchedTasksById = Dictionary(uniqueKeysWithValues: taskListVM.tasks.map { ($0.id, $0) })
+        // Also include subtasks from the subtasksMap
+        var allFetchedById = fetchedTasksById
+        for (_, subtasks) in taskListVM.subtasksMap {
+            for st in subtasks { allFetchedById[st.id] = st }
+        }
+
+        // Only fetch tasks we don't already have
+        let scheduledIds = Set(itemSchedules.keys)
+        let missingIds = scheduledIds.subtracting(allFetchedById.keys)
+        if !missingIds.isEmpty {
+            if let extraTasks = try? await TaskRepository().fetchTasksByIds(Array(missingIds)) {
+                for task in extraTasks { allFetchedById[task.id] = task }
             }
         }
+        scheduledTasksById = allFetchedById.filter { scheduledIds.contains($0.key) }
 
         // Unblock the UI now — tasks + schedules are ready
         isLoading = false
@@ -1348,21 +1394,18 @@ struct ScheduledView: View {
         _ = await (l, p)
     }
 
-    private func fetchScheduledDates() async {
-        do {
-            let repo = ScheduleRepository()
-            let summaries = try await repo.fetchScheduleSummaries()
-            let calendar = Calendar.current
-            var schedulesByTask: [UUID: [(scheduleId: UUID, date: Date, timeframe: Timeframe, sortOrder: Int)]] = [:]
-            var timeframesByTask: [UUID: Set<Timeframe>] = [:]
-            for s in summaries {
-                let date = calendar.startOfDay(for: s.scheduleDate)
-                schedulesByTask[s.taskId, default: []].append((scheduleId: s.id, date: date, timeframe: s.timeframe, sortOrder: s.sortOrder))
-                timeframesByTask[s.taskId, default: []].insert(s.timeframe)
-            }
-            itemSchedules = schedulesByTask
-            itemTimeframes = timeframesByTask
-        } catch { }
+    /// Apply pre-fetched summaries to local schedule state (no network call)
+    private func applyScheduleSummaries(_ summaries: [ScheduleRepository.ScheduleSummary]) {
+        let calendar = Calendar.current
+        var schedulesByTask: [UUID: [(scheduleId: UUID, date: Date, timeframe: Timeframe, sortOrder: Int)]] = [:]
+        var timeframesByTask: [UUID: Set<Timeframe>] = [:]
+        for s in summaries {
+            let date = calendar.startOfDay(for: s.scheduleDate)
+            schedulesByTask[s.taskId, default: []].append((scheduleId: s.id, date: date, timeframe: s.timeframe, sortOrder: s.sortOrder))
+            timeframesByTask[s.taskId, default: []].insert(s.timeframe)
+        }
+        itemSchedules = schedulesByTask
+        itemTimeframes = timeframesByTask
     }
 
     private func refreshAllData() async {

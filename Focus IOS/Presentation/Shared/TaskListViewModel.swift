@@ -573,7 +573,7 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
                 scheduledTaskIds.insert(createdTask.id)
             }
 
-            // Reassign sort orders so the new task is at 0 and others shift up
+            // Reassign sort orders locally so the new task is at 0 and others shift up
             let uncompleted = tasks.filter { !$0.isCompleted }.sorted { $0.sortOrder < $1.sortOrder }
             var updates: [(id: UUID, sortOrder: Int)] = []
             for (index, task) in uncompleted.enumerated() {
@@ -582,7 +582,8 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
                 }
                 updates.append((id: task.id, sortOrder: index))
             }
-            await persistSortOrders(updates)
+            // Fire-and-forget: persist sort orders without blocking the return
+            _Concurrency.Task { [weak self] in await self?.persistSortOrders(updates) }
 
             notifyTasksChanged()
             return createdTask.id
@@ -1246,11 +1247,13 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
             await createSubtask(title: subtaskTitle, parentId: parentId)
         }
 
-        // 3. Create schedules if enabled
+        // 3. Create schedules if enabled (parallel, not sequential)
         if scheduleAfterCreate && !selectedDates.isEmpty {
             guard let userId = authService.currentUser?.id else { return parentId }
+            // Build Schedule objects on the main actor (init is main-actor-isolated)
+            var schedulesToCreate: [Schedule] = []
             for date in selectedDates {
-                let schedule = Schedule(
+                schedulesToCreate.append(Schedule(
                     userId: userId,
                     taskId: parentId,
                     timeframe: selectedTimeframe,
@@ -1259,10 +1262,17 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
                     sortOrder: 0,
                     scheduledTime: hasScheduledTime ? scheduledTime : nil,
                     durationMinutes: hasScheduledTime ? 30 : nil
-                )
-                _ = try? await scheduleRepository.createSchedule(schedule)
+                ))
             }
-            await fetchScheduledTaskIds()
+            // Fire network calls in parallel
+            await withTaskGroup(of: Void.self) { group in
+                for schedule in schedulesToCreate {
+                    group.addTask {
+                        _ = try? await self.scheduleRepository.createSchedule(schedule)
+                    }
+                }
+            }
+            scheduledTaskIds.insert(parentId)
         }
 
         return parentId

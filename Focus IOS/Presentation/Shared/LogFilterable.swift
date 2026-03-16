@@ -30,6 +30,7 @@ protocol LogFilterable: ObservableObject {
     var scheduleRepository: ScheduleRepository { get }
     func toggleScheduleFilter(_ filter: ScheduleFilter)
     func fetchScheduledTaskIds() async
+    func applyScheduleSummaries(_ summaries: [ScheduleRepository.ScheduleSummary])
 
     // MARK: - Share tracking
     var sharedTaskIds: Set<UUID> { get set }
@@ -90,17 +91,22 @@ extension LogFilterable {
 
         do {
             let summaries = try await scheduleRepository.fetchScheduleSummaries()
-            scheduledTaskIds = Set(summaries.map { $0.taskId })
-            taskDueDates = Self.buildDueDates(from: summaries)
-            taskScheduleDates = Self.buildScheduleDates(from: summaries)
-
-            // Update cache
-            cache.scheduleSummaries = summaries
-            cache.scheduledTaskIds = scheduledTaskIds
-            cache.hasLoadedScheduleSummaries = true
+            applyScheduleSummaries(summaries)
         } catch {
             // Silently handled — sorting falls back to creation date
         }
+    }
+
+    /// Apply pre-fetched summaries without a network call (used when caller already has them)
+    func applyScheduleSummaries(_ summaries: [ScheduleRepository.ScheduleSummary]) {
+        scheduledTaskIds = Set(summaries.map { $0.taskId })
+        taskDueDates = Self.buildDueDates(from: summaries)
+        taskScheduleDates = Self.buildScheduleDates(from: summaries)
+
+        let cache = AppDataCache.shared
+        cache.scheduleSummaries = summaries
+        cache.scheduledTaskIds = scheduledTaskIds
+        cache.hasLoadedScheduleSummaries = true
     }
 
     private static func buildDueDates(from summaries: [ScheduleRepository.ScheduleSummary]) -> [UUID: Date] {

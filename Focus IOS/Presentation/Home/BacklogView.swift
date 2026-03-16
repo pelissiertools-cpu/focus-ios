@@ -1007,6 +1007,17 @@ struct BacklogView: View {
                 }
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: .homeAddBarItemCreated)) { notification in
+            guard let taskId = notification.userInfo?["taskId"] as? UUID else { return }
+            _Concurrency.Task { @MainActor in
+                await taskListVM.fetchTasks()
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                    withAnimation(.easeInOut(duration: 0.25)) {
+                        proxy.scrollTo(taskId.uuidString, anchor: UnitPoint(x: 0.5, y: 0.7))
+                    }
+                }
+            }
+        }
         }
     }
 

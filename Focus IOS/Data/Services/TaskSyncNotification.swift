@@ -15,6 +15,7 @@ extension Notification.Name {
     static let sessionRefreshed = Notification.Name("sessionRefreshed")
     static let realtimeTasksChanged = Notification.Name("realtimeTasksChanged")
     static let sharedItemsChanged = Notification.Name("sharedItemsChanged")
+    static let homeAddBarItemCreated = Notification.Name("homeAddBarItemCreated")
 }
 
 /// Keys for task sync notification userInfo

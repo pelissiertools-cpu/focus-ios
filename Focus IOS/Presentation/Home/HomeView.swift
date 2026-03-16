@@ -51,6 +51,7 @@ struct HomeView: View {
     }
 
     var body: some View {
+        ZStack {
         NavigationStack {
             ZStack {
                 Color.appBackground.ignoresSafeArea()
@@ -376,147 +377,6 @@ struct HomeView: View {
                     .transition(.opacity)
                 }
 
-                // MARK: - Add Bar Overlay
-                if showingAddBar {
-                    Color(UIColor { traits in
-                        traits.userInterfaceStyle == .dark
-                            ? UIColor.white.withAlphaComponent(0.08)
-                            : UIColor.black.withAlphaComponent(0.15)
-                    })
-                        .ignoresSafeArea()
-                        .allowsHitTesting(false)
-                        .transition(.opacity)
-                        .zIndex(50)
-
-                    VStack(spacing: 0) {
-                        Color.clear
-                            .contentShape(Rectangle())
-                            .onTapGesture {
-                                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-                                withAnimation(AppStyle.Anim.modeSwitch) {
-                                    showingAddBar = false
-                                }
-                            }
-
-                        AddBar(
-                            config: .home,
-                            categories: taskListVM.categories,
-                            activeMode: $addBarMode,
-                            onSave: { result in
-                                switch result {
-                                case .task: presentToast("Task was created")
-                                case .list: presentToast("List was created")
-                                case .project: presentToast("Project was created")
-                                }
-                                switch result {
-                                case .task(let r):
-                                    _Concurrency.Task { @MainActor in
-                                        let taskId = await taskListVM.createTaskWithSchedules(
-                                            title: r.title,
-                                            categoryId: r.categoryId,
-                                            priority: r.priority,
-                                            subtaskTitles: r.subtaskTitles,
-                                            scheduleAfterCreate: r.schedule != nil,
-                                            selectedTimeframe: r.schedule?.timeframe ?? .daily,
-                                            selectedSection: r.schedule?.section ?? .todo,
-                                            selectedDates: r.schedule?.dates ?? [],
-                                            hasScheduledTime: false,
-                                            scheduledTime: nil
-                                        )
-                                        if let taskId {
-                                            r.schedule?.scheduleNotificationIfNeeded(taskId: taskId, taskTitle: r.title)
-                                        }
-                                        if r.schedule != nil {
-                                            await focusViewModel.fetchSchedules()
-                                        }
-                                    }
-                                case .list(let r):
-                                    _Concurrency.Task { @MainActor in
-                                        await listsViewModel.createList(title: r.title, categoryId: r.categoryId, priority: r.priority)
-                                        if let createdList = listsViewModel.lists.first {
-                                            for itemTitle in r.itemTitles {
-                                                await listsViewModel.createItem(title: itemTitle, listId: createdList.id)
-                                            }
-                                            if !r.itemTitles.isEmpty {
-                                                listsViewModel.expandedLists.insert(createdList.id)
-                                            }
-                                            if let sched = r.schedule {
-                                                for date in sched.dates {
-                                                    let schedule = Schedule(
-                                                        userId: createdList.userId,
-                                                        taskId: createdList.id,
-                                                        timeframe: sched.timeframe,
-                                                        section: sched.section,
-                                                        scheduleDate: date,
-                                                        sortOrder: 0,
-                                                        scheduledTime: nil,
-                                                        durationMinutes: nil
-                                                    )
-                                                    _ = try? await listsViewModel.scheduleRepository.createSchedule(schedule)
-                                                }
-                                                await focusViewModel.fetchSchedules()
-                                                await listsViewModel.fetchScheduledTaskIds()
-                                            }
-                                        }
-                                        await viewModel.fetchLists()
-                                    }
-                                case .project(let r):
-                                    _Concurrency.Task { @MainActor in
-                                        guard let projectId = await projectsViewModel.saveNewProject(
-                                            title: r.title,
-                                            categoryId: r.categoryId,
-                                            priority: r.priority,
-                                            draftTasks: r.draftTasks
-                                        ) else { return }
-                                        if let sched = r.schedule {
-                                            guard let userId = projectsViewModel.authService.currentUser?.id else { return }
-                                            for date in sched.dates {
-                                                let schedule = Schedule(
-                                                    userId: userId,
-                                                    taskId: projectId,
-                                                    timeframe: sched.timeframe,
-                                                    section: sched.section,
-                                                    scheduleDate: date,
-                                                    sortOrder: 0,
-                                                    scheduledTime: nil,
-                                                    durationMinutes: nil
-                                                )
-                                                _ = try? await projectsViewModel.scheduleRepository.createSchedule(schedule)
-                                            }
-                                            await focusViewModel.fetchSchedules()
-                                            await projectsViewModel.fetchScheduledTaskIds()
-                                        }
-                                        await viewModel.fetchProjects()
-                                    }
-                                }
-                            },
-                            onDismiss: {
-                                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-                                withAnimation(AppStyle.Anim.modeSwitch) {
-                                    showingAddBar = false
-                                }
-                            }
-                        )
-                        .padding(.bottom, AppStyle.Spacing.compact)
-                    }
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-                    .zIndex(100)
-                }
-
-                // MARK: - Toast Notification
-                if showToast {
-                    VStack {
-                        Text(toastMessage)
-                            .font(.inter(.subheadline, weight: .medium))
-                            .foregroundColor(.primary)
-                            .padding(.horizontal, AppStyle.Spacing.section)
-                            .padding(.vertical, AppStyle.Spacing.compact)
-                            .glassEffect(.regular.interactive(), in: .capsule)
-                            .transition(.move(edge: .top).combined(with: .opacity))
-                        Spacer()
-                    }
-                    .zIndex(200)
-                }
             }
             .navigationDestination(item: $viewModel.selectedMenuItem) { menuItem in
                 if menuItem == .archive {
@@ -645,6 +505,174 @@ struct HomeView: View {
                     .transition(.move(edge: .trailing))
             }
         }
+
+        // MARK: - Add Bar Overlay (floats above NavigationStack)
+        if showingAddBar {
+            Color(UIColor { traits in
+                traits.userInterfaceStyle == .dark
+                    ? UIColor.white.withAlphaComponent(0.08)
+                    : UIColor.black.withAlphaComponent(0.15)
+            })
+                .ignoresSafeArea()
+                .allowsHitTesting(false)
+                .transition(.opacity)
+                .zIndex(50)
+
+            VStack(spacing: 0) {
+                Color.clear
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                        withAnimation(AppStyle.Anim.modeSwitch) {
+                            showingAddBar = false
+                        }
+                    }
+
+                AddBar(
+                    config: .home,
+                    categories: taskListVM.categories,
+                    activeMode: $addBarMode,
+                    onSave: { result in
+                        switch result {
+                        case .task: presentToast("Task was created")
+                        case .list: presentToast("List was created")
+                        case .project: presentToast("Project was created")
+                        }
+                        switch result {
+                        case .task(let r):
+                            _Concurrency.Task { @MainActor in
+                                let taskId = await taskListVM.createTaskWithSchedules(
+                                    title: r.title,
+                                    categoryId: r.categoryId,
+                                    priority: r.priority,
+                                    subtaskTitles: r.subtaskTitles,
+                                    scheduleAfterCreate: r.schedule != nil,
+                                    selectedTimeframe: r.schedule?.timeframe ?? .daily,
+                                    selectedSection: r.schedule?.section ?? .todo,
+                                    selectedDates: r.schedule?.dates ?? [],
+                                    hasScheduledTime: false,
+                                    scheduledTime: nil
+                                )
+                                if let taskId {
+                                    r.schedule?.scheduleNotificationIfNeeded(taskId: taskId, taskTitle: r.title)
+                                }
+                                if r.schedule != nil {
+                                    await focusViewModel.fetchSchedules()
+                                }
+                                // Navigate to the appropriate page in the background
+                                if let dates = r.schedule?.dates, !dates.isEmpty {
+                                    let today = Calendar.current.startOfDay(for: Date())
+                                    if dates.contains(where: { Calendar.current.isDate($0, inSameDayAs: today) }) {
+                                        viewModel.selectedMenuItem = .today
+                                    } else {
+                                        viewModel.selectedMenuItem = .assign
+                                    }
+                                } else {
+                                    viewModel.selectedMenuItem = .inbox
+                                }
+                                // Notify destination view to scroll to the new item
+                                if let taskId {
+                                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                        NotificationCenter.default.post(
+                                            name: .homeAddBarItemCreated,
+                                            object: nil,
+                                            userInfo: ["taskId": taskId]
+                                        )
+                                    }
+                                }
+                            }
+                        case .list(let r):
+                            _Concurrency.Task { @MainActor in
+                                await listsViewModel.createList(title: r.title, categoryId: r.categoryId, priority: r.priority)
+                                if let createdList = listsViewModel.lists.first {
+                                    for itemTitle in r.itemTitles {
+                                        await listsViewModel.createItem(title: itemTitle, listId: createdList.id)
+                                    }
+                                    if !r.itemTitles.isEmpty {
+                                        listsViewModel.expandedLists.insert(createdList.id)
+                                    }
+                                    if let sched = r.schedule {
+                                        for date in sched.dates {
+                                            let schedule = Schedule(
+                                                userId: createdList.userId,
+                                                taskId: createdList.id,
+                                                timeframe: sched.timeframe,
+                                                section: sched.section,
+                                                scheduleDate: date,
+                                                sortOrder: 0,
+                                                scheduledTime: nil,
+                                                durationMinutes: nil
+                                            )
+                                            _ = try? await listsViewModel.scheduleRepository.createSchedule(schedule)
+                                        }
+                                        await focusViewModel.fetchSchedules()
+                                        await listsViewModel.fetchScheduledTaskIds()
+                                    }
+                                }
+                                await viewModel.fetchLists()
+                                // Navigate to Quick Lists in the background
+                                viewModel.selectedMenuItem = .quickLists
+                            }
+                        case .project(let r):
+                            _Concurrency.Task { @MainActor in
+                                guard let projectId = await projectsViewModel.saveNewProject(
+                                    title: r.title,
+                                    categoryId: r.categoryId,
+                                    priority: r.priority,
+                                    draftTasks: r.draftTasks
+                                ) else { return }
+                                if let sched = r.schedule {
+                                    guard let userId = projectsViewModel.authService.currentUser?.id else { return }
+                                    for date in sched.dates {
+                                        let schedule = Schedule(
+                                            userId: userId,
+                                            taskId: projectId,
+                                            timeframe: sched.timeframe,
+                                            section: sched.section,
+                                            scheduleDate: date,
+                                            sortOrder: 0,
+                                            scheduledTime: nil,
+                                            durationMinutes: nil
+                                        )
+                                        _ = try? await projectsViewModel.scheduleRepository.createSchedule(schedule)
+                                    }
+                                    await focusViewModel.fetchSchedules()
+                                    await projectsViewModel.fetchScheduledTaskIds()
+                                }
+                                await viewModel.fetchProjects()
+                                // Navigate to Projects in the background
+                                viewModel.selectedMenuItem = .projects
+                            }
+                        }
+                    },
+                    onDismiss: {
+                        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                        withAnimation(AppStyle.Anim.modeSwitch) {
+                            showingAddBar = false
+                        }
+                    }
+                )
+                .padding(.bottom, AppStyle.Spacing.compact)
+            }
+            .transition(.move(edge: .bottom).combined(with: .opacity))
+            .zIndex(100)
+        }
+
+        // MARK: - Toast Notification
+        if showToast {
+            VStack {
+                Text(toastMessage)
+                    .font(.inter(.subheadline, weight: .medium))
+                    .foregroundColor(.primary)
+                    .padding(.horizontal, AppStyle.Spacing.section)
+                    .padding(.vertical, AppStyle.Spacing.compact)
+                    .glassEffect(.regular.interactive(), in: .capsule)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                Spacer()
+            }
+            .zIndex(200)
+        }
+        } // outer ZStack
     }
 
     // MARK: - Settings Panel (slides from left)

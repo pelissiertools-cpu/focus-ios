@@ -980,7 +980,7 @@ struct ScheduledView: View {
             HStack {
                 Spacer()
                 Button {
-                    addBarInitialDates = []
+                    addBarInitialDates = [Calendar.current.startOfDay(for: Date())]
                     addBarInitialTimeframe = .daily
                     withAnimation(AppStyle.Anim.modeSwitch) {
                         showingAddBar = true
@@ -1234,6 +1234,17 @@ struct ScheduledView: View {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
                 withAnimation(.easeInOut(duration: 0.25)) {
                     proxy.scrollTo(targetId, anchor: UnitPoint(x: 0.5, y: 0.7))
+                }
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .homeAddBarItemCreated)) { notification in
+            guard let taskId = notification.userInfo?["taskId"] as? UUID else { return }
+            _Concurrency.Task { @MainActor in
+                await loadAllData()
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                    withAnimation(.easeInOut(duration: 0.25)) {
+                        proxy.scrollTo("item-\(taskId.uuidString)", anchor: UnitPoint(x: 0.5, y: 0.7))
+                    }
                 }
             }
         }

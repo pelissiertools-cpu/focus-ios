@@ -402,6 +402,10 @@ struct ProjectContentView: View {
                         } label: {
                             Label("Share", systemImage: "square.and.arrow.up")
                         }
+
+                        ContextMenuItems.pinButton(isPinned: project.isPinned) {
+                            _Concurrency.Task { await viewModel.toggleProjectPin(project) }
+                        }
                     } label: {
                         Image(systemName: "ellipsis")
                             .font(.inter(.body, weight: .semiBold))

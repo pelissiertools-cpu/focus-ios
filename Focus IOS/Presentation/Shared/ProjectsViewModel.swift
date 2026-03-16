@@ -764,6 +764,19 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
         }
     }
 
+    func toggleProjectPin(_ project: FocusTask) async {
+        let newPinned = !project.isPinned
+        do {
+            try await repository.togglePin(id: project.id, isPinned: newPinned)
+            if let index = projects.firstIndex(where: { $0.id == project.id }) {
+                projects[index].isPinned = newPinned
+            }
+            notifyTasksChanged()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
     func togglePin(_ task: FocusTask, projectId: UUID) async {
         let newPinned = !task.isPinned
         do {

@@ -215,7 +215,7 @@ struct ListContentView: View {
                 }
                 .listStyle(.plain)
                 .scrollContentBackground(.hidden)
-                .scrollDismissesKeyboard(.interactively)
+                .scrollDismissesKeyboard(.never)
                 .keyboardDismissOverlay(isActive: $isInlineAddFocused)
                 .onChange(of: isInlineAddFocused) { _, focused in
                     if focused, let targetId = activeAddRowId {
@@ -325,6 +325,10 @@ struct ListContentView: View {
                             ShareSheetHelper.share(task: list)
                         } label: {
                             Label("Share", systemImage: "square.and.arrow.up")
+                        }
+
+                        ContextMenuItems.pinButton(isPinned: list.isPinned) {
+                            _Concurrency.Task { await viewModel.toggleListPin(list) }
                         }
 
                         if viewModel.sharedTaskIds.contains(list.id) {

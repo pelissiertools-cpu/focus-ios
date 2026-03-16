@@ -59,51 +59,19 @@ struct RescheduleSheet: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     VStack(spacing: AppStyle.Spacing.comfortable) {
-                        // Current schedule card
-                        VStack(alignment: .leading, spacing: 0) {
-                            Text("Current Schedule")
-                                .font(.inter(.footnote, weight: .medium))
-                                .foregroundColor(.secondary)
-                                .padding(.horizontal, AppStyle.Spacing.content)
-                                .padding(.top, AppStyle.Spacing.comfortable)
-                                .padding(.bottom, AppStyle.Spacing.compact)
-
-                            Divider()
-
-                            HStack {
-                                Text("Timeframe")
-                                Spacer()
-                                Text(schedule.timeframe.displayName)
-                                    .foregroundColor(.secondary)
+                        // Quick date buttons
+                        QuickDateButtons(
+                            selectedTimeframe: $selectedTimeframe,
+                            onSelectDate: { date in
+                                selectedDate = date
+                            },
+                            isDateSelected: { date in
+                                Calendar.current.isDate(selectedDate, inSameDayAs: date)
                             }
-                            .padding(.horizontal, AppStyle.Spacing.content)
-                            .padding(.vertical, AppStyle.Spacing.comfortable)
+                        )
 
-                            Divider()
-
-                            HStack {
-                                Text("Date")
-                                Spacer()
-                                Text(formatDate(schedule.scheduleDate, for: schedule.timeframe))
-                                    .foregroundColor(.secondary)
-                            }
-                            .padding(.horizontal, AppStyle.Spacing.content)
-                            .padding(.vertical, AppStyle.Spacing.comfortable)
-                        }
-                        .background(Color(.secondarySystemGroupedBackground))
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
-
-                        // New schedule card
+                        // Calendar card
                         VStack(alignment: .leading, spacing: 0) {
-                            Text("New Schedule")
-                                .font(.inter(.footnote, weight: .medium))
-                                .foregroundColor(.secondary)
-                                .padding(.horizontal, AppStyle.Spacing.content)
-                                .padding(.top, AppStyle.Spacing.comfortable)
-                                .padding(.bottom, AppStyle.Spacing.compact)
-
-                            Divider()
-
                             Picker("Timeframe", selection: $selectedTimeframe) {
                                 Text("Day").tag(Timeframe.daily)
                                 Text("Week").tag(Timeframe.weekly)
@@ -239,20 +207,6 @@ struct RescheduleSheet: View {
         return cal.date(from: components) ?? date
     }
 
-    private func formatDate(_ date: Date, for timeframe: Timeframe) -> String {
-        let formatter = DateFormatter()
-        switch timeframe {
-        case .daily:
-            formatter.dateFormat = "EEEE, MMM d, yyyy"
-        case .weekly:
-            formatter.dateFormat = "'Week' w, yyyy"
-        case .monthly:
-            formatter.dateFormat = "MMMM yyyy"
-        case .yearly:
-            formatter.dateFormat = "yyyy"
-        }
-        return formatter.string(from: date)
-    }
 }
 
 // MARK: - Reschedule Date Picker
@@ -292,6 +246,9 @@ struct RescheduleDatePicker: View {
             } else if let first = newValue.first {
                 selectedDate = first
             }
+        }
+        .onChange(of: selectedDate) { _, newDate in
+            selectedDates = [newDate]
         }
         .onChange(of: timeframe) { _, _ in
             // Reset selection when timeframe changes

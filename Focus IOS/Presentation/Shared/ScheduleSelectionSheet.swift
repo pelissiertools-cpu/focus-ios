@@ -92,6 +92,17 @@ struct ScheduleSelectionSheet: View {
                         .background(Color(.secondarySystemGroupedBackground))
                         .clipShape(RoundedRectangle(cornerRadius: 12))
 
+                        // Quick date buttons
+                        QuickDateButtons(
+                            selectedTimeframe: $selectedTimeframe,
+                            onSelectDate: { date in
+                                selectedDates = [date]
+                            },
+                            isDateSelected: { date in
+                                selectedDates.contains { Calendar.current.isDate($0, inSameDayAs: date) }
+                            }
+                        )
+
                         // Calendar card
                         VStack(spacing: 0) {
                             UnifiedCalendarPicker(

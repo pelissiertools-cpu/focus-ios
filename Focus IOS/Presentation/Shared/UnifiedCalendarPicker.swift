@@ -7,6 +7,43 @@
 
 import SwiftUI
 
+// MARK: - Quick Date Buttons
+
+/// Today/Tomorrow quick-select buttons for scheduling sheets
+struct QuickDateButtons: View {
+    @Binding var selectedTimeframe: Timeframe
+    var onSelectDate: (Date) -> Void
+    var isDateSelected: (Date) -> Bool
+
+    private var today: Date { Calendar.current.startOfDay(for: Date()) }
+    private var tomorrow: Date { Calendar.current.date(byAdding: .day, value: 1, to: today)! }
+
+    var body: some View {
+        HStack(spacing: AppStyle.Spacing.compact) {
+            quickButton("Today", date: today)
+            quickButton("Tomorrow", date: tomorrow)
+            Spacer()
+        }
+    }
+
+    private func quickButton(_ label: String, date: Date) -> some View {
+        let selected = selectedTimeframe == .daily && isDateSelected(date)
+        return Button {
+            selectedTimeframe = .daily
+            onSelectDate(date)
+        } label: {
+            Text(label)
+                .font(.inter(.subheadline, weight: .medium))
+                .foregroundColor(selected ? .focusBlue : .primary)
+                .padding(.horizontal, AppStyle.Spacing.content)
+                .padding(.vertical, AppStyle.Spacing.compact)
+                .background(selected ? Color.todayBadge : Color.pillBackground)
+                .clipShape(Capsule())
+        }
+        .buttonStyle(.plain)
+    }
+}
+
 /// Unified calendar picker that adapts based on selected timeframe
 struct UnifiedCalendarPicker: View {
     @Binding var selectedDates: Set<Date>

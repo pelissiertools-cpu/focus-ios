@@ -64,6 +64,8 @@ struct BacklogView: View {
 
     // Add bar state
     @State private var showingAddBar = false
+    @State private var addBarScrollTarget: String?
+    @State private var addBarScrollTrigger = 0
 
     // Toast notification state
     @State private var toastMessage = ""
@@ -414,6 +416,10 @@ struct BacklogView: View {
                                 )
                                 if let taskId {
                                     r.schedule?.scheduleNotificationIfNeeded(taskId: taskId, taskTitle: r.title)
+
+                                    // Scroll to newly added item
+                                    addBarScrollTarget = taskId.uuidString
+                                    addBarScrollTrigger += 1
                                 }
                                 if r.schedule != nil {
                                     await focusViewModel.fetchSchedules()
@@ -953,7 +959,8 @@ struct BacklogView: View {
 
             // Bottom spacer
             Color.clear
-                .frame(height: 100)
+                .frame(height: showingAddBar ? 400 : 100)
+                .id("bottom-spacer")
                 .listRowInsets(AppStyle.Insets.zero)
                 .listRowSeparator(.hidden)
                 .listRowBackground(Color.clear)
@@ -989,6 +996,14 @@ struct BacklogView: View {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                 withAnimation(.easeInOut(duration: 0.25)) {
                     proxy.scrollTo(targetId, anchor: UnitPoint(x: 0.5, y: 0.5))
+                }
+            }
+        }
+        .onChange(of: addBarScrollTrigger) { _, _ in
+            guard let targetId = addBarScrollTarget else { return }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                withAnimation(.easeInOut(duration: 0.25)) {
+                    proxy.scrollTo(targetId, anchor: UnitPoint(x: 0.5, y: 0.7))
                 }
             }
         }

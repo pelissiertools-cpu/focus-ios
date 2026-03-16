@@ -45,6 +45,8 @@ struct ScheduledView: View {
     @State private var showingAddBar = false
     @State private var addBarInitialDates: Set<Date> = []
     @State private var addBarInitialTimeframe: Timeframe = .daily
+    @State private var addBarScrollTarget: String?
+    @State private var addBarScrollTrigger = 0
 
     // Search
     @State private var isSearchActive = false
@@ -1078,6 +1080,10 @@ struct ScheduledView: View {
                         itemSchedules[taskId] = entries
                         itemTimeframes[taskId] = timeframes
 
+                        // Scroll to newly added item
+                        addBarScrollTarget = "item-\(taskId.uuidString)"
+                        addBarScrollTrigger += 1
+
                         // Background sync to get real schedule IDs (for reorder/reschedule)
                         _Concurrency.Task { @MainActor in
                             await focusViewModel.fetchSchedules()
@@ -1182,7 +1188,7 @@ struct ScheduledView: View {
 
                 case .bottomSpacer:
                     Color.clear
-                        .frame(height: 100)
+                        .frame(height: showingAddBar ? 400 : 100)
                         .listRowInsets(EdgeInsets())
                         .listRowSeparator(.hidden)
                         .listRowBackground(Color.clear)
@@ -1220,6 +1226,14 @@ struct ScheduledView: View {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                 withAnimation(.easeInOut(duration: 0.25)) {
                     proxy.scrollTo(targetId, anchor: UnitPoint(x: 0.5, y: 0.5))
+                }
+            }
+        }
+        .onChange(of: addBarScrollTrigger) { _, _ in
+            guard let targetId = addBarScrollTarget else { return }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                withAnimation(.easeInOut(duration: 0.25)) {
+                    proxy.scrollTo(targetId, anchor: UnitPoint(x: 0.5, y: 0.7))
                 }
             }
         }

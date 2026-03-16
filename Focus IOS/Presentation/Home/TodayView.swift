@@ -17,6 +17,8 @@ struct TodayView: View {
     @State private var activeAddRowId: String?
     @State private var scrollToAddTrigger = 0
     @State private var showingAddBar = false
+    @State private var addBarScrollTarget: String?
+    @State private var addBarScrollTrigger = 0
     @State private var isLoading = true
     @State private var coachMarkVisible = false
     @State private var todaySchedules: [UUID: (scheduleId: UUID, sortOrder: Int)] = [:]
@@ -396,6 +398,10 @@ struct TodayView: View {
                                     taskListVM.scheduledTaskIds.insert(created.id)
                                     taskListVM.tasks.append(created)
                                     taskListVM.subtasksMap[created.id] = []
+
+                                    // Scroll to newly added item
+                                    addBarScrollTarget = "item-\(created.id.uuidString)"
+                                    addBarScrollTrigger += 1
 
                                     // Background sync
                                     _Concurrency.Task { @MainActor in
@@ -1059,7 +1065,7 @@ struct TodayView: View {
 
                 case .bottomSpacer:
                     Color.clear
-                        .frame(height: 100)
+                        .frame(height: showingAddBar ? 400 : 100)
                         .listRowInsets(AppStyle.Insets.zero)
                         .listRowSeparator(.hidden)
                         .listRowBackground(Color.clear)
@@ -1088,6 +1094,14 @@ struct TodayView: View {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                 withAnimation(.easeInOut(duration: 0.25)) {
                     proxy.scrollTo(targetId, anchor: UnitPoint(x: 0.5, y: 0.5))
+                }
+            }
+        }
+        .onChange(of: addBarScrollTrigger) { _, _ in
+            guard let targetId = addBarScrollTarget else { return }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                withAnimation(.easeInOut(duration: 0.25)) {
+                    proxy.scrollTo(targetId, anchor: UnitPoint(x: 0.5, y: 0.7))
                 }
             }
         }

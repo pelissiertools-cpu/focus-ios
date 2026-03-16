@@ -67,19 +67,22 @@ struct OnboardingNameStep: View {
                 Group {
                     if authService.isLoading {
                         ProgressView()
-                            .tint(.white)
+                            .tint(.focusBlue)
                     } else {
                         Text("Next")
-                            .font(.inter(.body, weight: .semiBold))
+                            .font(.helveticaNeue(size: 15.22, weight: .medium))
+                            .tracking(-0.158)
                     }
                 }
-                .foregroundColor(.white)
-                .frame(maxWidth: .infinity)
-                .frame(height: 54)
-                .background(trimmedName.isEmpty ? Color(.systemGray4) : Color.focusBlue)
-                .clipShape(RoundedRectangle(cornerRadius: AppStyle.CornerRadius.button))
+                .foregroundColor(trimmedName.isEmpty ? .secondary : .focusBlue)
+                .frame(maxWidth: .infinity, minHeight: AppStyle.Layout.fab)
+                .background(Color.cardBackground, in: RoundedRectangle(cornerRadius: AppStyle.CornerRadius.card))
+                .cardBorderOverlay()
+                .cardShadow()
             }
+            .buttonStyle(.plain)
             .disabled(trimmedName.isEmpty || authService.isLoading)
+            .opacity(trimmedName.isEmpty ? 0.5 : 1)
             .padding(.bottom, 40)
         }
         .padding(.horizontal, AppStyle.Spacing.page)

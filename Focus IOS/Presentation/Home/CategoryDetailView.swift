@@ -24,6 +24,8 @@ struct CategoryDetailView: View {
 
     // Inline add
     @State private var isInlineAddFocused = false
+    @State private var activeAddRowId: String?
+    @State private var scrollToAddTrigger = 0
 
     // Section collapse states
     @State private var isTasksSectionCollapsed = false
@@ -510,6 +512,7 @@ struct CategoryDetailView: View {
     // MARK: - Item List
 
     private var itemList: some View {
+        ScrollViewReader { proxy in
         List {
             // MARK: Tasks Section
             tasksSectionHeader
@@ -555,8 +558,17 @@ struct CategoryDetailView: View {
                             InlineAddRow(
                                 placeholder: "Subtask title",
                                 buttonLabel: "Add subtask",
-                                onSubmit: { title in await taskListVM.createSubtask(title: title, parentId: parentId) },
-                                isAnyAddFieldActive: $isInlineAddFocused,
+                                onSubmit: { title in
+                                    await taskListVM.createSubtask(title: title, parentId: parentId)
+                                    scrollToAddTrigger += 1
+                                },
+                                isAnyAddFieldActive: Binding(
+                                    get: { isInlineAddFocused },
+                                    set: { newValue in
+                                        isInlineAddFocused = newValue
+                                        if newValue { activeAddRowId = "add-\(parentId.uuidString)" }
+                                    }
+                                ),
                                 verticalPadding: AppStyle.Spacing.comfortable
                             )
                             .padding(.leading, AppStyle.Insets.nestedRow.leading)
@@ -579,8 +591,17 @@ struct CategoryDetailView: View {
                             InlineAddRow(
                                 placeholder: "Task title",
                                 buttonLabel: "Add task",
-                                onSubmit: { title in await taskListVM.createTask(title: title, categoryId: category.id, priority: priority) },
-                                isAnyAddFieldActive: $isInlineAddFocused,
+                                onSubmit: { title in
+                                    await taskListVM.createTask(title: title, categoryId: category.id, priority: priority)
+                                    scrollToAddTrigger += 1
+                                },
+                                isAnyAddFieldActive: Binding(
+                                    get: { isInlineAddFocused },
+                                    set: { newValue in
+                                        isInlineAddFocused = newValue
+                                        if newValue { activeAddRowId = "addTask-\(priority.rawValue)" }
+                                    }
+                                ),
                                 verticalPadding: AppStyle.Spacing.comfortable
                             )
                             .moveDisabled(true)
@@ -660,6 +681,24 @@ struct CategoryDetailView: View {
                     continuation.resume()
                 }
             }
+        }
+        .onChange(of: isInlineAddFocused) { _, focused in
+            if focused, let targetId = activeAddRowId {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    withAnimation(.easeInOut(duration: 0.25)) {
+                        proxy.scrollTo(targetId, anchor: UnitPoint(x: 0.5, y: 0.5))
+                    }
+                }
+            }
+        }
+        .onChange(of: scrollToAddTrigger) { _, _ in
+            guard isInlineAddFocused, let targetId = activeAddRowId else { return }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                withAnimation(.easeInOut(duration: 0.25)) {
+                    proxy.scrollTo(targetId, anchor: UnitPoint(x: 0.5, y: 0.5))
+                }
+            }
+        }
         }
     }
 

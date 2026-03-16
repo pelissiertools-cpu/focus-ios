@@ -14,6 +14,8 @@ struct TodayView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var coachMarkManager: CoachMarkManager
     @State private var isInlineAddFocused = false
+    @State private var activeAddRowId: String?
+    @State private var scrollToAddTrigger = 0
     @State private var showingAddBar = false
     @State private var isLoading = true
     @State private var coachMarkVisible = false
@@ -879,6 +881,7 @@ struct TodayView: View {
     // MARK: - Item List
 
     private var itemList: some View {
+        ScrollViewReader { proxy in
         List {
             ForEach(flattenedTodayItems) { flatItem in
                 switch flatItem {
@@ -920,8 +923,17 @@ struct TodayView: View {
                     InlineAddRow(
                         placeholder: "Subtask title",
                         buttonLabel: "Add subtask",
-                        onSubmit: { title in await taskListVM.createSubtask(title: title, parentId: parentId) },
-                        isAnyAddFieldActive: $isInlineAddFocused,
+                        onSubmit: { title in
+                            await taskListVM.createSubtask(title: title, parentId: parentId)
+                            scrollToAddTrigger += 1
+                        },
+                        isAnyAddFieldActive: Binding(
+                            get: { isInlineAddFocused },
+                            set: { newValue in
+                                isInlineAddFocused = newValue
+                                if newValue { activeAddRowId = "add-subtask-\(parentId.uuidString)" }
+                            }
+                        ),
                         verticalPadding: AppStyle.Spacing.comfortable
                     )
                     .padding(.leading, 32)
@@ -934,8 +946,17 @@ struct TodayView: View {
                     InlineAddRow(
                         placeholder: "Add to focus",
                         buttonLabel: "Add task",
-                        onSubmit: { title in await createFocusTask(title: title) },
-                        isAnyAddFieldActive: $isInlineAddFocused,
+                        onSubmit: { title in
+                            await createFocusTask(title: title)
+                            scrollToAddTrigger += 1
+                        },
+                        isAnyAddFieldActive: Binding(
+                            get: { isInlineAddFocused },
+                            set: { newValue in
+                                isInlineAddFocused = newValue
+                                if newValue { activeAddRowId = "focus-inline-add" }
+                            }
+                        ),
                         verticalPadding: AppStyle.Spacing.compact,
                         accentColor: .focusBlue
                     )
@@ -968,8 +989,17 @@ struct TodayView: View {
                     InlineAddRow(
                         placeholder: "Task title",
                         buttonLabel: "Add task",
-                        onSubmit: { title in await createTodoTask(title: title) },
-                        isAnyAddFieldActive: $isInlineAddFocused,
+                        onSubmit: { title in
+                            await createTodoTask(title: title)
+                            scrollToAddTrigger += 1
+                        },
+                        isAnyAddFieldActive: Binding(
+                            get: { isInlineAddFocused },
+                            set: { newValue in
+                                isInlineAddFocused = newValue
+                                if newValue { activeAddRowId = "todo-inline-add" }
+                            }
+                        ),
                         verticalPadding: AppStyle.Spacing.comfortable
                     )
                     .listRowInsets(AppStyle.Insets.row)
@@ -1044,6 +1074,24 @@ struct TodayView: View {
         .scrollContentBackground(.hidden)
         .scrollDismissesKeyboard(.interactively)
         .keyboardDismissOverlay(isActive: $isInlineAddFocused)
+        .onChange(of: isInlineAddFocused) { _, focused in
+            if focused, let targetId = activeAddRowId {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    withAnimation(.easeInOut(duration: 0.25)) {
+                        proxy.scrollTo(targetId, anchor: UnitPoint(x: 0.5, y: 0.5))
+                    }
+                }
+            }
+        }
+        .onChange(of: scrollToAddTrigger) { _, _ in
+            guard isInlineAddFocused, let targetId = activeAddRowId else { return }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                withAnimation(.easeInOut(duration: 0.25)) {
+                    proxy.scrollTo(targetId, anchor: UnitPoint(x: 0.5, y: 0.5))
+                }
+            }
+        }
+        }
     }
 
     // MARK: - Item Row

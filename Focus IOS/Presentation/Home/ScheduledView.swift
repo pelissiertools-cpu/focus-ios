@@ -14,6 +14,8 @@ struct ScheduledView: View {
     @EnvironmentObject var coachMarkManager: CoachMarkManager
     @Environment(\.dismiss) private var dismiss
     @State private var isInlineAddFocused = false
+    @State private var activeAddRowId: String?
+    @State private var scrollToAddTrigger = 0
     @State private var isLoading = false
     @State private var coachMarkVisible = false
     @State private var viewMode: ScheduleViewMode = .day
@@ -1099,6 +1101,7 @@ struct ScheduledView: View {
     // MARK: - Item List
 
     private var itemList: some View {
+        ScrollViewReader { proxy in
         List {
             ForEach(flattenedItems) { flatItem in
                 switch flatItem {
@@ -1128,8 +1131,17 @@ struct ScheduledView: View {
                     InlineAddRow(
                         placeholder: "Subtask title",
                         buttonLabel: "Add subtask",
-                        onSubmit: { title in await taskListVM.createSubtask(title: title, parentId: parentId) },
-                        isAnyAddFieldActive: $isInlineAddFocused,
+                        onSubmit: { title in
+                            await taskListVM.createSubtask(title: title, parentId: parentId)
+                            scrollToAddTrigger += 1
+                        },
+                        isAnyAddFieldActive: Binding(
+                            get: { isInlineAddFocused },
+                            set: { newValue in
+                                isInlineAddFocused = newValue
+                                if newValue { activeAddRowId = "add-subtask-\(parentId.uuidString)" }
+                            }
+                        ),
                         verticalPadding: AppStyle.Spacing.comfortable
                     )
                     .padding(.leading, 32)
@@ -1193,6 +1205,24 @@ struct ScheduledView: View {
                     continuation.resume()
                 }
             }
+        }
+        .onChange(of: isInlineAddFocused) { _, focused in
+            if focused, let targetId = activeAddRowId {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    withAnimation(.easeInOut(duration: 0.25)) {
+                        proxy.scrollTo(targetId, anchor: UnitPoint(x: 0.5, y: 0.5))
+                    }
+                }
+            }
+        }
+        .onChange(of: scrollToAddTrigger) { _, _ in
+            guard isInlineAddFocused, let targetId = activeAddRowId else { return }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                withAnimation(.easeInOut(duration: 0.25)) {
+                    proxy.scrollTo(targetId, anchor: UnitPoint(x: 0.5, y: 0.5))
+                }
+            }
+        }
         }
     }
 

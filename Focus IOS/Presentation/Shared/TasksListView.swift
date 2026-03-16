@@ -25,6 +25,8 @@ struct TasksListView: View {
     let searchText: String
     var onSearchTap: (() -> Void)? = nil
     @State private var isInlineAddFocused = false
+    @State private var activeAddRowId: String?
+    @State private var scrollToAddTrigger = 0
     @State private var showCategoryEditDrawer = false
     @State private var initialLoadComplete = false
 
@@ -215,6 +217,7 @@ struct TasksListView: View {
     }
 
     private var taskList: some View {
+        ScrollViewReader { proxy in
         List {
             // Flat array: priority headers + parents + expanded subtasks + add rows
             ForEach(viewModel.flattenedDisplayItems) { item in
@@ -255,8 +258,17 @@ struct TasksListView: View {
                     InlineAddRow(
                         placeholder: "Subtask title",
                         buttonLabel: "Add subtask",
-                        onSubmit: { title in await viewModel.createSubtask(title: title, parentId: parentId) },
-                        isAnyAddFieldActive: $isInlineAddFocused,
+                        onSubmit: { title in
+                            await viewModel.createSubtask(title: title, parentId: parentId)
+                            scrollToAddTrigger += 1
+                        },
+                        isAnyAddFieldActive: Binding(
+                            get: { isInlineAddFocused },
+                            set: { newValue in
+                                isInlineAddFocused = newValue
+                                if newValue { activeAddRowId = "add-\(parentId.uuidString)" }
+                            }
+                        ),
                         verticalPadding: AppStyle.Spacing.comfortable
                     )
                     .padding(.leading, 32)
@@ -278,8 +290,17 @@ struct TasksListView: View {
                     InlineAddRow(
                         placeholder: "Task title",
                         buttonLabel: "Add task",
-                        onSubmit: { title in await viewModel.createTask(title: title, categoryId: viewModel.selectedCategoryId, priority: priority) },
-                        isAnyAddFieldActive: $isInlineAddFocused,
+                        onSubmit: { title in
+                            await viewModel.createTask(title: title, categoryId: viewModel.selectedCategoryId, priority: priority)
+                            scrollToAddTrigger += 1
+                        },
+                        isAnyAddFieldActive: Binding(
+                            get: { isInlineAddFocused },
+                            set: { newValue in
+                                isInlineAddFocused = newValue
+                                if newValue { activeAddRowId = "addTask-\(priority.rawValue)" }
+                            }
+                        ),
                         verticalPadding: AppStyle.Spacing.comfortable
                     )
                     .moveDisabled(true)
@@ -310,6 +331,23 @@ struct TasksListView: View {
         .scrollContentBackground(.hidden)
         .scrollDismissesKeyboard(.interactively)
         .keyboardDismissOverlay(isActive: $isInlineAddFocused)
+        .onChange(of: isInlineAddFocused) { _, focused in
+            if focused, let targetId = activeAddRowId {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    withAnimation(.easeInOut(duration: 0.25)) {
+                        proxy.scrollTo(targetId, anchor: UnitPoint(x: 0.5, y: 0.5))
+                    }
+                }
+            }
+        }
+        .onChange(of: scrollToAddTrigger) { _, _ in
+            guard isInlineAddFocused, let targetId = activeAddRowId else { return }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                withAnimation(.easeInOut(duration: 0.25)) {
+                    proxy.scrollTo(targetId, anchor: UnitPoint(x: 0.5, y: 0.5))
+                }
+            }
+        }
         .refreshable {
             await withCheckedContinuation { continuation in
                 _Concurrency.Task { @MainActor in
@@ -320,6 +358,7 @@ struct TasksListView: View {
                 }
             }
         }
+        } // ScrollViewReader
     }
 
 }

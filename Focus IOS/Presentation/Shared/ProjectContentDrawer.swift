@@ -12,6 +12,7 @@ struct ProjectContentView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var isInlineAddFocused = false
     @State private var activeAddRowId: String?
+    @State private var scrollToAddTrigger = 0
     @State private var projectTitle: String
     @State private var projectNotes: String
     @State private var editingSectionId: UUID?
@@ -192,7 +193,10 @@ struct ProjectContentView: View {
                                     InlineAddRow(
                                         placeholder: "Subtask title",
                                         buttonLabel: "Add subtask",
-                                        onSubmit: { title in await viewModel.createSubtask(title: title, parentId: parentId) },
+                                        onSubmit: { title in
+                                            await viewModel.createSubtask(title: title, parentId: parentId)
+                                            scrollToAddTrigger += 1
+                                        },
                                         isAnyAddFieldActive: Binding(
                                             get: { isInlineAddFocused },
                                             set: { newValue in
@@ -227,7 +231,10 @@ struct ProjectContentView: View {
                                     InlineAddRow(
                                         placeholder: "Task title",
                                         buttonLabel: "Add task",
-                                        onSubmit: { title in await viewModel.createProjectTaskInSection(title: title, projectId: project.id, sectionId: sectionId) },
+                                        onSubmit: { title in
+                                            await viewModel.createProjectTaskInSection(title: title, projectId: project.id, sectionId: sectionId)
+                                            scrollToAddTrigger += 1
+                                        },
                                         isAnyAddFieldActive: Binding(
                                             get: { isInlineAddFocused },
                                             set: { newValue in
@@ -272,8 +279,16 @@ struct ProjectContentView: View {
                     if focused, let targetId = activeAddRowId {
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                             withAnimation(.easeInOut(duration: 0.25)) {
-                                proxy.scrollTo(targetId, anchor: UnitPoint(x: 0.5, y: 0.75))
+                                proxy.scrollTo(targetId, anchor: UnitPoint(x: 0.5, y: 0.5))
                             }
+                        }
+                    }
+                }
+                .onChange(of: scrollToAddTrigger) { _, _ in
+                    guard isInlineAddFocused, let targetId = activeAddRowId else { return }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        withAnimation(.easeInOut(duration: 0.25)) {
+                            proxy.scrollTo(targetId, anchor: UnitPoint(x: 0.5, y: 0.5))
                         }
                     }
                 }
@@ -380,6 +395,12 @@ struct ProjectContentView: View {
                             }
                         } label: {
                             Label("Add section", systemImage: "plus")
+                        }
+
+                        Button {
+                            ShareSheetHelper.share(task: project)
+                        } label: {
+                            Label("Share", systemImage: "square.and.arrow.up")
                         }
                     } label: {
                         Image(systemName: "ellipsis")

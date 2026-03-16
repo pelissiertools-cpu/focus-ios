@@ -12,6 +12,7 @@ struct ListContentView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var isInlineAddFocused = false
     @State private var activeAddRowId: String?
+    @State private var scrollToAddTrigger = 0
     @State private var listTitle: String
     @State private var listNotes: String
     @State private var editingSectionId: UUID?
@@ -121,10 +122,20 @@ struct ListContentView: View {
                         InlineAddRow(
                             placeholder: "Item title",
                             buttonLabel: "Add item",
-                            onSubmit: { title in await viewModel.createItem(title: title, listId: list.id) },
-                            isAnyAddFieldActive: $isInlineAddFocused,
+                            onSubmit: { title in
+                                await viewModel.createItem(title: title, listId: list.id)
+                                scrollToAddTrigger += 1
+                            },
+                            isAnyAddFieldActive: Binding(
+                                get: { isInlineAddFocused },
+                                set: { newValue in
+                                    isInlineAddFocused = newValue
+                                    if newValue { activeAddRowId = "inline-add-empty" }
+                                }
+                            ),
                             verticalPadding: AppStyle.Spacing.compact
                         )
+                        .id("inline-add-empty")
                         .listRowInsets(AppStyle.Insets.row)
                         .listRowBackground(Color.clear)
                         .listRowSeparator(.hidden)
@@ -174,7 +185,10 @@ struct ListContentView: View {
                                     InlineAddRow(
                                         placeholder: "Item title",
                                         buttonLabel: "Add item",
-                                        onSubmit: { title in await viewModel.createItemInSection(title: title, listId: list.id, sectionId: sectionId) },
+                                        onSubmit: { title in
+                                        await viewModel.createItemInSection(title: title, listId: list.id, sectionId: sectionId)
+                                        scrollToAddTrigger += 1
+                                    },
                                         isAnyAddFieldActive: Binding(
                                             get: { isInlineAddFocused },
                                             set: { newValue in
@@ -236,8 +250,16 @@ struct ListContentView: View {
                     if focused, let targetId = activeAddRowId {
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                             withAnimation(.easeInOut(duration: 0.25)) {
-                                proxy.scrollTo(targetId, anchor: UnitPoint(x: 0.5, y: 0.75))
+                                proxy.scrollTo(targetId, anchor: UnitPoint(x: 0.5, y: 0.5))
                             }
+                        }
+                    }
+                }
+                .onChange(of: scrollToAddTrigger) { _, _ in
+                    guard isInlineAddFocused, let targetId = activeAddRowId else { return }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        withAnimation(.easeInOut(duration: 0.25)) {
+                            proxy.scrollTo(targetId, anchor: UnitPoint(x: 0.5, y: 0.5))
                         }
                     }
                 }
@@ -326,6 +348,12 @@ struct ListContentView: View {
                             }
                         } label: {
                             Label("Add section", systemImage: "plus")
+                        }
+
+                        Button {
+                            ShareSheetHelper.share(task: list)
+                        } label: {
+                            Label("Share", systemImage: "square.and.arrow.up")
                         }
 
                         if viewModel.sharedTaskIds.contains(list.id) {

@@ -404,15 +404,19 @@ class TaskRepository {
     // MARK: - Subtask Operations
 
     /// Create a subtask under a parent task
-    func createSubtask(title: String, parentTaskId: UUID, userId: UUID, projectId: UUID? = nil) async throws -> FocusTask {
-        let nextSortOrder = try await nextSortOrder(filterColumn: "parent_task_id", filterValue: parentTaskId.uuidString)
+    func createSubtask(title: String, parentTaskId: UUID, userId: UUID, projectId: UUID? = nil, sortOrder: Int? = nil) async throws -> FocusTask {
+        let resolvedSortOrder = if let sortOrder {
+            sortOrder
+        } else {
+            try await nextSortOrder(filterColumn: "parent_task_id", filterValue: parentTaskId.uuidString)
+        }
 
         let subtask = FocusTask(
             userId: userId,
             title: title,
             type: .task,
             isCompleted: false,
-            sortOrder: nextSortOrder,
+            sortOrder: resolvedSortOrder,
             projectId: projectId,
             parentTaskId: parentTaskId
         )

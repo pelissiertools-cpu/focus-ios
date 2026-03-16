@@ -760,33 +760,36 @@ class ListsViewModel: ObservableObject, LogFilterable, TaskEditingViewModel {
                 newSortOrder = 0
             }
 
-            let newItem = try await repository.createSubtask(
-                title: trimmed,
-                parentTaskId: listId,
-                userId: userId
-            )
-
-            // Override the sort order to place at the right position
-            var createdItem = newItem
-            createdItem.sortOrder = newSortOrder
-            try await repository.updateSortOrders([(id: newItem.id, sortOrder: newSortOrder)])
-
-            allItems.append(createdItem)
-
-            // Shift down items at and after insertion index
+            // Bump sort orders of items at or after insertion point (optimistic)
             var updates: [(id: UUID, sortOrder: Int)] = []
-            for (i, item) in uncompleted.enumerated() where i >= insertionIndex {
+            for i in insertionIndex..<uncompleted.count {
+                let item = uncompleted[i]
+                let bumpedOrder = item.sortOrder + 1
                 if let idx = allItems.firstIndex(where: { $0.id == item.id }) {
-                    allItems[idx].sortOrder = item.sortOrder + 1
+                    allItems[idx].sortOrder = bumpedOrder
                 }
-                updates.append((id: item.id, sortOrder: item.sortOrder + 1))
+                updates.append((id: item.id, sortOrder: bumpedOrder))
             }
             itemsMap[listId] = allItems
 
+            // Single DB call with sort order passed in
+            let newItem = try await repository.createSubtask(
+                title: trimmed,
+                parentTaskId: listId,
+                userId: userId,
+                sortOrder: newSortOrder
+            )
+
+            if var items = itemsMap[listId] {
+                items.append(newItem)
+                itemsMap[listId] = items
+            }
+            notifyTasksChanged()
+
+            // Persist bumped sort orders in background
             if !updates.isEmpty {
                 _Concurrency.Task { await persistSortOrders(updates) }
             }
-            notifyTasksChanged()
         } catch {
             errorMessage = error.localizedDescription
         }

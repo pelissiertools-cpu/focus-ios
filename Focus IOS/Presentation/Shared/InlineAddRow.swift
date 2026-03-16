@@ -67,8 +67,11 @@ struct InlineAddRow: View {
                 isAnyAddFieldActive?.wrappedValue = true
             } else if !isSubmitting {
                 submitIfNeeded()
-                isAnyAddFieldActive?.wrappedValue = false
-                isEditing = false
+                // If submit started, let it handle cleanup when done
+                if !isSubmitting {
+                    isAnyAddFieldActive?.wrappedValue = false
+                    isEditing = false
+                }
             }
         }
         .onDisappear {
@@ -92,11 +95,17 @@ struct InlineAddRow: View {
 
         let submittedTitle = trimmed
         isSubmitting = true
-        title = ""
 
         _Concurrency.Task {
             await onSubmit(submittedTitle)
+            title = ""
             isSubmitting = false
+            // Only dismiss if focus was lost while saving (tap-away);
+            // keep open for consecutive entries when user pressed Enter.
+            if !isFocused {
+                isAnyAddFieldActive?.wrappedValue = false
+                isEditing = false
+            }
         }
     }
 }

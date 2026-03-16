@@ -110,36 +110,6 @@ struct ListContentView: View {
                         .listRowBackground(Color.clear)
                         .listRowSeparator(.hidden)
                         .moveDisabled(true)
-                    } else if allEmpty {
-                        Text("No items yet")
-                            .font(AppStyle.Typography.emptyTitle)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .listRowInsets(EdgeInsets(top: 0, leading: AppStyle.Spacing.page, bottom: AppStyle.Spacing.compact, trailing: AppStyle.Spacing.page))
-                            .listRowBackground(Color.clear)
-                            .listRowSeparator(.hidden)
-                            .moveDisabled(true)
-
-                        InlineAddRow(
-                            placeholder: "Item title",
-                            buttonLabel: "Add item",
-                            onSubmit: { title in
-                                await viewModel.createItem(title: title, listId: list.id)
-                                scrollToAddTrigger += 1
-                            },
-                            isAnyAddFieldActive: Binding(
-                                get: { isInlineAddFocused },
-                                set: { newValue in
-                                    isInlineAddFocused = newValue
-                                    if newValue { activeAddRowId = "inline-add-empty" }
-                                }
-                            ),
-                            verticalPadding: AppStyle.Spacing.compact
-                        )
-                        .id("inline-add-empty")
-                        .listRowInsets(AppStyle.Insets.row)
-                        .listRowBackground(Color.clear)
-                        .listRowSeparator(.hidden)
-                        .moveDisabled(true)
                     } else {
                         let items = viewModel.flattenedListContentItems(for: list.id)
                         let hasRealItems = items.contains { if case .item = $0 { return true }; return false }
@@ -245,7 +215,8 @@ struct ListContentView: View {
                 }
                 .listStyle(.plain)
                 .scrollContentBackground(.hidden)
-                .scrollDismissesKeyboard(.immediately)
+                .scrollDismissesKeyboard(.interactively)
+                .keyboardDismissOverlay(isActive: $isInlineAddFocused)
                 .onChange(of: isInlineAddFocused) { _, focused in
                     if focused, let targetId = activeAddRowId {
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {

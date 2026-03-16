@@ -60,7 +60,11 @@ struct ScheduledView: View {
 
     private var allScheduledTasks: [FocusTask] {
         var tasks = taskListVM.uncompletedTasks
-        let existingIds = Set(tasks.map(\.id))
+        var existingIds = Set(tasks.map(\.id))
+        // Exclude completed tasks so the fallback doesn't re-add stale copies
+        for task in taskListVM.completedTasks {
+            existingIds.insert(task.id)
+        }
         // Include tasks that are in lists/projects but still scheduled
         for (taskId, task) in scheduledTasksById {
             if !existingIds.contains(taskId) && !task.isCompleted && task.type == .task {
@@ -610,6 +614,14 @@ struct ScheduledView: View {
                 }
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: .projectListChanged)) { notification in
+            // Clean local schedule state when a task is deleted
+            if let deletedId = notification.userInfo?["deletedTaskId"] as? UUID {
+                scheduledTasksById.removeValue(forKey: deletedId)
+                itemSchedules.removeValue(forKey: deletedId)
+                itemTimeframes.removeValue(forKey: deletedId)
+            }
+        }
         // Sheets
         .sheet(item: $taskListVM.selectedTaskForDetails) { task in
             TaskDetailsDrawer(task: task, viewModel: taskListVM, categories: taskListVM.categories)
@@ -654,17 +666,30 @@ struct ScheduledView: View {
                 viewModel: taskListVM,
                 onBatchSchedule: { tasks, timeframe, section, dates in
                     guard !dates.isEmpty else { return }
+                    let calendar = Calendar.current
                     let repo = ScheduleRepository()
+                    // Compute max sort across target dates so batch items appear at bottom
+                    var maxSort = 0
+                    for date in dates {
+                        let day = calendar.startOfDay(for: date)
+                        for (_, entries) in itemSchedules {
+                            for entry in entries where calendar.isDate(entry.date, inSameDayAs: day) {
+                                maxSort = max(maxSort, entry.sortOrder)
+                            }
+                        }
+                    }
+                    var nextSort = maxSort + 1
                     for task in tasks {
                         for date in dates {
                             let c = Schedule(
                                 userId: task.userId, taskId: task.id,
                                 timeframe: timeframe, section: section,
-                                scheduleDate: Calendar.current.startOfDay(for: date),
-                                sortOrder: 0
+                                scheduleDate: calendar.startOfDay(for: date),
+                                sortOrder: nextSort
                             )
                             _Concurrency.Task { _ = try? await repo.createSchedule(c) }
                         }
+                        nextSort += 1
                     }
                     _Concurrency.Task { @MainActor in await refreshAllData() }
                 }
@@ -1006,6 +1031,18 @@ struct ScheduledView: View {
                         let section = r.schedule?.section ?? .todo
                         let calendar = Calendar.current
 
+                        // Compute max sort order across target dates so new item appears at bottom
+                        var maxSort = 0
+                        for date in dates {
+                            let day = calendar.startOfDay(for: date)
+                            for (_, entries) in itemSchedules {
+                                for entry in entries where calendar.isDate(entry.date, inSameDayAs: day) {
+                                    maxSort = max(maxSort, entry.sortOrder)
+                                }
+                            }
+                        }
+                        let newSortOrder = maxSort + 1
+
                         // Create on server (now fast: sort orders deferred, schedules parallel)
                         let taskId = await taskListVM.createTaskWithSchedules(
                             title: r.title,
@@ -1017,7 +1054,8 @@ struct ScheduledView: View {
                             selectedSection: section,
                             selectedDates: dates,
                             hasScheduledTime: false,
-                            scheduledTime: nil
+                            scheduledTime: nil,
+                            sortOrder: newSortOrder
                         )
                         guard let taskId else { return }
 
@@ -1027,12 +1065,12 @@ struct ScheduledView: View {
                         if let createdTask = taskListVM.tasks.first(where: { $0.id == taskId }) {
                             scheduledTasksById[taskId] = createdTask
                         }
-                        // Insert schedule entries locally so the item appears in the right date sections
+                        // Insert schedule entries locally so the item appears at the bottom
                         var entries: [(scheduleId: UUID, date: Date, timeframe: Timeframe, sortOrder: Int)] = []
                         var timeframes: Set<Timeframe> = []
                         for date in dates {
                             let day = calendar.startOfDay(for: date)
-                            entries.append((scheduleId: UUID(), date: day, timeframe: timeframe, sortOrder: 0))
+                            entries.append((scheduleId: UUID(), date: day, timeframe: timeframe, sortOrder: newSortOrder))
                             timeframes.insert(timeframe)
                         }
                         itemSchedules[taskId] = entries

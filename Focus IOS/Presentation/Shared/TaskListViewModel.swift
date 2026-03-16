@@ -556,34 +556,23 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
         errorMessage = nil
 
         do {
+            let maxSort = tasks.filter { !$0.isCompleted }.map(\.sortOrder).max() ?? -1
             let newTask = FocusTask(
                 userId: userId,
                 title: title,
                 type: .task,
                 isCompleted: false,
-                sortOrder: 0,
+                sortOrder: maxSort + 1,
                 priority: priority,
                 categoryId: categoryId
             )
 
             let createdTask = try await repository.createTask(newTask)
-            tasks.insert(createdTask, at: 0)
+            tasks.append(createdTask)
             subtasksMap[createdTask.id] = []
             if markScheduled {
                 scheduledTaskIds.insert(createdTask.id)
             }
-
-            // Reassign sort orders locally so the new task is at 0 and others shift up
-            let uncompleted = tasks.filter { !$0.isCompleted }.sorted { $0.sortOrder < $1.sortOrder }
-            var updates: [(id: UUID, sortOrder: Int)] = []
-            for (index, task) in uncompleted.enumerated() {
-                if let tasksIndex = tasks.firstIndex(where: { $0.id == task.id }) {
-                    tasks[tasksIndex].sortOrder = index
-                }
-                updates.append((id: task.id, sortOrder: index))
-            }
-            // Fire-and-forget: persist sort orders without blocking the return
-            _Concurrency.Task { [weak self] in await self?.persistSortOrders(updates) }
 
             notifyTasksChanged()
             return createdTask.id
@@ -796,15 +785,25 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
 
     /// Delete a task (hard delete from Log - also cleans up all schedules)
     func deleteTask(_ task: FocusTask) async {
-        do {
-            // Clean up all schedules for this task first
-            try await scheduleRepository.deleteSchedules(forTask: task.id)
+        // Optimistic: remove from local state immediately
+        tasks.removeAll { $0.id == task.id }
+        subtasksMap.removeValue(forKey: task.id)
 
-            // Delete the task
+        // Notify with deleted task ID so TodayView can clean schedule state
+        LocalMutationTracker.markMutation()
+        NotificationCenter.default.post(
+            name: .projectListChanged,
+            object: self,
+            userInfo: ["deletedTaskId": task.id]
+        )
+
+        // Server cleanup
+        do {
+            try await scheduleRepository.deleteSchedules(forTask: task.id)
             try await repository.deleteTask(id: task.id)
-            tasks.removeAll { $0.id == task.id }
-            notifyTasksChanged()
         } catch {
+            // Rollback on failure
+            tasks.append(task)
             errorMessage = error.localizedDescription
         }
     }
@@ -1234,7 +1233,8 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
         selectedSection: Section,
         selectedDates: Set<Date>,
         hasScheduledTime: Bool,
-        scheduledTime: Date?
+        scheduledTime: Date?,
+        sortOrder: Int = 0
     ) async -> UUID? {
         // 1. Create the task (mark as scheduled immediately to avoid Inbox flash)
         let shouldSchedule = scheduleAfterCreate && !selectedDates.isEmpty
@@ -1259,7 +1259,7 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
                     timeframe: selectedTimeframe,
                     section: selectedSection,
                     scheduleDate: date,
-                    sortOrder: 0,
+                    sortOrder: sortOrder,
                     scheduledTime: hasScheduledTime ? scheduledTime : nil,
                     durationMinutes: hasScheduledTime ? 30 : nil
                 ))

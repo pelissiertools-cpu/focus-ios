@@ -114,6 +114,13 @@ struct TodayView: View {
             }
         }
 
+        // Exclude completed tasks — they're shown via completedTodayEntries.
+        // Without this, the fallback loop below would re-add them from
+        // the stale scheduledTasks cache, creating a duplicate.
+        for task in taskListVM.completedTasks {
+            addedTaskIds.insert(task.id)
+        }
+
         // Tasks that are scheduled for today but not in taskListVM
         // (e.g. moved into a list/project after being scheduled)
         let listIds = Set(scheduledLists.map(\.id))
@@ -328,7 +335,6 @@ struct TodayView: View {
                             _Concurrency.Task { @MainActor in
                                 guard let userId = authService.currentUser?.id else { return }
                                 let taskRepo = TaskRepository()
-                                let scheduleRepo = ScheduleRepository()
                                 do {
                                     let newTask = FocusTask(
                                         userId: userId,
@@ -340,13 +346,18 @@ struct TodayView: View {
                                         categoryId: r.categoryId
                                     )
                                     let created = try await taskRepo.createTask(newTask)
+
+                                    // Fire-and-forget subtask creation
                                     for subtaskTitle in r.subtaskTitles {
-                                        _ = try await taskRepo.createSubtask(
-                                            title: subtaskTitle,
-                                            parentTaskId: created.id,
-                                            userId: userId
-                                        )
+                                        _Concurrency.Task {
+                                            _ = try? await taskRepo.createSubtask(
+                                                title: subtaskTitle,
+                                                parentTaskId: created.id,
+                                                userId: userId
+                                            )
+                                        }
                                     }
+
                                     let scheduleDate: Date
                                     let timeframe: Timeframe
                                     let section: Section
@@ -360,19 +371,35 @@ struct TodayView: View {
                                         timeframe = .daily
                                         section = .todo
                                     }
+                                    let isFocus = section == .focus
+                                    let maxSort = isFocus
+                                        ? (focusEntries.map { $0.sortOrder }.max() ?? -1)
+                                        : (todoEntries.map { $0.sortOrder }.max() ?? -1)
                                     let schedule = Schedule(
                                         userId: userId,
                                         taskId: created.id,
                                         timeframe: timeframe,
                                         section: section,
                                         scheduleDate: scheduleDate,
-                                        sortOrder: 0
+                                        sortOrder: maxSort + 1
                                     )
-                                    _ = try await scheduleRepo.createSchedule(schedule)
-                                    await focusViewModel.fetchSchedules()
-                                    await taskListVM.fetchTasks()
+
+                                    // Fire-and-forget schedule creation
+                                    _Concurrency.Task { _ = try? await scheduleRepository.createSchedule(schedule) }
+
+                                    // Local insert immediately (at end)
+                                    todaySchedules[created.id] = (scheduleId: schedule.id, sortOrder: schedule.sortOrder)
+                                    scheduleById[schedule.id] = schedule
+                                    if isFocus { focusTaskIds.insert(created.id) }
+                                    taskListVM.scheduledTaskIds.insert(created.id)
+                                    taskListVM.tasks.append(created)
+                                    taskListVM.subtasksMap[created.id] = []
+
+                                    // Background sync
+                                    _Concurrency.Task { @MainActor in
+                                        await focusViewModel.fetchSchedules()
+                                    }
                                 } catch { }
-                                await fetchTodayData()
                             }
                         },
                         onDismiss: {
@@ -611,11 +638,37 @@ struct TodayView: View {
             }
         }
         .task {
+            // Pre-populate tasks from cache for instant first render
+            let cache = AppDataCache.shared
+            if cache.hasLoadedTasks && taskListVM.tasks.isEmpty {
+                let allTasks = cache.allTasks
+                taskListVM.tasks = allTasks.filter { $0.parentTaskId == nil }
+                taskListVM.scheduleFilter = .scheduled
+                // Build scheduledTasks from cached tasks
+                let scheduledIds = Set(todaySchedules.keys)
+                if !scheduledIds.isEmpty {
+                    scheduledTasks = Dictionary(uniqueKeysWithValues:
+                        allTasks.filter { scheduledIds.contains($0.id) }.map { ($0.id, $0) }
+                    )
+                }
+            }
+            if todaySchedules.isEmpty { isLoading = true }
             await fetchTodayData()
         }
         .onReceive(NotificationCenter.default.publisher(for: .schedulesChanged)) { _ in
             _Concurrency.Task {
                 await fetchTodayData()
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .projectListChanged)) { notification in
+            // Clean local schedule state when a task is deleted
+            if let deletedId = notification.userInfo?["deletedTaskId"] as? UUID {
+                if let info = todaySchedules.removeValue(forKey: deletedId) {
+                    scheduleById.removeValue(forKey: info.scheduleId)
+                }
+                scheduledTasks.removeValue(forKey: deletedId)
+                focusTaskIds.remove(deletedId)
+                overdueScheduleDates.removeValue(forKey: deletedId)
             }
         }
     }
@@ -699,12 +752,21 @@ struct TodayView: View {
         // Await tasks + categories (fast), then unblock the UI
         _ = await (c, t)
 
-        // Fetch all scheduled tasks by ID so items in lists/projects still appear
+        // Build scheduledTasks from already-fetched taskListVM.tasks; only fetch truly missing ones
         if !todaySchedules.isEmpty {
-            let taskRepo = TaskRepository()
-            if let allScheduledTasks = try? await taskRepo.fetchTasksByIds(Array(todaySchedules.keys)) {
-                scheduledTasks = Dictionary(uniqueKeysWithValues: allScheduledTasks.map { ($0.id, $0) })
+            let scheduledIds = Set(todaySchedules.keys)
+            var byId: [UUID: FocusTask] = [:]
+            for task in taskListVM.tasks where scheduledIds.contains(task.id) {
+                byId[task.id] = task
             }
+            let missingIds = scheduledIds.subtracting(byId.keys)
+            if !missingIds.isEmpty {
+                let taskRepo = TaskRepository()
+                if let missing = try? await taskRepo.fetchTasksByIds(Array(missingIds)) {
+                    for task in missing { byId[task.id] = task }
+                }
+            }
+            scheduledTasks = byId
         }
 
         isLoading = false
@@ -761,13 +823,16 @@ struct TodayView: View {
                 scheduleDate: Date(),
                 sortOrder: maxSort + 1
             )
-            let createdSchedule = try await scheduleRepository.createSchedule(schedule)
 
-            todaySchedules[created.id] = (scheduleId: createdSchedule.id, sortOrder: createdSchedule.sortOrder)
-            scheduleById[createdSchedule.id] = createdSchedule
+            // Fire-and-forget schedule creation; local insert immediately
+            _Concurrency.Task { _ = try? await scheduleRepository.createSchedule(schedule) }
+
+            todaySchedules[created.id] = (scheduleId: schedule.id, sortOrder: schedule.sortOrder)
+            scheduleById[schedule.id] = schedule
             focusTaskIds.insert(created.id)
             taskListVM.scheduledTaskIds.insert(created.id)
-            await taskListVM.fetchTasks()
+            taskListVM.tasks.append(created)
+            taskListVM.subtasksMap[created.id] = []
         } catch {
             // silently fail
         }
@@ -797,12 +862,15 @@ struct TodayView: View {
                 scheduleDate: Date(),
                 sortOrder: maxSort + 1
             )
-            let createdSchedule = try await scheduleRepository.createSchedule(schedule)
 
-            todaySchedules[created.id] = (scheduleId: createdSchedule.id, sortOrder: createdSchedule.sortOrder)
-            scheduleById[createdSchedule.id] = createdSchedule
+            // Fire-and-forget schedule creation; local insert immediately
+            _Concurrency.Task { _ = try? await scheduleRepository.createSchedule(schedule) }
+
+            todaySchedules[created.id] = (scheduleId: schedule.id, sortOrder: schedule.sortOrder)
+            scheduleById[schedule.id] = schedule
             taskListVM.scheduledTaskIds.insert(created.id)
-            await taskListVM.fetchTasks()
+            taskListVM.tasks.append(created)
+            taskListVM.subtasksMap[created.id] = []
         } catch {
             // silently fail
         }

@@ -88,6 +88,7 @@ class HomeViewModel: ObservableObject {
                 if notification.object == nil,
                    LocalMutationTracker.isRecentlyMutated() { return }
                 _Concurrency.Task { @MainActor in
+                    await self.fetchSharedTaskIds()
                     await self.fetchProjects()
                     await self.fetchLists()
                     await self.fetchPinnedTasks()
@@ -140,7 +141,15 @@ class HomeViewModel: ObservableObject {
     func fetchProjects(showLoading: Bool = false) async {
         if showLoading { isLoading = true }
         do {
-            projects = try await repository.fetchProjects(isCleared: false, isCompleted: false)
+            var fetched = try await repository.fetchProjects(isCleared: false, isCompleted: false)
+
+            // Merge shared projects via SECURITY DEFINER RPC (bypasses tasks RLS)
+            let fetchedIds = Set(fetched.map(\.id))
+            let sharedTasks = try await repository.fetchSharedTasks()
+            let sharedProjects = sharedTasks.filter { $0.type == .project && !$0.isCleared && !$0.isCompleted && !fetchedIds.contains($0.id) }
+            fetched.append(contentsOf: sharedProjects)
+
+            projects = fetched
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -149,7 +158,15 @@ class HomeViewModel: ObservableObject {
 
     func fetchLists() async {
         do {
-            lists = try await repository.fetchTasks(ofType: .list, isCleared: false, isCompleted: false)
+            var fetched = try await repository.fetchTasks(ofType: .list, isCleared: false, isCompleted: false)
+
+            // Merge shared lists via SECURITY DEFINER RPC (bypasses tasks RLS)
+            let fetchedListIds = Set(fetched.map(\.id))
+            let sharedListTasks = try await repository.fetchSharedTasks()
+            let sharedLists = sharedListTasks.filter { $0.type == .list && !$0.isCleared && !$0.isCompleted && !fetchedListIds.contains($0.id) }
+            fetched.append(contentsOf: sharedLists)
+
+            lists = fetched
         } catch {
             errorMessage = error.localizedDescription
         }

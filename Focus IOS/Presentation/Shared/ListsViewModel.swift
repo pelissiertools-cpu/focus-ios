@@ -424,11 +424,18 @@ class ListsViewModel: ObservableObject, LogFilterable, TaskEditingViewModel {
         errorMessage = nil
 
         do {
-            let fetchedLists = try await repository.fetchTasks(ofType: .list, isCleared: false)
-            self.lists = fetchedLists
+            var fetchedLists = try await repository.fetchTasks(ofType: .list, isCleared: false)
             self.categories = try await categoryRepository.fetchCategories()
             await fetchScheduledTaskIds()
             await fetchSharedTaskIds()
+
+            // Merge shared lists via SECURITY DEFINER RPC (bypasses tasks RLS)
+            let fetchedIds = Set(fetchedLists.map(\.id))
+            let sharedTasks = try await repository.fetchSharedTasks()
+            let sharedLists = sharedTasks.filter { $0.type == .list && !$0.isCleared && !fetchedIds.contains($0.id) }
+            fetchedLists.append(contentsOf: sharedLists)
+
+            self.lists = fetchedLists
 
             // Update cache
             let cache = AppDataCache.shared

@@ -30,9 +30,9 @@ final class ShareLinkHandler: ObservableObject {
             do {
                 let taskId = try await shareRepository.acceptShare(token: token)
 
-                // Fetch the shared task to show its name
-                let tasks = try await taskRepository.fetchTasksByIds([taskId])
-                acceptedTaskName = tasks.first?.title ?? "Shared item"
+                // Fetch the shared task to show its name (uses RPC to bypass tasks RLS)
+                let sharedTasks = try await taskRepository.fetchSharedTasks()
+                acceptedTaskName = sharedTasks.first(where: { $0.id == taskId })?.title ?? "Shared item"
                 showAcceptedAlert = true
 
                 // Notify all views to refresh

@@ -501,3 +501,11 @@ RETURNS TABLE(user_id UUID, email TEXT, is_owner BOOLEAN, joined_at TIMESTAMPTZ)
   JOIN auth.users au ON ts.shared_with_user_id = au.id
   WHERE ts.task_id = p_task_id AND ts.shared_with_user_id IS NOT NULL
 $$ LANGUAGE sql SECURITY DEFINER STABLE;
+
+-- 8. Fetch full task rows for tasks shared WITH the current user (SECURITY DEFINER bypasses tasks RLS)
+CREATE OR REPLACE FUNCTION fetch_shared_tasks_for_user()
+RETURNS SETOF tasks AS $$
+  SELECT DISTINCT t.* FROM tasks t
+  INNER JOIN task_shares ts ON ts.task_id = t.id
+  WHERE ts.shared_with_user_id = auth.uid()
+$$ LANGUAGE sql SECURITY DEFINER STABLE;

@@ -456,11 +456,18 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
                 }
             }
 
-            let fetchedProjects = try await repository.fetchProjects(isCleared: false)
-            self.projects = fetchedProjects
+            var fetchedProjects = try await repository.fetchProjects(isCleared: false)
             self.categories = try await categoryRepository.fetchCategories()
             await fetchScheduledTaskIds()
             await fetchSharedTaskIds()
+
+            // Merge shared projects via SECURITY DEFINER RPC (bypasses tasks RLS)
+            let fetchedIds = Set(fetchedProjects.map(\.id))
+            let sharedTasks = try await repository.fetchSharedTasks()
+            let sharedProjects = sharedTasks.filter { $0.type == .project && !$0.isCleared && !fetchedIds.contains($0.id) }
+            fetchedProjects.append(contentsOf: sharedProjects)
+
+            self.projects = fetchedProjects
 
             // Update cache
             let cache = AppDataCache.shared

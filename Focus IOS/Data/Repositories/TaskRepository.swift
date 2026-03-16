@@ -205,6 +205,15 @@ class TaskRepository {
         return tasks
     }
 
+    /// Fetch full task data for all tasks shared WITH the current user (bypasses tasks RLS via SECURITY DEFINER RPC)
+    func fetchSharedTasks() async throws -> [FocusTask] {
+        let tasks: [FocusTask] = try await supabase
+            .rpc("fetch_shared_tasks_for_user")
+            .execute()
+            .value
+        return tasks
+    }
+
     /// Fetch tasks by type with optional server-side filters
     func fetchTasks(ofType type: TaskType, isCleared: Bool? = nil, isCompleted: Bool? = nil, topLevelOnly: Bool = false) async throws -> [FocusTask] {
         var query = supabase

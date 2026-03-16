@@ -96,6 +96,20 @@ struct CategoryEditDrawer<VM: LogFilterable>: View {
                 localCategories = viewModel.categories
                 originalCategories = viewModel.categories
             }
+            .onChange(of: focusedRenameId) { _, newId in
+                if newId == nil { saveRenameIfNeeded() }
+            }
+            .onChange(of: isNewCategoryFocused) { _, focused in
+                if !focused, isAddingCategory {
+                    let name = newCategoryName.trimmingCharacters(in: .whitespaces)
+                    if !name.isEmpty {
+                        submitNewCategory()
+                    } else {
+                        isAddingCategory = false
+                        newCategoryName = ""
+                    }
+                }
+            }
             .onChange(of: viewModel.categories.count) { _, _ in
                 let localIds = Set(localCategories.map(\.id))
                 for cat in viewModel.categories where !localIds.contains(cat.id) {

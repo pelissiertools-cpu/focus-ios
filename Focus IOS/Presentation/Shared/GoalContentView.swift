@@ -227,7 +227,8 @@ struct GoalContentView: View {
                 }
                 .listStyle(.plain)
                 .scrollContentBackground(.hidden)
-                .scrollDismissesKeyboard(.immediately)
+                .scrollDismissesKeyboard(.never)
+                .keyboardDismissOverlay(isActive: $isInlineAddFocused)
                 .onChange(of: isInlineAddFocused) { _, focused in
                     if focused {
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
@@ -351,6 +352,7 @@ struct GoalContentView: View {
             if !focused { saveGoalNotes() }
         }
         .onDisappear {
+            saveGoalTitle()
             saveGoalNotes()
             if viewModel.contentEditMode {
                 viewModel.exitContentEditMode()

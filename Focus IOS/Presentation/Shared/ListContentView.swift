@@ -359,6 +359,7 @@ struct ListContentView: View {
             if !focused { saveListNotes() }
         }
         .onDisappear {
+            saveListTitle()
             saveListNotes()
             if viewModel.contentEditMode {
                 viewModel.exitContentEditMode()

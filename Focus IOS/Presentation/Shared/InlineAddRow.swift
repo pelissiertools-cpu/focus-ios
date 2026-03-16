@@ -66,14 +66,21 @@ struct InlineAddRow: View {
             if focused {
                 isAnyAddFieldActive?.wrappedValue = true
             } else if !isSubmitting {
+                submitIfNeeded()
                 isAnyAddFieldActive?.wrappedValue = false
                 isEditing = false
-                title = ""
             }
         }
         .onDisappear {
+            submitIfNeeded()
             isAnyAddFieldActive?.wrappedValue = false
         }
+    }
+
+    private func submitIfNeeded() {
+        let trimmed = title.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return }
+        submit()
     }
 
     private func submit() {

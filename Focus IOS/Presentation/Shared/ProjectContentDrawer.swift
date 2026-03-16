@@ -274,7 +274,8 @@ struct ProjectContentView: View {
                 }
                 .listStyle(.plain)
                 .scrollContentBackground(.hidden)
-                .scrollDismissesKeyboard(.immediately)
+                .scrollDismissesKeyboard(.never)
+                .keyboardDismissOverlay(isActive: $isInlineAddFocused)
                 .onChange(of: isInlineAddFocused) { _, focused in
                     if focused, let targetId = activeAddRowId {
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
@@ -428,6 +429,7 @@ struct ProjectContentView: View {
             if !focused { saveProjectNotes() }
         }
         .onDisappear {
+            saveProjectTitle()
             saveProjectNotes()
             if viewModel.contentEditMode {
                 viewModel.exitContentEditMode()

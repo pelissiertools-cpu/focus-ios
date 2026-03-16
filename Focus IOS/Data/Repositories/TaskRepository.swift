@@ -645,6 +645,28 @@ class TaskRepository {
         return try await createTask(section)
     }
 
+    /// Create a section header under a list
+    func createListSection(title: String, listId: UUID, userId: UUID, sortOrder: Int? = nil) async throws -> FocusTask {
+        let order: Int
+        if let sortOrder = sortOrder {
+            order = sortOrder
+        } else {
+            order = try await nextSortOrder(filterColumn: "parent_task_id", filterValue: listId.uuidString)
+        }
+
+        let section = FocusTask(
+            userId: userId,
+            title: title,
+            type: .task,
+            sortOrder: order,
+            isInLibrary: false,
+            isSection: true,
+            parentTaskId: listId
+        )
+
+        return try await createTask(section)
+    }
+
     /// Create a top-level section header for projects, lists, or goals pages
     func createTopLevelSection(title: String, type: TaskType, userId: UUID) async throws -> FocusTask {
         let nextOrder = try await nextSortOrderByType(type)

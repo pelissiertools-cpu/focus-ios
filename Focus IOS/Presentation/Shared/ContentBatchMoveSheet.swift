@@ -38,13 +38,19 @@ struct ContentBatchMoveSheet: View {
         }
     }
 
-    // Sections only apply for project source
     private var sections: [FocusTask] {
-        guard case .project(let id, let vm) = source else { return [] }
-        let tasks = vm.projectTasksMap[id] ?? []
-        return tasks
-            .filter { $0.isSection && !$0.isCompleted && $0.parentTaskId == nil }
-            .sorted { $0.sortOrder < $1.sortOrder }
+        switch source {
+        case .project(let id, let vm):
+            let tasks = vm.projectTasksMap[id] ?? []
+            return tasks
+                .filter { $0.isSection && !$0.isCompleted && $0.parentTaskId == nil }
+                .sorted { $0.sortOrder < $1.sortOrder }
+        case .list(let id, let vm):
+            let items = vm.itemsMap[id] ?? []
+            return items
+                .filter { $0.isSection && !$0.isCompleted }
+                .sorted { $0.sortOrder < $1.sortOrder }
+        }
     }
 
     private var hasSections: Bool { !sections.isEmpty }
@@ -136,7 +142,7 @@ struct ContentBatchMoveSheet: View {
         .padding(.top, AppStyle.Spacing.compact)
     }
 
-    // MARK: - Section Card (project source only)
+    // MARK: - Section Card
 
     private var sectionCard: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -148,9 +154,8 @@ struct ContentBatchMoveSheet: View {
                 .padding(.bottom, AppStyle.Spacing.small)
 
             moveRow(icon: "minus.circle", title: "No section") {
-                guard case .project(let id, let vm) = source else { return }
                 performMove(message: "Moved to no section") {
-                    await vm.batchMoveContentTasksToSection(sectionId: nil, projectId: id)
+                    await moveToSection(nil)
                 }
             }
 
@@ -158,9 +163,8 @@ struct ContentBatchMoveSheet: View {
                 Divider()
                     .padding(.leading, AppStyle.Spacing.section + AppStyle.Spacing.medium + AppStyle.Layout.pillButton)
                 moveRow(icon: "rectangle.split.3x1", title: section.title.isEmpty ? "Untitled section" : section.title) {
-                    guard case .project(let id, let vm) = source else { return }
                     performMove(message: "Moved to section") {
-                        await vm.batchMoveContentTasksToSection(sectionId: section.id, projectId: id)
+                        await moveToSection(section.id)
                     }
                 }
             }
@@ -297,6 +301,15 @@ struct ContentBatchMoveSheet: View {
     }
 
     // MARK: - Actions
+
+    private func moveToSection(_ sectionId: UUID?) async {
+        switch source {
+        case .project(let id, let vm):
+            await vm.batchMoveContentTasksToSection(sectionId: sectionId, projectId: id)
+        case .list(let id, let vm):
+            await vm.batchMoveContentItemsToSection(sectionId: sectionId, listId: id)
+        }
+    }
 
     private func moveToInbox() async {
         switch source {

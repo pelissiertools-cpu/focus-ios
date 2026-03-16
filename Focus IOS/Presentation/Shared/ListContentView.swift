@@ -11,8 +11,11 @@ struct ListContentView: View {
     @EnvironmentObject var focusViewModel: FocusTabViewModel
     @Environment(\.dismiss) private var dismiss
     @State private var isInlineAddFocused = false
+    @State private var activeAddRowId: String?
     @State private var listTitle: String
     @State private var listNotes: String
+    @State private var editingSectionId: UUID?
+    @State private var scrollToSectionId: UUID?
     @State private var showManageSharing = false
     @FocusState private var isTitleFocused: Bool
     @FocusState private var isNotesFocused: Bool
@@ -52,7 +55,7 @@ struct ListContentView: View {
                     .moveDisabled(true)
 
                     // Item count
-                    let totalItems = (viewModel.itemsMap[list.id] ?? []).count
+                    let totalItems = (viewModel.itemsMap[list.id] ?? []).filter { !$0.isSection }.count
                     if totalItems > 0 {
                         Text("\(totalItems) item\(totalItems == 1 ? "" : "s")")
                             .font(.inter(.subheadline))
@@ -127,10 +130,33 @@ struct ListContentView: View {
                         .listRowSeparator(.hidden)
                         .moveDisabled(true)
                     } else {
-                        let items = flattenedDisplayItems()
+                        let items = viewModel.flattenedListContentItems(for: list.id)
+                        let hasRealItems = items.contains { if case .item = $0 { return true }; return false }
+
+                        if !hasRealItems {
+                            Text("No items yet")
+                                .font(AppStyle.Typography.emptyTitle)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .listRowInsets(EdgeInsets(top: 0, leading: AppStyle.Spacing.page, bottom: AppStyle.Spacing.compact, trailing: AppStyle.Spacing.page))
+                                .listRowBackground(Color.clear)
+                                .listRowSeparator(.hidden)
+                                .moveDisabled(true)
+                        }
 
                         ForEach(items) { displayItem in
                             switch displayItem {
+                            case .section(let section):
+                                ListSectionRow(
+                                    section: section,
+                                    viewModel: viewModel,
+                                    listId: list.id,
+                                    editingSectionId: $editingSectionId
+                                )
+                                .id(section.id)
+                                .listRowInsets(AppStyle.Insets.row)
+                                .listRowBackground(Color.clear)
+                                .listRowSeparator(.hidden)
+
                             case .item(let item):
                                 ListContentItemRow(
                                     item: item,
@@ -142,13 +168,20 @@ struct ListContentView: View {
                                 .listRowBackground(Color.clear)
                                 .listRowSeparator(.hidden)
 
-                            case .addItemRow:
+                            case .addItemRow(let sectionId):
                                 if !viewModel.contentEditMode {
+                                    let rowId = displayItem.id
                                     InlineAddRow(
                                         placeholder: "Item title",
                                         buttonLabel: "Add item",
-                                        onSubmit: { title in await viewModel.createItem(title: title, listId: list.id) },
-                                        isAnyAddFieldActive: $isInlineAddFocused,
+                                        onSubmit: { title in await viewModel.createItemInSection(title: title, listId: list.id, sectionId: sectionId) },
+                                        isAnyAddFieldActive: Binding(
+                                            get: { isInlineAddFocused },
+                                            set: { newValue in
+                                                isInlineAddFocused = newValue
+                                                if newValue { activeAddRowId = rowId }
+                                            }
+                                        ),
                                         verticalPadding: AppStyle.Spacing.compact
                                     )
                                     .moveDisabled(true)
@@ -200,10 +233,20 @@ struct ListContentView: View {
                 .scrollContentBackground(.hidden)
                 .scrollDismissesKeyboard(.immediately)
                 .onChange(of: isInlineAddFocused) { _, focused in
-                    if focused {
+                    if focused, let targetId = activeAddRowId {
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                             withAnimation(.easeInOut(duration: 0.25)) {
-                                proxy.scrollTo("inline-add-anchor", anchor: .bottom)
+                                proxy.scrollTo(targetId, anchor: UnitPoint(x: 0.5, y: 0.75))
+                            }
+                        }
+                    }
+                }
+                .onChange(of: scrollToSectionId) { _, newId in
+                    if let sectionId = newId {
+                        scrollToSectionId = nil
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                            withAnimation(.easeInOut(duration: 0.25)) {
+                                proxy.scrollTo(sectionId, anchor: UnitPoint(x: 0.5, y: 0.75))
                             }
                         }
                     }
@@ -267,6 +310,22 @@ struct ListContentView: View {
                             viewModel.enterContentEditMode()
                         } label: {
                             Label("Select", systemImage: "checkmark.circle")
+                        }
+
+                        Button {
+                            _Concurrency.Task {
+                                await viewModel.createListSection(
+                                    title: "",
+                                    listId: list.id
+                                )
+                                if let items = viewModel.itemsMap[list.id],
+                                   let newSection = items.last(where: { $0.isSection }) {
+                                    editingSectionId = newSection.id
+                                    scrollToSectionId = newSection.id
+                                }
+                            }
+                        } label: {
+                            Label("Add section", systemImage: "plus")
                         }
 
                         if viewModel.sharedTaskIds.contains(list.id) {
@@ -381,47 +440,109 @@ struct ListContentView: View {
         return result
     }
 
-    // MARK: - Content List
+}
 
-    private enum ListDisplayItem: Identifiable {
-        case item(FocusTask)
-        case addItemRow
-        case completedHeader(count: Int)
+// MARK: - List Section Row
 
-        var id: String {
-            switch self {
-            case .item(let task): return task.id.uuidString
-            case .addItemRow: return "add-item-row"
-            case .completedHeader: return "completed-header"
-            }
-        }
+struct ListSectionRow: View {
+    let section: FocusTask
+    @ObservedObject var viewModel: ListsViewModel
+    let listId: UUID
+    @Binding var editingSectionId: UUID?
+    @State private var sectionTitle: String
+    @State private var showDeleteConfirmation = false
+    @FocusState private var isEditing: Bool
+
+    init(section: FocusTask, viewModel: ListsViewModel, listId: UUID, editingSectionId: Binding<UUID?>) {
+        self.section = section
+        self.viewModel = viewModel
+        self.listId = listId
+        self._editingSectionId = editingSectionId
+        _sectionTitle = State(initialValue: section.title)
     }
 
-    private func flattenedDisplayItems() -> [ListDisplayItem] {
-        let uncompleted = viewModel.getUncompletedItems(for: list.id)
-        let completed = viewModel.getCompletedItems(for: list.id)
+    private var itemCount: Int {
+        viewModel.sectionItemCount(sectionId: section.id, listId: listId)
+    }
 
-        var result: [ListDisplayItem] = []
+    var body: some View {
+        VStack(alignment: .leading, spacing: AppStyle.Spacing.small) {
+            HStack {
+                TextField("Section name", text: $sectionTitle)
+                    .font(.inter(.headline, weight: .bold))
+                    .foregroundColor(.focusBlue)
+                    .textFieldStyle(.plain)
+                    .focused($isEditing)
+                    .onSubmit { saveSectionTitle() }
+                    .allowsHitTesting(isEditing)
 
-        for item in uncompleted {
-            result.append(.item(item))
+                Spacer()
+
+                if itemCount > 0 {
+                    Text("\(itemCount)")
+                        .font(.inter(.caption, weight: .medium))
+                        .foregroundColor(.secondary)
+                }
+            }
+            .padding(.top, AppStyle.Spacing.section)
+
+            Rectangle()
+                .fill(Color.cardBorder)
+                .frame(height: AppStyle.Border.thin)
         }
-
-        result.append(.addItemRow)
-
-        if !completed.isEmpty {
-            result.append(.completedHeader(count: completed.count))
-
-            if !viewModel.isDoneSectionCollapsed(for: list.id) {
-                for item in completed {
-                    result.append(.item(item))
+        .contentShape(Rectangle())
+        .onTapGesture {
+            isEditing = true
+        }
+        .contextMenu {
+            Button(role: .destructive) {
+                showDeleteConfirmation = true
+            } label: {
+                Label("Delete", systemImage: "trash")
+            }
+        }
+        .alert("Delete Section?", isPresented: $showDeleteConfirmation) {
+            Button("Cancel", role: .cancel) { }
+            Button("Delete", role: .destructive) {
+                _Concurrency.Task {
+                    await viewModel.deleteListSection(section, listId: listId)
+                }
+            }
+        } message: {
+            Text("This will remove the section header. Items will not be deleted.")
+        }
+        .onAppear {
+            if editingSectionId == section.id {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    isEditing = true
+                    editingSectionId = nil
                 }
             }
         }
-
-        return result
+        .onChange(of: editingSectionId) { _, newId in
+            if newId == section.id {
+                isEditing = true
+                editingSectionId = nil
+            }
+        }
+        .onChange(of: isEditing) { _, focused in
+            if !focused { saveSectionTitle() }
+        }
+        .onChange(of: section.title) { _, newTitle in
+            if !isEditing { sectionTitle = newTitle }
+        }
     }
 
+    private func saveSectionTitle() {
+        let trimmed = sectionTitle.trimmingCharacters(in: .whitespaces)
+        if trimmed.isEmpty {
+            return
+        }
+        guard trimmed != section.title else { return }
+        _Concurrency.Task {
+            await viewModel.renameListSection(section, newTitle: trimmed)
+        }
+    }
 }
 
 // MARK: - List Content Item Row

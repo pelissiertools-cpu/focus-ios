@@ -26,6 +26,24 @@ enum FlatListDisplayItem: Identifiable {
     }
 }
 
+// MARK: - List Content Display Item (for items within a single list)
+
+enum ListContentDisplayItem: Identifiable {
+    case item(FocusTask)
+    case section(FocusTask)
+    case addItemRow(sectionId: UUID?)
+    case completedHeader(count: Int)
+
+    var id: String {
+        switch self {
+        case .item(let task): return task.id.uuidString
+        case .section(let section): return "section-\(section.id.uuidString)"
+        case .addItemRow(let sectionId): return "add-item-\(sectionId?.uuidString ?? "default")"
+        case .completedHeader: return "completed-header"
+        }
+    }
+}
+
 @MainActor
 class ListsViewModel: ObservableObject, LogFilterable, TaskEditingViewModel {
     // MARK: - Published Properties
@@ -650,6 +668,130 @@ class ListsViewModel: ObservableObject, LogFilterable, TaskEditingViewModel {
         }
     }
 
+    // MARK: - Section CRUD (within a list)
+
+    func createListSection(title: String, listId: UUID) async {
+        guard let userId = authService.currentUser?.id else {
+            errorMessage = "No authenticated user"
+            return
+        }
+        do {
+            let section = try await repository.createListSection(
+                title: title,
+                listId: listId,
+                userId: userId
+            )
+            if var items = itemsMap[listId] {
+                items.append(section)
+                itemsMap[listId] = items
+            } else {
+                itemsMap[listId] = [section]
+            }
+            notifyTasksChanged()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func renameListSection(_ section: FocusTask, newTitle: String) async {
+        let trimmed = newTitle.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty, trimmed != section.title else { return }
+        await updateTask(section, newTitle: trimmed)
+    }
+
+    func deleteListSection(_ section: FocusTask, listId: UUID) async {
+        await deleteItem(section, listId: listId)
+    }
+
+    func sectionItemCount(sectionId: UUID, listId: UUID) -> Int {
+        let allItems = itemsMap[listId] ?? []
+        let uncompleted = allItems.filter { !$0.isCompleted }.sorted { $0.sortOrder < $1.sortOrder }
+
+        var count = 0
+        var inSection = false
+
+        for item in uncompleted {
+            if item.isSection {
+                if item.id == sectionId {
+                    inSection = true
+                } else if inSection {
+                    break
+                }
+            } else if inSection {
+                count += 1
+            }
+        }
+        return count
+    }
+
+    func createItemInSection(title: String, listId: UUID, sectionId: UUID?) async {
+        guard let userId = authService.currentUser?.id else {
+            errorMessage = "No authenticated user"
+            return
+        }
+
+        let trimmed = title.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return }
+
+        do {
+            var allItems = itemsMap[listId] ?? []
+            let uncompleted = allItems.filter { !$0.isCompleted }.sorted { $0.sortOrder < $1.sortOrder }
+
+            // Find insertion index
+            let insertionIndex: Int
+            if let sectionId = sectionId {
+                if let sectionIdx = uncompleted.firstIndex(where: { $0.id == sectionId }) {
+                    let rest = uncompleted[(sectionIdx + 1)...]
+                    insertionIndex = rest.firstIndex(where: { $0.isSection }) ?? uncompleted.count
+                } else {
+                    insertionIndex = uncompleted.count
+                }
+            } else {
+                insertionIndex = uncompleted.firstIndex(where: { $0.isSection }) ?? uncompleted.count
+            }
+
+            // Determine sort order for the new item
+            let newSortOrder: Int
+            if insertionIndex < uncompleted.count {
+                newSortOrder = uncompleted[insertionIndex].sortOrder
+            } else if let last = uncompleted.last {
+                newSortOrder = last.sortOrder + 1
+            } else {
+                newSortOrder = 0
+            }
+
+            let newItem = try await repository.createSubtask(
+                title: trimmed,
+                parentTaskId: listId,
+                userId: userId
+            )
+
+            // Override the sort order to place at the right position
+            var createdItem = newItem
+            createdItem.sortOrder = newSortOrder
+            try await repository.updateSortOrders([(id: newItem.id, sortOrder: newSortOrder)])
+
+            allItems.append(createdItem)
+
+            // Shift down items at and after insertion index
+            var updates: [(id: UUID, sortOrder: Int)] = []
+            for (i, item) in uncompleted.enumerated() where i >= insertionIndex {
+                if let idx = allItems.firstIndex(where: { $0.id == item.id }) {
+                    allItems[idx].sortOrder = item.sortOrder + 1
+                }
+                updates.append((id: item.id, sortOrder: item.sortOrder + 1))
+            }
+            itemsMap[listId] = allItems
+
+            if !updates.isEmpty {
+                _Concurrency.Task { await persistSortOrders(updates) }
+            }
+            notifyTasksChanged()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
     func togglePin(_ item: FocusTask, listId: UUID) async {
         let newPinned = !item.isPinned
         do {
@@ -801,27 +943,50 @@ class ListsViewModel: ObservableObject, LogFilterable, TaskEditingViewModel {
         }
     }
 
-    // MARK: - List Content Move Handler (items within a single list)
+    // MARK: - List Content Move Handler (items and sections within a single list)
 
     func handleListContentFlatMove(from source: IndexSet, to destination: Int, listId: UUID) {
+        let flat = flattenedListContentItems(for: listId)
         guard let fromIdx = source.first else { return }
 
-        let uncompleted = getUncompletedItems(for: listId)
+        // Extract the moved item (item or section)
+        let movedTask: FocusTask
+        switch flat[fromIdx] {
+        case .item(let t): movedTask = t
+        case .section(let s): movedTask = s
+        default: return
+        }
+        guard !movedTask.isCompleted else { return }
 
-        // The flat display order is: [uncompleted items..., addItemRow, completedHeader?, completed items...]
-        // Only uncompleted items are movable, so fromIdx maps directly to the uncompleted array
-        guard fromIdx < uncompleted.count else { return }
+        // Get all movable indices (items and sections, not add rows or completed header)
+        let parentIndices = flat.enumerated().compactMap { (i, item) -> (flatIdx: Int, task: FocusTask)? in
+            switch item {
+            case .item(let t) where !t.isCompleted: return (i, t)
+            case .section(let s): return (i, s)
+            default: return nil
+            }
+        }
 
-        let clampedTo = min(destination, uncompleted.count)
-        guard fromIdx != clampedTo && fromIdx + 1 != clampedTo else { return }
+        guard let parentFrom = parentIndices.firstIndex(where: { $0.task.id == movedTask.id }) else { return }
+
+        var parentTo = parentIndices.count
+        for (pi, entry) in parentIndices.enumerated() {
+            if destination <= entry.flatIdx {
+                parentTo = pi
+                break
+            }
+        }
+        if parentTo > parentFrom { parentTo = min(parentTo, parentIndices.count) }
+
+        guard parentFrom != parentTo && parentFrom + 1 != parentTo else { return }
 
         guard var allChildren = itemsMap[listId] else { return }
-        var ordered = allChildren.filter { !$0.isCompleted }.sorted { $0.sortOrder < $1.sortOrder }
+        var uncompleted = allChildren.filter { !$0.isCompleted }.sorted { $0.sortOrder < $1.sortOrder }
 
-        ordered.move(fromOffsets: IndexSet(integer: fromIdx), toOffset: clampedTo)
+        uncompleted.move(fromOffsets: IndexSet(integer: parentFrom), toOffset: parentTo)
 
         var updates: [(id: UUID, sortOrder: Int)] = []
-        for (index, child) in ordered.enumerated() {
+        for (index, child) in uncompleted.enumerated() {
             if let mapIndex = allChildren.firstIndex(where: { $0.id == child.id }) {
                 allChildren[mapIndex].sortOrder = index
             }
@@ -829,6 +994,54 @@ class ListsViewModel: ObservableObject, LogFilterable, TaskEditingViewModel {
         }
         itemsMap[listId] = allChildren
         _Concurrency.Task { await persistSortOrders(updates) }
+    }
+
+    // MARK: - Flattened List Content Items (for display within a single list)
+
+    func flattenedListContentItems(for listId: UUID) -> [ListContentDisplayItem] {
+        let allItems = itemsMap[listId] ?? []
+        let uncompleted = allItems.filter { !$0.isCompleted }.sorted { $0.sortOrder < $1.sortOrder }
+        let completed = allItems.filter { $0.isCompleted }.sorted { $0.sortOrder < $1.sortOrder }
+
+        let hasSections = uncompleted.contains { $0.isSection }
+        var result: [ListContentDisplayItem] = []
+
+        if hasSections {
+            var currentSectionId: UUID? = nil
+            var hasItemsBeforeFirstSection = false
+
+            for item in uncompleted {
+                if item.isSection {
+                    // Close previous group with an add row
+                    if currentSectionId != nil || hasItemsBeforeFirstSection {
+                        result.append(.addItemRow(sectionId: currentSectionId))
+                    }
+                    result.append(.section(item))
+                    currentSectionId = item.id
+                } else {
+                    if currentSectionId == nil { hasItemsBeforeFirstSection = true }
+                    result.append(.item(item))
+                }
+            }
+            // Add row for the last section
+            result.append(.addItemRow(sectionId: currentSectionId))
+        } else {
+            for item in uncompleted {
+                result.append(.item(item))
+            }
+            result.append(.addItemRow(sectionId: nil))
+        }
+
+        if !completed.isEmpty {
+            result.append(.completedHeader(count: completed.count))
+            if !isDoneSectionCollapsed(for: listId) {
+                for item in completed {
+                    result.append(.item(item))
+                }
+            }
+        }
+
+        return result
     }
 
     // MARK: - Edit Mode
@@ -1066,6 +1279,61 @@ class ListsViewModel: ObservableObject, LogFilterable, TaskEditingViewModel {
         }
     }
 
+    // MARK: - Batch Move Items Between Sections (within a list)
+
+    func batchMoveContentItemsToSection(sectionId: UUID?, listId: UUID) async {
+        guard !selectedContentItemIds.isEmpty else { return }
+        var allItems = itemsMap[listId] ?? []
+        var uncompleted = allItems.filter { !$0.isCompleted }.sorted { $0.sortOrder < $1.sortOrder }
+
+        let selectedIds = selectedContentItemIds
+        // Remove selected items from their current positions (don't move sections)
+        let movedItems = uncompleted.filter { selectedIds.contains($0.id) && !$0.isSection }
+        uncompleted.removeAll { selectedIds.contains($0.id) && !$0.isSection }
+
+        guard !movedItems.isEmpty else { return }
+
+        // Find the insertion point (end of target section)
+        let insertionIndex: Int
+        if let sectionId = sectionId {
+            if let sectionIdx = uncompleted.firstIndex(where: { $0.id == sectionId }) {
+                let rest = uncompleted[(sectionIdx + 1)...]
+                insertionIndex = rest.firstIndex(where: { $0.isSection }) ?? uncompleted.count
+            } else {
+                insertionIndex = uncompleted.count
+            }
+        } else {
+            // "No section" = before the first section header
+            insertionIndex = uncompleted.firstIndex(where: { $0.isSection }) ?? uncompleted.count
+        }
+
+        // Insert moved items at the insertion point
+        uncompleted.insert(contentsOf: movedItems, at: insertionIndex)
+
+        // Reassign sort orders sequentially
+        var sortUpdates: [(id: UUID, sortOrder: Int)] = []
+        for (i, item) in uncompleted.enumerated() {
+            if item.sortOrder != i {
+                sortUpdates.append((id: item.id, sortOrder: i))
+            }
+            if let idx = allItems.firstIndex(where: { $0.id == item.id }) {
+                allItems[idx].sortOrder = i
+            }
+        }
+
+        itemsMap[listId] = allItems
+        exitContentEditMode()
+
+        // Persist
+        if !sortUpdates.isEmpty {
+            do {
+                try await repository.updateSortOrders(sortUpdates)
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+        }
+    }
+
     // MARK: - Content Edit Mode (items within a list)
 
     func enterContentEditMode() {
@@ -1091,7 +1359,7 @@ class ListsViewModel: ObservableObject, LogFilterable, TaskEditingViewModel {
     }
 
     func selectAllContentItems(listId: UUID) {
-        let items = getUncompletedItems(for: listId)
+        let items = getUncompletedItems(for: listId).filter { !$0.isSection }
         selectedContentItemIds = Set(items.map { $0.id })
     }
 
@@ -1104,7 +1372,7 @@ class ListsViewModel: ObservableObject, LogFilterable, TaskEditingViewModel {
     }
 
     func allContentItemsSelected(for listId: UUID) -> Bool {
-        let items = getUncompletedItems(for: listId)
+        let items = getUncompletedItems(for: listId).filter { !$0.isSection }
         return !items.isEmpty && Set(items.map { $0.id }).isSubset(of: selectedContentItemIds)
     }
 

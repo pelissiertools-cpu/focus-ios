@@ -250,22 +250,24 @@ struct AddBar: View {
 
             // Glass card
             VStack(spacing: 0) {
-                // Title
-                TextField(titlePlaceholder, text: $title)
-                    .font(.inter(.title3))
-                    .textFieldStyle(.plain)
-                    .focused($titleFocused)
-                    .submitLabel(.return)
-                    .onSubmit { save() }
-                    .padding(.horizontal, AppStyle.Spacing.content)
-                    .padding(.top, AppStyle.Spacing.page)
-                    .padding(.bottom, AppStyle.Spacing.page)
+                if !(config.showSchedule && scheduleExpanded) {
+                    // Title
+                    TextField(titlePlaceholder, text: $title)
+                        .font(.inter(.title3))
+                        .textFieldStyle(.plain)
+                        .focused($titleFocused)
+                        .submitLabel(.return)
+                        .onSubmit { save() }
+                        .padding(.horizontal, AppStyle.Spacing.content)
+                        .padding(.top, AppStyle.Spacing.page)
+                        .padding(.bottom, AppStyle.Spacing.page)
 
-                // Content area - collapses when schedule picker is open
-                if scheduleExpanded && hasSubItems {
-                    collapsedItemsSummary
-                } else {
-                    contentArea
+                    // Content area - collapses when schedule picker is open
+                    if scheduleExpanded && hasSubItems {
+                        collapsedItemsSummary
+                    } else {
+                        contentArea
+                    }
                 }
 
                 // Schedule expansion
@@ -505,59 +507,7 @@ struct AddBar: View {
 
     private var scheduleSection: some View {
         VStack(spacing: 0) {
-            Divider()
-                .padding(.horizontal, AppStyle.Spacing.content)
-
-            if notificationExpanded {
-                // Collapsed date summary row
-                Button {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        notificationExpanded = false
-                    }
-                } label: {
-                    HStack {
-                        Image(systemName: "calendar")
-                            .font(.inter(.subheadline))
-                            .foregroundColor(.secondary)
-                            .frame(width: 24)
-
-                        Text("Date")
-                            .font(.inter(.body, weight: .medium))
-                            .foregroundColor(.primary)
-
-                        Text(scheduleDateLabel)
-                            .font(.inter(.body, weight: .medium))
-                            .foregroundColor(.focusBlue)
-
-                        Image(systemName: "chevron.down")
-                            .font(.inter(.caption2))
-                            .foregroundColor(.secondary)
-                            .rotationEffect(.degrees(0))
-
-                        Spacer()
-                    }
-                    .padding(.horizontal, AppStyle.Spacing.content)
-                    .padding(.vertical, AppStyle.Spacing.comfortable)
-                }
-                .buttonStyle(.plain)
-            } else {
-                VStack(alignment: .leading, spacing: AppStyle.Spacing.comfortable) {
-                    UnifiedCalendarPicker(
-                        selectedDates: $scheduleDates,
-                        selectedTimeframe: $timeframe
-                    )
-                }
-                .padding(.horizontal, AppStyle.Spacing.content)
-                .padding(.top, AppStyle.Spacing.small)
-                .padding(.bottom, AppStyle.Spacing.content)
-            }
-
-            NotificationToggleRow(
-                isEnabled: $notificationEnabled,
-                selectedTime: $notificationTime,
-                isExpanded: $notificationExpanded
-            )
-
+            // Top action buttons
             HStack {
                 Button {
                     withAnimation(.easeInOut(duration: 0.2)) {
@@ -596,7 +546,72 @@ struct AddBar: View {
                 .buttonStyle(.plain)
             }
             .padding(.horizontal, AppStyle.Spacing.content)
-            .padding(.bottom, AppStyle.Spacing.tiny)
+            .padding(.top, AppStyle.Spacing.compact)
+
+            if notificationExpanded {
+                // Collapsed date summary row
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        notificationExpanded = false
+                    }
+                } label: {
+                    HStack {
+                        Image(systemName: "calendar")
+                            .font(.inter(.subheadline))
+                            .foregroundColor(.secondary)
+                            .frame(width: 24)
+
+                        Text("Date")
+                            .font(.inter(.body, weight: .medium))
+                            .foregroundColor(.primary)
+
+                        Text(scheduleDateLabel)
+                            .font(.inter(.body, weight: .medium))
+                            .foregroundColor(.focusBlue)
+
+                        Image(systemName: "chevron.down")
+                            .font(.inter(.caption2))
+                            .foregroundColor(.secondary)
+                            .rotationEffect(.degrees(0))
+
+                        Spacer()
+                    }
+                    .padding(.horizontal, AppStyle.Spacing.content)
+                    .padding(.vertical, AppStyle.Spacing.comfortable)
+                }
+                .buttonStyle(.plain)
+            } else {
+                VStack(alignment: .leading, spacing: AppStyle.Spacing.comfortable) {
+                    QuickDateButtons(
+                        selectedTimeframe: $timeframe,
+                        onSelectDate: { date in
+                            let normalized = Calendar.current.startOfDay(for: date)
+                            if scheduleDates.contains(normalized) {
+                                scheduleDates.remove(normalized)
+                            } else {
+                                scheduleDates = [normalized]
+                            }
+                        },
+                        isDateSelected: { date in
+                            scheduleDates.contains { Calendar.current.isDate($0, inSameDayAs: date) }
+                        }
+                    )
+
+                    UnifiedCalendarPicker(
+                        selectedDates: $scheduleDates,
+                        selectedTimeframe: $timeframe
+                    )
+                }
+                .padding(.horizontal, AppStyle.Spacing.content)
+                .padding(.top, AppStyle.Spacing.small)
+                .padding(.bottom, AppStyle.Spacing.content)
+            }
+
+            NotificationToggleRow(
+                isEnabled: $notificationEnabled,
+                selectedTime: $notificationTime,
+                isExpanded: $notificationExpanded
+            )
         }
     }
 
@@ -722,6 +737,7 @@ struct AddBar: View {
         }
         .padding(.horizontal, AppStyle.Spacing.content)
         .padding(.bottom, AppStyle.Spacing.tiny)
+        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
     }
 
     // MARK: - Options Row
@@ -796,6 +812,7 @@ struct AddBar: View {
         }
         .padding(.horizontal, AppStyle.Spacing.content)
         .padding(.top, AppStyle.Spacing.small)
+        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
     }
 
     // MARK: - Save

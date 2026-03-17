@@ -347,7 +347,7 @@ struct BacklogView: View {
                     showCreateListAlert: $showCreateListAlert
                 )
                 .transition(.scale.combined(with: .opacity))
-            } else if !showingAddBar && !isSearchActive {
+            } else if !showingAddBar && !isSearchActive && !isInlineAddFocused {
                 // FAB
                 VStack {
                     Spacer()

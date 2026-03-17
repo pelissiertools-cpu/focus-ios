@@ -285,7 +285,7 @@ struct TodayView: View {
                     showCreateListAlert: $showCreateListAlert
                 )
                 .transition(.scale.combined(with: .opacity))
-            } else if !showingAddBar {
+            } else if !showingAddBar && !isInlineAddFocused {
                 VStack {
                     Spacer()
                     HStack {

@@ -176,10 +176,10 @@ struct ProjectContentView: View {
                             case .task(let task):
                                 if !isDisplayItemInCollapsedSection(item, items: items) {
                                     Group {
-                                        if task.parentTaskId != nil {
+                                        if let parentId = task.parentTaskId {
                                             ProjectSubtaskRow(
                                                 subtask: task,
-                                                parentId: task.parentTaskId!,
+                                                parentId: parentId,
                                                 viewModel: viewModel
                                             )
                                             .padding(.leading, viewModel.contentEditMode ? 0 : 32)

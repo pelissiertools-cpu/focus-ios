@@ -497,8 +497,9 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
             projectTasksMap[projectId] = topLevelTasks
 
             // Pre-populate subtasksMap
-            for task in allTasks where task.parentTaskId != nil && !task.isCleared {
-                subtasksMap[task.parentTaskId!, default: []].append(task)
+            for task in allTasks where !task.isCleared {
+                guard let parentId = task.parentTaskId else { continue }
+                subtasksMap[parentId, default: []].append(task)
             }
             // Ensure empty entries for tasks without subtasks (skip sections)
             for task in topLevelTasks where !task.isSection {
@@ -1632,7 +1633,7 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
 
         } else {
             // --- Subtask moved ---
-            let parentId = movedTask.parentTaskId!
+            guard let parentId = movedTask.parentTaskId else { return }
 
             guard let parentFlatIdx = flat.firstIndex(where: {
                 if case .task(let t) = $0 { return t.id == parentId }

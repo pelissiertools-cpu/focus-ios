@@ -147,7 +147,7 @@ struct BacklogView: View {
             switch item {
             case .task(let task):
                 return filteredTaskIds.contains(task.id) ||
-                       (task.parentTaskId != nil && filteredTaskIds.contains(task.parentTaskId!))
+                       (task.parentTaskId.map { filteredTaskIds.contains($0) } ?? false)
             case .priorityHeader:
                 return true
             case .addSubtaskRow(let parentId): return filteredTaskIds.contains(parentId)

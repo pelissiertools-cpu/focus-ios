@@ -144,8 +144,9 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
             let allTasks = cache.allTasks
             self.tasks = allTasks.filter { $0.parentTaskId == nil }
             var newSubtasksMap: [UUID: [FocusTask]] = [:]
-            for task in allTasks where task.parentTaskId != nil {
-                newSubtasksMap[task.parentTaskId!, default: []].append(task)
+            for task in allTasks {
+                guard let parentId = task.parentTaskId else { continue }
+                newSubtasksMap[parentId, default: []].append(task)
             }
             for task in self.tasks {
                 if newSubtasksMap[task.id] == nil {
@@ -523,8 +524,9 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
 
             // Pre-populate subtasksMap from already-fetched data
             var newSubtasksMap: [UUID: [FocusTask]] = [:]
-            for task in allTasks where task.parentTaskId != nil {
-                newSubtasksMap[task.parentTaskId!, default: []].append(task)
+            for task in allTasks {
+                guard let parentId = task.parentTaskId else { continue }
+                newSubtasksMap[parentId, default: []].append(task)
             }
             for task in self.tasks {
                 if newSubtasksMap[task.id] == nil {
@@ -1115,7 +1117,7 @@ class TaskListViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
 
         } else {
             // --- Subtask moved ---
-            let parentId = movedTask.parentTaskId!
+            guard let parentId = movedTask.parentTaskId else { return }
 
             // Find parent's section bounds to validate the move
             guard let parentFlatIdx = flat.firstIndex(where: {

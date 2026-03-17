@@ -408,8 +408,9 @@ class GoalsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
             let topLevelTasks = allTasks.filter { $0.parentTaskId == nil && !$0.isCleared }
             goalTasksMap[goalId] = topLevelTasks
 
-            for task in allTasks where task.parentTaskId != nil && !task.isCleared {
-                subtasksMap[task.parentTaskId!, default: []].append(task)
+            for task in allTasks where !task.isCleared {
+                guard let parentId = task.parentTaskId else { continue }
+                subtasksMap[parentId, default: []].append(task)
             }
             for task in topLevelTasks where !task.isSection {
                 if subtasksMap[task.id] == nil {
@@ -1166,7 +1167,7 @@ class GoalsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
             _Concurrency.Task { await persistSortOrders(updates) }
 
         } else {
-            let parentId = movedTask.parentTaskId!
+            guard let parentId = movedTask.parentTaskId else { return }
 
             guard let parentFlatIdx = flat.firstIndex(where: {
                 if case .task(let t) = $0 { return t.id == parentId }

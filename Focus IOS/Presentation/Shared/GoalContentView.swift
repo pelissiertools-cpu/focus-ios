@@ -138,10 +138,10 @@ struct GoalContentView: View {
 
                                 case .task(let task):
                                     Group {
-                                        if task.parentTaskId != nil {
+                                        if let parentId = task.parentTaskId {
                                             GoalSubtaskRow(
                                                 subtask: task,
-                                                parentId: task.parentTaskId!,
+                                                parentId: parentId,
                                                 viewModel: viewModel
                                             )
                                             .padding(.leading, viewModel.contentEditMode ? 0 : 32)

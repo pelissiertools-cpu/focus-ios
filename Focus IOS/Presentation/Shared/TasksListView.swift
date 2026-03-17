@@ -720,7 +720,9 @@ struct FlatTaskRow: View {
                         if isParent {
                             viewModel.requestToggleCompletion(task)
                         } else {
-                            viewModel.requestToggleSubtaskCompletion(task, parentId: task.parentTaskId!)
+                            if let parentId = task.parentTaskId {
+                                viewModel.requestToggleSubtaskCompletion(task, parentId: parentId)
+                            }
                         }
                     }
                 } label: {
@@ -817,7 +819,9 @@ struct FlatTaskRow: View {
                         showDeleteConfirmation = true
                     } else {
                         _Concurrency.Task {
-                            await viewModel.deleteSubtask(task, parentId: task.parentTaskId!)
+                            if let parentId = task.parentTaskId {
+                                await viewModel.deleteSubtask(task, parentId: parentId)
+                            }
                         }
                     }
                 }

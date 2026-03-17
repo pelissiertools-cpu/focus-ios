@@ -13,6 +13,7 @@ struct CreateGoalDrawer: View {
     @State private var draftSteps: [DraftSubtaskEntry] = []
     @State private var isGeneratingBreakdown: Bool = false
     @State private var hasGeneratedBreakdown: Bool = false
+    @State private var showPaywall: Bool = false
     @State private var showNewStepField: Bool = false
     @State private var newStepTitle: String = ""
     @FocusState private var isTitleFocused: Bool
@@ -46,6 +47,10 @@ struct CreateGoalDrawer: View {
                 .padding(.bottom, AppStyle.Spacing.page)
             }
             .background(.clear)
+        }
+        .sheet(isPresented: $showPaywall) {
+            PaywallView()
+                .environmentObject(SubscriptionManager.shared)
         }
     }
 
@@ -241,6 +246,10 @@ struct CreateGoalDrawer: View {
     // MARK: - Actions
 
     private func generateNextSteps() {
+        guard SubscriptionManager.shared.isSubscribed else {
+            showPaywall = true
+            return
+        }
         isGeneratingBreakdown = true
         let existingTitles = draftSteps.map { $0.title }
 

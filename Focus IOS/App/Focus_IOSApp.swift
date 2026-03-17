@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import StoreKit
 import GoogleSignIn
 import Auth
 
@@ -19,6 +20,7 @@ struct Focus_IOSApp: App {
     @StateObject private var notificationManager = NotificationManager.shared
     @StateObject private var coachMarkManager = CoachMarkManager.shared
     @StateObject private var shareLinkHandler = ShareLinkHandler.shared
+    @StateObject private var subscriptionManager = SubscriptionManager.shared
     @State private var showLaunchScreen = true
     @Environment(\.scenePhase) private var scenePhase
 
@@ -82,6 +84,7 @@ struct Focus_IOSApp: App {
             .environmentObject(appearanceManager)
             .environmentObject(notificationManager)
             .environmentObject(coachMarkManager)
+            .environmentObject(subscriptionManager)
             .environment(\.locale, languageManager.locale)
             .preferredColorScheme(appearanceManager.currentAppearance.colorScheme)
             .onChange(of: scenePhase) { _, newPhase in

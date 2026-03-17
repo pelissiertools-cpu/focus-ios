@@ -18,6 +18,7 @@ struct ProjectsListPage: View {
     @State private var scrollToSectionId: UUID?
     @State private var collapsedSections: Set<UUID> = []
     @State private var showingAddBar = false
+    @State private var showPaywall = false
     @State private var showArchiveConfirmation = false
     @State private var coachMarkVisible = false
 
@@ -233,6 +234,10 @@ struct ProjectsListPage: View {
                     HStack {
                         Spacer()
                         Button {
+                            guard SubscriptionManager.shared.isSubscribed else {
+                                showPaywall = true
+                                return
+                            }
                             withAnimation(AppStyle.Anim.modeSwitch) {
                                 showingAddBar = true
                             }
@@ -346,6 +351,10 @@ struct ProjectsListPage: View {
                 await viewModel.fetchProjects(showLoading: true)
             }
             await projectsViewModel.fetchProjects()
+        }
+        .sheet(isPresented: $showPaywall) {
+            PaywallView()
+                .environmentObject(SubscriptionManager.shared)
         }
         .onAppear {
             if coachMarkManager.shouldShow(.projects) {

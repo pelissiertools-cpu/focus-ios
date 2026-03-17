@@ -12,6 +12,10 @@ enum ShareSheetHelper {
     private static let shareRepository = ShareRepository()
 
     static func share(task: FocusTask) {
+        guard SubscriptionManager.shared.isSubscribed else {
+            presentPaywall()
+            return
+        }
         _Concurrency.Task { @MainActor in
             do {
                 let token = try await shareRepository.createShare(taskId: task.id, ownerId: task.userId)
@@ -25,6 +29,21 @@ enum ShareSheetHelper {
                 print("[ShareSheetHelper] Failed to create share: \(error)")
             }
         }
+    }
+
+    private static func presentPaywall() {
+        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+              let rootVC = windowScene.windows.first?.rootViewController else { return }
+
+        var topVC = rootVC
+        while let presented = topVC.presentedViewController {
+            topVC = presented
+        }
+
+        let paywallView = PaywallView()
+            .environmentObject(SubscriptionManager.shared)
+        let hostingVC = UIHostingController(rootView: paywallView)
+        topVC.present(hostingVC, animated: true)
     }
 
     private static func presentShareSheet(with url: URL, title: String) {

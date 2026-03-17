@@ -4,13 +4,14 @@
 //
 
 import SwiftUI
+import StoreKit
 
 struct OnboardingContainerView: View {
     @EnvironmentObject var authService: AuthService
     @EnvironmentObject var notificationManager: NotificationManager
 
     @State private var currentStep = 0
-    private let totalSteps = 3
+    private let totalSteps = 4
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -27,7 +28,10 @@ struct OnboardingContainerView: View {
                     case 1:
                         OnboardingNameStep(onContinue: nextStep)
                     case 2:
-                        OnboardingNotificationsStep(onContinue: completeOnboarding)
+                        OnboardingNotificationsStep(onContinue: nextStep)
+                    case 3:
+                        PaywallView(onContinue: completeOnboarding, showSkip: true)
+                            .environmentObject(SubscriptionManager.shared)
                     default:
                         EmptyView()
                     }

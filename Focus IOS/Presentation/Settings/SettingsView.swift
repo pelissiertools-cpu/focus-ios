@@ -134,12 +134,14 @@ struct SettingsView: View {
                             .padding(.leading, AppStyle.Layout.touchTarget)
 
                         // Subscription row
-                        Button {
-                            // Placeholder
+                        NavigationLink {
+                            SubscriptionDetailView()
+                                .environmentObject(SubscriptionManager.shared)
                         } label: {
                             settingsRow(
                                 icon: "plus.app",
                                 title: "Subscription",
+                                value: SubscriptionManager.shared.isSubscribed ? "Pro" : nil,
                                 showChevron: true
                             )
                         }

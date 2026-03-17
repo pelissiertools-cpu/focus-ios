@@ -196,16 +196,12 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
             projects[index].completedDate = completedDate
         }
 
-        // Update projectTasksMap if this is a project task and re-check auto-complete
+        // Update projectTasksMap if this is a project task
         for (projectId, var tasks) in projectTasksMap {
             if let index = tasks.firstIndex(where: { $0.id == taskId }) {
                 tasks[index].isCompleted = isCompleted
                 tasks[index].completedDate = completedDate
                 projectTasksMap[projectId] = tasks
-                // Re-check whether the project should be completed/uncompleted
-                _Concurrency.Task { @MainActor in
-                    try? await checkProjectAutoComplete(projectId: projectId)
-                }
                 break
             }
         }
@@ -867,9 +863,6 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
                 }
                 projectTasksMap[projectId] = tasks
 
-                // Auto-complete/uncomplete project based on task states
-                try await checkProjectAutoComplete(projectId: projectId)
-
                 // Notify other views
                 NotificationCenter.default.post(
                     name: .taskCompletionChanged,
@@ -992,11 +985,6 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
                     }
                 }
 
-                // Auto-complete/uncomplete project after subtask→task cascade
-                if let projectId = projectTasksMap.first(where: { $0.value.contains(where: { $0.id == parentId }) })?.key {
-                    try await checkProjectAutoComplete(projectId: projectId)
-                }
-
                 // Notify other views
                 NotificationCenter.default.post(
                     name: .taskCompletionChanged,
@@ -1016,31 +1004,65 @@ class ProjectsViewModel: ObservableObject, TaskEditingViewModel, LogFilterable {
         }
     }
 
-    // MARK: - Project Auto-Complete
+    // MARK: - Project Completion
 
-    private func checkProjectAutoComplete(projectId: UUID) async throws {
-        let tasks = (projectTasksMap[projectId] ?? []).filter { !$0.isSection }
-        guard !tasks.isEmpty else { return }
+    func toggleProjectCompletion(_ project: FocusTask) async {
+        do {
+            if project.isCompleted {
+                try await repository.uncompleteTask(id: project.id)
+                if let index = projects.firstIndex(where: { $0.id == project.id }) {
+                    projects[index].isCompleted = false
+                    projects[index].completedDate = nil
+                }
+            } else {
+                // Complete all remaining tasks and their subtasks first
+                let tasks = (projectTasksMap[project.id] ?? []).filter { !$0.isSection && !$0.isCompleted }
+                for task in tasks {
+                    try await repository.completeTask(id: task.id)
+                    let subtasks = subtasksMap[task.id] ?? []
+                    if !subtasks.isEmpty {
+                        try await repository.completeSubtasks(parentId: task.id)
+                    }
+                }
+                // Update local state for tasks and subtasks
+                if var allTasks = projectTasksMap[project.id] {
+                    for i in allTasks.indices where !allTasks[i].isSection && !allTasks[i].isCompleted {
+                        allTasks[i].isCompleted = true
+                        allTasks[i].completedDate = Date()
+                    }
+                    projectTasksMap[project.id] = allTasks
+                }
+                for task in tasks {
+                    if var subtasks = subtasksMap[task.id] {
+                        for i in subtasks.indices where !subtasks[i].isCompleted {
+                            subtasks[i].isCompleted = true
+                            subtasks[i].completedDate = Date()
+                        }
+                        subtasksMap[task.id] = subtasks
+                    }
+                }
 
-        let allTasksComplete = tasks.allSatisfy { $0.isCompleted }
-
-        if allTasksComplete, let projectIndex = projects.firstIndex(where: { $0.id == projectId }),
-           !projects[projectIndex].isCompleted {
-            // All tasks done → complete the project
-            try await repository.completeTask(id: projectId)
-            projects[projectIndex].isCompleted = true
-            projects[projectIndex].completedDate = Date()
-        } else if !allTasksComplete, let projectIndex = projects.firstIndex(where: { $0.id == projectId }),
-                  projects[projectIndex].isCompleted {
-            // A task was uncompleted → uncomplete the project
-            try await repository.uncompleteTask(id: projectId)
-            projects[projectIndex].isCompleted = false
-            projects[projectIndex].completedDate = nil
-            // If it was archived, restore it to active
-            if projects[projectIndex].isCleared {
-                try await repository.unclearTask(id: projectId)
-                projects[projectIndex].isCleared = false
+                // Complete the project itself
+                try await repository.completeTask(id: project.id)
+                if let index = projects.firstIndex(where: { $0.id == project.id }) {
+                    projects[index].isCompleted = true
+                    projects[index].completedDate = Date()
+                }
             }
+            NotificationCenter.default.post(
+                name: .taskCompletionChanged,
+                object: nil,
+                userInfo: [
+                    TaskNotificationKeys.taskId: project.id,
+                    TaskNotificationKeys.isCompleted: !project.isCompleted,
+                    TaskNotificationKeys.completedDate: (project.isCompleted ? nil : Date()) as Any,
+                    TaskNotificationKeys.source: TaskNotificationSource.log.rawValue,
+                    TaskNotificationKeys.subtasksChanged: true
+                ]
+            )
+            notifyTasksChanged()
+        } catch {
+            errorMessage = error.localizedDescription
         }
     }
 

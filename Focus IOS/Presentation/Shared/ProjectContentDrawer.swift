@@ -61,6 +61,17 @@ struct ProjectContentView: View {
                                 .foregroundColor(.secondary)
                         }
 
+                        if isProjectCompleted {
+                            Button {
+                                _Concurrency.Task { await viewModel.toggleProjectCompletion(project) }
+                            } label: {
+                                Text("Continue project")
+                                    .font(.inter(.subheadline, weight: .medium))
+                                    .foregroundColor(.focusBlue)
+                            }
+                            .buttonStyle(.plain)
+                        }
+
                         let progress = viewModel.taskProgress(for: project.id)
                         if progress.total > 0 {
                             Text("\(Int(Double(progress.completed) / Double(progress.total) * 100))%")
@@ -416,6 +427,14 @@ struct ProjectContentView: View {
 
                         ContextMenuItems.pinButton(isPinned: project.isPinned) {
                             _Concurrency.Task { await viewModel.toggleProjectPin(project) }
+                        }
+
+                        if !isProjectCompleted {
+                            Button {
+                                _Concurrency.Task { await viewModel.toggleProjectCompletion(project) }
+                            } label: {
+                                Label("Mark as complete", systemImage: "checkmark.circle")
+                            }
                         }
                     } label: {
                         Image(systemName: "ellipsis")

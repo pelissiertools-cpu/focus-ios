@@ -158,6 +158,7 @@ struct AddBar: View {
     @State private var subtasks: [DraftSubtaskEntry] = []
     @State private var isGeneratingBreakdown = false
     @State private var hasGeneratedBreakdown = false
+    @State private var showPaywall = false
 
     // List mode
     @State private var listItems: [DraftSubtaskEntry] = []
@@ -302,6 +303,10 @@ struct AddBar: View {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                 titleFocused = true
             }
+        }
+        .sheet(isPresented: $showPaywall) {
+            PaywallView()
+                .environmentObject(SubscriptionManager.shared)
         }
     }
 
@@ -962,6 +967,10 @@ struct AddBar: View {
     // MARK: - AI Breakdown
 
     private func generateBreakdown() {
+        guard SubscriptionManager.shared.isSubscribed else {
+            showPaywall = true
+            return
+        }
         let taskTitle = title.trimmingCharacters(in: .whitespaces)
         guard !taskTitle.isEmpty else { return }
         isGeneratingBreakdown = true

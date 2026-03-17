@@ -18,6 +18,7 @@ struct QuickListsPage: View {
     @State private var scrollToSectionId: UUID?
     @State private var collapsedSections: Set<UUID> = []
     @State private var showingAddBar = false
+    @State private var showPaywall = false
     @State private var coachMarkVisible = false
 
     private let authService: AuthService
@@ -168,6 +169,10 @@ struct QuickListsPage: View {
                     HStack {
                         Spacer()
                         Button {
+                            if !SubscriptionManager.shared.isSubscribed && listsViewModel.lists.count >= 3 {
+                                showPaywall = true
+                                return
+                            }
                             withAnimation(AppStyle.Anim.modeSwitch) {
                                 showingAddBar = true
                             }
@@ -210,6 +215,10 @@ struct QuickListsPage: View {
                         activeMode: .constant(.list),
                         onSave: { result in
                             guard case .list(let r) = result else { return }
+                            if !SubscriptionManager.shared.isSubscribed && listsViewModel.lists.count >= 3 {
+                                showPaywall = true
+                                return
+                            }
                             _Concurrency.Task { @MainActor in
                                 await listsViewModel.createList(title: r.title, categoryId: r.categoryId, priority: r.priority)
                                 if let createdList = listsViewModel.lists.first {
@@ -277,6 +286,10 @@ struct QuickListsPage: View {
         .sheet(isPresented: $listsViewModel.showBatchScheduleSheet) {
             BatchScheduleSheet(viewModel: listsViewModel)
                 .drawerStyle()
+        }
+        .sheet(isPresented: $showPaywall) {
+            PaywallView()
+                .environmentObject(SubscriptionManager.shared)
         }
         .task {
             if viewModel.lists.isEmpty {

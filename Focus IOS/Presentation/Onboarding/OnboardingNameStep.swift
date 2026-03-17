@@ -40,6 +40,7 @@ struct OnboardingNameStep: View {
                     .focused($nameFieldFocused)
                     .textContentType(.name)
                     .autocorrectionDisabled()
+                    .onSubmit { saveName() }
 
                 if !name.isEmpty {
                     Button {
@@ -60,6 +61,14 @@ struct OnboardingNameStep: View {
             )
             .padding(.horizontal, AppStyle.Spacing.page)
 
+            // Error
+            if let errorMessage = authService.errorMessage {
+                Text(errorMessage)
+                    .foregroundColor(.red)
+                    .font(.inter(.caption))
+                    .padding(.top, AppStyle.Spacing.small)
+            }
+
             Spacer()
             Spacer()
 
@@ -76,6 +85,7 @@ struct OnboardingNameStep: View {
                 }
                 .foregroundColor(trimmedName.isEmpty ? .secondary : .focusBlue)
                 .frame(maxWidth: .infinity, minHeight: AppStyle.Layout.fab)
+                .contentShape(Rectangle())
                 .background(Color.cardBackground, in: RoundedRectangle(cornerRadius: AppStyle.CornerRadius.card))
                 .cardBorderOverlay()
                 .cardShadow()

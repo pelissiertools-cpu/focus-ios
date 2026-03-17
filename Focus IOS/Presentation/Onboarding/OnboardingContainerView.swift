@@ -56,9 +56,15 @@ struct OnboardingContainerView: View {
                                height: AppStyle.Layout.touchTarget)
                 }
             } else {
-                Spacer()
-                    .frame(width: AppStyle.Layout.touchTarget,
-                           height: AppStyle.Layout.touchTarget)
+                Button {
+                    cancelOnboarding()
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.inter(size: 16, weight: .semiBold))
+                        .foregroundColor(.appText)
+                        .frame(width: AppStyle.Layout.touchTarget,
+                               height: AppStyle.Layout.touchTarget)
+                }
             }
             Spacer()
         }
@@ -80,6 +86,12 @@ struct OnboardingContainerView: View {
     private func nextStep() {
         withAnimation(AppStyle.Anim.modeSwitch) {
             currentStep = min(currentStep + 1, totalSteps - 1)
+        }
+    }
+
+    private func cancelOnboarding() {
+        _Concurrency.Task { @MainActor in
+            try? await authService.signOut()
         }
     }
 

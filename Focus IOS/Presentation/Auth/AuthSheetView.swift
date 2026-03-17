@@ -27,8 +27,15 @@ struct AuthSheetView: View {
     @State private var detectedMode: AuthMode = .signUp
     @State private var isCheckingEmail = false
 
+    @State private var emailError: String?
+
     @FocusState private var emailFocused: Bool
     @FocusState private var passwordFocused: Bool
+
+    private var isValidEmail: Bool {
+        let pattern = #"^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$"#
+        return email.range(of: pattern, options: .regularExpression) != nil
+    }
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -139,13 +146,18 @@ struct AuthSheetView: View {
                     .padding()
                     .overlay(
                         RoundedRectangle(cornerRadius: 12)
-                            .stroke(emailFocused ? Color.primary : Color(.separator), lineWidth: emailFocused ? 2 : 1)
+                            .stroke(emailError != nil ? Color.red : (emailFocused ? Color.primary : Color(.separator)), lineWidth: emailFocused || emailError != nil ? 2 : 1)
                     )
+                    .onChange(of: email) { emailError = nil }
             }
             .padding(.top, AppStyle.Spacing.compact)
 
             // Error
-            if let errorMessage = authService.errorMessage {
+            if let emailError {
+                Text(emailError)
+                    .foregroundColor(.red)
+                    .font(.inter(.caption))
+            } else if let errorMessage = authService.errorMessage {
                 Text(errorMessage)
                     .foregroundColor(.red)
                     .font(.inter(.caption))
@@ -153,6 +165,11 @@ struct AuthSheetView: View {
 
             // Continue button
             Button(action: {
+                emailError = nil
+                guard isValidEmail else {
+                    emailError = "Please enter a valid email address."
+                    return
+                }
                 _Concurrency.Task { @MainActor in
                     isCheckingEmail = true
                     if let exists = await authService.checkEmailExists(email: email) {

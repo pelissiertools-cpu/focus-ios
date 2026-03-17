@@ -300,9 +300,13 @@ struct AddBar: View {
                 scheduleDates = config.initialDates
                 timeframe = config.initialTimeframe
             }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                titleFocused = true
-            }
+        }
+        .task {
+            // Minimal delay so the view is in the tree, then keyboard
+            // animates simultaneously with the slide-up transition.
+            // .task auto-cancels on view removal (fixes rapid open/close).
+            try? await Task.sleep(for: .milliseconds(50))
+            titleFocused = true
         }
         .sheet(isPresented: $showPaywall) {
             PaywallView()

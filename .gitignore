@@ -5,3 +5,5 @@ Secrets.xcconfig
 *.xcuserstate
 xcuserdata/
 .DS_Store
+build/
+DerivedData/

@@ -10,6 +10,7 @@ import SwiftUI
 struct SectionDividerRow: View {
     let section: FocusTask
     @Binding var editingSectionId: UUID?
+    @Binding var isCollapsed: Bool
     let onRename: (FocusTask, String) async -> Void
     let onDelete: (FocusTask) async -> Void
 
@@ -20,11 +21,13 @@ struct SectionDividerRow: View {
     init(
         section: FocusTask,
         editingSectionId: Binding<UUID?>,
+        isCollapsed: Binding<Bool>,
         onRename: @escaping (FocusTask, String) async -> Void,
         onDelete: @escaping (FocusTask) async -> Void
     ) {
         self.section = section
         self._editingSectionId = editingSectionId
+        self._isCollapsed = isCollapsed
         self.onRename = onRename
         self.onDelete = onDelete
         _sectionTitle = State(initialValue: section.title)
@@ -32,14 +35,31 @@ struct SectionDividerRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: AppStyle.Spacing.small) {
-            TextField("Section name", text: $sectionTitle)
-                .font(.inter(.headline, weight: .bold))
-                .foregroundColor(.focusBlue)
-                .textFieldStyle(.plain)
-                .focused($isEditing)
-                .onSubmit { saveSectionTitle() }
-                .allowsHitTesting(isEditing)
-                .padding(.top, AppStyle.Spacing.section)
+            HStack {
+                TextField("Section name", text: $sectionTitle)
+                    .font(.inter(.headline, weight: .bold))
+                    .foregroundColor(.focusBlue)
+                    .textFieldStyle(.plain)
+                    .focused($isEditing)
+                    .onSubmit { saveSectionTitle() }
+                    .allowsHitTesting(isEditing)
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.inter(.caption, weight: .semiBold))
+                    .foregroundColor(.secondary)
+                    .rotationEffect(.degrees(isCollapsed ? 0 : 90))
+                    .animation(.easeInOut(duration: 0.2), value: isCollapsed)
+                    .frame(width: 28, height: 28)
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            isCollapsed.toggle()
+                        }
+                    }
+            }
+            .padding(.top, AppStyle.Spacing.section)
 
             Rectangle()
                 .fill(Color.secondary.opacity(0.3))

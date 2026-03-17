@@ -17,6 +17,7 @@ struct ListContentView: View {
     @State private var listNotes: String
     @State private var editingSectionId: UUID?
     @State private var scrollToSectionId: UUID?
+    @State private var collapsedSections: Set<UUID> = []
     @State private var showManageSharing = false
     @FocusState private var isTitleFocused: Bool
     @FocusState private var isNotesFocused: Bool
@@ -131,7 +132,14 @@ struct ListContentView: View {
                                     section: section,
                                     viewModel: viewModel,
                                     listId: list.id,
-                                    editingSectionId: $editingSectionId
+                                    editingSectionId: $editingSectionId,
+                                    isCollapsed: Binding(
+                                        get: { collapsedSections.contains(section.id) },
+                                        set: { newValue in
+                                            if newValue { collapsedSections.insert(section.id) }
+                                            else { collapsedSections.remove(section.id) }
+                                        }
+                                    )
                                 )
                                 .id(section.id)
                                 .listRowInsets(AppStyle.Insets.row)
@@ -139,18 +147,20 @@ struct ListContentView: View {
                                 .listRowSeparator(.hidden)
 
                             case .item(let item):
-                                ListContentItemRow(
-                                    item: item,
-                                    listId: list.id,
-                                    viewModel: viewModel
-                                )
-                                .moveDisabled(item.isCompleted || viewModel.contentEditMode)
-                                .listRowInsets(AppStyle.Insets.row)
-                                .listRowBackground(Color.clear)
-                                .listRowSeparator(.hidden)
+                                if !isDisplayItemInCollapsedSection(displayItem, items: items) {
+                                    ListContentItemRow(
+                                        item: item,
+                                        listId: list.id,
+                                        viewModel: viewModel
+                                    )
+                                    .moveDisabled(item.isCompleted || viewModel.contentEditMode)
+                                    .listRowInsets(AppStyle.Insets.row)
+                                    .listRowBackground(Color.clear)
+                                    .listRowSeparator(.hidden)
+                                }
 
                             case .addItemRow(let sectionId):
-                                if !viewModel.contentEditMode {
+                                if !viewModel.contentEditMode && !isDisplayItemInCollapsedSection(displayItem, items: items) {
                                     let rowId = displayItem.id
                                     InlineAddRow(
                                         placeholder: "Item title",
@@ -410,6 +420,20 @@ struct ListContentView: View {
         }
     }
 
+    private func isDisplayItemInCollapsedSection(_ displayItem: ListContentDisplayItem, items: [ListContentDisplayItem]) -> Bool {
+        var currentSectionId: UUID?
+        for i in items {
+            if case .section(let section) = i { currentSectionId = section.id }
+            if i.id == displayItem.id {
+                if let sectionId = currentSectionId {
+                    return collapsedSections.contains(sectionId)
+                }
+                return false
+            }
+        }
+        return false
+    }
+
     private func saveListTitle() {
         let trimmed = listTitle.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty, trimmed != list.title else { return }
@@ -453,15 +477,17 @@ struct ListSectionRow: View {
     @ObservedObject var viewModel: ListsViewModel
     let listId: UUID
     @Binding var editingSectionId: UUID?
+    @Binding var isCollapsed: Bool
     @State private var sectionTitle: String
     @State private var showDeleteConfirmation = false
     @FocusState private var isEditing: Bool
 
-    init(section: FocusTask, viewModel: ListsViewModel, listId: UUID, editingSectionId: Binding<UUID?>) {
+    init(section: FocusTask, viewModel: ListsViewModel, listId: UUID, editingSectionId: Binding<UUID?>, isCollapsed: Binding<Bool>) {
         self.section = section
         self.viewModel = viewModel
         self.listId = listId
         self._editingSectionId = editingSectionId
+        self._isCollapsed = isCollapsed
         _sectionTitle = State(initialValue: section.title)
     }
 
@@ -487,6 +513,19 @@ struct ListSectionRow: View {
                         .font(.inter(.caption, weight: .medium))
                         .foregroundColor(.secondary)
                 }
+
+                Image(systemName: "chevron.right")
+                    .font(.inter(.caption, weight: .semiBold))
+                    .foregroundColor(.secondary)
+                    .rotationEffect(.degrees(isCollapsed ? 0 : 90))
+                    .animation(.easeInOut(duration: 0.2), value: isCollapsed)
+                    .frame(width: 28, height: 28)
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            isCollapsed.toggle()
+                        }
+                    }
             }
             .padding(.top, AppStyle.Spacing.section)
 

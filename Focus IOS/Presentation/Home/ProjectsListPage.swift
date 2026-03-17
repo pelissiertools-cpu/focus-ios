@@ -16,6 +16,7 @@ struct ProjectsListPage: View {
     @State private var selectedProject: FocusTask?
     @State private var editingSectionId: UUID?
     @State private var scrollToSectionId: UUID?
+    @State private var collapsedSections: Set<UUID> = []
     @State private var showingAddBar = false
     @State private var showArchiveConfirmation = false
     @State private var coachMarkVisible = false
@@ -79,6 +80,13 @@ struct ProjectsListPage: View {
                             SectionDividerRow(
                                 section: item,
                                 editingSectionId: $editingSectionId,
+                                isCollapsed: Binding(
+                                    get: { collapsedSections.contains(item.id) },
+                                    set: { newValue in
+                                        if newValue { collapsedSections.insert(item.id) }
+                                        else { collapsedSections.remove(item.id) }
+                                    }
+                                ),
                                 onRename: { section, newTitle in
                                     await viewModel.renameSection(section, newTitle: newTitle)
                                 },
@@ -99,7 +107,7 @@ struct ProjectsListPage: View {
                                     Label("Delete", systemImage: "trash")
                                 }
                             }
-                        } else {
+                        } else if !isItemInCollapsedSection(item, items: viewModel.projects.filter { !$0.isCompleted && !$0.isCleared }) {
                             projectRow(item)
                                 .listRowInsets(AppStyle.Insets.row)
                                 .listRowBackground(Color.clear)
@@ -459,6 +467,22 @@ struct ProjectsListPage: View {
                 }
             }
         }
+    }
+
+    // MARK: - Section Collapse
+
+    private func isItemInCollapsedSection(_ item: FocusTask, items: [FocusTask]) -> Bool {
+        var currentSectionId: UUID?
+        for i in items {
+            if i.isSection { currentSectionId = i.id }
+            if i.id == item.id {
+                if let sectionId = currentSectionId {
+                    return collapsedSections.contains(sectionId)
+                }
+                return false
+            }
+        }
+        return false
     }
 
     // MARK: - Project Row

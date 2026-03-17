@@ -17,6 +17,7 @@ struct ProjectContentView: View {
     @State private var projectNotes: String
     @State private var editingSectionId: UUID?
     @State private var scrollToSectionId: UUID?
+    @State private var collapsedSections: Set<UUID> = []
     @State private var showManageSharing = false
     @FocusState private var isTitleFocused: Bool
     @FocusState private var isNotesFocused: Bool
@@ -158,7 +159,14 @@ struct ProjectContentView: View {
                                     section: section,
                                     viewModel: viewModel,
                                     projectId: project.id,
-                                    editingSectionId: $editingSectionId
+                                    editingSectionId: $editingSectionId,
+                                    isCollapsed: Binding(
+                                        get: { collapsedSections.contains(section.id) },
+                                        set: { newValue in
+                                            if newValue { collapsedSections.insert(section.id) }
+                                            else { collapsedSections.remove(section.id) }
+                                        }
+                                    )
                                 )
                                 .id(section.id)
                                 .listRowInsets(AppStyle.Insets.row)
@@ -166,29 +174,31 @@ struct ProjectContentView: View {
                                 .listRowSeparator(.hidden)
 
                             case .task(let task):
-                                Group {
-                                    if task.parentTaskId != nil {
-                                        ProjectSubtaskRow(
-                                            subtask: task,
-                                            parentId: task.parentTaskId!,
-                                            viewModel: viewModel
-                                        )
-                                        .padding(.leading, viewModel.contentEditMode ? 0 : 32)
-                                    } else {
-                                        ContentTaskRow(
-                                            task: task,
-                                            projectId: project.id,
-                                            viewModel: viewModel
-                                        )
+                                if !isDisplayItemInCollapsedSection(item, items: items) {
+                                    Group {
+                                        if task.parentTaskId != nil {
+                                            ProjectSubtaskRow(
+                                                subtask: task,
+                                                parentId: task.parentTaskId!,
+                                                viewModel: viewModel
+                                            )
+                                            .padding(.leading, viewModel.contentEditMode ? 0 : 32)
+                                        } else {
+                                            ContentTaskRow(
+                                                task: task,
+                                                projectId: project.id,
+                                                viewModel: viewModel
+                                            )
+                                        }
                                     }
+                                    .moveDisabled(task.isCompleted || viewModel.contentEditMode)
+                                    .listRowInsets(AppStyle.Insets.row)
+                                    .listRowBackground(Color.clear)
+                                    .listRowSeparator(.hidden)
                                 }
-                                .moveDisabled(task.isCompleted || viewModel.contentEditMode)
-                                .listRowInsets(AppStyle.Insets.row)
-                                .listRowBackground(Color.clear)
-                                .listRowSeparator(.hidden)
 
                             case .addSubtaskRow(let parentId):
-                                if !viewModel.contentEditMode {
+                                if !viewModel.contentEditMode && !isDisplayItemInCollapsedSection(item, items: items) {
                                     let rowId = "add-subtask-\(parentId.uuidString)"
                                     InlineAddRow(
                                         placeholder: "Subtask title",
@@ -226,7 +236,7 @@ struct ProjectContentView: View {
                                 .listRowSeparator(.hidden)
 
                             case .addTaskRow(let sectionId):
-                                if !viewModel.contentEditMode {
+                                if !viewModel.contentEditMode && !isDisplayItemInCollapsedSection(item, items: items) {
                                     let rowId = item.id
                                     InlineAddRow(
                                         placeholder: "Task title",
@@ -473,6 +483,21 @@ struct ProjectContentView: View {
             ManageSharingSheet(task: project)
                 .drawerStyle()
         }
+    }
+
+    private func isDisplayItemInCollapsedSection(_ displayItem: ProjectCardDisplayItem, items: [ProjectCardDisplayItem]) -> Bool {
+        var currentSectionId: UUID?
+        for i in items {
+            if case .section(let section) = i { currentSectionId = section.id }
+            if case .completedHeader = i { currentSectionId = nil }
+            if i.id == displayItem.id {
+                if let sectionId = currentSectionId {
+                    return collapsedSections.contains(sectionId)
+                }
+                return false
+            }
+        }
+        return false
     }
 
     private func linkifiedText(_ string: String) -> AttributedString {
@@ -734,15 +759,17 @@ struct ProjectSectionRow: View {
     @ObservedObject var viewModel: ProjectsViewModel
     let projectId: UUID
     @Binding var editingSectionId: UUID?
+    @Binding var isCollapsed: Bool
     @State private var sectionTitle: String
     @State private var showDeleteConfirmation = false
     @FocusState private var isEditing: Bool
 
-    init(section: FocusTask, viewModel: ProjectsViewModel, projectId: UUID, editingSectionId: Binding<UUID?>) {
+    init(section: FocusTask, viewModel: ProjectsViewModel, projectId: UUID, editingSectionId: Binding<UUID?>, isCollapsed: Binding<Bool>) {
         self.section = section
         self.viewModel = viewModel
         self.projectId = projectId
         self._editingSectionId = editingSectionId
+        self._isCollapsed = isCollapsed
         _sectionTitle = State(initialValue: section.title)
     }
 
@@ -768,6 +795,19 @@ struct ProjectSectionRow: View {
                         .font(.inter(.caption, weight: .medium))
                         .foregroundColor(.secondary)
                 }
+
+                Image(systemName: "chevron.right")
+                    .font(.inter(.caption, weight: .semiBold))
+                    .foregroundColor(.secondary)
+                    .rotationEffect(.degrees(isCollapsed ? 0 : 90))
+                    .animation(.easeInOut(duration: 0.2), value: isCollapsed)
+                    .frame(width: 28, height: 28)
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            isCollapsed.toggle()
+                        }
+                    }
             }
             .padding(.top, AppStyle.Spacing.section)
 
